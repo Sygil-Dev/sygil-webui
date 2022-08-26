@@ -1,0 +1,11 @@
+*.egg-info/
+*.ckpt
+*.zip
+*.pth
+__pycache__/
+.idea/
+models/
+outputs/
+inputs/
+dist/
+build/

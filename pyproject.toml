@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-scm[toml]"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stable-diffusion-webui"
+description = "A browser interface based on Gradio library for Stable Diffusion."
+requires-python = "<3.10"  # update to 3.10 when GFPGAN updates their numpy dependency
+#license = {file = "LICENSE.txt"}
+keywords = ["stable-diffusion"]
+authors = [
+    {name = "Anonymous"}
+]
+version = "1.0"
+dependencies = [
+    "pynvml",  # memory usage monitoring
+    "httpx",  # for downloading models
+    # After https://github.com/CompVis/taming-transformers/pull/173 is merged, remove this dependency.
+    "taming-transformers @ git+https://github.com/illeatmyhat/taming-transformers.git@master#egg=taming-transformers",
+    "gfpgan @ git+https://github.com/TencentARC/GFPGAN.git@v1.3.4#egg=gfpgan",
+    # After https://github.com/XPixelGroup/BasicSR/pull/514 is merged, remove this dependency.
+    "basicsr @ git+https://github.com/orgoro/BasicSR.git@feature/dynamic-import-torch#egg=basicsr",
+    # After https://github.com/CompVis/stable-diffusion/pull/80 is merged,
+    # change this to "git+https://github.com/CompVis/stable-diffusion.git#egg=latent-diffusion",
+    "latent-diffusion @ git+https://github.com/illeatmyhat/stable-diffusion.git@cpu.dev2#egg=latent-diffusion",
+    "k_diffusion @ git+https://github.com/hlky/k-diffusion-sd#egg=k_diffusion"
+]
+
+[project.scripts]
+stable-diffusion = "stable_diffusion.webui:main"
+
+[project.urls]
+homepage = "https://github.com/hlky/stable-diffusion-webui"
+repository = "https://github.com/hlky/stable-diffusion-webui"
+
+[tool.setuptools]
+include-package-data = true
+
+
+[tool.setuptools.packages.find]
+include = ["*"]

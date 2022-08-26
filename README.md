@@ -19,22 +19,37 @@ Features:
 # Stable Diffusion web UI
 A browser interface based on Gradio library for Stable Diffusion.
 
-Original script with Gradio UI was written by a kind anonymopus user. This is a modification.
+Original script with Gradio UI was written by a kind anonymous user. This is a modification.
 
 ![](screenshot.png)
+## Installing and running
 
-### GFPGAN
+In general, you should be able to just [create a Python 3.9 conda environment](https://docs.conda.io/en/latest/miniconda.html)
+and run:
 
-If you want to use GFPGAN to improve generated faces, you need to install it separately.
-Follow instructions from https://github.com/TencentARC/GFPGAN, but when cloning it, do so into Stable Diffusion main directory, `/sd`.
-After that download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
-into the `/sd/GFPGAN/experiments/pretrained_models` directory. If you're getting troubles with GFPGAN support, follow instructions
-from the GFPGAN's repository until `inference_gfpgan.py` script works.
+`pip install -e . --upgrade --use-deprecated=legacy-resolver --only-binary numpy `
 
-If the GFPGAN directory does not exist, you will not get the option to use GFPGAN in the UI. If it does exist, you will either be able
-to use it, or there will be a message in console with an error related to GFPGAN.
+however in practice you may need to install [PyTorch separately](https://pytorch.org/get-started/locally/)
+
+### Stable Diffusion
+
+This script assumes that you already have main Stable Diffusion stuff installed, assumed to be in directory `/sd`.
+If you don't have it installed, follow the guide:
+
+- https://rentry.org/kretard
+
+This repository's `webgui.py` is a replacement for `kdiff.py` from the guide.
 
 ### Web UI
+
+Run in the command line:
+
+`stable-diffusion`
+
+When running the script, models will automatically be downloaded and cached into the `"./models"` directory.
+This can be changed like so:
+
+`stable-diffusion --models-root "./other/models"`
 
 When launching, you may get a very long warning message related to some weights not being used. You may freely ignore it.
 After a while, you will get a message like this:

@@ -1,6 +1,10 @@
 import argparse, os, sys, glob
+import textwrap
+from pathlib import Path
+
 import gradio as gr
 import k_diffusion as K
+import logging
 import math
 import mimetypes
 import numpy as np
@@ -13,10 +17,9 @@ import torch.nn as nn
 import yaml
 from typing import List, Union
 
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 from einops import rearrange, repeat
 from itertools import islice
-from omegaconf import OmegaConf
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from io import BytesIO
 import base64
@@ -24,15 +27,17 @@ import re
 from torch import autocast
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
-from ldm.util import instantiate_from_config
+from ldm.util import torch_device
+from stable_diffusion.models import Models
+from transformers.utils import is_torch_bf16_gpu_available
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
-
-    from transformers import logging
-    logging.set_verbosity_error()
+    from transformers import logging as huggingface_logging
+    huggingface_logging.set_verbosity_error()
 except:
     pass
+logging.basicConfig(level=logging.INFO)
 
 # this is a fix for Windows users. Without it, javascript files will be served with text/html content-type and the bowser will not show any UI
 mimetypes.init()
@@ -52,17 +57,14 @@ parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write 
 parser.add_argument("--skip_grid", action='store_true', help="do not save a grid, only individual samples. Helpful when evaluating lots of samples",)
 parser.add_argument("--skip_save", action='store_true', help="do not save indiviual samples. For speed measurements.",)
 parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
-parser.add_argument("--config", type=str, default="configs/stable-diffusion/v1-inference.yaml", help="path to config which constructs model",)
-parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
+parser.add_argument("--models-root", type=str, default="./models", help='where your "./models" directory is located.',)
 parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
-parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=('./src/gfpgan' if os.path.exists('./src/gfpgan') else './GFPGAN')) # i disagree with where you're putting it but since all guidefags are doing it this way, there you go
 parser.add_argument("--no-verify-input", action='store_true', help="do not verify input to check if it's too long")
 parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats")
 parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware accleration in browser)")
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
 opt = parser.parse_args()
 
-GFPGAN_dir = opt.gfpgan_dir
 
 css_hide_progressbar = """
 .wrap .m-12 svg { display:none!important; }
@@ -76,25 +78,6 @@ def chunk(it, size):
     return iter(lambda: tuple(islice(it, size)), ())
 
 
-def load_model_from_config(config, ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(sd, strict=False)
-    if len(m) > 0 and verbose:
-        print("missing keys:")
-        print(m)
-    if len(u) > 0 and verbose:
-        print("unexpected keys:")
-        print(u)
-
-    model.cuda()
-    model.eval()
-    return model
-
 def crash(e, s):
     global model
     global device
@@ -107,6 +90,7 @@ def crash(e, s):
     print('exiting...calling os._exit(0)')
     t = threading.Timer(0.25, os._exit, args=[0])
     t.start()
+
 
 class MemUsageMonitor(threading.Thread):
     stop_flag = False
@@ -168,37 +152,6 @@ class KDiffusionSampler:
 
         return samples_ddim, None
 
-class MemUsageMonitor(threading.Thread):
-    stop_flag = False
-    max_usage = 0
-    total = 0
-
-    def __init__(self, name):
-        threading.Thread.__init__(self)
-        self.name = name
-
-    def run(self):
-        print(f"[{self.name}] Recording max memory usage...\n")
-        pynvml.nvmlInit()
-        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
-        while not self.stop_flag:
-            m = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            self.max_usage = max(self.max_usage, m.used)
-            # print(self.max_usage)
-            time.sleep(0.1)
-        print(f"[{self.name}] Stopped recording.\n")
-        pynvml.nvmlShutdown()
-
-    def read(self):
-        return self.max_usage, self.total
-
-    def stop(self):
-        self.stop_flag = True
-
-    def read_and_stop(self):
-        self.stop_flag = True
-        return self.max_usage, self.total
 
 def create_random_tensors(shape, seeds):
     xs = []
@@ -213,37 +166,44 @@ def create_random_tensors(shape, seeds):
     x = torch.stack(xs)
     return x
 
+
 def torch_gc():
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
-def load_GFPGAN():
-    model_name = 'GFPGANv1.3'
-    model_path = os.path.join(GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.isfile(model_path):
-        raise Exception("GFPGAN model not found at path "+model_path)
 
-    sys.path.append(os.path.abspath(GFPGAN_dir))
+def load_gfpgan():
+    models = Models(Path(opt.models_root))
+    models.download(Models.gfpgan)
+    model_path = models.storage_dir / Models.gfpgan.download_path()
+    if not model_path.exists():
+        raise Exception(f"GFPGAN model not found at path {model_path}")
+
     from gfpgan import GFPGANer
+    return GFPGANer(model_path=str(model_path), upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None)
 
-    return GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None)
 
+GFPGAN = load_gfpgan()
+logging.info("Loaded GFPGAN")
 
-GFPGAN = None
-if os.path.exists(GFPGAN_dir):
-    try:
-        GFPGAN = load_GFPGAN()
-        print("Loaded GFPGAN")
-    except Exception:
-        import traceback
-        print("Error loading GFPGAN:", file=sys.stderr)
-        print(traceback.format_exc(), file=sys.stderr)
+models = Models(Path(opt.models_root))
+models.download(Models.stable_diffusion_v1)
+model = models.load_model(Models.stable_diffusion_v1)
+device = torch_device
+if device.type == 'cpu':
+    # TODO: use Intel IPEX compiler to shave off a minute from compute time
+    # cpu = CPUID().get_vendor_id()
+    # if device.type == 'cpu' and 'Intel' in cpu:
+    #   model = ipex.optimize(model)
+    logging.info(textwrap.dedent("""
+        You're using a CPU! Expect it to take 15-30 minutes to generate one 512x512 image.
+        At least you probably have more RAM than the GPU users :^)
+    """).lstrip())
+else:
+    # TODO: rather than having switches, we should just detect people's hardware and do the right thing.
+    model = (model if opt.no_half else model.half()).to(device)
 
-config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
-model = load_model_from_config(config, "models/ldm/stable-diffusion-v1/model.ckpt")
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-model = (model if opt.no_half else model.half()).to(device)
 
 def load_embeddings(fp):
     if fp is not None and hasattr(model, "embedding_manager"):
@@ -417,8 +377,10 @@ def process_images(outpath, func_init, func_sample, prompt, seed, sampler_name, 
     # start time after garbage collection (or before?)
     start_time = time.time()
 
-    mem_mon = MemUsageMonitor('MemMon')
-    mem_mon.start()
+    # TODO: MemUsageMonitor should be a contextmanager or a nullcontext if not running on Nvidia
+    if torch.cuda.is_available():
+        mem_mon = MemUsageMonitor('MemMon')
+        mem_mon.start()
 
     if hasattr(model, "embedding_manager"):
         load_embeddings(fp)
@@ -463,10 +425,18 @@ def process_images(outpath, func_init, func_sample, prompt, seed, sampler_name, 
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
 
-    precision_scope = autocast if opt.precision == "autocast" else nullcontext
+    if device.type in ['mps', 'cpu']:
+        # PyTorch did not implement FP16 CPU operations in their C library.
+        # Apple's Metal Performance Shaders don't support FP16 either.
+        precision_scope = nullcontext
+    else:
+        # while there are technically Xeon CPUs which support BF16 operations,
+        # in practice, only Nvidia Ampere (3000 series) and newer GPUs will work with autocast.
+        # everyone else will have to cope with FP16.
+        precision_scope = autocast if is_torch_bf16_gpu_available() else nullcontext
     output_images = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), model.ema_scope():
+    with torch.no_grad(), precision_scope(device.type), model.ema_scope():
         init_data = func_init()
         tic = time.time()
 
@@ -549,15 +519,18 @@ def process_images(outpath, func_init, func_sample, prompt, seed, sampler_name, 
             grid_count += 1
         toc = time.time()
 
-    mem_max_used, mem_total = mem_mon.read_and_stop()
+    if torch.cuda.is_available():
+        mem_max_used, mem_total = mem_mon.read_and_stop()
     time_diff = time.time()-start_time
 
-    info = f"""
-{prompt}
-Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', GFPGAN' if use_GFPGAN and GFPGAN is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
-    stats = f'''
-Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
-Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+    info = textwrap.dedent(f"""
+        {prompt}
+        Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', GFPGAN' if use_GFPGAN and GFPGAN is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}
+    """).lstrip()
+    stats = textwrap.dedent(f"""
+        Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
+        {f'Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%' if torch.cuda.is_available() else ""}
+    """).lstrip()
 
     for comment in comments:
         info += "\n\n" + comment
@@ -1101,28 +1074,36 @@ class ServerLauncher(threading.Thread):
     def stop(self):
         self.demo.close() # this tends to hang
 
-if opt.cli is None:
-    server_thread = ServerLauncher(demo)
-    server_thread.start()
 
-    try:
-        while server_thread.is_alive():
-            time.sleep(60)
-    except (KeyboardInterrupt, OSError) as e:
-        crash(e, 'Shutting down...')
-else:
-    with open(opt.cli, "r", encoding="utf8") as f:
-        kwargs = yaml.safe_load(f)
-    target = kwargs.pop("target")
-    if target == "txt2img":
-        target_func = txt2img
-    elif target == "img2img":
-        target_func = img2img
-        raise NotImplementedError()
+# entry_point console_scripts hook here
+# users can run `stable_diffusion` as a CLI command
+def main():
+    if opt.cli is None:
+        server_thread = ServerLauncher(demo)
+        server_thread.start()
+
+        try:
+            while server_thread.is_alive():
+                time.sleep(60)
+        except (KeyboardInterrupt, OSError) as e:
+            crash(e, 'Shutting down...')
     else:
-        raise ValueError(f"Unknown target: {target}")
-    kwargs["fp"] = None
-    output_images, seed, info, stats = target_func(**kwargs)
-    print(f"Seed: {seed}")
-    print(info)
-    print(stats)
+        with open(opt.cli, "r", encoding="utf8") as f:
+            kwargs = yaml.safe_load(f)
+        target = kwargs.pop("target")
+        if target == "txt2img":
+            target_func = txt2img
+        elif target == "img2img":
+            target_func = img2img
+            raise NotImplementedError()
+        else:
+            raise ValueError(f"Unknown target: {target}")
+        kwargs["fp"] = None
+        output_images, seed, info, stats = target_func(**kwargs)
+        print(f"Seed: {seed}")
+        print(info)
+        print(stats)
+
+
+if __name__ == '__main__':
+    main()
