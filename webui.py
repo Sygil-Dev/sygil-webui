@@ -1654,9 +1654,12 @@ def run_goBIG(image, model_name: str, gstrength: float, gsteps: int):
     batch_size = 1
     data = [batch_size * [""]]
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
-    base_filename = 'sampleTest'
-    res.save(os.path.join(outpath, f"{base_filename}.png"))
-    image.save(os.path.join(outpath, f"{base_filename}ORG.png"))
+    #get random number
+    r = random.randint(0, 3501682103)
+
+    base_filename = f"image_{r}"
+    res.save(os.path.join(outpath, f"{base_filename}2x.png"))
+    image.save(os.path.join(outpath, f"{base_filename}_ORG.png"))
     
     
     with torch.no_grad():
@@ -1664,7 +1667,7 @@ def run_goBIG(image, model_name: str, gstrength: float, gsteps: int):
                 with model.ema_scope():
                     for _ in trange(1, desc="Passes"):
                         #realesrgan2x(opt.realesrgan, os.path.join(sample_path, f"{base_filename}.png"), os.path.join(sample_path, f"{base_filename}u.png"))
-                        base_filename = f"{base_filename}u"
+                        base_filename = f"{base_filename}"
 
                         source_image = res
                         og_size = (int(source_image.size[0] / 2), int(source_image.size[1] / 2))
@@ -1688,7 +1691,7 @@ def run_goBIG(image, model_name: str, gstrength: float, gsteps: int):
                                         for prompts in tqdm(data, desc="data"):
                                             uc = None
                                             if opt.scale != 1.0:
-                                                uc = model.get_learned_conditioning(batch_size * ['4k'])
+                                                uc = model.get_learned_conditioning(batch_size * [''])
                                             if isinstance(prompts, tuple):
                                                 prompts = list(prompts)
                                             c = model.get_learned_conditioning(prompts)
@@ -1726,14 +1729,9 @@ def run_goBIG(image, model_name: str, gstrength: float, gsteps: int):
                             finished_slices.append((finished_slice, x, y))
                         # # Once we have all our images, use grid_merge back onto the source, then save
                         final_output = grid_merge(source_image.convert("RGBA"), finished_slices).convert("RGB")
-                        final_output.save(os.path.join(outpath, f"{base_filename}d.png"))
-                        base_filename = f"{base_filename}d"
-
+                        final_output.save(os.path.join(outpath, f"{base_filename}_wentBig.png"))
                         torch_gc()
-        
-                        #put_watermark(final_output, wm_encoder)
-                        final_output.save(os.path.join(outpath, f"{base_filename}.png"))
-                        
+                                
 
 
    
