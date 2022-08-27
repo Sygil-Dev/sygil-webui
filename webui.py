@@ -534,7 +534,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             target="txt2img" if init_img is None else "img2img",
             prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
             ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-            seed=seed, width=width, height=height
+            seed=seeds[i], width=width, height=height
         )
         if init_img is not None:
             # Not yet any use for these, but they bloat up the files:
