@@ -23,9 +23,6 @@ parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have
 parser.add_argument("--extra-models-cpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
 parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
-parser.add_argument("--turbo", action='store_true', help="will make fewer splits of the model  (6gb) card", default=False)
-parser.add_argument("--unet-bs", type=int, help="unet bs", default=1)
-parser.add_argument("--device", type=str, help="device for optimized version", choices=["cpu", "cuda"], default="cuda" )
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
 opt = parser.parse_args()
 
@@ -129,8 +126,7 @@ def crash(e, s):
     print(s, '\n', e)
 
     del model
-    if not opt.optimized:
-        del device
+    del device
 
     print('exiting...calling os._exit(0)')
     t = threading.Timer(0.25, os._exit, args=[0])
@@ -303,10 +299,12 @@ if opt.optimized:
         sd['model2.' + key[6:]] = sd.pop(key)
 
     config = OmegaConf.load("optimizedSD/v1-inference.yaml")
+    config.modelUNet.params.small_batch = False
+
     model = instantiate_from_config(config.modelUNet)
     _, _ = model.load_state_dict(sd, strict=False)
     model.eval()
-        
+
     modelCS = instantiate_from_config(config.modelCondStage)
     _, _ = modelCS.load_state_dict(sd, strict=False)
     modelCS.eval()
@@ -314,8 +312,9 @@ if opt.optimized:
     modelFS = instantiate_from_config(config.modelFirstStage)
     _, _ = modelFS.load_state_dict(sd, strict=False)
     modelFS.eval()
-    del sd
-
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model = model if opt.no_half else model.half()
+    modelCS = modelCS if opt.no_half else modelCS.half()
 else:
     config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
     model = load_model_from_config(config, "models/ldm/stable-diffusion-v1/model.ckpt")
@@ -551,19 +550,19 @@ def process_images(
     with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
+
         for n in range(n_iter):
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
             seeds = all_seeds[n * batch_size:(n + 1) * batch_size]
-            
+
             if opt.optimized:
-                modelCS.to(opt.device)
+                modelCS.to(device)
             uc = (model if not opt.optimized else modelCS).get_learned_conditioning(len(prompts) * [""])
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
 
             # split the prompt if it has : for weighting
             # TODO for speed it might help to have this occur when all_prompts filled??
-            
             subprompts,weights = split_weighted_subprompts(prompts[0])
             # get total weight for normalizing, this gets weird if large negative values used
             totalPromptWeight = sum(weights)
@@ -581,11 +580,9 @@ def process_images(
             else: # just behave like usual
                 c = (model if not opt.optimized else modelCS).get_learned_conditioning(prompts)
 
-            c = (model if not opt.optimized else modelCS).get_learned_conditioning(prompts)    
-
             shape = [opt_C, height // opt_f, width // opt_f]
 
-            if opt.optimized and opt.device != "cpu":
+            if opt.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
                 modelCS.to("cpu")
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
@@ -596,11 +593,11 @@ def process_images(
             samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
             if opt.optimized:
-                modelFS.to(opt.device)
+                modelFS.to(device)
 
             x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
             for i, x_sample in enumerate(x_samples_ddim):
-                x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
 
@@ -706,17 +703,8 @@ def process_images(
                         with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
                             yaml.dump(info_dict, f)
 
-                output_images.append(image.to("cpu"))
+                output_images.append(image)
                 base_count += 1
-            if opt.optimized and opt.device != "cpu":
-                mem = torch.cuda.memory_allocated()/1e6
-                modelFS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
-                    time.sleep(1)
-            if opt.optimized:
-                del samples_ddim
-                del x_sample
-                del x_samples_ddim
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             grid = image_grid(output_images, batch_size, round_down=prompt_matrix)
@@ -736,7 +724,11 @@ def process_images(
             grid.save(os.path.join(outpath, grid_file), 'jpeg', quality=100, optimize=True)
             grid_count += 1
 
-        
+        if opt.optimized:
+            mem = torch.cuda.memory_allocated()/1e6
+            modelFS.to("cpu")
+            while(torch.cuda.memory_allocated()/1e6 >= mem):
+                time.sleep(1)
 
         toc = time.time()
 
@@ -803,45 +795,45 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
         samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
         return samples_ddim
 
-#    try:
-    output_images, seed, info, stats = process_images(
-        outpath=outpath,
-        func_init=init,
-        func_sample=sample,
-        prompt=prompt,
-        seed=seed,
-        sampler_name=sampler_name,
-        skip_save=skip_save,
-        skip_grid=skip_grid,
-        batch_size=batch_size,
-        n_iter=n_iter,
-        steps=ddim_steps,
-        cfg_scale=cfg_scale,
-        width=width,
-        height=height,
-        prompt_matrix=prompt_matrix,
-        use_GFPGAN=use_GFPGAN,
-        use_RealESRGAN=use_RealESRGAN,
-        realesrgan_model_name=realesrgan_model_name,
-        fp=fp,
-        ddim_eta=ddim_eta,
-        normalize_prompt_weights=normalize_prompt_weights,
-        sort_samples=sort_samples,
-        write_info_files=write_info_files,
-        jpg_sample=jpg_sample,
-    )
+    try:
+        output_images, seed, info, stats = process_images(
+            outpath=outpath,
+            func_init=init,
+            func_sample=sample,
+            prompt=prompt,
+            seed=seed,
+            sampler_name=sampler_name,
+            skip_save=skip_save,
+            skip_grid=skip_grid,
+            batch_size=batch_size,
+            n_iter=n_iter,
+            steps=ddim_steps,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            prompt_matrix=prompt_matrix,
+            use_GFPGAN=use_GFPGAN,
+            use_RealESRGAN=use_RealESRGAN,
+            realesrgan_model_name=realesrgan_model_name,
+            fp=fp,
+            ddim_eta=ddim_eta,
+            normalize_prompt_weights=normalize_prompt_weights,
+            sort_samples=sort_samples,
+            write_info_files=write_info_files,
+            jpg_sample=jpg_sample,
+        )
 
-    del sampler
+        del sampler
 
-    return output_images, seed, info, stats
-#    except RuntimeError as e:
-#        err = e
-#        err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
-#        stats = err_msg
-#        return [], seed, 'err', stats
-#    finally:
-#        if err:
-#            crash(err, '!!Runtime error (txt2img)!!')
+        return output_images, seed, info, stats
+    except RuntimeError as e:
+        err = e
+        err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
+        stats = err_msg
+        return [], seed, 'err', stats
+    finally:
+        if err:
+            crash(err, '!!Runtime error (txt2img)!!')
 
 
 class Flagging(gr.FlaggingCallback):
@@ -886,15 +878,13 @@ class Flagging(gr.FlaggingCallback):
         print("Logged:", filenames[0])
 
 
-
-
 def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int, batch_size: int, cfg_scale: float, denoising_strength: float,
             seed: int, height: int, width: int, resize_mode: int, fp):
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
     err = False
     seed = seed_to_int(seed)
-    
+
     prompt_matrix = 0 in toggles
     normalize_prompt_weights = 1 in toggles
     loopback = 2 in toggles
@@ -938,49 +928,31 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         init_mask = None
         keep_mask = False
 
-    if opt.optimized:
-        model.unet_bs = opt.unet_bs
-        model.turbo = opt.turbo
-        model.cdevice = opt.device
-        modelCS.cond_stage_model.device = opt.device
-
-        
     assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
     t_enc = int(denoising_strength * ddim_steps)
 
-    def load_img(image, h0, w0):
-        image = image.convert("RGB")
-        w, h = image.size
-        print(f"loaded input image of size ({w}, {h})")
-        if h0 is not None and w0 is not None:
-            h, w = h0, w0
-
-        w, h = map(lambda x: x - x % 64, (w, h))  # resize to integer multiple of 32
-
-        print(f"New image size ({w}, {h})")
-        #image = image.resize((w, h), resample=Image.LANCZOS)
+    def init():
+        image = init_img.convert("RGB")
+        image = resize_image(resize_mode, image, width, height)
         image = np.array(image).astype(np.float32) / 255.0
         image = image[None].transpose(0, 3, 1, 2)
         image = torch.from_numpy(image)
-        return 2.0 * image - 1.0
 
-    def init():
-        precision_scope = autocast if opt.precision == "autocast" else nullcontext
-        with torch.no_grad(), precision_scope("cuda"):
-            image = load_img(init_img, width, height)
-            init_image = image
-            if opt.optimized:
-                init_image.to(opt.device)
-                modelFS.to(opt.device)
-            init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
-            init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
-            if opt.optimized and opt.device != "cpu":
-                mem = torch.cuda.memory_allocated()/1e6
-                modelFS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
-                    time.sleep(1)
+        if opt.optimized:
+            modelFS.to(device)
 
-            return init_latent,
+        init_image = 2. * image - 1.
+        init_image = init_image.to(device)
+        init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
+        init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
+        
+        if opt.optimized:
+            mem = torch.cuda.memory_allocated()/1e6
+            modelFS.to("cpu")
+            while(torch.cuda.memory_allocated()/1e6 >= mem):
+                time.sleep(1)
+
+        return init_latent,
 
     def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
         if sampler_name != 'DDIM':
@@ -992,14 +964,11 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
             xi = x0 + noise
             sigma_sched = sigmas[ddim_steps - t_enc - 1:]
             model_wrap_cfg = CFGDenoiser(sampler.model_wrap)
-            samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
+            samples_ddim = K.sampling.sample_lms(model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False)
         else:
             x0, = init_data
             sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
-            if opt.optimized:
-                z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc]*batch_size).to(opt.device))
-            else:
-                z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc]*batch_size).to(device))
+            z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc]*batch_size).to(device))
                                 # decode it
             samples_ddim = sampler.decode(z_enc, conditioning, t_enc,
                                             unconditional_guidance_scale=cfg_scale,
@@ -1007,13 +976,70 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         return samples_ddim
 
 
-#    try:
-    if loopback:
-        output_images, info = None, None
-        history = []
-        initial_seed = None
+    try:
+        if loopback:
+            output_images, info = None, None
+            history = []
+            initial_seed = None
 
-        for i in range(n_iter):
+            for i in range(n_iter):
+                output_images, seed, info, stats = process_images(
+                    outpath=outpath,
+                    func_init=init,
+                    func_sample=sample,
+                    prompt=prompt,
+                    seed=seed,
+                    sampler_name=sampler_name,
+                    skip_save=skip_save,
+                    skip_grid=skip_grid,
+                    batch_size=1,
+                    n_iter=1,
+                    steps=ddim_steps,
+                    cfg_scale=cfg_scale,
+                    width=width,
+                    height=height,
+                    prompt_matrix=prompt_matrix,
+                    use_GFPGAN=use_GFPGAN,
+                    use_RealESRGAN=False, # Forcefully disable upscaling when using loopback
+                    realesrgan_model_name=realesrgan_model_name,
+                    fp=fp,
+                    do_not_save_grid=True,
+                    normalize_prompt_weights=normalize_prompt_weights,
+                    init_img=init_img,
+                    init_mask=init_mask,
+                    keep_mask=keep_mask,
+                    mask_blur_strength=mask_blur_strength,
+                    denoising_strength=denoising_strength,
+                    resize_mode=resize_mode,
+                    uses_loopback=loopback,
+                    uses_random_seed_loopback=random_seed_loopback,
+                    sort_samples=sort_samples,
+                    write_info_files=write_info_files,
+                    jpg_sample=jpg_sample,
+                )
+
+                if initial_seed is None:
+                    initial_seed = seed
+
+                init_img = output_images[0]
+                if not random_seed_loopback:
+                    seed = seed + 1
+                else:
+                    seed = seed_to_int(None)
+                denoising_strength = max(denoising_strength * 0.95, 0.1)
+                history.append(init_img)
+
+            if not skip_grid:
+                grid_count = len([_ for x in os.listdir() if x.endswith(('.png', '.jpg'))]) - 1 # start at 0
+                grid = image_grid(history, batch_size, force_n_rows=1)
+                grid_file = f"grid-{grid_count:05}-{seed}_{prompt.replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.jpg"
+                grid.save(os.path.join(outpath, grid_file), 'jpeg', quality=100, optimize=True)
+
+
+            output_images = history
+            seed = initial_seed
+
+        else:
             output_images, seed, info, stats = process_images(
                 outpath=outpath,
                 func_init=init,
@@ -1023,18 +1049,17 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
                 sampler_name=sampler_name,
                 skip_save=skip_save,
                 skip_grid=skip_grid,
-                batch_size=1,
-                n_iter=1,
+                batch_size=batch_size,
+                n_iter=n_iter,
                 steps=ddim_steps,
                 cfg_scale=cfg_scale,
                 width=width,
                 height=height,
                 prompt_matrix=prompt_matrix,
                 use_GFPGAN=use_GFPGAN,
-                use_RealESRGAN=False, # Forcefully disable upscaling when using loopback
+                use_RealESRGAN=use_RealESRGAN,
                 realesrgan_model_name=realesrgan_model_name,
                 fp=fp,
-                do_not_save_grid=True,
                 normalize_prompt_weights=normalize_prompt_weights,
                 init_img=init_img,
                 init_mask=init_mask,
@@ -1043,78 +1068,22 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
                 denoising_strength=denoising_strength,
                 resize_mode=resize_mode,
                 uses_loopback=loopback,
-                uses_random_seed_loopback=random_seed_loopback,
                 sort_samples=sort_samples,
                 write_info_files=write_info_files,
                 jpg_sample=jpg_sample,
             )
 
-            if initial_seed is None:
-                initial_seed = seed
+        del sampler
 
-            init_img = output_images[0]
-            if not random_seed_loopback:
-                seed = seed + 1
-            else:
-                seed = seed_to_int(None)
-            denoising_strength = max(denoising_strength * 0.95, 0.1)
-            history.append(init_img)
-
-        if not skip_grid:
-            grid_count = len([_ for x in os.listdir() if x.endswith(('.png', '.jpg'))]) - 1 # start at 0
-            grid = image_grid(history, batch_size, force_n_rows=1)
-            grid_file = f"grid-{grid_count:05}-{seed}_{prompt.replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.jpg"
-            grid.save(os.path.join(outpath, grid_file), 'jpeg', quality=100, optimize=True)
-
-
-        output_images = history
-        seed = initial_seed
-
-    else:
-        output_images, seed, info, stats = process_images(
-            outpath=outpath,
-            func_init=init,
-            func_sample=sample,
-            prompt=prompt,
-            seed=seed,
-            sampler_name=sampler_name,
-            skip_save=skip_save,
-            skip_grid=skip_grid,
-            batch_size=batch_size,
-            n_iter=n_iter,
-            steps=ddim_steps,
-            cfg_scale=cfg_scale,
-            width=width,
-            height=height,
-            prompt_matrix=prompt_matrix,
-            use_GFPGAN=use_GFPGAN,
-            use_RealESRGAN=use_RealESRGAN,
-            realesrgan_model_name=realesrgan_model_name,
-            fp=fp,
-            normalize_prompt_weights=normalize_prompt_weights,
-            init_img=init_img,
-            init_mask=init_mask,
-            keep_mask=keep_mask,
-            mask_blur_strength=mask_blur_strength,
-            denoising_strength=denoising_strength,
-            resize_mode=resize_mode,
-            uses_loopback=loopback,
-            sort_samples=sort_samples,
-            write_info_files=write_info_files,
-            jpg_sample=jpg_sample,
-        )
-
-    del sampler
-
-    return output_images, seed, info, stats
-#    except RuntimeError as e:
-#        err = e
-#        err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
-#        stats = err_msg
-#        return [], seed, 'err', stats
-#    finally:
-#        if err:
-#            crash(err, '!!Runtime error (img2img)!!')
+        return output_images, seed, info, stats
+    except RuntimeError as e:
+        err = e
+        err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
+        stats = err_msg
+        return [], seed, 'err', stats
+    finally:
+        if err:
+            crash(err, '!!Runtime error (img2img)!!')
 
 # grabs all text up to the first occurrence of ':' as sub-prompt
 # takes the value following ':' as weight
@@ -1180,7 +1149,7 @@ def run_RealESRGAN(image, model_name: str):
     image = image.convert("RGB")
 
     output, img_mode = RealESRGAN.enhance(np.array(image, dtype=np.uint8))
-    res = Image.fromarray(output).to(device)
+    res = Image.fromarray(output)
 
     return res
 
