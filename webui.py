@@ -1865,11 +1865,17 @@ def copy_img_to_input(img):
         return [None, None]
 
 
-def copy_img_to_upscale(img):
+def copy_img_to_upscale_esrgan(img):
     update = gr.update(selected='realesrgan_tab')
     image_data = re.sub('^data:image/.+;base64,', '', img)
     processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
     return {realesrgan_source: processed_image, tabs: update}
+
+def copy_img_to_upscale_gobig(img):
+    update = gr.update(selected='gobig_tab')
+    image_data = re.sub('^data:image/.+;base64,', '', img)
+    processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
+    return {realesrganGoBig_source: processed_image, tabs: update}
 
 help_text = """
     ## Mask/Crop
@@ -1953,7 +1959,8 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                         output_txt2img_copy_clipboard = gr.Button("Copy to clipboard").click(fn=None, inputs=output_txt2img_gallery, outputs=[], _js=copy_selected_img_js)
                         output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                         if RealESRGAN is not None:
-                            output_txt2img_to_upscale = gr.Button("Upscale")
+                            output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRCan")
+                            output_txt2img_to_upscale_gobig = gr.Button("Upscale w/ GoBig")
                         
                     with gr.Row():
                         with gr.Group():
@@ -1961,11 +1968,9 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                             output_txt2img_copy_seed = gr.Button("Copy").click(inputs=output_txt2img_seed, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                         with gr.Group():
                             output_txt2img_select_image = gr.Number(label='Image # and click Copy to copy to img2img', value=1, precision=None)
-                            output_txt2img_copy_to_input_btn = gr.Button("Push to img2img").style(full_width=True)
-                            if RealESRGAN is not None:
-                                #needs to be fixed
-                                #output_txt2img_copy_to_gobig_input_btn = gr.Button("Copy selected image to goBig input")
-                                pass
+                            
+                            
+                            
                     with gr.Group():
                         output_txt2img_params = gr.Textbox(label="Copy-paste generation parameters", interactive=False)
                         output_txt2img_copy_params = gr.Button("Copy").click(inputs=output_txt2img_params, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
@@ -2038,7 +2043,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                         output_img2img_gallery = gr.Gallery(label="Generated Images", elem_id="gallery_output").style(grid=[4,4])
                         output_img2img_copy_to_input_btn = gr.Button("⬅️ Copy selected image to input")
                         if RealESRGAN is not None:
-                            output_txt2img_copy_to_gobig_input_btn = gr.Button("Copy selected image to goBig input")
+                            output_txt2img_copy_to_gobig_input_btn = gr.Button("Upscale w/ goBig input")
                         gr.Markdown("Clear the input image before copying your output to your input. It may take some time to load the image.")
                     
                     output_img2img_seed = gr.Number(label='Seed')
@@ -2157,12 +2162,12 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [realesrgan_source, realesrgan_model_name],
                     [realesrgan_output]
                 )
-                output_txt2img_to_upscale.click(
-                    copy_img_to_upscale, 
+                output_txt2img_to_upscale_esrgan.click(
+                    copy_img_to_upscale_esrgan, 
                     output_txt2img_gallery, 
                     [realesrgan_source, tabs], 
                     _js=return_selected_img_js)
-            with gr.TabItem("goBIG", elem_id='gobig_tab'):
+            with gr.TabItem("goBIG", id='gobig_tab'):
                 gr.Markdown("Upscale and detail images")
                 with gr.Row():
                     with gr.Column():
@@ -2176,10 +2181,17 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [realesrganGoBig_source, realesrganGoBig_model_name],
                     [realesrganGoBig_output]
                 )
+                output_txt2img_to_upscale_gobig.click(
+                    copy_img_to_upscale_gobig, 
+                    output_txt2img_gallery, 
+                    [realesrganGoBig_source, tabs], 
+                    _js=return_selected_img_js)
+
             output_txt2img_copy_to_gobig_input_btn.click(
-                copy_img_to_input,
-                [output_txt2img_gallery],
-                [realesrganGoBig_source,realesrganGoBig_source]
+                    copy_img_to_upscale_gobig,
+                    output_txt2img_gallery,
+                    [realesrganGoBig_source, tabs],
+                    _js=return_selected_img_js
             )
 
 
