@@ -1737,7 +1737,7 @@ def run_goBIG(image, model_name: str, gstrength: float, gsteps: int):
 
 
    
-    return res
+    return final_output
 
 
 if opt.defaults is not None and os.path.isfile(opt.defaults):
