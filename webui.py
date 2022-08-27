@@ -7,6 +7,7 @@ parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write 
 parser.add_argument("--save-metadata", action='store_true', help="Whether to embed the generation parameters in the sample images", default=False)
 parser.add_argument("--skip-grid", action='store_true', help="do not save a grid, only individual samples. Helpful when evaluating lots of samples", default=False)
 parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
+parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="jpg:95")
 parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
 parser.add_argument("--config", type=str, default="configs/stable-diffusion/v1-inference.yaml", help="path to config which constructs model",)
 parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
@@ -26,7 +27,8 @@ parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
 parser.add_argument("--gradio-port", type=int, help="set Gradio server port", default=7860)
 parser.add_argument("--gradio-auth", type=str, help='set Gradio authentication like "username:password"; or comma-delimit multiple like "u1:p1,u2:p2,u3:p3"', default=None)
-parser.add_argument("--gradio-name", type=str, help="set Gradio server name; the default of '0.0.0.0' will allow the web UI to be accessed outside of the local network (provided firewall/port forwarding is set up)", default='0.0.0.0')
+parser.add_argument("--gradio-name", type=str, help="set Gradio server name; 0.0.0.0 will allow the web UI to be accessed outside of the local network (provided firewall/port forwarding is set up); 127.0.0.1 will only allow access from localhost", default='0.0.0.0')
+parser.add_argument("--gradio-share", action='store_true', help="activate public link; may or may not work right, and strongly recommended to set authentication if you use this!", default=False)
 opt = parser.parse_args()
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
@@ -90,6 +92,26 @@ css_hide_progressbar = """
 .progress-bar { display:none!important; }
 .meta-text { display:none!important; }
 """
+
+# should probably be moved to a settings menu in the UI at some point
+grid_format = [s.lower() for s in 'webp:-50'.split(':')]
+grid_lossless = False
+grid_quality = 100
+if grid_format[0] == 'png':
+    grid_ext = 'png'
+    grid_format = 'png'
+elif grid_format[0] in ['jpg', 'jpeg']:
+    grid_quality = int(grid_format[1]) if len(grid_format) > 1 else 100
+    grid_ext = 'jpg'
+    grid_format = 'jpeg'
+elif grid_format[0] == 'webp':
+    grid_quality = int(grid_format[1]) if len(grid_format) > 1 else 100
+    grid_ext = 'webp'
+    grid_format = 'webp'
+    if grid_quality < 0: # e.g. webp:-100 for lossless mode
+        grid_lossless = True
+        grid_quality = abs(grid_quality)
+
 
 def chunk(it, size):
     it = iter(it)
@@ -776,7 +798,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
             grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.jpg"
-            grid.save(os.path.join(outpath, grid_file), 'jpeg', quality=100, optimize=True)
+            grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
         if opt.optimized:
             mem = torch.cuda.memory_allocated()/1e6
@@ -821,7 +843,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     write_info_files = 5 in toggles
     jpg_sample = 6 in toggles
     use_GFPGAN = 7 in toggles
-    use_RealESRGAN = 8 in toggles
+    use_RealESRGAN = 7 in toggles if GFPGAN is None else 8 in toggles # possible index shift
 
     if sampler_name == 'PLMS':
         sampler = PLMSSampler(model)
@@ -949,7 +971,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
     write_info_files = 7 in toggles
     jpg_sample = 8 in toggles
     use_GFPGAN = 9 in toggles
-    use_RealESRGAN = 10 in toggles
+    use_RealESRGAN = 9 in toggles if GFPGAN is None else 10 in toggles # possible index shift
 
     if sampler_name == 'DDIM':
         sampler = DDIMSampler(model)
@@ -1086,8 +1108,8 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
             if not skip_grid:
                 grid_count = get_next_sequence_number(outpath, 'grid-')
                 grid = image_grid(history, batch_size, force_n_rows=1)
-                grid_file = f"grid-{grid_count:05}-{seed}_{prompt.replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.jpg"
-                grid.save(os.path.join(outpath, grid_file), 'jpeg', quality=100, optimize=True)
+                grid_file = f"grid-{grid_count:05}-{seed}_{prompt.replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
+                grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
 
             output_images = history
@@ -1552,7 +1574,7 @@ class ServerLauncher(threading.Thread):
         if auth is not None:
             auth = [tuple(cred.split(':')) for cred in auth.strip('"').split(',')]
 
-        self.demo.launch(show_error=True, server_port=opt.gradio_port, auth=auth, server_name=opt.gradio_name)
+        self.demo.launch(show_error=True, server_port=opt.gradio_port, auth=auth, server_name=opt.gradio_name, share=opt.gradio_share)
 
     def stop(self):
         self.demo.close() # this tends to hang
