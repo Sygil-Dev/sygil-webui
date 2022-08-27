@@ -19,17 +19,14 @@ parser.add_argument("--realesrgan-model", type=str, help="Upscaling model for Re
 parser.add_argument("--no-verify-input", action='store_true', help="do not verify input to check if it's too long", default=False)
 parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats", default=False)
 parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware accleration in browser)", default=False)
+parser.add_argument("--share", action='store_true', help="Should share your server on gradio.app, this allows you to use the UI from your mobile app", default=False)
+parser.add_argument("--share-password", type=str, help="Sharing is open by default, use this to set a password. Username: webui", default=None)
 parser.add_argument("--defaults", type=str, help="path to configuration file providing UI defaults, uses same format as cli parameter", default='configs/webui/webui.yaml')
 parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=int(os.environ.get('CUDA_VISIBLE_DEVICES', 0)))
 parser.add_argument("--extra-models-cpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
 parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
-parser.add_argument("--gradio-port", type=int, help="set Gradio server port", default=7860)
-parser.add_argument("--gradio-auth", type=str, help='set Gradio authentication like "username:password"; or comma-delimit multiple like "u1:p1,u2:p2,u3:p3"', default=None)
-parser.add_argument("--gradio-name", type=str, help="set Gradio server name; 0.0.0.0 will allow the web UI to be accessed outside of the local network (provided firewall/port forwarding is set up); 127.0.0.1 will only allow access from localhost", default='0.0.0.0')
-parser.add_argument("--gradio-share", action='store_true', help="activate public link; may or may not work right, and strongly recommended to set authentication if you use this!", default=False)
-parser.add_argument("--gradio-disable-queue", action='store_true', help="disable Gradio's queue, which doesn't work with authentication for some stupid reason (caution: easy to crash)", default=False)
 opt = parser.parse_args()
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
@@ -87,12 +84,7 @@ invalid_filename_chars = '<>:"/\|?*\n'
 GFPGAN_dir = opt.gfpgan_dir
 RealESRGAN_dir = opt.realesrgan_dir
 
-css_hide_progressbar = """
-.wrap .m-12 svg { display:none!important; }
-.wrap .m-12::before { content:"Loading..." }
-.progress-bar { display:none!important; }
-.meta-text { display:none!important; }
-"""
+
 
 # should probably be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in 'webp:-50'.split(':')]
@@ -1230,8 +1222,6 @@ def run_RealESRGAN(image, model_name: str):
 
     return res
 
-css = "" if opt.no_progressbar_hiding else css_hide_progressbar
-css = css + '[data-testid="image"] {min-height: 512px !important}'
 
 if opt.defaults is not None and os.path.isfile(opt.defaults):
     try:
@@ -1272,6 +1262,7 @@ txt2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
+    'submit_on_enter': 'Yes'
 }
 
 if 'txt2img' in user_defaults:
@@ -1348,7 +1339,8 @@ def copy_img_to_input(selected=1, imgs = []):
         idx = int(0 if selected - 1 < 0 else selected - 1)
         image_data = re.sub('^data:image/.+;base64,', '', imgs[idx])
         processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-        return [processed_image, processed_image]
+        update = gr.update(selected='img2img_tab')
+        return [processed_image, processed_image, update]
     except IndexError:
         return [None, None]
 
@@ -1374,45 +1366,97 @@ def show_help():
 def hide_help():
     return [gr.update(visible=True), gr.update(visible=False), gr.update(value="")]
 
+
+css_hide_progressbar = """
+.wrap .m-12 svg { display:none!important; }
+.wrap .m-12::before { content:"Loading..." }
+.progress-bar { display:none!important; }
+.meta-text { display:none!important; }
+"""
+
+styling = """
+[data-testid="image"] {min-height: 512px !important}
+* #body>.col:nth-child(2){width:250%;max-width:89vw}
+#generate{width: 100%; }
+#prompt_row input{
+ font-size:20px
+}
+"""
+
+css = styling if opt.no_progressbar_hiding else styling + css_hide_progressbar
+
 with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
-    with gr.Tabs():
-        with gr.TabItem("Stable Diffusion Text-to-Image Unified"):
-            with gr.Row().style(equal_height=False):
+    with gr.Tabs(elem_id='tabss') as tabs:
+        with gr.TabItem("Stable Diffusion Text-to-Image Unified", id='txt2img_tab'):
+            with gr.Row(elem_id="prompt_row"):
+                txt2img_prompt = gr.Textbox(label="Prompt", 
+                elem_id='prompt_input',
+                placeholder="A corgi wearing a top hat as an oil painting.", 
+                lines=1,
+                max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25, 
+                value=txt2img_defaults['prompt'], 
+                show_label=False).style()
+                
+            with gr.Row(elem_id='body').style(equal_height=False):
                 with gr.Column():
-                    gr.Markdown("Generate images from text with Stable Diffusion")
-                    txt2img_prompt = gr.Textbox(label="Prompt", placeholder="A corgi wearing a top hat as an oil painting.", lines=1, value=txt2img_defaults['prompt'])
-                    txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=txt2img_defaults['ddim_steps'])
-                    txt2img_sampling = gr.Radio(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=txt2img_defaults['sampler_name'])
-                    txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles, value=txt2img_toggle_defaults, type="index")
-                    txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
-                    txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA", value=txt2img_defaults['ddim_eta'], visible=False)
-                    txt2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=txt2img_defaults['n_iter'])
-                    txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=txt2img_defaults['batch_size'])
-                    txt2img_cfg = gr.Slider(minimum=1.0, maximum=30.0, step=0.5, label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)', value=txt2img_defaults['cfg_scale'])
-                    txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, value=txt2img_defaults["seed"])
                     txt2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=txt2img_defaults["height"])
                     txt2img_width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=txt2img_defaults["width"])
-                    txt2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
-                    txt2img_btn = gr.Button("Generate")
+                    txt2img_cfg = gr.Slider(minimum=1.0, maximum=30.0, step=0.5, label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)', value=txt2img_defaults['cfg_scale'])
+                    txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1, value=txt2img_defaults["seed"])                    
+                    txt2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=txt2img_defaults['n_iter'])
+                    txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=txt2img_defaults['batch_size'])
                 with gr.Column():
-                    output_txt2img_gallery = gr.Gallery(label="Images")
-                    output_txt2img_select_image = gr.Number(label='Select image number from results for copying', value=1, precision=None)
-                    output_txt2img_copy_to_input_btn = gr.Button("Copy selected image to img2img input")
-                    output_txt2img_seed = gr.Number(label='Seed')
-                    output_txt2img_params = gr.Textbox(label="Copy-paste generation parameters")
+                    output_txt2img_gallery = gr.Gallery(label="Images", elem_id="gallery_output").style(grid=[4,4])
+                    with gr.Row():
+                        with gr.Group():
+                            output_txt2img_seed = gr.Number(label='Seed', interactive=False)
+                            output_txt2img_copy_seed = gr.Button("Copy", full_width=True).click(inputs=output_txt2img_seed, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                        with gr.Group():
+                            output_txt2img_select_image = gr.Number(label='Image # and click Copy to copy to img2img', value=1, precision=None)
+                            output_txt2img_copy_to_input_btn = gr.Button("Push to img2img", full_width=True)
+                    with gr.Group():
+                        output_txt2img_params = gr.Textbox(label="Copy-paste generation parameters", interactive=False)
+                        output_txt2img_copy_params = gr.Button("Copy", full_width=True).click(inputs=output_txt2img_params, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                     output_txt2img_stats = gr.HTML(label='Stats')
+                with gr.Column():
+                    txt2img_btn = gr.Button("Generate", full_width=True, elem_id="generate", variant="primary")
+                    txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=txt2img_defaults['ddim_steps'])
+                    txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=txt2img_defaults['sampler_name'])
+                    with gr.Tabs():
+                        with gr.TabItem('Simple'):
+                            txt2img_submit_on_enter = gr.Radio(['Yes', 'No'], label="Submit on enter? (no means multiline)", value=txt2img_defaults['submit_on_enter'], interactive=True)
+                            txt2img_submit_on_enter.change(lambda x: gr.update(max_lines=1 if x == 'Single' else 25) , txt2img_submit_on_enter, txt2img_prompt)
+                        with gr.TabItem('Advanced'):
+                            txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles, value=txt2img_toggle_defaults, type="index")
+                            txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
+                            txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA", value=txt2img_defaults['ddim_eta'], visible=False)
+                    txt2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
 
             txt2img_btn.click(
                 txt2img,
                 [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings],
                 [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
             )
+            txt2img_prompt.submit(
+                txt2img,
+                [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings],
+                [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
+            )
 
-        with gr.TabItem("Stable Diffusion Image-to-Image Unified"):
+        with gr.TabItem("Stable Diffusion Image-to-Image Unified", id="img2img_tab"):
+            with gr.Row(elem_id="prompt_row"):
+                img2img_prompt = gr.Textbox(label="Prompt", 
+                elem_id='img2img_prompt_input',
+                placeholder="A fantasy landscape, trending on artstation.", 
+                lines=1,
+                max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25, 
+                value=img2img_defaults['prompt'], 
+                show_label=False).style()
+                img2img_btn_mask = gr.Button("Generate",variant="primary", visible=False, elem_id="img2img_mask_btn").style(full_width=True)
+                img2img_btn_editor = gr.Button("Generate",variant="primary", elem_id="img2img_editot_btn").style(full_width=True)
             with gr.Row().style(equal_height=False):
                 with gr.Column():
-                    gr.Markdown("Generate images from images with Stable Diffusion")
-                    img2img_prompt = gr.Textbox(label="Prompt", placeholder="A fantasy landscape, trending on artstation.", lines=1, value=img2img_defaults['prompt'])
+                    
                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop"], label="Image Editor Mode", value="Crop")
                     img2img_show_help_btn = gr.Button("Show Hints")
                     img2img_hide_help_btn = gr.Button("Hide Hints", visible=False)
@@ -1437,8 +1481,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     img2img_width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=img2img_defaults["width"])
                     img2img_resize = gr.Radio(label="Resize mode", choices=["Just resize", "Crop and resize", "Resize and fill"], type="index", value=img2img_resize_modes[img2img_defaults['resize_mode']])
                     img2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
-                    img2img_btn_mask = gr.Button("Generate", visible=False).style(full_width=True)
-                    img2img_btn_editor = gr.Button("Generate").style(full_width=True)
+                    
                 with gr.Column():
                     output_img2img_gallery = gr.Gallery(label="Images")
                     output_img2img_select_image = gr.Number(label='Select image number from results for copying', value=1, precision=None)
@@ -1481,7 +1524,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
             output_txt2img_copy_to_input_btn.click(
                 copy_img_to_input,
                 [output_txt2img_select_image, output_txt2img_gallery],
-                [img2img_image_editor, img2img_image_mask]
+                [img2img_image_editor, img2img_image_mask, tabs]
             )
 
             img2img_btn_mask.click(
@@ -1535,7 +1578,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     with gr.Column():
                         gfpgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
                         gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength", value=gfpgan_defaults['strength'])
-                        gfpgan_btn = gr.Button("Generate")
+                        gfpgan_btn = gr.Button("Generate", variant="primary")
                     with gr.Column():
                         gfpgan_output = gr.Image(label="Output")
                 gfpgan_btn.click(
@@ -1559,8 +1602,6 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [realesrgan_output]
                 )
 
-if not opt.gradio_disable_queue:
-    demo.queue(concurrency_count=1)
 
 class ServerLauncher(threading.Thread):
     def __init__(self, demo):
@@ -1572,16 +1613,21 @@ class ServerLauncher(threading.Thread):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        auth = opt.gradio_auth
-        if auth is not None:
-            auth = [tuple(cred.split(':')) for cred in auth.strip('"').split(',')]
-
-        self.demo.launch(show_error=True, server_port=opt.gradio_port, auth=auth, server_name=opt.gradio_name, share=opt.gradio_share)
+        gradio_params = {
+            'show_error': True, 
+            'server_name': '0.0.0.0', 
+            'share': opt.share
+        }
+        if not opt.share:
+            demo.queue(concurrency_count=1)
+        if opt.share and opt.share_password:
+            gradio_params['auth'] = ('webui', opt.share_password)    
+        self.demo.launch(**gradio_params)
 
     def stop(self):
         self.demo.close() # this tends to hang
 
-if opt.cli is None:
+def launch_server():
     server_thread = ServerLauncher(demo)
     server_thread.start()
 
@@ -1590,19 +1636,30 @@ if opt.cli is None:
             time.sleep(60)
     except (KeyboardInterrupt, OSError) as e:
         crash(e, 'Shutting down...')
-else:
-    with open(opt.cli, "r", encoding="utf8") as f:
+
+def run_headless():
+    with open(opt.cli, 'r', encoding='utf8') as f:
         kwargs = yaml.safe_load(f)
-    target = kwargs.pop("target")
-    if target == "txt2img":
+    target = kwargs.pop('target')
+    if target == 'txt2img':
         target_func = txt2img
-    elif target == "img2img":
+    elif target == 'img2img':
         target_func = img2img
         raise NotImplementedError()
     else:
-        raise ValueError(f"Unknown target: {target}")
-    kwargs["fp"] = None
-    output_images, seed, info, stats = target_func(**kwargs)
-    print(f"Seed: {seed}")
-    print(info)
-    print(stats)
+        raise ValueError(f'Unknown target: {target}')
+    prompts = kwargs.pop("prompt")
+    prompts = prompts if type(prompts) is list else [prompts]
+    for i, prompt_i in enumerate(prompts):
+        print(f"===== Prompt {i+1}/{len(prompts)}: {prompt_i} =====")
+        output_images, seed, info, stats = target_func(prompt=prompt_i, **kwargs)
+        print(f'Seed: {seed}')
+        print(info)
+        print(stats)
+        print()
+
+if __name__ == '__main__':
+    if opt.cli is None:
+        launch_server()
+    else:
+        run_headless()
