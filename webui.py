@@ -1497,8 +1497,6 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                             txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA", value=txt2img_defaults['ddim_eta'], visible=False)
                     txt2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
 
-            output_txt2img_copy_seed.style(full_width=True)
-            output_txt2img_copy_params.style(full_width=True)
     
             txt2img_btn.click(
                 txt2img,
