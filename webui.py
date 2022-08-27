@@ -29,6 +29,7 @@ parser.add_argument("--gradio-port", type=int, help="set Gradio server port", de
 parser.add_argument("--gradio-auth", type=str, help='set Gradio authentication like "username:password"; or comma-delimit multiple like "u1:p1,u2:p2,u3:p3"', default=None)
 parser.add_argument("--gradio-name", type=str, help="set Gradio server name; 0.0.0.0 will allow the web UI to be accessed outside of the local network (provided firewall/port forwarding is set up); 127.0.0.1 will only allow access from localhost", default='0.0.0.0')
 parser.add_argument("--gradio-share", action='store_true', help="activate public link; may or may not work right, and strongly recommended to set authentication if you use this!", default=False)
+parser.add_argument("--gradio-disable-queue", action='store_true', help="disable Gradio's queue, which doesn't work with authentication for some stupid reason (caution: easy to crash)", default=False)
 opt = parser.parse_args()
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
@@ -559,7 +560,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             target="txt2img" if init_img is None else "img2img",
             prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
             ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-            seed=seed, width=width, height=height
+            seed=seeds[i], width=width, height=height
         )
         if init_img is not None:
             # Not yet any use for these, but they bloat up the files:
@@ -797,7 +798,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 grid = image_grid(output_images, batch_size)
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
-            grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.jpg"
+            grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
             grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
         if opt.optimized:
@@ -1558,7 +1559,8 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [realesrgan_output]
                 )
 
-demo.queue(concurrency_count=1)
+if not opt.gradio_disable_queue:
+    demo.queue(concurrency_count=1)
 
 class ServerLauncher(threading.Thread):
     def __init__(self, demo):
