@@ -24,6 +24,9 @@ parser.add_argument("--extra-models-cpu", action='store_true', help="run extra m
 parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
+parser.add_argument("--gradio-port", type=int, help="set Gradio server port", default=7860)
+parser.add_argument("--gradio-auth", type=str, help='set Gradio authentication like "username:password"; or comma-delimit multiple like "u1:p1,u2:p2,u3:p3"', default=None)
+parser.add_argument("--gradio-name", type=str, help="set Gradio server name; the default of '0.0.0.0' will allow the web UI to be accessed outside of the local network (provided firewall/port forwarding is set up)", default='0.0.0.0')
 opt = parser.parse_args()
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
@@ -1544,7 +1547,12 @@ class ServerLauncher(threading.Thread):
     def run(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        self.demo.launch(show_error=True, server_name='0.0.0.0')
+
+        auth = opt.gradio_auth
+        if auth is not None:
+            auth = [tuple(cred.split(':')) for cred in auth.strip('"').split(',')]
+
+        self.demo.launch(show_error=True, server_port=opt.gradio_port, auth=auth, server_name=opt.gradio_name)
 
     def stop(self):
         self.demo.close() # this tends to hang
