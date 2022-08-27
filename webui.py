@@ -1854,15 +1854,22 @@ def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
     return gr.update(value=resized_cropped_image)
 
-def copy_img_to_input(selected=1, imgs = []):
+def copy_img_to_input(img):
     try:
-        idx = int(0 if selected - 1 < 0 else selected - 1)
-        image_data = re.sub('^data:image/.+;base64,', '', imgs[idx])
+        image_data = re.sub('^data:image/.+;base64,', '', img)
         processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-        update = gr.update(selected='img2img_tab')
-        return [processed_image, processed_image, update]
+        tab_update = gr.update(selected='img2img_tab')
+        img_update = gr.update(value=processed_image)
+        return {img2img_image_mask: processed_image, img2img_image_editor: img_update, tabs: tab_update}
     except IndexError:
         return [None, None]
+
+
+def copy_img_to_upscale(img):
+    update = gr.update(selected='realesrgan_tab')
+    image_data = re.sub('^data:image/.+;base64,', '', img)
+    processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
+    return {realesrgan_source: processed_image, tabs: update}
 
 help_text = """
     ## Mask/Crop
@@ -1905,6 +1912,19 @@ input[type=number]:disabled { -moz-appearance: textfield;+ }
 """
 
 css = styling if opt.no_progressbar_hiding else styling + css_hide_progressbar
+# This is the code that finds which selected item the user has in the gallery
+js_part="""let getIndex = function(){
+        let selected = document.querySelector('gradio-app').shadowRoot.querySelector('#gallery_output .\\\\!ring-2');
+        return selected ? [...selected.parentNode.children].indexOf(selected) : 0;
+    };"""
+return_selected_img_js = "(x) => {" + js_part+ " document.querySelector('gradio-app').shadowRoot.querySelector('#img2img_editor .modify-upload button:last-child')?.click();return [x[getIndex()].replace('data:;','data:image/png;')]}"
+copy_selected_img_js = "async (x) => {" + js_part+ """ 
+let data = x[getIndex()];
+const blob = await (await fetch(data.replace('data:;','data:image/png;'))).blob(); 
+let item = new ClipboardItem({'image/png': blob})
+navigator.clipboard.write([item]);
+return x
+}"""
 
 with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
     with gr.Tabs(elem_id='tabss') as tabs:
@@ -1916,7 +1936,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                 lines=1,
                 max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25, 
                 value=txt2img_defaults['prompt'], 
-                show_label=False).style()
+                show_label=False)
                 
             with gr.Row(elem_id='body').style(equal_height=False):
                 with gr.Column():
@@ -1927,7 +1947,14 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     txt2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=txt2img_defaults['n_iter'])
                     txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=txt2img_defaults['batch_size'])
                 with gr.Column():
-                    output_txt2img_gallery = gr.Gallery(label="Images", elem_id="gallery_output").style(grid=[4,4])
+                    with gr.Group():
+                        output_txt2img_gallery = gr.Gallery(label="Images", elem_id="gallery_output").style(grid=[4,4])
+                        gr.Markdown('Selected image actions:')
+                        output_txt2img_copy_clipboard = gr.Button("Copy to clipboard").click(fn=None, inputs=output_txt2img_gallery, outputs=[], _js=copy_selected_img_js)
+                        output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
+                        if RealESRGAN is not None:
+                            output_txt2img_to_upscale = gr.Button("Upscale")
+                        
                     with gr.Row():
                         with gr.Group():
                             output_txt2img_seed = gr.Number(label='Seed', interactive=False)
@@ -1944,7 +1971,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                         output_txt2img_copy_params = gr.Button("Copy").click(inputs=output_txt2img_params, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                     output_txt2img_stats = gr.HTML(label='Stats')
                 with gr.Column():
-                    txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary").style(full_width=True)
+                    txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
                     txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=txt2img_defaults['ddim_steps'])
                     txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=txt2img_defaults['sampler_name'])
                     with gr.Tabs():
@@ -1957,7 +1984,6 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                             txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA", value=txt2img_defaults['ddim_eta'], visible=False)
                     txt2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
 
-    
             txt2img_btn.click(
                 txt2img,
                 [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings],
@@ -1978,11 +2004,10 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                 max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25, 
                 value=img2img_defaults['prompt'], 
                 show_label=False).style()
-                img2img_btn_mask = gr.Button("Generate",variant="primary", visible=False, elem_id="img2img_mask_btn").style(full_width=True)
-                img2img_btn_editor = gr.Button("Generate",variant="primary", elem_id="img2img_editot_btn").style(full_width=True)
+                img2img_btn_mask = gr.Button("Generate",variant="primary", visible=False, elem_id="img2img_mask_btn")
+                img2img_btn_editor = gr.Button("Generate",variant="primary", elem_id="img2img_editot_btn")
             with gr.Row().style(equal_height=False):
                 with gr.Column():
-                    
                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop"], label="Image Editor Mode", value="Crop")
                     img2img_show_help_btn = gr.Button("Show Hints")
                     img2img_hide_help_btn = gr.Button("Hide Hints", visible=False)
@@ -1990,8 +2015,8 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     with gr.Row():
                         img2img_painterro_btn = gr.Button("Advanced Editor")
                         img2img_copy_from_painterro_btn = gr.Button(value="Get Image from Advanced Editor")
-                    img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="select")
-                    img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="sketch", visible=False)
+                    img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="select", elem_id="img2img_editor")
+                    img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="sketch", visible=False, elem_id="img2img_mask")
                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"], label="Mask Mode", type="index", value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)
                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False)
                     img2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=img2img_defaults['ddim_steps'])
@@ -2002,19 +2027,20 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     img2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=img2img_defaults['batch_size'])
                     img2img_cfg = gr.Slider(minimum=1.0, maximum=30.0, step=0.5, label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)', value=img2img_defaults['cfg_scale'])
                     img2img_denoising = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label='Denoising Strength', value=img2img_defaults['denoising_strength'])
-                    img2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1, value=img2img_defaults["seed"])
+                    img2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, value=img2img_defaults["seed"])
                     img2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=img2img_defaults["height"])
                     img2img_width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=img2img_defaults["width"])
                     img2img_resize = gr.Radio(label="Resize mode", choices=["Just resize", "Crop and resize", "Resize and fill"], type="index", value=img2img_resize_modes[img2img_defaults['resize_mode']])
                     img2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
                     
                 with gr.Column():
-                    output_img2img_gallery = gr.Gallery(label="Images")
-                    output_img2img_select_image = gr.Number(label='Select image number from results for copying', value=1, precision=None)
-                    gr.Markdown("Clear the input image before copying your output to your input. It may take some time to load the image.")
-                    output_img2img_copy_to_input_btn = gr.Button("Copy selected image to input")
-                    if RealESRGAN is not None:
-                        output_txt2img_copy_to_gobig_input_btn = gr.Button("Copy selected image to goBig input")
+                    with gr.Group():
+                        output_img2img_gallery = gr.Gallery(label="Generated Images", elem_id="gallery_output").style(grid=[4,4])
+                        output_img2img_copy_to_input_btn = gr.Button("⬅️ Copy selected image to input")
+                        if RealESRGAN is not None:
+                            output_txt2img_copy_to_gobig_input_btn = gr.Button("Copy selected image to goBig input")
+                        gr.Markdown("Clear the input image before copying your output to your input. It may take some time to load the image.")
+                    
                     output_img2img_seed = gr.Number(label='Seed')
                     output_img2img_params = gr.Textbox(label="Copy-paste generation parameters")
                     output_img2img_stats = gr.HTML(label='Stats')
@@ -2045,14 +2071,16 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
 
             output_img2img_copy_to_input_btn.click(
                 copy_img_to_input,
-                [output_img2img_select_image, output_img2img_gallery],
-                [img2img_image_editor, img2img_image_mask]
+                [output_img2img_gallery],
+                [img2img_image_editor, img2img_image_mask, tabs],
+                _js=return_selected_img_js
             )
 
             output_txt2img_copy_to_input_btn.click(
                 copy_img_to_input,
-                [output_txt2img_select_image, output_txt2img_gallery],
-                [img2img_image_editor, img2img_image_mask, tabs]
+                [output_txt2img_gallery],
+                [img2img_image_editor, img2img_image_mask, tabs],
+                _js=return_selected_img_js
             )
 
             img2img_btn_mask.click(
@@ -2100,7 +2128,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
             if 'gfpgan' in user_defaults:
                 gfpgan_defaults.update(user_defaults['gfpgan'])
 
-            with gr.TabItem("GFPGAN"):
+            with gr.TabItem("GFPGAN", id='cfpgan_tab'):
                 gr.Markdown("Fix faces on images")
                 with gr.Row():
                     with gr.Column():
@@ -2115,7 +2143,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [gfpgan_output]
                 )
         if RealESRGAN is not None:
-            with gr.TabItem("RealESRGAN"):
+            with gr.TabItem("RealESRGAN", id='realesrgan_tab'):
                 gr.Markdown("Upscale images")
                 with gr.Row():
                     with gr.Column():
@@ -2129,7 +2157,12 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [realesrgan_source, realesrgan_model_name],
                     [realesrgan_output]
                 )
-            with gr.TabItem("goBIG"):
+                output_txt2img_to_upscale.click(
+                    copy_img_to_upscale, 
+                    output_txt2img_gallery, 
+                    [realesrgan_source, tabs], 
+                    _js=return_selected_img_js)
+            with gr.TabItem("goBIG", elem_id='gobig_tab'):
                 gr.Markdown("Upscale and detail images")
                 with gr.Row():
                     with gr.Column():
@@ -2145,7 +2178,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                 )
             output_txt2img_copy_to_gobig_input_btn.click(
                 copy_img_to_input,
-                [output_txt2img_select_image, output_txt2img_gallery],
+                [output_txt2img_gallery],
                 [realesrganGoBig_source,realesrganGoBig_source]
             )
 
