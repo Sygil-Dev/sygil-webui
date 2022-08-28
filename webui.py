@@ -347,7 +347,7 @@ def load_embeddings(fp):
     if fp is not None and hasattr(model, "embedding_manager"):
         model.embedding_manager.load(fp.name)
 
-def image_grid(imgs, batch_size, force_n_rows=None):
+def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     if force_n_rows is not None:
         rows = force_n_rows
     elif opt.n_rows > 0:
@@ -363,8 +363,14 @@ def image_grid(imgs, batch_size, force_n_rows=None):
     w, h = imgs[0].size
     grid = Image.new('RGB', size=(cols * w, rows * h), color='black')
 
+    fnt = ImageFont.truetype("arial.ttf", 30)
+
     for i, img in enumerate(imgs):
         grid.paste(img, box=(i % cols * w, i // cols * h))
+        if captions:
+            d = ImageDraw.Draw( grid )
+            size = d.textbbox( (0,0), captions[i], font=fnt, stroke_width=2, align="center" )
+            d.multiline_text((i % cols * w + w/2, i // cols * h + h - size[3]), captions[i], font=fnt, fill=(255,0,255), stroke_width=2, stroke_fill=(0,0,0), anchor="mm", align="center")
 
     return grid
 
@@ -626,7 +632,7 @@ def oxlamon_matrix(prompt, seed, batch_size):
     all_prompts, prompt_matrix_parts = classToArrays(getmatrix( prompt ))
     n_iter = math.ceil(len(all_prompts) / batch_size)
     all_seeds = len(all_prompts) * [seed]
-    return all_seeds, n_iter, prompt_matrix_parts, all_prompts
+    return all_seeds, n_iter, prompt_matrix_parts, all_prompts, None
 
 
 def process_images(
@@ -652,12 +658,17 @@ def process_images(
     sample_path = os.path.join(outpath, "samples")
     os.makedirs(sample_path, exist_ok=True)
 
+    if not prompt_matrix:
+        if "|" in prompt:
+            print('Matrix prompt detected but matrix check is not set.')
+            prompt_matrix=True
+
     comments = []
 
     prompt_matrix_parts = []
     if prompt_matrix:
         if prompt.startswith("@"):
-            all_seeds, n_iter, prompt_matrix_parts, all_prompts = oxlamon_matrix(prompt, seed, batch_size)
+            all_seeds, n_iter, prompt_matrix_parts, all_prompts, frows = oxlamon_matrix(prompt, seed, batch_size)
         else:
             all_prompts = []
             prompt_matrix_parts = prompt.split("|")
@@ -830,34 +841,21 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             if prompt_matrix:
-                grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2))
-            else:
-                grid = image_grid(output_images, batch_size)
-
-            if prompt_matrix:
-                try:
-                    grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
-                except:
-                    import traceback
-                    print("Error creating prompt_matrix text:", file=sys.stderr)
-                    print(traceback.format_exc(), file=sys.stderr)
-
-                output_images.insert(0, grid)
-            else:
-                grid = image_grid(output_images, batch_size)
-
-            if prompt_matrix:
-                if not prompt.startswith("@"):
+                if prompt.startswith("@"):
+                    grid = image_grid(output_images, batch_size, force_n_rows=frows, captions=prompt_matrix_parts)
+                else:
+                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2))
                     try:
                         grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
                     except:
                         import traceback
                         print("Error creating prompt_matrix text:", file=sys.stderr)
                         print(traceback.format_exc(), file=sys.stderr)
-
+            else:
+                grid = image_grid(output_images, batch_size)
+ 
+            if grid:
                 output_images.insert(0, grid)
-            #else:
-            #    grid = image_grid(output_images, batch_size)
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
             grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
