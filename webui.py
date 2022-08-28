@@ -834,7 +834,10 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             if prompt_matrix:
-                grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2), captions=prompt_matrix_parts)
+                if prompt.startswith("@"):
+                    grid = image_grid(output_images, batch_size, captions=prompt_matrix_parts)
+                else:
+                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2), captions=prompt_matrix_parts)
             else:
                 grid = image_grid(output_images, batch_size)
 
@@ -846,7 +849,8 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     print("Error creating prompt_matrix text:", file=sys.stderr)
                     print(traceback.format_exc(), file=sys.stderr)
 
-            output_images.insert(0, grid)
+            if prompt_matrix:
+                output_images.insert(0, grid)
             #else:
             #    grid = image_grid(output_images, batch_size)
 
