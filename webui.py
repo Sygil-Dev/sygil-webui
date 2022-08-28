@@ -540,11 +540,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             metadata.add_text("SD:cfg_scale", str(cfg_scale))
             metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
             metadata.add_text("SD:GFPGAN", str(use_GFPGAN and GFPGAN is not None))
-            image.save(f"{filename_i}.webp", format='Webp',  quality=60, method=6, exif=metadata)
+            image.save(f"{filename_i}.webp", format='Webp',  quality=grid_quality, method=6, exif=metadata)
         else:
-            image.save(f"{filename_i}.webp", format='Webp',  quality=60, method=6, )
+            image.save(f"{filename_i}.webp", format='Webp',  quality=grid_quality, method=6, )
     else:
-        image.save(f"{filename_i}.webp", format='Webp', quality=60, method=6, )
+        image.save(f"{filename_i}.webp", format='Webp', quality=grid_quality, method=6, )
     if write_info_files:
         # toggles differ for txt2img vs. img2img:
         offset = 0 if init_img is None else 2
