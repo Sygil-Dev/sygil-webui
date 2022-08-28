@@ -30,6 +30,7 @@ parser.add_argument("--cli", type=str, help="don't launch web server, take Pytho
 opt = parser.parse_args()
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu)
 
 import gradio as gr
@@ -87,7 +88,7 @@ RealESRGAN_dir = opt.realesrgan_dir
 
 
 # should probably be moved to a settings menu in the UI at some point
-grid_format = [s.lower() for s in 'webp:-50'.split(':')]
+grid_format = [s.lower() for s in opt.grid_format.split(':')]
 grid_lossless = False
 grid_quality = 100
 if grid_format[0] == 'png':
@@ -205,7 +206,8 @@ class KDiffusionSampler:
         self.model = m
         self.model_wrap = K.external.CompVisDenoiser(m)
         self.schedule = sampler
-
+    def get_sampler_name(self):
+        return self.schedule
     def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T):
         sigmas = self.model_wrap.get_sigmas(S)
         x = x_T * sigmas[0]
@@ -245,7 +247,7 @@ def load_GFPGAN():
     if opt.gfpgan_cpu or opt.extra_models_cpu:
         instance.device = torch.device('cpu')
     else:
-        instance.device = torch.device(f'cuda:{opt.gpu}') # another way to set gpu device
+        instance.device = torch.device('cuda') # another way to set gpu device
     return instance
 
 def load_RealESRGAN(model_name: str):
@@ -271,7 +273,7 @@ def load_RealESRGAN(model_name: str):
     else:
         instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not opt.no_half)
         instance.model.name = model_name
-        instance.device = torch.device(f'cuda:{opt.gpu}') # another way to set gpu device
+        instance.device = torch.device('cuda') # another way to set gpu device
 
     return instance
 
@@ -345,7 +347,7 @@ def load_embeddings(fp):
     if fp is not None and hasattr(model, "embedding_manager"):
         model.embedding_manager.load(fp.name)
 
-def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
+def image_grid(imgs, batch_size, force_n_rows=None):
     if force_n_rows is not None:
         rows = force_n_rows
     elif opt.n_rows > 0:
@@ -361,14 +363,8 @@ def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     w, h = imgs[0].size
     grid = Image.new('RGB', size=(cols * w, rows * h), color='black')
 
-    fnt = ImageFont.truetype("arial.ttf", 30)
-
     for i, img in enumerate(imgs):
         grid.paste(img, box=(i % cols * w, i // cols * h))
-        if captions:
-            d = ImageDraw.Draw( grid )
-            size = d.textbbox( (0,0), captions[i], font=fnt, stroke_width=2, align="center" )
-            d.multiline_text((i % cols * w + w/2, i // cols * h + h - size[3]), captions[i], font=fnt, fill=(255,0,255), stroke_width=2, stroke_fill=(0,0,0), anchor="mm", align="center")
 
     return grid
 
@@ -406,17 +402,7 @@ def draw_prompt_matrix(im, width, height, all_prompts):
 
     fontsize = (width + height) // 25
     line_spacing = fontsize // 2
-    fonts = ["arial.ttf", "DejaVuSans.ttf"]
-    for font_name in fonts:
-        try:
-            fnt = ImageFont.truetype(font_name, fontsize)
-            break
-        except OSError:
-           pass
-    else:
-        # ImageFont.load_default() is practically unusable as it only supports
-        # latin1, so raise an exception instead
-        raise Exception(f"No usable font found (tried {', '.join(fonts)})")
+    fnt = get_font(fontsize)
     color_active = (0, 0, 0)
     color_inactive = (153, 153, 153)
 
@@ -567,7 +553,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             info_dict["denoising_strength"] = denoising_strength
             info_dict["resize_mode"] = resize_mode
         with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
-            yaml.dump(info_dict, f)
+            yaml.dump(info_dict, f, allow_unicode=True)
 
 
 def get_next_sequence_number(path, prefix=''):
@@ -764,45 +750,55 @@ def process_images(
                     sanitized_prompt = sanitized_prompt[:128] #200 is too long
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
                     os.makedirs(sample_path_i, exist_ok=True)
-                    base_count = len([x for x in os.listdir(sample_path_i) if x.endswith(('.png', '.jpg'))]) - 1 # start at 0
-                    filename = f"{base_count:05}-{seeds[i]}"
+                    base_count = get_next_sequence_number(sample_path_i)
+                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}"
                 else:
                     sample_path_i = sample_path
-                    base_count = len([x for x in os.listdir(sample_path_i) if x.endswith(('.png', '.jpg'))]) - 1 # start at 0
+                    base_count = get_next_sequence_number(sample_path_i)
                     sanitized_prompt = sanitized_prompt
-                    filename = f"{base_count:05}-{seeds[i]}_{sanitized_prompt}"[:128] #same as before
+                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:128] #same as before
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
-
+                original_sample = x_sample
+                original_filename = filename
                 if use_GFPGAN and GFPGAN is not None:
                     torch_gc()
-                    original_sample = x_sample
-                    original_filename = filename
                     cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
-                    x_sample = restored_img[:,:,::-1]
-                    image = Image.fromarray(x_sample)
-                    filename = filename + '-gfpgan'
-                    save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    gfpgan_sample = restored_img[:,:,::-1]
+                    image = Image.fromarray(gfpgan_sample)
+                    gfpgan_filename = original_filename + '-gfpgan'
+                    save_sample(image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    filename = original_filename
                     x_sample = original_sample
 
-                if use_RealESRGAN and RealESRGAN is not None:
+                if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
                     torch_gc()
-                    original_sample = x_sample
-                    original_filename = filename
                     if RealESRGAN.model.name != realesrgan_model_name:
                         try_loading_RealESRGAN(realesrgan_model_name)
                     output, img_mode = RealESRGAN.enhance(x_sample[:,:,::-1])
-                    x_sample = output[:,:,::-1]
-                    image = Image.fromarray(x_sample)
-                    filename = filename + '-esrgan'
-                    save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    esrgan_filename = original_filename + '-esrgan4x'
+                    esrgan_sample = output[:,:,::-1]
+                    image = Image.fromarray(esrgan_sample)
+                    save_sample(image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    filename = original_filename
+                    x_sample = original_sample
+
+                if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
+                    torch_gc()
+                    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    gfpgan_sample = restored_img[:,:,::-1]
+                    if RealESRGAN.model.name != realesrgan_model_name:
+                        try_loading_RealESRGAN(realesrgan_model_name)
+                    output, img_mode = RealESRGAN.enhance(gfpgan_sample[:,:,::-1])
+                    esrgan_filename = original_filename + '-gfpgan-esrgan4x'
+                    esrgan_sample = output[:,:,::-1]
+                    image = Image.fromarray(esrgan_sample)
+                    save_sample(image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     x_sample = original_sample
 
                 image = Image.fromarray(x_sample)
@@ -834,14 +830,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             if prompt_matrix:
-                if prompt.startswith("@"):
-                    grid = image_grid(output_images, batch_size, captions=prompt_matrix_parts)
-                else:
-                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2), captions=prompt_matrix_parts)
+                grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2))
             else:
                 grid = image_grid(output_images, batch_size)
 
-            if prompt_matrix and not prompt.startswith("@"):
+            if prompt_matrix:
                 try:
                     grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
                 except:
@@ -849,7 +842,19 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     print("Error creating prompt_matrix text:", file=sys.stderr)
                     print(traceback.format_exc(), file=sys.stderr)
 
+                output_images.insert(0, grid)
+            else:
+                grid = image_grid(output_images, batch_size)
+
             if prompt_matrix:
+                if not prompt.startswith("@"):
+                    try:
+                        grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
+                    except:
+                        import traceback
+                        print("Error creating prompt_matrix text:", file=sys.stderr)
+                        print(traceback.format_exc(), file=sys.stderr)
+
                 output_images.insert(0, grid)
             #else:
             #    grid = image_grid(output_images, batch_size)
@@ -901,7 +906,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     write_info_files = 5 in toggles
     jpg_sample = 6 in toggles
     use_GFPGAN = 7 in toggles
-    use_RealESRGAN = 7 in toggles if GFPGAN is None else 8 in toggles # possible index shift
+    use_RealESRGAN = 8 in toggles
 
     if sampler_name == 'PLMS':
         sampler = PLMSSampler(model)
@@ -1029,7 +1034,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
     write_info_files = 7 in toggles
     jpg_sample = 8 in toggles
     use_GFPGAN = 9 in toggles
-    use_RealESRGAN = 9 in toggles if GFPGAN is None else 10 in toggles # possible index shift
+    use_RealESRGAN = 10 in toggles
 
     if sampler_name == 'DDIM':
         sampler = DDIMSampler(model)
@@ -1098,7 +1103,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
             xi = x0 + noise
             sigma_sched = sigmas[ddim_steps - t_enc - 1:]
             model_wrap_cfg = CFGDenoiser(sampler.model_wrap)
-            samples_ddim = K.sampling.sample_lms(model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False)
+            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False)
         else:
             x0, = init_data
             sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
@@ -1399,15 +1404,23 @@ def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
     return gr.update(value=resized_cropped_image)
 
-def copy_img_to_input(selected=1, imgs = []):
+def copy_img_to_input(img):
     try:
-        idx = int(0 if selected - 1 < 0 else selected - 1)
-        image_data = re.sub('^data:image/.+;base64,', '', imgs[idx])
+        image_data = re.sub('^data:image/.+;base64,', '', img)
         processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-        update = gr.update(selected='img2img_tab')
-        return [processed_image, processed_image, update]
+        tab_update = gr.update(selected='img2img_tab')
+        img_update = gr.update(value=processed_image)
+        return {img2img_image_mask: processed_image, img2img_image_editor: img_update, tabs: tab_update}
     except IndexError:
         return [None, None]
+
+
+def copy_img_to_upscale_esrgan(img):
+    update = gr.update(selected='realesrgan_tab')
+    image_data = re.sub('^data:image/.+;base64,', '', img)
+    processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
+    return {realesrgan_source: processed_image, tabs: update}
+
 
 help_text = """
     ## Mask/Crop
@@ -1446,9 +1459,23 @@ styling = """
 #prompt_row input{
  font-size:20px
 }
+input[type=number]:disabled { -moz-appearance: textfield;+ }
 """
 
 css = styling if opt.no_progressbar_hiding else styling + css_hide_progressbar
+# This is the code that finds which selected item the user has in the gallery
+js_part="""let getIndex = function(){
+        let selected = document.querySelector('gradio-app').shadowRoot.querySelector('#gallery_output .\\\\!ring-2');
+        return selected ? [...selected.parentNode.children].indexOf(selected) : 0;
+    };"""
+return_selected_img_js = "(x) => {" + js_part+ " document.querySelector('gradio-app').shadowRoot.querySelector('#img2img_editor .modify-upload button:last-child')?.click();return [x[getIndex()].replace('data:;','data:image/png;')]}"
+copy_selected_img_js = "async (x) => {" + js_part+ """ 
+let data = x[getIndex()];
+const blob = await (await fetch(data.replace('data:;','data:image/png;'))).blob(); 
+let item = new ClipboardItem({'image/png': blob})
+navigator.clipboard.write([item]);
+return x
+}"""
 
 with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
     with gr.Tabs(elem_id='tabss') as tabs:
@@ -1460,7 +1487,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                 lines=1,
                 max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25, 
                 value=txt2img_defaults['prompt'], 
-                show_label=False).style()
+                show_label=False)
                 
             with gr.Row(elem_id='body').style(equal_height=False):
                 with gr.Column():
@@ -1471,20 +1498,26 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     txt2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=txt2img_defaults['n_iter'])
                     txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=txt2img_defaults['batch_size'])
                 with gr.Column():
-                    output_txt2img_gallery = gr.Gallery(label="Images", elem_id="gallery_output").style(grid=[4,4])
+                    with gr.Group():
+                        output_txt2img_gallery = gr.Gallery(label="Images", elem_id="gallery_output").style(grid=[4,4])
+                        gr.Markdown('Selected image actions:')
+                        output_txt2img_copy_clipboard = gr.Button("Copy to clipboard").click(fn=None, inputs=output_txt2img_gallery, outputs=[], _js=copy_selected_img_js)
+                        output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
+                        if RealESRGAN is not None:
+                            output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")                    
                     with gr.Row():
                         with gr.Group():
                             output_txt2img_seed = gr.Number(label='Seed', interactive=False)
-                            output_txt2img_copy_seed = gr.Button("Copy", full_width=True).click(inputs=output_txt2img_seed, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                            output_txt2img_copy_seed = gr.Button("Copy").click(inputs=output_txt2img_seed, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                         with gr.Group():
                             output_txt2img_select_image = gr.Number(label='Image # and click Copy to copy to img2img', value=1, precision=None)
                             output_txt2img_copy_to_input_btn = gr.Button("Push to img2img", full_width=True)
                     with gr.Group():
                         output_txt2img_params = gr.Textbox(label="Copy-paste generation parameters", interactive=False)
-                        output_txt2img_copy_params = gr.Button("Copy", full_width=True).click(inputs=output_txt2img_params, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                        output_txt2img_copy_params = gr.Button("Copy").click(inputs=output_txt2img_params, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                     output_txt2img_stats = gr.HTML(label='Stats')
                 with gr.Column():
-                    txt2img_btn = gr.Button("Generate", full_width=True, elem_id="generate", variant="primary")
+                    txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
                     txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=txt2img_defaults['ddim_steps'])
                     txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=txt2img_defaults['sampler_name'])
                     with gr.Tabs():
@@ -1517,11 +1550,10 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                 max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25, 
                 value=img2img_defaults['prompt'], 
                 show_label=False).style()
-                img2img_btn_mask = gr.Button("Generate",variant="primary", visible=False, elem_id="img2img_mask_btn").style(full_width=True)
-                img2img_btn_editor = gr.Button("Generate",variant="primary", elem_id="img2img_editot_btn").style(full_width=True)
+                img2img_btn_mask = gr.Button("Generate",variant="primary", visible=False, elem_id="img2img_mask_btn")
+                img2img_btn_editor = gr.Button("Generate",variant="primary", elem_id="img2img_editot_btn")
             with gr.Row().style(equal_height=False):
                 with gr.Column():
-                    
                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop"], label="Image Editor Mode", value="Crop")
                     img2img_show_help_btn = gr.Button("Show Hints")
                     img2img_hide_help_btn = gr.Button("Hide Hints", visible=False)
@@ -1529,12 +1561,12 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     with gr.Row():
                         img2img_painterro_btn = gr.Button("Advanced Editor")
                         img2img_copy_from_painterro_btn = gr.Button(value="Get Image from Advanced Editor")
-                    img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="select")
-                    img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="sketch", visible=False)
+                    img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="select", elem_id="img2img_editor")
+                    img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True, type="pil", tool="sketch", visible=False, elem_id="img2img_mask")
                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"], label="Mask Mode", type="index", value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)
                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False)
                     img2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=img2img_defaults['ddim_steps'])
-                    img2img_sampling = gr.Radio(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=img2img_defaults['sampler_name'])
+                    img2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=img2img_defaults['sampler_name'])
                     img2img_toggles = gr.CheckboxGroup(label='', choices=img2img_toggles, value=img2img_toggle_defaults, type="index")
                     img2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
                     img2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=img2img_defaults['n_iter'])
@@ -1582,14 +1614,16 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
 
             output_img2img_copy_to_input_btn.click(
                 copy_img_to_input,
-                [output_img2img_select_image, output_img2img_gallery],
-                [img2img_image_editor, img2img_image_mask]
+                [output_img2img_gallery],
+                [img2img_image_editor, img2img_image_mask, tabs],
+                _js=return_selected_img_js
             )
 
             output_txt2img_copy_to_input_btn.click(
                 copy_img_to_input,
-                [output_txt2img_select_image, output_txt2img_gallery],
-                [img2img_image_editor, img2img_image_mask, tabs]
+                [output_txt2img_gallery],
+                [img2img_image_editor, img2img_image_mask, tabs],
+                _js=return_selected_img_js
             )
 
             img2img_btn_mask.click(
@@ -1637,7 +1671,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
             if 'gfpgan' in user_defaults:
                 gfpgan_defaults.update(user_defaults['gfpgan'])
 
-            with gr.TabItem("GFPGAN"):
+            with gr.TabItem("GFPGAN", id='cfpgan_tab'):
                 gr.Markdown("Fix faces on images")
                 with gr.Row():
                     with gr.Column():
@@ -1652,7 +1686,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [gfpgan_output]
                 )
         if RealESRGAN is not None:
-            with gr.TabItem("RealESRGAN"):
+            with gr.TabItem("RealESRGAN", id='realesrgan_tab'):
                 gr.Markdown("Upscale images")
                 with gr.Row():
                     with gr.Column():
@@ -1666,7 +1700,6 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     [realesrgan_source, realesrgan_model_name],
                     [realesrgan_output]
                 )
-
 
 class ServerLauncher(threading.Thread):
     def __init__(self, demo):

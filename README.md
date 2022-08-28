@@ -1,8 +1,18 @@
+### [MAIN REPO](https://github.com/hlky/stable-diffusion)
+
+## This repo is for development, there may be bugs and new features
+
+### Questions about **_[Upscalers](https://github.com/hlky/stable-diffusion-webui/wiki/Upscalers)_**?
+### Questions about **_[Optimized mode](https://github.com/hlky/stable-diffusion-webui/wiki/Optimized-mode)_**?
+
+## More documentation about features, troubleshooting, common issues very soon
+### Want to help with documentation? Documented something? Use [Discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
+
 Features:
 
 * Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
-* :fire: :fire: Optimized support!! :fire: :fire:
+* :fire: :fire: Optimized support!! txt2img only for now! :fire: :fire:
 * 🔥 NEW! [webui.cmd](https://github.com/hlky/stable-diffusion) updates with any changes in environment.yaml file so the environment will always be up to date as long as you get the new environment.yaml file 🔥
 :fire: no need to remove environment, delete src folder and create again, MUCH simpler! 🔥
 * GFPGAN Face Correction 🔥: [Download the model](https://github.com/hlky/stable-diffusion-webui#gfpgan)Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
