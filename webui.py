@@ -653,9 +653,11 @@ def process_images(
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
-        uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False):
+        uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
+        range_based_gen=False, rb_steps_start=16, rb_steps_end=48, rb_cfgs_start=7.0, rb_cfgs_end=11.0, rb_denoise_start=0.001, rb_denoise_end=0.001):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
     assert prompt is not None
+
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -709,6 +711,10 @@ def process_images(
 
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
+    
+    if range_based_gen and not txt2img_range_based_valid(rb_steps_start, rb_steps_end, rb_cfgs_start, rb_cfgs_end, rb_denoise_start, rb_denoise_end):
+        print(f"Range based generation parameters incorrect. Check your settings!")
+        return [], seed, 'err', "err"
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
     output_images = []
@@ -756,13 +762,23 @@ def process_images(
                     time.sleep(1)
 
             # we manually generate all input noises because each one should have a specific seed
-            x = create_random_tensors([opt_C, height // opt_f, width // opt_f], seeds=seeds)
-            samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
+            curr_steps = steps
+            curr_cfgs = cfg_scale
+            curr_denoise_str = 0.0
+            
+            if range_based_gen:
+                rand_obj = random.Random()
+                curr_steps =rand_obj.randint(rb_steps_start, rb_steps_end)
+                curr_cfgs = rb_cfgs_start + (rb_cfgs_end-rb_cfgs_start) * rand_obj.random()
+                if init_img:
+                    curr_denoise_str = rb_denoise_start + (rb_denoise_end-rb_denoise_start) * rand_obj.random()
+                print(f"Range based gen: Using {curr_steps}s {format(curr_cfgs, '.3f')}c {format(curr_denoise_str, '.3f')}dn to generate an image")
 
+            x = create_random_tensors([opt_C, height // opt_f, width // opt_f], seeds=seeds)
+            samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name, steps=curr_steps, cfgs=curr_cfgs, denoise_str=curr_denoise_str)
+            
             if opt.optimized:
                 modelFS.to(device)
-
-            
 
             x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
@@ -900,12 +916,44 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
     return output_images, seed, info, stats
 
 
+def txt2img_range_based_valid(steps_start, steps_end, cfgs_start, cfgs_end, denoise_start, denoise_end):
+    if steps_start <= steps_end:
+        if cfgs_start <= cfgs_end:
+            if denoise_start <= denoise_end:
+                return True
+    print(f"Range based gen paramterers invalid:\n\tsteps {steps_start}-{steps_end}\n\tcfgs {cfgs_start}-{cfgs_end}\n\tdenoise {denoise_start}-{denoise_end}")
+    return False
+
+def str_to_int_or_val(s, dval):
+    if isinstance(s, str):
+        try:
+            return int(s)
+        except:
+            return dval
+    return dval
+
+def str_to_float_or_val(s, dval):
+    if isinstance(s, str):
+        try:
+            return float(s)
+        except:
+            return dval
+    return dval
+    
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
             ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp):
+            height: int, width: int, fp,
+            rb_steps_start: Union[int, str, None], rb_steps_end:Union[int, str, None], rb_cfgs_start:Union[float, str, None], rb_cfgs_end:Union[float, str, None]):
+    
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
+
+
+    rb_steps_start = str_to_int_or_val(rb_steps_start, txt2img_defaults["rb_steps_start"])
+    rb_steps_end = str_to_int_or_val(rb_steps_end, txt2img_defaults["rb_steps_end"])
+    rb_cfgs_start = str_to_float_or_val(rb_cfgs_start, txt2img_defaults["rb_cfgs_start"])
+    rb_cfgs_end = str_to_float_or_val(rb_cfgs_end, txt2img_defaults["rb_cfgs_end"])
 
     prompt_matrix = 0 in toggles
     normalize_prompt_weights = 1 in toggles
@@ -914,8 +962,9 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     sort_samples = 4 in toggles
     write_info_files = 5 in toggles
     jpg_sample = 6 in toggles
-    use_GFPGAN = 7 in toggles
-    use_RealESRGAN = 8 in toggles
+    range_based_gen = 7 in toggles
+    use_GFPGAN = 8 in toggles
+    use_RealESRGAN = 8 in toggles if GFPGAN is None else 9 in toggles # possible index shift
 
     if sampler_name == 'PLMS':
         sampler = PLMSSampler(model)
@@ -939,8 +988,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     def init():
         pass
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
-        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, steps, cfgs, denoise_str):
+        samples_ddim, _ = sampler.sample(S=steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfgs, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
         return samples_ddim
 
     try:
@@ -969,10 +1018,15 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             sort_samples=sort_samples,
             write_info_files=write_info_files,
             jpg_sample=jpg_sample,
+            range_based_gen=range_based_gen,
+            rb_steps_start=rb_steps_start,
+            rb_steps_end=rb_steps_end,
+            rb_cfgs_start=rb_cfgs_start,
+            rb_cfgs_end=rb_cfgs_end
         )
 
         del sampler
-
+    
         return output_images, seed, info, stats
     except RuntimeError as e:
         err = e
@@ -980,6 +1034,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
         stats = err_msg
         return [], seed, 'err', stats
     finally:
+
         if err:
             crash(err, '!!Runtime error (txt2img)!!')
 
@@ -1028,10 +1083,20 @@ class Flagging(gr.FlaggingCallback):
 
 def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int, batch_size: int, cfg_scale: float, denoising_strength: float,
-            seed: int, height: int, width: int, resize_mode: int, fp):
+            seed: int, height: int, width: int, resize_mode: int, fp,
+            rb_steps_start: Union[int, str, None], rb_steps_end:Union[int, str, None],
+            rb_cfgs_start:Union[float, str, None], rb_cfgs_end:Union[float, str, None],
+            rb_denoise_start:Union[float, str, None], rb_denoise_end:Union[float, str, None]):
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
     err = False
     seed = seed_to_int(seed)
+
+    rb_steps_start = str_to_int_or_val(rb_steps_start, txt2img_defaults["rb_steps_start"])
+    rb_steps_end = str_to_int_or_val(rb_steps_end, txt2img_defaults["rb_steps_end"])
+    rb_cfgs_start = str_to_float_or_val(rb_cfgs_start, txt2img_defaults["rb_cfgs_start"])
+    rb_cfgs_end = str_to_float_or_val(rb_cfgs_end, txt2img_defaults["rb_cfgs_end"])
+    rb_denoise_start = str_to_float_or_val(rb_denoise_start, txt2img_defaults["rb_denoise_start"])
+    rb_denoise_end = str_to_float_or_val(rb_denoise_end, txt2img_defaults["rb_denoise_end"])
 
     prompt_matrix = 0 in toggles
     normalize_prompt_weights = 1 in toggles
@@ -1042,8 +1107,9 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
     sort_samples = 6 in toggles
     write_info_files = 7 in toggles
     jpg_sample = 8 in toggles
-    use_GFPGAN = 9 in toggles
-    use_RealESRGAN = 10 in toggles
+    range_based_gen = 9 in toggles
+    use_GFPGAN = 10 in toggles
+    use_RealESRGAN = 10 in toggles if GFPGAN is None else 11 in toggles # possible index shift
 
     if sampler_name == 'DDIM':
         sampler = DDIMSampler(model)
@@ -1077,8 +1143,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         keep_mask = False
 
     assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
-    t_enc = int(denoising_strength * ddim_steps)
-
+    
     def init():
         image = init_img.convert("RGB")
         image = resize_image(resize_mode, image, width, height)
@@ -1102,27 +1167,27 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
 
         return init_latent,
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, steps, cfgs, denoise_str):
         if sampler_name != 'DDIM':
             x0, = init_data
+            t_enc = int(denoise_str * steps)
 
-            sigmas = sampler.model_wrap.get_sigmas(ddim_steps)
-            noise = x * sigmas[ddim_steps - t_enc - 1]
+            sigmas = sampler.model_wrap.get_sigmas(steps)
+            noise = x * sigmas[steps - t_enc - 1]
 
             xi = x0 + noise
-            sigma_sched = sigmas[ddim_steps - t_enc - 1:]
+            sigma_sched = sigmas[steps - t_enc - 1:]
             model_wrap_cfg = CFGDenoiser(sampler.model_wrap)
             samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False)
         else:
             x0, = init_data
-            sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
+            sampler.make_schedule(ddim_num_steps=steps, ddim_eta=0.0, verbose=False)
             z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc]*batch_size).to(device))
                                 # decode it
             samples_ddim = sampler.decode(z_enc, conditioning, t_enc,
-                                            unconditional_guidance_scale=cfg_scale,
+                                            unconditional_guidance_scale=cfgs,
                                             unconditional_conditioning=unconditional_conditioning,)
         return samples_ddim
-
 
     try:
         if loopback:
@@ -1164,6 +1229,13 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
                     sort_samples=sort_samples,
                     write_info_files=write_info_files,
                     jpg_sample=jpg_sample,
+                    range_based_gen=range_based_gen,
+                    rb_steps_start=rb_steps_start,
+                    rb_steps_end=rb_steps_end,
+                    rb_cfgs_start=rb_cfgs_start,
+                    rb_cfgs_end=rb_cfgs_end,
+                    rb_denoise_start=rb_denoise_start,
+                    rb_denoise_end=rb_denoise_end
                 )
 
                 if initial_seed is None:
@@ -1219,6 +1291,13 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
                 sort_samples=sort_samples,
                 write_info_files=write_info_files,
                 jpg_sample=jpg_sample,
+                range_based_gen=range_based_gen,
+                rb_steps_start=rb_steps_start,
+                rb_steps_end=rb_steps_end,
+                rb_cfgs_start=rb_cfgs_start,
+                rb_cfgs_end=rb_cfgs_end,
+                rb_denoise_start=rb_denoise_start,
+                rb_denoise_end=rb_denoise_end
             )
 
         del sampler
@@ -1322,6 +1401,7 @@ txt2img_toggles = [
     'Sort samples by prompt',
     'Write sample info files',
     'jpg samples',
+    'Range based sampling',
 ]
 if GFPGAN is not None:
     txt2img_toggles.append('Fix faces using GFPGAN')
@@ -1341,7 +1421,13 @@ txt2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
-    'submit_on_enter': 'Yes'
+    'submit_on_enter': 'Yes',
+    'rb_steps_start': 16,
+    'rb_steps_end': 48,
+    'rb_cfgs_start': 7.0,
+    'rb_cfgs_end': 11.0,
+    'rb_denoise_start': 0.3,
+    'rb_denoise_end': 0.7,
 }
 
 if 'txt2img' in user_defaults:
@@ -1363,6 +1449,7 @@ img2img_toggles = [
     'Sort samples by prompt',
     'Write sample info files',
     'jpg samples',
+    'Range based sampling'
 ]
 if GFPGAN is not None:
     img2img_toggles.append('Fix faces using GFPGAN')
@@ -1396,6 +1483,12 @@ img2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
+    'rb_steps_start': 16,
+    'rb_steps_end': 48,
+    'rb_cfgs_start': 7.0,
+    'rb_cfgs_end': 11.0,
+    'rb_denoise_start': 0.3,
+    'rb_denoise_end': 0.7,
 }
 
 if 'img2img' in user_defaults:
@@ -1452,7 +1545,6 @@ def show_help():
 
 def hide_help():
     return [gr.update(visible=True), gr.update(visible=False), gr.update(value="")]
-
 
 css_hide_progressbar = """
 .wrap .m-12 svg { display:none!important; }
@@ -1537,16 +1629,24 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                             txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles, value=txt2img_toggle_defaults, type="index")
                             txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
                             txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA", value=txt2img_defaults['ddim_eta'], visible=False)
+                            with gr.Row():
+                                txt2img_rb_steps_start = gr.Textbox(label='RB: step start', lines=1, value=txt2img_defaults["rb_steps_start"])
+                                txt2img_rb_steps_end = gr.Textbox(label='RB: step end', lines=1, value=txt2img_defaults["rb_steps_end"])
+                            with gr.Row():
+                                txt2img_rb_cfgs_start = gr.Textbox(label='RB: cfgs start', lines=1, value=txt2img_defaults["rb_cfgs_start"])
+                                txt2img_rb_cfgs_end = gr.Textbox(label='RB: cfgs end', lines=1, value=txt2img_defaults["rb_cfgs_end"])
                     txt2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
 
             txt2img_btn.click(
                 txt2img,
-                [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings],
+                [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings,
+                    txt2img_rb_steps_start, txt2img_rb_steps_end, txt2img_rb_cfgs_start, txt2img_rb_cfgs_end],
                 [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
             )
             txt2img_prompt.submit(
                 txt2img,
-                [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings],
+                [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width, txt2img_embeddings,
+                    txt2img_rb_steps_start, txt2img_rb_steps_end, txt2img_rb_cfgs_start, txt2img_rb_cfgs_end],
                 [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
             )
 
@@ -1583,6 +1683,15 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     img2img_cfg = gr.Slider(minimum=1.0, maximum=30.0, step=0.5, label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)', value=img2img_defaults['cfg_scale'])
                     img2img_denoising = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label='Denoising Strength', value=img2img_defaults['denoising_strength'])
                     img2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, value=img2img_defaults["seed"])
+                    with gr.Row():
+                        img2img_rb_steps_start = gr.Textbox(label='RB: step start', lines=1, value=img2img_defaults["rb_steps_start"])
+                        img2img_rb_steps_end = gr.Textbox(label='RB: step end', lines=1, value=img2img_defaults["rb_steps_end"])
+                    with gr.Row():
+                        img2img_rb_cfgs_start = gr.Textbox(label='RB: cfgs start', lines=1, value=img2img_defaults["rb_cfgs_start"])
+                        img2img_rb_cfgs_end = gr.Textbox(label='RB: cfgs end', lines=1, value=img2img_defaults["rb_cfgs_end"])
+                    with gr.Row():
+                        img2img_rb_denoise_start = gr.Textbox(label='RB: denoise start', lines=1, value=img2img_defaults["rb_denoise_start"])
+                        img2img_rb_denoise_end = gr.Textbox(label='RB: denoise end', lines=1, value=img2img_defaults["rb_denoise_end"])
                     img2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=img2img_defaults["height"])
                     img2img_width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=img2img_defaults["width"])
                     img2img_resize = gr.Radio(label="Resize mode", choices=["Just resize", "Crop and resize", "Resize and fill"], type="index", value=img2img_resize_modes[img2img_defaults['resize_mode']])
@@ -1637,13 +1746,15 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
 
             img2img_btn_mask.click(
                 img2img,
-                [img2img_prompt, img2img_image_editor_mode, img2img_image_mask, img2img_mask, img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles, img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg, img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize, img2img_embeddings],
+                [img2img_prompt, img2img_image_editor_mode, img2img_image_mask, img2img_mask, img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles, img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg, img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize, img2img_embeddings,
+                    img2img_rb_steps_start, img2img_rb_steps_end, img2img_rb_cfgs_start, img2img_rb_cfgs_end, img2img_rb_denoise_start, img2img_rb_denoise_end],
                 [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
             )
 
             img2img_btn_editor.click(
                 img2img,
-                [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask, img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles, img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg, img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize, img2img_embeddings],
+                [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask, img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles, img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg, img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize, img2img_embeddings,
+                    img2img_rb_steps_start, img2img_rb_steps_end, img2img_rb_cfgs_start, img2img_rb_cfgs_end, img2img_rb_denoise_start, img2img_rb_denoise_end],
                 [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
             )
 
