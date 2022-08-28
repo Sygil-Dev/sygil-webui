@@ -7,7 +7,7 @@ parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write 
 parser.add_argument("--save-metadata", action='store_true', help="Whether to embed the generation parameters in the sample images", default=False)
 parser.add_argument("--skip-grid", action='store_true', help="do not save a grid, only individual samples. Helpful when evaluating lots of samples", default=False)
 parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
-parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="jpg:95")
+parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="webp:60")
 parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
 parser.add_argument("--config", type=str, default="configs/stable-diffusion/v1-inference.yaml", help="path to config which constructs model",)
 parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
@@ -531,11 +531,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             metadata.add_text("SD:cfg_scale", str(cfg_scale))
             metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
             metadata.add_text("SD:GFPGAN", str(use_GFPGAN and GFPGAN is not None))
-            image.save(f"{filename_i}.png", pnginfo=metadata)
+            image.save(f"{filename_i}.webp", format='Webp',  quality=60, method=6, exif=metadata)
         else:
-            image.save(f"{filename_i}.png")
+            image.save(f"{filename_i}.webp", format='Webp',  quality=60, method=6, )
     else:
-        image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
+        image.save(f"{filename_i}.webp", format='Webp', quality=60, method=6, )
     if write_info_files:
         # toggles differ for txt2img vs. img2img:
         offset = 0 if init_img is None else 2
@@ -588,7 +588,7 @@ def get_next_sequence_number(path, prefix=''):
     """
     result = -1
     for p in Path(path).iterdir():
-        if p.name.endswith(('.png', '.jpg')) and p.name.startswith(prefix):
+        if p.name.endswith(('.png', '.jpg', 'webp')) and p.name.startswith(prefix):
             tmp = p.name[len(prefix):]
             try:
                 result = max(int(tmp.split('-')[0]), result)
@@ -787,9 +787,9 @@ def process_images(
                     gfpgan_sample = restored_img[:,:,::-1]
                     image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
-                    save_sample(image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+#                     save_sample(image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+# normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+# skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     x_sample = original_sample
 
                 if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
