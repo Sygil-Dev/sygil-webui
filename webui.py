@@ -1339,9 +1339,9 @@ if RealESRGAN is not None:
 
 txt2img_defaults = {
     'prompt': '',
-    'ddim_steps': 50,
+    'ddim_steps': 25,
     'toggles': [1, 2, 3],
-    'sampler_name': 'k_lms',
+    'sampler_name': 'k_euler_a',
     'ddim_eta': 0.0,
     'n_iter': 1,
     'batch_size': 1,
@@ -1391,9 +1391,9 @@ img2img_resize_modes = [
 
 img2img_defaults = {
     'prompt': '',
-    'ddim_steps': 50,
+    'ddim_steps': 25,
     'toggles': [1, 4, 5],
-    'sampler_name': 'k_lms',
+    'sampler_name': 'k_euler_a',
     'ddim_eta': 0.0,
     'n_iter': 1,
     'batch_size': 1,
