@@ -663,6 +663,9 @@ def process_images(
             print('Matrix prompt detected but matrix check is not set.')
             prompt_matrix=True
 
+    if not ("|" in prompt) and prompt.startswith("@"):
+        prompt = prompt[1:]
+
     comments = []
 
     prompt_matrix_parts = []
