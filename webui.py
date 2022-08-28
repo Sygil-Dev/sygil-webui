@@ -1080,6 +1080,21 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         init_mask = resize_image(resize_mode, init_mask, width, height)
         keep_mask = mask_mode == 0
         init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
+    elif image_editor_mode == 'ImageEditor':
+        init_img = init_info["image"]
+        init_img = init_img.convert("RGB")
+        init_img = resize_image(resize_mode, init_img, width, height)
+        init_mask = init_info.get("mask", None)
+        keep_mask = False
+        if (init_mask is not None):
+            init_mask_alpha = init_mask.getchannel("A")
+            init_mask = Image.new("RGBA", init_mask.size, color="white")
+            init_mask.putalpha(init_mask_alpha)
+            mask_base = Image.new("RGB", init_mask.size, color="black")
+            mask_base.paste(init_mask, mask=init_mask)
+            init_mask = resize_image(resize_mode, mask_base, width, height)
+            keep_mask = mask_mode == 0
+            init_mask = mask_base if keep_mask else ImageOps.invert(mask_base)
     else:
         init_img = init_info
         init_mask = None
@@ -1323,7 +1338,7 @@ else:
     user_defaults = {}
 
 # make sure these indicies line up at the top of txt2img()
-txt2img_toggles = [
+txt2img_choices = [
     'Create prompt matrix (separate multiple prompts using |, and get all combinations of them)',
     'Normalize Prompt Weights (ensure sum of weights add up to 1.0)',
     'Save individual images',
@@ -1333,9 +1348,9 @@ txt2img_toggles = [
     'jpg samples',
 ]
 if GFPGAN is not None:
-    txt2img_toggles.append('Fix faces using GFPGAN')
+    txt2img_choices.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
-    txt2img_toggles.append('Upscale images using RealESRGAN')
+    txt2img_choices.append('Upscale images using RealESRGAN')
 
 txt2img_defaults = {
     'prompt': '',
@@ -1356,13 +1371,13 @@ txt2img_defaults = {
 if 'txt2img' in user_defaults:
     txt2img_defaults.update(user_defaults['txt2img'])
 
-txt2img_toggle_defaults = [txt2img_toggles[i] for i in txt2img_defaults['toggles']]
+txt2img_toggle_defaults = [txt2img_choices[i] for i in txt2img_defaults['toggles']]
 
 sample_img2img = "assets/stable-samples/img2img/sketch-mountains-input.jpg"
 sample_img2img = sample_img2img if os.path.exists(sample_img2img) else None
 
 # make sure these indicies line up at the top of img2img()
-img2img_toggles = [
+img2img_choices = [
     'Create prompt matrix (separate multiple prompts using |, and get all combinations of them)',
     'Normalize Prompt Weights (ensure sum of weights add up to 1.0)',
     'Loopback (use images from previous batch when creating next batch)',
@@ -1374,9 +1389,9 @@ img2img_toggles = [
     'jpg samples',
 ]
 if GFPGAN is not None:
-    img2img_toggles.append('Fix faces using GFPGAN')
+    img2img_choices.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
-    img2img_toggles.append('Upscale images using RealESRGAN')
+    img2img_choices.append('Upscale images using RealESRGAN')
 
 img2img_mask_modes = [
     "Keep masked area",
@@ -1410,7 +1425,7 @@ img2img_defaults = {
 if 'img2img' in user_defaults:
     img2img_defaults.update(user_defaults['img2img'])
 
-img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
+img2img_toggle_defaults = [img2img_choices[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
 
 def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
@@ -1477,6 +1492,7 @@ styling = """
 #prompt_row input{
  font-size:20px
 }
+#img2img_row > .col:nth-child(2) { width: 50%; }
 input[type=number]:disabled { -moz-appearance: textfield;+ }
 """
 
@@ -1514,6 +1530,21 @@ return x;
 }"""
 js_copy_selected_txt2img = "async (x) => {" + js_part_getindex_txt2img + js_part_copy_to_clipboard
 js_copy_selected_img2img = "async (x) => {" + js_part_getindex_img2img + js_part_copy_to_clipboard
+
+### Image Editor
+img2img_editor_help_text = """
+    ## Mask
+
+    To make a mask, paint over the image with a brush and then rename that layer to Mask
+
+    ![](https://i.imgur.com/3KVVs6J.png)
+"""
+
+def img2img_editor_show_help():
+    return [gr.update(visible=False), gr.update(visible=True), gr.update(value=img2img_editor_help_text)]
+
+def img2img_editor_hide_help():
+    return [gr.update(visible=True), gr.update(visible=False), gr.update(value="")]
 
 with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
     with gr.Tabs(elem_id='tabss') as tabs:
@@ -1561,7 +1592,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                             txt2img_submit_on_enter = gr.Radio(['Yes', 'No'], label="Submit on enter? (no means multiline)", value=txt2img_defaults['submit_on_enter'], interactive=True)
                             txt2img_submit_on_enter.change(lambda x: gr.update(max_lines=1 if x == 'Single' else 25) , txt2img_submit_on_enter, txt2img_prompt)
                         with gr.TabItem('Advanced'):
-                            txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles, value=txt2img_toggle_defaults, type="index")
+                            txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_choices, value=txt2img_toggle_defaults, type="index")
                             txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
                             txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA", value=txt2img_defaults['ddim_eta'], visible=False)
                     txt2img_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
@@ -1603,7 +1634,7 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False)
                     img2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=img2img_defaults['ddim_steps'])
                     img2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=img2img_defaults['sampler_name'])
-                    img2img_toggles = gr.CheckboxGroup(label='', choices=img2img_toggles, value=img2img_toggle_defaults, type="index")
+                    img2img_toggles = gr.CheckboxGroup(label='', choices=img2img_choices, value=img2img_toggle_defaults, type="index")
                     img2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
                     img2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=img2img_defaults['n_iter'])
                     img2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=img2img_defaults['batch_size'])
@@ -1707,6 +1738,69 @@ with gr.Blocks(css=css, analytics_enabled=False, title="Stable Diffusion WebUI")
                 const image = localStorage.getItem('painterro-image')
                 return [image, image];
             }""")
+        try:
+            with gr.TabItem("Image to Image Editor", id="img2img_editor_tab"):
+                with gr.Row(elem_id="prompt_row"):
+                    img2img_editor_prompt = gr.Textbox(label="Prompt",
+                    elem_id='img2img_editor_prompt_input',
+                    placeholder="A fantasy landscape, trending on artstation.",
+                    lines=1,
+                    max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25,
+                    value=img2img_defaults['prompt'],
+                    show_label=False).style()
+                    img2img_editor_btn_editor = gr.Button("Generate",variant="primary", elem_id="img2img_editor_btn_editor")
+                with gr.Row(elem_id="img2img_row").style(equal_height=False):
+                    with gr.Column():
+                        img2img_editor_image_editor_mode = gr.Variable("ImageEditor")
+                        img2img_editor_show_help_btn = gr.Button("Show Instructions (masking)")
+                        img2img_editor_hide_help_btn = gr.Button("Hide Instructions", visible=False)
+                        img2img_editor_help = gr.Markdown(visible=False, value="")
+                        img2img_editor_image_editor = gr.ImageEditor(value={ "image":sample_img2img }, source="upload", interactive=True, type="pil", elem_id="img2img_editor_editor")
+                        img2img_editor_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"], label="Mask Mode", type="index", value=img2img_mask_modes[img2img_defaults['mask_mode']])
+                        img2img_editor_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False)
+                        img2img_editor_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps", value=img2img_defaults['ddim_steps'])
+                        img2img_editor_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)', choices=["DDIM", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler', 'k_heun', 'k_lms'], value=img2img_defaults['sampler_name'])
+                        img2img_editor_toggles = gr.CheckboxGroup(label='', choices=img2img_choices, value=img2img_toggle_defaults, type="index")
+                        img2img_editor_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus', 'RealESRGAN_x4plus_anime_6B'], value='RealESRGAN_x4plus', visible=RealESRGAN is not None) # TODO: Feels like I shouldnt slot it in here.
+                        img2img_editor_batch_count = gr.Slider(minimum=1, maximum=250, step=1, label='Batch count (how many batches of images to generate)', value=img2img_defaults['n_iter'])
+                        img2img_editor_batch_size = gr.Slider(minimum=1, maximum=8, step=1, label='Batch size (how many images are in a batch; memory-hungry)', value=img2img_defaults['batch_size'])
+                        img2img_editor_cfg = gr.Slider(minimum=1.0, maximum=30.0, step=0.5, label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)', value=img2img_defaults['cfg_scale'])
+                        img2img_editor_denoising = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label='Denoising Strength', value=img2img_defaults['denoising_strength'])
+                        img2img_editor_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, value=img2img_defaults["seed"])
+                        img2img_editor_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height", value=img2img_defaults["height"])
+                        img2img_editor_width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width", value=img2img_defaults["width"])
+                        img2img_editor_resize = gr.Radio(label="Resize mode", choices=["Just resize", "Crop and resize", "Resize and fill"], type="index", value=img2img_resize_modes[img2img_defaults['resize_mode']])
+                        img2img_editor_embeddings = gr.File(label = "Embeddings file for textual inversion", visible=hasattr(model, "embedding_manager"))
+                    with gr.Column():
+                        output_img2img_editor_gallery = gr.Gallery(label="Images", elem_id="img2img_editor_gallery_output")
+                        with gr.Tabs():
+                            with gr.TabItem("Output info", id="img2img_output_info_tab"):
+                                output_img2img_editor_params = gr.Textbox(label="Generation parameters")
+                                with gr.Row():
+                                    output_img2img_editor_copy_params = gr.Button("Copy full parameters").click(inputs=output_img2img_editor_params, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                                    output_img2img_editor_seed = gr.Number(label='Seed', interactive=False, visible=False)
+                                    output_img2img_editor_copy_seed = gr.Button("Copy only seed").click(inputs=output_img2img_editor_seed, outputs=[], _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                                output_img2img_editor_stats = gr.HTML(label='Stats')
+
+                img2img_editor_show_help_btn.click(
+                    img2img_editor_show_help,
+                    None,
+                    [img2img_editor_show_help_btn, img2img_editor_hide_help_btn, img2img_editor_help]
+                )
+
+                img2img_editor_hide_help_btn.click(
+                    img2img_editor_hide_help,
+                    None,
+                    [img2img_show_help_btn, img2img_editor_hide_help_btn, img2img_editor_help]
+                )
+
+                img2img_editor_btn_editor.click(
+                    img2img,
+                    [img2img_editor_prompt, img2img_editor_image_editor_mode, img2img_editor_image_editor, img2img_editor_mask, img2img_editor_mask_blur_strength, img2img_editor_steps, img2img_editor_sampling, img2img_editor_toggles, img2img_editor_realesrgan_model_name, img2img_editor_batch_count, img2img_editor_batch_size, img2img_editor_cfg, img2img_editor_denoising, img2img_editor_seed, img2img_editor_height, img2img_editor_width, img2img_editor_resize, img2img_editor_embeddings],
+                    [output_img2img_editor_gallery, output_img2img_editor_seed, output_img2img_editor_params, output_img2img_editor_stats]
+                )
+        except AttributeError:
+            print("No ImageEditor...")
 
         if GFPGAN is not None:
             gfpgan_defaults = {
