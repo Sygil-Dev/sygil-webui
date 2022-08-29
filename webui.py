@@ -507,6 +507,8 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             metadata.add_text("SD:steps", str(steps))
             metadata.add_text("SD:cfg_scale", str(cfg_scale))
             metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
+            if init_img is not None:
+                metadata.add_text("SD:denoising_strength", str(denoising_strength))
             metadata.add_text("SD:GFPGAN", str(use_GFPGAN and GFPGAN is not None))
             image.save(f"{filename_i}.webp", format='Webp',  quality=grid_quality, method=6, exif=metadata)
         else:
@@ -573,7 +575,8 @@ def get_next_sequence_number(path, prefix=''):
                 pass
     return result + 1
 
-def oxlamon_matrix(prompt, seed, batch_size):
+
+def oxlamon_matrix(prompt, seed, n_iter, batch_size):
     pattern = re.compile(r'(,\s){2,}')
 
     class PromptItem:
@@ -585,6 +588,13 @@ def oxlamon_matrix(prompt, seed, batch_size):
 
     def clean(txt):
         return re.sub(pattern, ', ', txt)
+
+    def getrowcount( txt ):
+        for data in re.finditer( ".*?\\((.*?)\\).*", txt ):
+            if data:
+                return len(data.group(1).split("|"))
+            break
+        return None
 
     def repliter( txt ):
         for data in re.finditer( ".*?\\((.*?)\\).*", txt ):
@@ -610,19 +620,35 @@ def oxlamon_matrix(prompt, seed, batch_size):
                 return dataitems
             dataitems = newdataitems
 
-    def classToArrays( items ):
+    def classToArrays( items, seed, n_iter ):
         texts = []
         parts = []
+        seeds = []
 
         for item in items:
-            texts.append( item.text )
-            parts.append( "\n".join(item.parts) )        
-        return texts, parts
+            itemseed = seed
+            for i in range(n_iter):
+                texts.append( item.text )
+                parts.append( f"Seed: {itemseed}\n" + "\n".join(item.parts) )
+                seeds.append( itemseed )
+                itemseed += 1                
 
-    all_prompts, prompt_matrix_parts = classToArrays(getmatrix( prompt ))
+        return seeds, texts, parts
+
+    all_seeds, all_prompts, prompt_matrix_parts = classToArrays(getmatrix( prompt ), seed, n_iter)
     n_iter = math.ceil(len(all_prompts) / batch_size)
-    all_seeds = len(all_prompts) * [seed]
-    return all_seeds, n_iter, prompt_matrix_parts, all_prompts, None
+
+    needrows = getrowcount(prompt)
+    if needrows:
+        xrows = math.sqrt(len(all_prompts))
+        xrows = round(xrows)
+        # if columns is to much
+        cols = math.ceil(len(all_prompts) / xrows)
+        if cols > needrows*4:
+            needrows *= 2
+
+    return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
+
 
 
 def process_images(
@@ -656,7 +682,7 @@ def process_images(
     prompt_matrix_parts = []
     if prompt_matrix:
         if prompt.startswith("@"):
-            all_seeds, n_iter, prompt_matrix_parts, all_prompts, frows = oxlamon_matrix(prompt, seed, batch_size)
+            all_seeds, n_iter, prompt_matrix_parts, all_prompts, frows = oxlamon_matrix(prompt, seed, n_iter, batch_size)
         else:
             all_prompts = []
             prompt_matrix_parts = prompt.split("|")
@@ -862,7 +888,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 
     info = f"""
 {prompt}
-Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', GFPGAN' if use_GFPGAN and GFPGAN is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and RealESRGAN is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and GFPGAN is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and RealESRGAN is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
     stats = f'''
 Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
 Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''

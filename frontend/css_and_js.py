@@ -9,23 +9,24 @@ def css(opt):
     
     [data-testid="image"] {min-height: 512px !important}
     * #body>.col:nth-child(2){width:250%;max-width:89vw}
-    
-    #prompt_row input{
-     font-size:20px
+
+    #prompt_input, #img2img_prompt_input { 
+        padding: 0px;
+        border: none;
     }
+
+    #prompt_row input,
+    #prompt_row textarea {
+        font-size: 1.2rem;
+        line-height: 1.6rem;
+    }
+
     #edit_mode_select{width:auto !important}
+
     input[type=number]:disabled { -moz-appearance: textfield;+ }
-    #generate, #img2img_mask_btn,#img2img_edit_btn{
-        position: absolute;
-        right: 16px;
-        top: 14px;
-    }
-    @media (max-width: 420px){
-        #generate, #img2img_mask_btn,#img2img_edit_btn{
-            position: absolute;
-            right: 16px;
-            top: 5px;
-        }
+
+    #generate, #img2img_mask_btn, #img2img_edit_btn {
+        align-self: stretch;
     }
     """
     return styling if opt.no_progressbar_hiding else styling + css_hide_progressbar
