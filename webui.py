@@ -35,15 +35,14 @@ parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
 opt = parser.parse_args()
 
-# EDIT: extra models are now put on selected gpu a different way
-# this should force GFPGAN and RealESRGAN onto the selected gpu as well
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+#Should not be needed anymore
+#os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 # all selected gpus, can probably be done nicer
-if opt.extra_models_gpu:
-    gpus = set([opt.gpu, opt.esrgan_gpu, opt.gfpgan_gpu])
-    os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(g) for g in set(gpus))
-else: 
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu)
+#if opt.extra_models_gpu:
+#    gpus = set([opt.gpu, opt.esrgan_gpu, opt.gfpgan_gpu])
+#    os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(g) for g in set(gpus))
+#else: 
+#    os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu)
 
 import gradio as gr
 import k_diffusion as K
