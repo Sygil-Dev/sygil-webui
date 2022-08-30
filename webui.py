@@ -25,16 +25,24 @@ parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not
 parser.add_argument("--share", action='store_true', help="Should share your server on gradio.app, this allows you to use the UI from your mobile app", default=False)
 parser.add_argument("--share-password", type=str, help="Sharing is open by default, use this to set a password. Username: webui", default=None)
 parser.add_argument("--defaults", type=str, help="path to configuration file providing UI defaults, uses same format as cli parameter", default='configs/webui/webui.yaml')
-parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=int(os.environ.get('CUDA_VISIBLE_DEVICES', 0)))
+parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=0)
 parser.add_argument("--extra-models-cpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
+parser.add_argument("--extra-models-gpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
 parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
+parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (overrides --gpu)", default=0)
+parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
 opt = parser.parse_args()
 
-# this should force GFPGAN and RealESRGAN onto the selected gpu as well
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu)
+#Should not be needed anymore
+#os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+# all selected gpus, can probably be done nicer
+#if opt.extra_models_gpu:
+#    gpus = set([opt.gpu, opt.esrgan_gpu, opt.gfpgan_gpu])
+#    os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(g) for g in set(gpus))
+#else:
+#    os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu)
 
 import gradio as gr
 import k_diffusion as K
@@ -192,6 +200,27 @@ class MemUsageMonitor(threading.Thread):
         self.stop_flag = True
         return self.max_usage, self.total
 
+class CFGMaskedDenoiser(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.inner_model = model
+
+    def forward(self, x, sigma, uncond, cond, cond_scale, mask, x0, xi):
+        x_in = x
+        x_in = torch.cat([x_in] * 2)
+        sigma_in = torch.cat([sigma] * 2)
+        cond_in = torch.cat([uncond, cond])
+        uncond, cond = self.inner_model(x_in, sigma_in, cond=cond_in).chunk(2)
+        denoised = uncond + (cond - uncond) * cond_scale
+
+        if mask is not None:
+            assert x0 is not None
+            img_orig = x0
+            mask_inv = 1. - mask
+            denoised = (img_orig * mask_inv) + (mask * denoised)
+
+        return denoised
+
 class CFGDenoiser(nn.Module):
     def __init__(self, model):
         super().__init__()
@@ -247,11 +276,13 @@ def load_GFPGAN():
 
     sys.path.append(os.path.abspath(GFPGAN_dir))
     from gfpgan import GFPGANer
-    instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None)
+
     if opt.gfpgan_cpu or opt.extra_models_cpu:
-        instance.device = torch.device('cpu')
+        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
+    elif opt.extra_models_gpu:
+        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f'cuda:{opt.gfpgan_gpu}'))
     else:
-        instance.device = torch.device('cuda') # another way to set gpu device
+        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f'cuda:{opt.gpu}'))
     return instance
 
 def load_RealESRGAN(model_name: str):
@@ -269,16 +300,14 @@ def load_RealESRGAN(model_name: str):
     from realesrgan import RealESRGANer
 
     if opt.esrgan_cpu or opt.extra_models_cpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False)
-        instance.model.name = model_name
-        instance.device = torch.device('cpu')
+        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
         instance.device = torch.device('cpu')
         instance.model.to('cpu')
+    elif opt.extra_models_gpu:
+        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not opt.no_half, device=torch.device(f'cuda:{opt.esrgan_gpu}'))
     else:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not opt.no_half)
-        instance.model.name = model_name
-        instance.device = torch.device('cuda') # another way to set gpu device
-
+        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not opt.no_half, device=torch.device(f'cuda:{opt.gpu}'))
+    instance.model.name = model_name
     return instance
 
 GFPGAN = None
@@ -324,7 +353,7 @@ if opt.optimized:
         sd['model2.' + key[6:]] = sd.pop(key)
 
     config = OmegaConf.load("optimizedSD/v1-inference.yaml")
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
 
     model = instantiate_from_config(config.modelUNet)
     _, _ = model.load_state_dict(sd, strict=False)
@@ -351,7 +380,7 @@ else:
     config = OmegaConf.load(opt.config)
     model = load_model_from_config(config, opt.ckpt)
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
     model = (model if opt.no_half else model.half()).to(device)
 
 def load_embeddings(fp):
@@ -656,7 +685,8 @@ def process_images(
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
-        uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False):
+        uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
+        variant_amount=0.0, variant_seed=None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
     assert prompt is not None
     torch_gc()
@@ -720,6 +750,19 @@ def process_images(
         init_data = func_init()
         tic = time.time()
 
+
+        # if variant_amount > 0.0 create noise from base seed
+        base_x = None
+        if variant_amount > 0.0:
+            target_seed_randomizer = seed_to_int('') # random seed
+            torch.manual_seed(seed) # this has to be the single starting seed (not per-iteration)
+            base_x = create_random_tensors([opt_C, height // opt_f, width // opt_f], seeds=[seed])
+            # we don't want all_seeds to be sequential from starting seed with variants,
+            # since that makes the same variants each time,
+            # so we add target_seed_randomizer as a random offset
+            for si in range(len(all_seeds)):
+                all_seeds[si] += target_seed_randomizer
+
         for n in range(n_iter):
             print(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
@@ -758,8 +801,21 @@ def process_images(
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
                     time.sleep(1)
 
-            # we manually generate all input noises because each one should have a specific seed
-            x = create_random_tensors([opt_C, height // opt_f, width // opt_f], seeds=seeds)
+            if variant_amount == 0.0:
+                # we manually generate all input noises because each one should have a specific seed
+                x = create_random_tensors(shape, seeds=seeds)
+            else: # we are making variants
+                # using variant_seed as sneaky toggle,
+                # when not None or '' use the variant_seed
+                # otherwise use seeds
+                if variant_seed != None and variant_seed != '':
+                    specified_variant_seed = seed_to_int(variant_seed)
+                    torch.manual_seed(specified_variant_seed)
+                    seeds = [specified_variant_seed]
+                target_x = create_random_tensors(shape, seeds=seeds)
+                # finally, slerp base_x noise to target_x noise for creating a variant
+                x = slerp(device, max(0.0, min(1.0, variant_amount)), base_x, target_x)
+
             samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
             if opt.optimized:
@@ -785,73 +841,72 @@ def process_images(
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
+                image = Image.fromarray(x_sample)
                 original_sample = x_sample
                 original_filename = filename
                 if use_GFPGAN and GFPGAN is not None and not use_RealESRGAN:
+                    skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
-                    image = Image.fromarray(gfpgan_sample)
+                    gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
-#                     save_sample(image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+#                     save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 # normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 # skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    x_sample = original_sample
+                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+                    output_images.append(gfpgan_image) #287
 
                 if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
+                    skip_save = True # #287 >_>
                     torch_gc()
                     if RealESRGAN.model.name != realesrgan_model_name:
                         try_loading_RealESRGAN(realesrgan_model_name)
                     output, img_mode = RealESRGAN.enhance(x_sample[:,:,::-1])
                     esrgan_filename = original_filename + '-esrgan4x'
                     esrgan_sample = output[:,:,::-1]
-                    image = Image.fromarray(esrgan_sample)
-                    save_sample(image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    esrgan_image = Image.fromarray(esrgan_sample)
+                    save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    x_sample = original_sample
+                    save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+                    output_images.append(esrgan_image) #287
 
                 if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
+                    skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
                     if RealESRGAN.model.name != realesrgan_model_name:
                         try_loading_RealESRGAN(realesrgan_model_name)
                     output, img_mode = RealESRGAN.enhance(gfpgan_sample[:,:,::-1])
-                    esrgan_filename = original_filename + '-gfpgan-esrgan4x'
-                    esrgan_sample = output[:,:,::-1]
-                    image = Image.fromarray(esrgan_sample)
-                    save_sample(image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
+                    gfpgan_esrgan_sample = output[:,:,::-1]
+                    gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
+                    save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    x_sample = original_sample
+                    save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+                    output_images.append(gfpgan_esrgan_image) #287
 
-                image = Image.fromarray(x_sample)
-                if init_mask:
-                    #init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
-                    init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
-                    init_mask = init_mask.convert('L')
-                    init_img = init_img.convert('RGB')
-                    image = image.convert('RGB')
+                if not skip_save or (not use_GFPGAN or not use_RealESRGAN):
 
-                    if use_RealESRGAN and RealESRGAN is not None:
-                        if RealESRGAN.model.name != realesrgan_model_name:
-                            try_loading_RealESRGAN(realesrgan_model_name)
-                        output, img_mode = RealESRGAN.enhance(np.array(init_img, dtype=np.uint8))
-                        init_img = Image.fromarray(output)
-                        init_img = init_img.convert('RGB')
-
-                        output, img_mode = RealESRGAN.enhance(np.array(init_mask, dtype=np.uint8))
-                        init_mask = Image.fromarray(output)
-                        init_mask = init_mask.convert('L')
-
-                    image = Image.composite(init_img, image, init_mask)
-                if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+                    output_images.append(image)
 
-                output_images.append(image)
+                if opt.optimized:
+                    mem = torch.cuda.memory_allocated()/1e6
+                    modelFS.to("cpu")
+                    while(torch.cuda.memory_allocated()/1e6 >= mem):
+                        time.sleep(1)
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             if prompt_matrix:
@@ -874,12 +929,6 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             grid_count = get_next_sequence_number(outpath, 'grid-')
             grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
             grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
-
-        if opt.optimized:
-            mem = torch.cuda.memory_allocated()/1e6
-            modelFS.to("cpu")
-            while(torch.cuda.memory_allocated()/1e6 >= mem):
-                time.sleep(1)
 
         toc = time.time()
 
@@ -905,7 +954,7 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
 
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
             ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp):
+            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None):
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
@@ -972,6 +1021,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             sort_samples=sort_samples,
             write_info_files=write_info_files,
             jpg_sample=jpg_sample,
+            variant_amount=variant_amount,
+            variant_seed=variant_seed,
         )
 
         del sampler
@@ -998,7 +1049,7 @@ class Flagging(gr.FlaggingCallback):
         os.makedirs("log/images", exist_ok=True)
 
         # those must match the "txt2img" function !! + images, seed, comment, stats !! NOTE: changes to UI output must be reflected here too
-        prompt, ddim_steps, sampler_name, toggles, ddim_eta, n_iter, batch_size, cfg_scale, seed, height, width, fp, images, seed, comment, stats = flag_data
+        prompt, ddim_steps, sampler_name, toggles, ddim_eta, n_iter, batch_size, cfg_scale, seed, height, width, fp, variant_amount, variant_seed, images, seed, comment, stats = flag_data
 
         filenames = []
 
@@ -1067,7 +1118,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
 
     if image_editor_mode == 'Mask':
         init_img = init_info["image"]
-        init_img = init_img.convert("RGB")
+        init_img = init_img.convert("RGBA")
         init_img = resize_image(resize_mode, init_img, width, height)
         init_mask = init_info["mask"]
         init_mask = init_mask.convert("RGB")
@@ -1089,6 +1140,28 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         image = image[None].transpose(0, 3, 1, 2)
         image = torch.from_numpy(image)
 
+        mask_channel = None
+        if image_editor_mode == "Uncrop":
+            alpha = init_img.convert("RGBA")
+            alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
+            mask_channel = alpha.split()[-1]
+            mask_channel = mask_channel.filter(ImageFilter.GaussianBlur(4))
+            mask_channel = np.array(mask_channel)
+            mask_channel[mask_channel >= 255] = 255
+            mask_channel[mask_channel < 255] = 0
+            mask_channel = Image.fromarray(mask_channel).filter(ImageFilter.GaussianBlur(2))
+        elif init_mask is not None:
+            alpha = init_mask.convert("RGBA")
+            alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
+            mask_channel = alpha.split()[1]
+
+        mask = None
+        if mask_channel is not None:
+            mask = np.array(mask_channel).astype(np.float32) / 255.0
+            mask = (1 - mask)
+            mask = np.tile(mask, (4, 1, 1))
+            mask = mask[None].transpose(0, 1, 2, 3)
+            mask = torch.from_numpy(mask).to(device)
         if opt.optimized:
             modelFS.to(device)
 
@@ -1103,27 +1176,48 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
             while(torch.cuda.memory_allocated()/1e6 >= mem):
                 time.sleep(1)
 
-        return init_latent,
+        return init_latent, mask,
 
     def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
+        t_enc_steps = t_enc
+        obliterate = False
+        if ddim_steps == t_enc_steps:
+            t_enc_steps = t_enc_steps - 1
+            obliterate = True
+
         if sampler_name != 'DDIM':
-            x0, = init_data
+            x0, z_mask = init_data
 
             sigmas = sampler.model_wrap.get_sigmas(ddim_steps)
-            noise = x * sigmas[ddim_steps - t_enc - 1]
+            noise = x * sigmas[ddim_steps - t_enc_steps - 1]
 
             xi = x0 + noise
-            sigma_sched = sigmas[ddim_steps - t_enc - 1:]
-            model_wrap_cfg = CFGDenoiser(sampler.model_wrap)
-            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False)
+
+            # Obliterate masked image
+            if z_mask is not None and obliterate:
+                random = torch.randn(z_mask.shape, device=xi.device)
+                xi = (z_mask * noise) + ((1-z_mask) * xi)
+
+            sigma_sched = sigmas[ddim_steps - t_enc_steps - 1:]
+            model_wrap_cfg = CFGMaskedDenoiser(sampler.model_wrap)
+            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False)
         else:
-            x0, = init_data
+
+            x0, z_mask = init_data
+
             sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
-            z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc]*batch_size).to(device))
+            z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc_steps]*batch_size).to(device))
+
+            # Obliterate masked image
+            if z_mask is not None and obliterate:
+                random = torch.randn(z_mask.shape, device=z_enc.device)
+                z_enc = (z_mask * random) + ((1-z_mask) * z_enc)
+
                                 # decode it
-            samples_ddim = sampler.decode(z_enc, conditioning, t_enc,
+            samples_ddim = sampler.decode(z_enc, conditioning, t_enc_steps,
                                             unconditional_guidance_scale=cfg_scale,
-                                            unconditional_conditioning=unconditional_conditioning,)
+                                            unconditional_conditioning=unconditional_conditioning,
+                                            z_mask=z_mask, x0=x0)
         return samples_ddim
 
 
@@ -1282,6 +1376,26 @@ def split_weighted_subprompts(text):
             remaining = 0
     return prompts, weights
 
+def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
+    v0 = v0.detach().cpu().numpy()
+    v1 = v1.detach().cpu().numpy()
+
+    dot = np.sum(v0 * v1 / (np.linalg.norm(v0) * np.linalg.norm(v1)))
+    if np.abs(dot) > DOT_THRESHOLD:
+        v2 = (1 - t) * v0 + t * v1
+    else:
+        theta_0 = np.arccos(dot)
+        sin_theta_0 = np.sin(theta_0)
+        theta_t = theta_0 * t
+        sin_theta_t = np.sin(theta_t)
+        s0 = np.sin(theta_0 - theta_t) / sin_theta_0
+        s1 = sin_theta_t / sin_theta_0
+        v2 = s0 * v0 + s1 * v1
+
+    v2 = torch.from_numpy(v2).to(device)
+
+    return v2
+
 def run_GFPGAN(image, strength):
     image = image.convert("RGB")
 
@@ -1344,7 +1458,9 @@ txt2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
-    'submit_on_enter': 'Yes'
+    'variant_amount': 0.0,
+    'variant_seed': '',
+    'submit_on_enter': 'Yes',
 }
 
 if 'txt2img' in user_defaults:
