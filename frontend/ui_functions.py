@@ -89,7 +89,7 @@ def resize_image(resize_mode, im, width, height):
         src_h = height if ratio <= src_ratio else im.height * width // im.width
 
         resized = im.resize((src_w, src_h), resample=LANCZOS)
-        res = Image.new("RGB", (width, height))
+        res = Image.new("RGBA", (width, height))
         res.paste(resized, box=(width // 2 - src_w // 2, height // 2 - src_h // 2))
     else:
         ratio = width / height
@@ -99,7 +99,7 @@ def resize_image(resize_mode, im, width, height):
         src_h = height if ratio >= src_ratio else im.height * width // im.width
 
         resized = im.resize((src_w, src_h), resample=LANCZOS)
-        res = Image.new("RGB", (width, height))
+        res = Image.new("RGBA", (width, height))
         res.paste(resized, box=(width // 2 - src_w // 2, height // 2 - src_h // 2))
 
         if ratio < src_ratio:

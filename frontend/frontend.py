@@ -128,13 +128,14 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     with gr.Column():
                         gr.Markdown('#### Img2Img input')
                         img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                        type="pil", tool="select", elem_id="img2img_editor")
+                                                        type="pil", tool="select", elem_id="img2img_editor",
+                                                        image_mode="RGBA")
                         img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
                                                       type="pil", tool="sketch", visible=False,
                                                       elem_id="img2img_mask")
 
                         with gr.Row():
-                            img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop"], label="Image Editor Mode",
+                            img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
                                                              value="Crop", elem_id='edit_mode_select')
 
                             img2img_painterro_btn = gr.Button("Advanced Editor")
