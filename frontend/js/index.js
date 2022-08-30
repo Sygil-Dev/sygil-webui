@@ -131,6 +131,22 @@ window.SD = (() => {
     clearImageInput (imageEditor) {
       imageEditor?.querySelector('.modify-upload button:last-child')?.click();
     }
+    clickFirstVisibleButton(rowId) {
+      const generateButtons = this.el.get(`#${rowId}`).querySelectorAll('.gr-button-primary');
+
+      if (!generateButtons) return;
+
+      for (let i = 0, arr = [...generateButtons]; i < arr.length; i++) {
+        const cs = window.getComputedStyle(arr[i]);
+
+        if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+          console.log(arr[i]);
+
+          arr[i].click();
+          break;
+        }
+      }
+    }
     static error (e) {
       console.error(e);
       if (typeof e === 'string') {
