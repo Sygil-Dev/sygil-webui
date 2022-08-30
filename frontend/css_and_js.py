@@ -32,7 +32,7 @@ def js_copy_to_clipboard(from_id):
     return w(f"copyImageFromGalleryToClipboard('{from_id}')")
 
 def js_painterro_launch():
-    return w("Painterro.init(SD.x)")
+    return w("Painterro.init()")
 
-def js_painterro_load_image(to_id):
-    return w(f"Painterro.loadImage('{to_id}')")
+#def js_painterro_load_image(to_id):
+#    return w(f"Painterro.loadImage('{to_id}')")
