@@ -136,7 +136,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                              value="Crop", elem_id='edit_mode_select')
 
                             img2img_painterro_btn = gr.Button("Advanced Editor")
-                            img2img_copy_from_painterro_btn = gr.Button(value="Get Image from Advanced Editor")
                             img2img_show_help_btn = gr.Button("Show Hints")
                             img2img_hide_help_btn = gr.Button("Hide Hints", visible=False)
                         img2img_help = gr.Markdown(visible=False, value="")
@@ -221,7 +220,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     uifn.change_image_editor_mode,
                     [img2img_image_editor_mode, img2img_image_editor, img2img_resize, img2img_width, img2img_height],
                     [img2img_image_editor, img2img_image_mask, img2img_btn_editor, img2img_btn_mask,
-                     img2img_painterro_btn, img2img_copy_from_painterro_btn, img2img_mask, img2img_mask_blur_strength]
+                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength]
                 )
 
                 img2img_image_editor.edit(
