@@ -776,20 +776,14 @@ def process_images(
 
             # split the prompt if it has : for weighting
             # TODO for speed it might help to have this occur when all_prompts filled??
-            subprompts,weights = split_weighted_subprompts(prompts[0])
-            # get total weight for normalizing, this gets weird if large negative values used
-            totalPromptWeight = sum(weights)
+            weighted_subprompts = split_weighted_subprompts(prompts[0], normalize_prompt_weights)
 
             # sub-prompt weighting used if more than 1
-            if len(subprompts) > 1:
+            if len(weighted_subprompts) > 1:
                 c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
-                for i in range(0,len(subprompts)): # normalize each prompt and add it
-                    weight = weights[i]
-                    if normalize_prompt_weights:
-                        weight = weight / totalPromptWeight
-                    #print(f"{subprompts[i]} {weight*100.0}%")
+                for i in range(0, len(weighted_subprompts)):
                     # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (model if not opt.optimized else modelCS).get_learned_conditioning(subprompts[i]), alpha=weight)
+                    c = torch.add(c, (model if not opt.optimized else modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
             else: # just behave like usual
                 c = (model if not opt.optimized else modelCS).get_learned_conditioning(prompts)
 
@@ -1330,51 +1324,32 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         if err:
             crash(err, '!!Runtime error (img2img)!!')
 
+prompt_parser = re.compile("""
+    (?P<prompt>                # capture group for 'prompt'
+    [^:]+                      # match one or more non ':' characters
+    )                          # end 'prompt'
+    (?:                        # non-capture group
+    :+                         # match one or more ':' characters  
+    (?P<weight>                # capture group for 'weight'
+    -?\d+(?:\.\d+)?            # match positive or negative decimal number
+    )?                         # end weight capture group, make optional 
+    \s*                        # strip spaces after weight
+    |                          # OR
+    $                          # else, if no ':' then match end of line
+    )                          # end non-capture group
+""", re.VERBOSE)
+
 # grabs all text up to the first occurrence of ':' as sub-prompt
 # takes the value following ':' as weight
 # if ':' has no value defined, defaults to 1.0
 # repeats until no text remaining
-# TODO this could probably be done with less code
-def split_weighted_subprompts(text):
-    print(text)
-    remaining = len(text)
-    prompts = []
-    weights = []
-    while remaining > 0:
-        if ":" in text:
-            idx = text.index(":") # first occurrence from start
-            # grab up to index as sub-prompt
-            prompt = text[:idx]
-            remaining -= idx
-            # remove from main text
-            text = text[idx+1:]
-            # find value for weight, assume it is followed by a space or comma
-            idx = len(text) # default is read to end of text
-            if " " in text:
-                idx = min(idx,text.index(" ")) # want the closer idx
-            if "," in text:
-                idx = min(idx,text.index(",")) # want the closer idx
-            if idx != 0:
-                try:
-                    weight = float(text[:idx])
-                except: # couldn't treat as float
-                    print(f"Warning: '{text[:idx]}' is not a value, are you missing a space or comma after a value?")
-                    weight = 1.0
-            else: # no value found
-                weight = 1.0
-            # remove from main text
-            remaining -= idx
-            text = text[idx+1:]
-            # append the sub-prompt and its weight
-            prompts.append(prompt)
-            weights.append(weight)
-        else: # no : found
-            if len(text) > 0: # there is still text though
-                # take remainder as weight 1
-                prompts.append(text)
-                weights.append(1.0)
-            remaining = 0
-    return prompts, weights
+def split_weighted_subprompts(input_string, normalize=True):
+    parsed_prompts = [(match.group("prompt"), float(match.group("weight") or 1)) for match in re.finditer(prompt_parser, input_string)]
+    if not normalize:
+        return parsed_prompts
+    # this probably still doesn't handle negative weights very well
+    weight_sum = sum(map(lambda x: x[1], parsed_prompts))
+    return [x for x in map(lambda x: (x[0], x[1] / weight_sum), parsed_prompts)]
 
 def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
     v0 = v0.detach().cpu().numpy()
