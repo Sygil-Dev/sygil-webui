@@ -895,26 +895,6 @@ normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     output_images.append(gfpgan_esrgan_image) #287
 
-     
-                if init_mask:
-                    #init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
-                    init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
-                    init_mask = init_mask.convert('L')
-                    init_img = init_img.convert('RGB')
-                    image = image.convert('RGB')
-
-                    if use_RealESRGAN and RealESRGAN is not None:
-                        if RealESRGAN.model.name != realesrgan_model_name:
-                            try_loading_RealESRGAN(realesrgan_model_name)
-                        output, img_mode = RealESRGAN.enhance(np.array(init_img, dtype=np.uint8))
-                        init_img = Image.fromarray(output)
-                        init_img = init_img.convert('RGB')
-
-                        output, img_mode = RealESRGAN.enhance(np.array(init_mask, dtype=np.uint8))
-                        init_mask = Image.fromarray(output)
-                        init_mask = init_mask.convert('L')
-
-                    image = Image.composite(init_img, image, init_mask)
                 if not skip_save or (not use_GFPGAN or not use_RealESRGAN):
 
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
