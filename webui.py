@@ -787,7 +787,7 @@ def process_images(
                 # using variant_seed as sneaky toggle, 
                 # when not None or '' use the variant_seed
                 # otherwise use seeds
-                if variant_seed is not None and variant_seed is not '':
+                if variant_seed != None and variant_seed != '':
                     specified_variant_seed = seed_to_int(variant_seed)
                     torch.manual_seed(specified_variant_seed)
                     seeds = [specified_variant_seed]
