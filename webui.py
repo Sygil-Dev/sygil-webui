@@ -1349,7 +1349,7 @@ def split_weighted_subprompts(input_string, normalize=True):
         return parsed_prompts
     # this probably still doesn't handle negative weights very well
     weight_sum = sum(map(lambda x: x[1], parsed_prompts))
-    return [x for x in map(lambda x: (x[0], x[1] / weight_sum), parsed_prompts)]
+    return [(x[0], x[1] / weight_sum) for x in parsed_prompts]
 
 def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
     v0 = v0.detach().cpu().numpy()
