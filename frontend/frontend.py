@@ -284,7 +284,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                 img2img_btn_editor.click(*img2img_submit_params())
                 img2img_prompt.submit(*img2img_submit_params())
 
-                img2img_painterro_btn.click(None, [img2img_image_editor], [img2img_image_editor, img2img_image_mask], _js=js_painterro_launch())
+                img2img_painterro_btn.click(None, [img2img_image_editor], [img2img_image_editor, img2img_image_mask], _js=js_painterro_launch('img2img_editor'))
 
             if GFPGAN is not None:
                 gfpgan_defaults = {

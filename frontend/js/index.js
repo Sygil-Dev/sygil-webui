@@ -5,7 +5,7 @@ window.SD = (() => {
    */
   class PainterroClass {
     static isOpen = false;
-    static async init () {
+    static async init (toId) {
       const img = SD.x;
       const originalImage = Array.isArray(img) ? img[0] : img;
 
@@ -32,7 +32,13 @@ window.SD = (() => {
         },
         saveHandler: (image, done) => {
           const data = image.asDataURL();
+
+          // ensures stable performance even
+          // when the editor is in interactive mode
+          SD.clearImageInput(SD.el.get(`#${toId}`));
+
           resolveResult(data);
+
           done(true);
           paintClient.hide();
         },
@@ -50,6 +56,16 @@ window.SD = (() => {
     static fallback (image) { return [image, image]; }
     static load () {
       return new Promise((resolve, reject) => {
+        /* Ensure Painterro window is always on top */
+        const style = document.createElement('style');
+        style.setAttribute('type', 'text/css');
+        style.appendChild(document.createTextNode(`
+          .ptro-holder-wrapper {
+              z-index: 100;
+          }
+        `));
+        document.head.appendChild(style);
+
         const script = document.createElement('script');
         script.id = '__painterro-script';
         script.src = 'https://unpkg.com/painterro@1.2.78/build/painterro.min.js';
