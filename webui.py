@@ -894,9 +894,9 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 if prompt.startswith("@"):
                     grid = image_grid(output_images, batch_size, force_n_rows=frows, captions=new_prompt_matrix_parts)
                 else:
-                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2))
+                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(new_prompt_matrix_parts)-1)//2))
                     try:
-                        grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
+                        grid = draw_prompt_matrix(grid, width, height, new_prompt_matrix_parts)
                     except:
                         import traceback
                         print("Error creating prompt_matrix text:", file=sys.stderr)
