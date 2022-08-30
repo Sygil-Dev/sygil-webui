@@ -1,9 +1,8 @@
-import os
 from os import path
 
 def readTextFile(*args):
-    dir = os.path.dirname(__file__)
-    entry = os.path.join(dir, *args)
+    dir = path.dirname(__file__)
+    entry = path.join(dir, *args)
     with open(entry, "r", encoding="utf8") as f:
         data = f.read()
     return data
