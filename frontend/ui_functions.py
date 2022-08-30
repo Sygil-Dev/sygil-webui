@@ -64,9 +64,7 @@ help_text = """
     * If the mask appears distorted (the brush is weirdly shaped instead of round), switch back to Crop and then back again to Mask.
 
     ## Advanced Editor
-    * For now the button needs to be clicked twice the first time.
     * Once you have edited your image, you _need_ to click the save button for the next step to work.
-    * Clear the image from the crop editor (click the x)
     * Click "Get Image from Advanced Editor" to get the image you saved. If it doesn't work, try opening the editor and saving again.
 
     If it keeps not working, try switching modes again, switch tabs, clear the image or reload.

@@ -49,7 +49,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                     output_txt2img_copy_clipboard = gr.Button("Copy to clipboard").click(fn=None,
                                                                                                          inputs=output_txt2img_gallery,
                                                                                                          outputs=[],
-                                                                                                         _js=js_copy_selected_txt2img)
+                                                                                                         _js=js_copy_to_clipboard('txt2img_gallery_output'))
                                     output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                                     if RealESRGAN is not None:
                                         output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
@@ -246,24 +246,24 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     uifn.copy_img_to_input,
                     [output_txt2img_gallery],
                     [img2img_image_editor, img2img_image_mask, tabs],
-                    _js=js_return_selected_txt2img
+                    _js=js_move_image('txt2img_gallery_output', 'img2img_editor')
                 )
 
                 output_img2img_copy_to_input_btn.click(
                     uifn.copy_img_to_edit,
                     [output_img2img_gallery],
                     [img2img_image_editor, tabs, img2img_image_editor_mode],
-                    _js=js_return_selected_img2img
+                    _js=js_move_image('img2img_gallery_output', 'img2img_editor')
                 )
                 output_img2img_copy_to_mask_btn.click(
                     uifn.copy_img_to_mask,
                     [output_img2img_gallery],
                     [img2img_image_mask, tabs, img2img_image_editor_mode],
-                    _js=js_return_selected_img2img
+                    _js=js_move_image('img2img_gallery_output', 'img2img_editor')
                 )
 
                 output_img2img_copy_to_clipboard_btn.click(fn=None, inputs=output_img2img_gallery, outputs=[],
-                                                           _js=js_copy_selected_img2img)
+                                                           _js=js_copy_to_clipboard('img2img_gallery_output'))
 
                 img2img_btn_mask.click(
                     img2img,
@@ -285,30 +285,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                 img2img_btn_editor.click(*img2img_submit_params())
                 img2img_prompt.submit(*img2img_submit_params())
 
-                img2img_painterro_btn.click(None, [img2img_image_editor], None, _js="""(img) => {
-                try {
-                    Painterro({
-                        hiddenTools: ['arrow'],
-                        saveHandler: function (image, done) {
-                            localStorage.setItem('painterro-image', image.asDataURL());
-                            done(true);
-                        },
-                    }).show(Array.isArray(img) ? img[0] : img);
-                } catch(e) {
-                    const script = document.createElement('script');
-                    script.src = 'https://unpkg.com/painterro@1.2.78/build/painterro.min.js';
-                    document.head.appendChild(script);
-                    const style = document.createElement('style');
-                    style.appendChild(document.createTextNode('.ptro-holder-wrapper { z-index: 9999 !important; }'));
-                    document.head.appendChild(style);
-                }
-                return [];
-            }""")
+                img2img_painterro_btn.click(None, [img2img_image_editor], None, _js=js_painterro_launch())
 
-                img2img_copy_from_painterro_btn.click(None, None, [img2img_image_editor, img2img_image_mask], _js="""() => {
-                const image = localStorage.getItem('painterro-image')
-                return [image, image];
-            }""")
+                img2img_copy_from_painterro_btn.click(None, None, [img2img_image_editor, img2img_image_mask], _js=js_painterro_load_image("img2img_editor"))
 
             if GFPGAN is not None:
                 gfpgan_defaults = {
@@ -354,7 +333,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     uifn.copy_img_to_upscale_esrgan,
                     output_txt2img_gallery,
                     [realesrgan_source, tabs],
-                    _js=js_return_selected_txt2img)
+                    _js=js_move_image('txt2img_gallery_output', 'img2img_editor'))
 
         gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
@@ -363,4 +342,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
         If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
     </div>
     """)
+        # Hack: Detect the load event on the frontend
+        # Won't be needed in the next version of gradio
+        # See the relevant PR: https://github.com/gradio-app/gradio/pull/2108
+        load_detector = gr.Number(value=0, label="Load Detector", visible=False)
+        load_detector.change(None, None, None, _js=js(opt))
+        demo.load(lambda x: 42, inputs=load_detector, outputs=load_detector)
     return demo
