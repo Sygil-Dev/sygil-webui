@@ -399,13 +399,10 @@ def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
 
     for i, img in enumerate(imgs):
         grid.paste(img, box=(i % cols * w, i // cols * h))
-        try:
-            if captions:
-                d = ImageDraw.Draw( grid )
-                size = d.textbbox( (0,0), captions[i], font=fnt, stroke_width=2, align="center" )
-                d.multiline_text((i % cols * w + w/2, i // cols * h + h - size[3]), captions[i], font=fnt, fill=(255,255,255), stroke_width=2, stroke_fill=(0,0,0), anchor="mm", align="center")
-        except:
-            pass
+        if captions:
+            d = ImageDraw.Draw( grid )
+            size = d.textbbox( (0,0), captions[i], font=fnt, stroke_width=2, align="center" )
+            d.multiline_text((i % cols * w + w/2, i // cols * h + h - size[3]), captions[i], font=fnt, fill=(255,255,255), stroke_width=2, stroke_fill=(0,0,0), anchor="mm", align="center")
 
     return grid
 
@@ -727,11 +724,11 @@ def process_images(
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
     output_images = []
-    new_prompt_matrix_parts = []
     stats = []
     with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
+
 
         # if variant_amount > 0.0 create noise from base seed
         base_x = None
@@ -745,11 +742,9 @@ def process_images(
             for si in range(len(all_seeds)):
                 all_seeds[si] += target_seed_randomizer
 
-
         for n in range(n_iter):
             print(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
-            parts = prompt_matrix_parts[n * batch_size:(n + 1) * batch_size]
             seeds = all_seeds[n * batch_size:(n + 1) * batch_size]
 
             if opt.optimized:
@@ -842,7 +837,6 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     output_images.append(gfpgan_image) #287
-                    new_prompt_matrix_parts.append(parts[i]+"\ngfpgan")
 
                 if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
                     skip_save = True # #287 >_>
@@ -860,7 +854,6 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     output_images.append(esrgan_image) #287
-                    new_prompt_matrix_parts.append(parts[i]+"\nesrgan4x")
 
                 if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
                     skip_save = True # #287 >_>
@@ -880,7 +873,6 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     output_images.append(gfpgan_esrgan_image) #287
-                    new_prompt_matrix_parts.append(parts[i]+"\ngfpgan-esrgan4x")
 
                 
                 if init_mask:
@@ -902,12 +894,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         init_mask = init_mask.convert('L')
 
                     image = Image.composite(init_img, image, init_mask)
-                if not skip_save or (use_GFPGAN or use_RealESRGAN):
+                if not skip_save or (not use_GFPGAN or not use_RealESRGAN):
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
                     output_images.append(image)
-                    new_prompt_matrix_parts.append(parts[i])
 
                 if opt.optimized:
                     mem = torch.cuda.memory_allocated()/1e6
@@ -918,11 +909,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             if prompt_matrix:
                 if prompt.startswith("@"):
-                    grid = image_grid(output_images, batch_size, force_n_rows=frows, captions=new_prompt_matrix_parts)
+                    grid = image_grid(output_images, batch_size, force_n_rows=frows, captions=prompt_matrix_parts)
                 else:
-                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(new_prompt_matrix_parts)-1)//2))
+                    grid = image_grid(output_images, batch_size, force_n_rows=1 << ((len(prompt_matrix_parts)-1)//2))
                     try:
-                        grid = draw_prompt_matrix(grid, width, height, new_prompt_matrix_parts)
+                        grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
                     except:
                         import traceback
                         print("Error creating prompt_matrix text:", file=sys.stderr)
