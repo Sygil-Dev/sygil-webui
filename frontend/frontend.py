@@ -280,7 +280,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                      img2img_embeddings],
                     [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats])
                 img2img_btn_editor.click(*img2img_submit_params())
-                img2img_prompt.submit(*img2img_submit_params())
+
+                # GENERATE ON ENTER
+                img2img_prompt.submit(None, None, None,
+                                      _js=js_img2img_submit("prompt_row"))
 
                 img2img_painterro_btn.click(None, [img2img_image_editor], [img2img_image_editor, img2img_image_mask], _js=js_painterro_launch('img2img_editor'))
 
