@@ -80,7 +80,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                                    value=txt2img_defaults['submit_on_enter'],
                                                                    interactive=True)
                                 txt2img_submit_on_enter.change(
-                                    lambda x: gr.update(max_lines=1 if x == 'Single' else 25), txt2img_submit_on_enter,
+                                    lambda x: gr.update(max_lines=1 if x == 'Yes' else 25), txt2img_submit_on_enter,
                                     txt2img_prompt)
                             with gr.TabItem('Advanced'):
                                 txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles,
