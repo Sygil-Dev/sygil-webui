@@ -12,10 +12,9 @@ hlky/stable-diffusion:
   - source: .gitignore/.idea/.gitignore
     dest: .gitignore/.idea/.gitignore
   - source: frontend/__init__.py
-    dest: frontend/__init__.py
   - source: frontend/css_and_js.py
-    dest: frontend/css_and_js.py
   - source: frontend/frontend.py
-    dest: frontend/frontend.py
   - source: frontend/ui_functions.py
-    dest: frontend/ui_functions.py
+  - source: frontend/css/no_progress_bar.css
+  - source: frontend/css/styles.css
+  - source: frontend/js/index.js
