@@ -56,11 +56,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                         output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
 
                             with gr.TabItem("Output Info", id="text2img_output_info_tab"):
-                                output_txt2img_params = gr.Textbox(label="Generation parameters", interactive=False)
+                                output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                                 with gr.Row():
                                     output_txt2img_copy_params = gr.Button("Copy full parameters").click(
                                         inputs=output_txt2img_params, outputs=[],
-                                        _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                                        _js=js_copy_txt2img_output, fn=None, show_progress=False)
                                     output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                     output_txt2img_copy_seed = gr.Button("Copy only seed").click(
                                         inputs=output_txt2img_seed, outputs=[],
@@ -117,6 +117,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                 txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
                 txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
 
+                live_prompt_params = [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed, txt2img_batch_count, txt2img_cfg, txt2img_sampling]
+                txt2img_prompt.change(
+                    fn=uifn.check_input_for_params,
+                    inputs=live_prompt_params,
+                    outputs=live_prompt_params
+                )
+
             with gr.TabItem("Stable Diffusion Image-to-Image Unified", id="img2img_tab"):
                 with gr.Row(elem_id="prompt_row"):
                     img2img_prompt = gr.Textbox(label="Prompt",
@@ -126,6 +133,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                 max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25,
                                                 value=img2img_defaults['prompt'],
                                                 show_label=False).style()
+
                     img2img_btn_mask = gr.Button("Generate", variant="primary", visible=False,
                                                  elem_id="img2img_mask_btn")
                     img2img_btn_editor = gr.Button("Generate", variant="primary", elem_id="img2img_edit_btn")
@@ -140,14 +148,14 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                       elem_id="img2img_mask")
 
                         with gr.Tabs():
-                            with gr.TabItem("Editor Options"):                                
+                            with gr.TabItem("Editor Options"):
                                 with gr.Column():
                                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
                                                              value="Crop", elem_id='edit_mode_select')
                                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
                                                 label="Mask Mode", type="index",
                                                 value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)
-                        
+
                                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
                                                                label="How much blurry should the mask be? (to avoid hard edges)",
                                                                value=3, visible=False)
@@ -156,7 +164,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                 choices=["Just resize", "Crop and resize", "Resize and fill"],
                                                 type="index",
                                                 value=img2img_resize_modes[img2img_defaults['resize_mode']])
-                                
+
                                 img2img_painterro_btn = gr.Button("Advanced Editor")
                             with gr.TabItem("Hints"):
                                 img2img_help = gr.Markdown(visible=False, value=uifn.help_text)
@@ -192,7 +200,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                   value=img2img_defaults["width"])
                         img2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height",
                                                    value=img2img_defaults["height"])
-                        
+
                         img2img_cfg = gr.Slider(minimum=-40.0, maximum=30.0, step=0.5,
                                                 label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)',
                                                 value=img2img_defaults['cfg_scale'], elem_id='cfg_slider')
@@ -283,6 +291,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                      img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                      img2img_embeddings],
                     [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats])
+
+
                 img2img_btn_editor.click(*img2img_submit_params())
 
                 # GENERATE ON ENTER

@@ -35,3 +35,6 @@ def js_painterro_launch(to_id):
 
 def js_img2img_submit(prompt_row_id):
     return w(f"clickFirstVisibleButton('{prompt_row_id}')")
+
+# TODO : @altryne fix this to the new JS format
+js_copy_txt2img_output = "(x) => {navigator.clipboard.writeText(document.querySelector('gradio-app').shadowRoot.querySelector('#highlight .textfield').textContent.replace(/\s+/g,' ').trim())}"
