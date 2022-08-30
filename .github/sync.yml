@@ -19,3 +19,9 @@ hlky/stable-diffusion:
     dest: frontend/frontend.py
   - source: frontend/ui_functions.py
     dest: frontend/ui_functions.py
+  - source: frontend/css/no_progress_bar.css
+    dest: frontend/css/no_progress_bar.css
+  - source: frontend/css/styles.css
+    dest: frontend/css/styles.css
+  - source: frontend/js/index.js
+    dest: frontend/js/index.js
