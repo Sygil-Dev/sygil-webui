@@ -867,7 +867,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         init_mask = init_mask.convert('L')
 
                     image = Image.composite(init_img, image, init_mask)
-                if not skip_save or (use_GFPGAN or use_RealESRGAN):
+                if not skip_save or (not use_GFPGAN or not use_RealESRGAN):
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
