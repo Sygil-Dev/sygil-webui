@@ -901,11 +901,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         if simple_templating:
                             grid_captions.append( captions[i] )
 
-                if opt.optimized:
-                    mem = torch.cuda.memory_allocated()/1e6
-                    modelFS.to("cpu")
-                    while(torch.cuda.memory_allocated()/1e6 >= mem):
-                        time.sleep(1)
+            if opt.optimized:
+                mem = torch.cuda.memory_allocated()/1e6
+                modelFS.to("cpu")
+                while(torch.cuda.memory_allocated()/1e6 >= mem):
+                    time.sleep(1)
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             if prompt_matrix:
