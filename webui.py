@@ -1419,12 +1419,11 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
     global LDSR
 
     outpath = opt.outdir_imglab or opt.outdir or "outputs/imglab-samples"
+    
     def processGFPGAN(image,strength):
-        GFPGAN = load_GFPGAN()
         image = image.convert("RGB")
         cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(image, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
         result = Image.fromarray(restored_img)
-
         if strength < 1.0:
             result = Image.blend(image, result, strength)
 
@@ -1443,16 +1442,10 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         if 'x4' in imgproc_realesrgan_model_name:
             #downscale to 1/2 size
             result = result.resize((result.width//2, result.height//2), LANCZOS)
-        
-        #making sure SD is loaded
-        global model
-        if model == None:
-            model = load_SD_model()
-        
+            
         
 
-        #make sense of parameters
-        
+        #refactor params
         n_iter = 1
         batch_size = 1
         seed = seed_to_int(imgproc_seed)
@@ -1643,6 +1636,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     jpg_sample=False,
                     imgProcessorTask=True
                 )
+            #reivew this again later
             #if initial_seed is None:
             #    initial_seed = seed
             #seed = seed + 1
@@ -1662,23 +1656,9 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         return combined_image
     def processLDSR(image):
         #making sure SD is not loaded to avoid memory issues
-        global model
-        if model != None:
-            del model
-            
-            torch.cuda.empty_cache()
-        LDSR = load_LDSR()
         result = LDSR.superResolution(image)
-        del LDSR
         
-        torch.cuda.empty_cache()
-        #reload SD
-        model = load_SD_model()
-
         return result   
-    def processGoLatent(image):
-        result = processLDSR(processGoBig(image))
-        return result
        
     images=[]
     if image_batch != None:
@@ -1698,44 +1678,108 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             images.append(image)
 
     if len(images) > 0:
+        print("Processing images...")
         for image in images:
             if 0 in imgproc_toggles:
+                
                 image = processGFPGAN(image,imgproc_gfpgan_strength)
+                outpathDir = os.path.join(outpath,'GFPGAN')
+                os.makedirs(outpathDir, exist_ok=True)
+                batchNumber = get_next_sequence_number(outpathDir)
+                outFilename = str(batchNumber)+'-'+'result'
+                
+                save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
             if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
-                    unloadModel([GFPGAN,model,RealESRGAN,LDSR],['GFPGAN','Stable Diffusion','RealESRGAN','LDSR'])
+                    try:
+                        del GFPGAN
+                        del model
+                        del RealESRGAN
+                        del LDSR
+                    except:
+                        pass
+                    torch_gc()
                     image = processRealESRGAN(image)
-                    image.save(os.path.join(outpath, f"{'RealESRGAN4x'}.png"),quality=100, optimize=False, progressive=True)
+                    outpathDir = os.path.join(outpath,'RealESRGAN')
+                    os.makedirs(outpathDir, exist_ok=True)
+                    batchNumber = get_next_sequence_number(outpathDir)
+                    outFilename = str(batchNumber)+'-'+'result'
+                    print("Reloading default models...")
+                    GFPGAN = load_GFPGAN()
+                    model = load_SD_model()[0]
+                    LDSR = load_LDSR()
+                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
                 elif imgproc_upscale_toggles == 1:
-                    unloadModel([GFPGAN,RealESRGAN,LDSR],['GFPGAN','RealESRGAN','LDSR'])
+                    try:
+                        del GFPGAN
+                        del RealESRGAN
+                        del LDSR
+                    except:
+                        pass
+                    torch_gc()
                     image = processGoBig(image)
-                    image.save(os.path.join(outpath, f"{'GoBig'}.png"),quality=100, optimize=False, progressive=True)         
-                elif imgproc_upscale_toggles == 2:
-                    unloadModel([model,RealESRGAN,GFPGAN],['Stable Diffusion','RealESRGAN','GFPGAN'])
-                    image = processLDSR(image)
-                    image.save(os.path.join(outpath, f"{'LDSR'}.png"),quality=100, optimize=False, progressive=True)
-                elif imgproc_upscale_toggles == 3:
-                    unloadModel([GFPGAN],['GFPGAN'])
-                    image = processGoLatent(image)
-                    image.save(os.path.join(outpath, f"{'GoLatent'}.png"),quality=100, optimize=False, progressive=True)
-    return images[0]
+                    outpathDir = os.path.join(outpath,'GoBig')
+                    os.makedirs(outpathDir, exist_ok=True)
+                    batchNumber = get_next_sequence_number(outpathDir)
+                    outFilename = str(batchNumber)+'-'+'result'
+                    print("Reloading default models...")
+                    GFPGAN = load_GFPGAN()
+                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    LDSR = load_LDSR()
                     
-def unloadModel(models,model_name=None):
-    #if model is array of models, unload all models
-    if type(models) == list:
-        for model in models:
-            #global model
-            del model
-    else:
-        del model
-    torch.cuda.empty_cache()
-    if model_name != None:
-        if type(model_name) == list:
-            for m in model_name:
-                print(f"Unloaded {m}")
-        else:
-            print(f"Unloaded {model_name}")
-   
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)       
+                elif imgproc_upscale_toggles == 2:
+                    try:
+                        del model
+                        del RealESRGAN
+                        del GFPGAN
+                    except:
+                        pass
+                    torch_gc()
+                    image = processLDSR(image)
+                    outpathDir = os.path.join(outpath,'LDSR')
+                    os.makedirs(outpathDir, exist_ok=True)
+                    batchNumber = get_next_sequence_number(outpathDir)
+                    outFilename = str(batchNumber)+'-'+'result'
+                    print("Reloading default models...")
+                    model = load_SD_model()[0]
+                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    GFPGAN = load_GFPGAN()
+                    torch_gc()
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+                elif imgproc_upscale_toggles == 3:
+                    try:
+                        del GFPGAN
+                        del LDSR
+                    except:
+                        pass
+                    torch_gc()
+                    image = processGoBig(image)
+                    try:
+                        del model
+                        del RealESRGAN
+                    except:
+                        pass
+                    torch_gc()
+                    LDSR = load_LDSR()
+                    image = processLDSR(image)
+                    del LDSR
+                    torch_gc()
+                    outpathDir = os.path.join(outpath,'GoLatent')
+                    os.makedirs(outpathDir, exist_ok=True)
+                    batchNumber = get_next_sequence_number(outpathDir)
+                    outFilename = str(batchNumber)+'-'+'result'
+                    print("Reloading default models...")
+                    GFPGAN = load_GFPGAN()
+                    model = load_SD_model()[0]
+                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    torch_gc()
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+    
+    print("Done.")
+    return images[0]
+
 def run_GFPGAN(image, strength):
     image = image.convert("RGB")
 
@@ -1780,11 +1824,14 @@ txt2img_toggles = [
     'Write sample info files',
     'jpg samples',
 ]
+
+"""
+# removed for now becuase of Image Lab implementation
 if GFPGAN is not None:
     txt2img_toggles.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
     txt2img_toggles.append('Upscale images using RealESRGAN')
-
+"""
 txt2img_defaults = {
     'prompt': '',
     'ddim_steps': 50,
@@ -1838,11 +1885,13 @@ img2img_toggles = [
     'Write sample info files',
     'jpg samples',
 ]
+"""
+# removed for now becuase of Image Lab implementation
 if GFPGAN is not None:
     img2img_toggles.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
     img2img_toggles.append('Upscale images using RealESRGAN')
-
+"""
 img2img_mask_modes = [
     "Keep masked area",
     "Regenerate only masked area",

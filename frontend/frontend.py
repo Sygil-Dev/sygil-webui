@@ -53,7 +53,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                                                          _js=js_copy_to_clipboard('txt2img_gallery_output'))
                                     output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                                     if RealESRGAN is not None:
-                                        output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
+                                        output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN",visible=False)
 
                             with gr.TabItem("Output Info", id="text2img_output_info_tab"):
                                 output_txt2img_params = gr.Textbox(label="Generation parameters", interactive=False)
@@ -90,7 +90,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                             choices=['RealESRGAN_x4plus',
                                                                                      'RealESRGAN_x4plus_anime_6B'],
                                                                             value='RealESRGAN_x4plus',
-                                                                            visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
+                                                                            visible=False)#RealESRGAN is not None # invisible until removed)  # TODO: Feels like I shouldnt slot it in here.
                                 txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA",
                                                              value=txt2img_defaults['ddim_eta'], visible=False)
                                 txt2img_variant_amount = gr.Slider(minimum=0.0, maximum=1.0, label='Variation Amount',
@@ -318,9 +318,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
             <p><b>GoBIG</b></p>
             <p>A 2X upscaler that uses RealESRGAN to upscale the image and then slice it into small parts, each part gets diffused further by SD to create more details, great for adding and increasing details but will change the composition, might also fix issues like eyes etc, use the settings like img2img etc</p>
             <p><b>Latent Diffusion Super Resolution</b></p>
-            <p>A 4x upscaler with high VRAM usage that uses a Latent Diffusion model to upscale the image, this will accentuate the details but won't change the composition, might introduce sharpening, great for textures or compositions with plenty of details</p>
+            <p>A 4X upscaler with high VRAM usage that uses a Latent Diffusion model to upscale the image, this will accentuate the details but won't change the composition, might introduce sharpening, great for textures or compositions with plenty of details, is slower.</p>
             <p><b>GoLatent</b></p>
-            <p>A 8x upscaler with high VRAM usage, uses GoBig to add details and then uses a Latent Diffusion model to upscale the image, this will result in less artifacting/sharpeninng, use the settings to feed GoBig settings that will contribute to the result, this mode is considerbly slower</p>
+            <p>A 8X upscaler with high VRAM usage, uses GoBig to add details and then uses a Latent Diffusion model to upscale the image, this will result in less artifacting/sharpeninng, use the settings to feed GoBig settings that will contribute to the result, this mode is considerbly slower</p>
         </div>
         """)
                         with gr.Column():
