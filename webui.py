@@ -268,8 +268,9 @@ def create_random_tensors(shape, seeds):
     return x
 
 def torch_gc():
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
 def load_GFPGAN():
     model_name = 'GFPGANv1.3'
@@ -757,7 +758,7 @@ def process_images(
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
+    with torch.no_grad(), precision_scope("cuda") if torch.cuda.is_available() else precision_scope("cpu"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
 
