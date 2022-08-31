@@ -1120,9 +1120,9 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
         init_mask = init_info["mask"]
-        init_mask = init_mask.convert("RGB")
         init_mask = resize_image(resize_mode, init_mask, width, height)
         keep_mask = mask_mode == 0
+        init_mask = init_mask.convert("RGB")
         init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
     else:
         init_img = init_info.convert("RGB")
@@ -1135,6 +1135,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
     def init():
         image = init_img.convert("RGB")
         image = resize_image(resize_mode, image, width, height)
+        image = init_img.convert("RGB")
         image = np.array(image).astype(np.float32) / 255.0
         image = image[None].transpose(0, 3, 1, 2)
         image = torch.from_numpy(image)
