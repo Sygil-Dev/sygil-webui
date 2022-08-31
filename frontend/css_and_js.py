@@ -30,4 +30,4 @@ def js(opt):
 # _js=call_JS("myJsMethod", arg1="string", arg2=100, arg3=[])
 def call_JS(sd_method, **kwargs):
     param_str = json.dumps(kwargs)
-    return f"async (x) => {{ return await SD.{sd_method}({{ ...{param_str}, x }}) ?? []; }}"
+    return f"async (x) => {{ return await SD.{sd_method}({{ x, ...{param_str} }}) ?? []; }}"
