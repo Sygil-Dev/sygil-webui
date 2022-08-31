@@ -121,7 +121,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                 txt2img_prompt.change(
                     fn=uifn.check_input_for_params,
                     inputs=live_prompt_params,
-                    outputs=live_prompt_params
+                    outputs=live_prompt_params,
+                    show_progress=False
                 )
 
             with gr.TabItem("Stable Diffusion Image-to-Image Unified", id="img2img_tab"):
