@@ -153,7 +153,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                                value=3, visible=False)
 
                                     img2img_resize = gr.Radio(label="Resize mode",
-                                                choices=["Just resize"],
+                                                choices=["Just resize", "Crop and resize", "Resize and fill"],
                                                 type="index",
                                                 value=img2img_resize_modes[img2img_defaults['resize_mode']])
                                 
@@ -311,7 +311,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                         value=gfpgan_defaults['strength'])
                             gfpgan_btn = gr.Button("Generate", variant="primary")
                         with gr.Column():
-                            gfpgan_output = gr.Image(label="Output")
+                            gfpgan_output = gr.Image(label="Output", elem_id='gan_image')
                     gfpgan_btn.click(
                         run_GFPGAN,
                         [gfpgan_source, gfpgan_strength],
@@ -328,7 +328,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                                 value='RealESRGAN_x4plus')
                             realesrgan_btn = gr.Button("Generate")
                         with gr.Column():
-                            realesrgan_output = gr.Image(label="Output")
+                            realesrgan_output = gr.Image(label="Output", elem_id='gan_image')
                     realesrgan_btn.click(
                         run_RealESRGAN,
                         [realesrgan_source, realesrgan_model_name],
