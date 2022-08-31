@@ -129,11 +129,7 @@ window.SD = (() => {
       const blob = await (await fetch(data.replace('data:;','data:image/png;'))).blob();
       const item = new ClipboardItem({'image/png': blob});
 
-      try {
-        navigator.clipboard.write([item]);
-      } catch (e) {
-        SDClass.error(e);
-      }
+      await this.copyToClipboard([item]);
     }
     clickFirstVisibleButton({ rowId }) {
       const generateButtons = this.el.get(`#${rowId}`).querySelectorAll('.gr-button-primary');
@@ -151,9 +147,17 @@ window.SD = (() => {
         }
       }
     }
-    textToClipboard ({ text }) {
+    async gradioInputToClipboard ({ x }) { return this.copyToClipboard(x); }
+    async copyToClipboard (value) {
+      if (!value || typeof value === 'boolean') return;
       try {
-        navigator.clipboard.writeText(text);
+        if (Array.isArray(value) &&
+            value.length &&
+            value[0] instanceof ClipboardItem) {
+          await navigator.clipboard.write(value);
+        } else {
+          await navigator.clipboard.writeText(value);
+        }
       } catch (e) {
         SDClass.error(e);
       }

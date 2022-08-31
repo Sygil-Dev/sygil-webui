@@ -1,4 +1,5 @@
 from os import path
+import json
 
 
 def readTextFile(*args):
@@ -26,9 +27,7 @@ def js(opt):
 # Supplies the js function with a params object
 # That includes all the passed arguments and input from Gradio: x
 # Example call in Gradio component's event handler (pass the result to _js arg):
-# _js=call_JS("myJsMethod", arg1="'string'", arg2="100", arg3="[]")
+# _js=call_JS("myJsMethod", arg1="string", arg2=100, arg3=[])
 def call_JS(sd_method, **kwargs):
-    if "x" not in kwargs.keys():
-        kwargs["x"] = "x"
-    params = "{" + ",".join(f"{k}:{v}" for k, v in kwargs.items()) + "}"
-    return f"async (x) => {{ return await SD.{sd_method}({params}) ?? []; }}"
+    param_str = json.dumps(kwargs)
+    return f"async (x) => {{ return await SD.{sd_method}({{ ...{param_str}, x }}) ?? []; }}"

@@ -51,7 +51,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                                              inputs=output_txt2img_gallery,
                                                                              outputs=[],
                                                                              _js=call_JS("copyImageFromGalleryToClipboard",
-                                                                                         fromId="'txt2img_gallery_output'")
+                                                                                         fromId="txt2img_gallery_output")
                                                                              )
                                     output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                                     if RealESRGAN is not None:
@@ -63,12 +63,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                     output_txt2img_copy_params = gr.Button("Copy full parameters").click(
                                         inputs=output_txt2img_params, outputs=[],
                                         fn=None, show_progress=False,
-                                        _js=call_JS("textToClipboard", text="x")
+                                        _js=call_JS("gradioInputToClipboard")
                                     )
                                     output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                     output_txt2img_copy_seed = gr.Button("Copy only seed").click(
                                         inputs=output_txt2img_seed, outputs=[],
-                                        _js=call_JS("textToClipboard", text="x"), fn=None, show_progress=False)
+                                        _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                 output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
 
@@ -183,11 +183,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                 with gr.Row():
                                     output_img2img_copy_params = gr.Button("Copy full parameters").click(
                                         inputs=output_img2img_params, outputs=[],
-                                        _js=call_JS("textToClipboard", text="x"), fn=None, show_progress=False)
+                                        _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                     output_img2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                     output_img2img_copy_seed = gr.Button("Copy only seed").click(
                                         inputs=output_img2img_seed, outputs=[],
-                                        _js=call_JS("textToClipboard", text="x"), fn=None, show_progress=False)
+                                        _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                 output_img2img_stats = gr.HTML(label='Stats')
                 gr.Markdown('# img2img settings')
 
@@ -253,8 +253,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     [output_txt2img_gallery],
                     [img2img_image_editor, img2img_image_mask, tabs],
                     _js=call_JS("moveImageFromGallery",
-                                fromId="'txt2img_gallery_output'",
-                                toId="'img2img_editor'")
+                                fromId="txt2img_gallery_output",
+                                toId="img2img_editor")
                 )
 
                 output_img2img_copy_to_input_btn.click(
@@ -262,21 +262,21 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     [output_img2img_gallery],
                     [img2img_image_editor, tabs, img2img_image_editor_mode],
                     _js=call_JS("moveImageFromGallery",
-                                fromId="'img2img_gallery_output'",
-                                toId="'img2img_editor'")
+                                fromId="img2img_gallery_output",
+                                toId="img2img_editor")
                 )
                 output_img2img_copy_to_mask_btn.click(
                     uifn.copy_img_to_mask,
                     [output_img2img_gallery],
                     [img2img_image_mask, tabs, img2img_image_editor_mode],
                     _js=call_JS("moveImageFromGallery",
-                                fromId="'img2img_gallery_output'",
-                                toId="'img2img_editor'")
+                                fromId="img2img_gallery_output",
+                                toId="img2img_editor")
                 )
 
                 output_img2img_copy_to_clipboard_btn.click(fn=None, inputs=output_img2img_gallery, outputs=[],
                                                            _js=call_JS("copyImageFromGalleryToClipboard",
-                                                                       fromId="'img2img_gallery_output'")
+                                                                       fromId="img2img_gallery_output")
                                                            )
 
                 img2img_btn_mask.click(
@@ -301,12 +301,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                 # GENERATE ON ENTER
                 img2img_prompt.submit(None, None, None,
                                       _js=call_JS("clickFirstVisibleButton",
-                                                  rowId="'prompt_row'"))
+                                                  rowId="prompt_row"))
 
                 img2img_painterro_btn.click(None,
                                             [img2img_image_editor],
                                             [img2img_image_editor, img2img_image_mask],
-                                            _js=call_JS("Painterro.init", toId="'img2img_editor'")
+                                            _js=call_JS("Painterro.init", toId="img2img_editor")
                                             )
 
                 img2img_width.change(fn=uifn.update_dimensions_info, inputs=[img2img_width, img2img_height], outputs=img2img_dimensions_info_text_box)
@@ -357,8 +357,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                     output_txt2img_gallery,
                     [realesrgan_source, tabs],
                     _js=call_JS("moveImageFromGallery",
-                                fromId="'txt2img_gallery_output'",
-                                toId="'img2img_editor'")
+                                fromId="txt2img_gallery_output",
+                                toId="img2img_editor")
                 )
 
         gr.HTML("""
