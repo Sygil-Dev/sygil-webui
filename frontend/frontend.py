@@ -153,7 +153,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                                value=3, visible=False)
 
                                     img2img_resize = gr.Radio(label="Resize mode",
-                                                choices=["Just resize", "Crop and resize", "Resize and fill"],
+                                                choices=["Just resize"],
                                                 type="index",
                                                 value=img2img_resize_modes[img2img_defaults['resize_mode']])
                                 

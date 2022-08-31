@@ -100,7 +100,9 @@ txt2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
-    'submit_on_enter': 'Yes'
+    'submit_on_enter': 'Yes',
+    'variant_amount': 0,
+    'variant_seed': ''
 }
 
 if 'txt2img' in user_defaults:
