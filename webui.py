@@ -139,7 +139,10 @@ def load_model_from_config(config, ckpt, verbose=False):
         print("unexpected keys:")
         print(u)
 
-    model.cuda()
+    if device.type == "cpu":
+        model.cpu()
+    else:
+        model.cuda()
     model.eval()
     return model
 
@@ -357,7 +360,10 @@ if opt.optimized:
 
     model = instantiate_from_config(config.modelUNet)
     _, _ = model.load_state_dict(sd, strict=False)
-    model.cuda()
+    if device.type == "cpu":
+        model.cpu()
+    else:
+        model.cuda()
     model.eval()
     model.turbo = opt.optimized_turbo
 
