@@ -25,6 +25,8 @@ def js(opt):
 # Wrap the typical SD method call into async closure for ease of use
 # Supplies the js function with a params object
 # That includes all the passed arguments and input from Gradio: x
+# Example call in Gradio component's event handler (pass the result to _js arg):
+# _js=call_JS("myJsMethod", arg1="'string'", arg2="100", arg3="[]")
 def call_JS(sd_method, **kwargs):
     if "x" not in kwargs.keys():
         kwargs["x"] = "x"
