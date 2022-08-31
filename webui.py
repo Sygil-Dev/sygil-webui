@@ -1346,8 +1346,11 @@ def split_weighted_subprompts(input_string, normalize=True):
     parsed_prompts = [(match.group("prompt"), float(match.group("weight") or 1)) for match in re.finditer(prompt_parser, input_string)]
     if not normalize:
         return parsed_prompts
-    # this probably still doesn't handle negative weights very well
     weight_sum = sum(map(lambda x: x[1], parsed_prompts))
+    if weight_sum == 0:
+        print("Warning: Subprompt weights add up to zero. Discarding and using even weights instead.")
+        equal_weight = 1 / len(parsed_prompts)
+        return [(x[0], equal_weight) for x in parsed_prompts]
     return [(x[0], x[1] / weight_sum) for x in parsed_prompts]
 
 def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
