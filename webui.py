@@ -1853,13 +1853,11 @@ txt2img_toggles = [
     'jpg samples',
 ]
 
-"""
-# removed for now becuase of Image Lab implementation
 if GFPGAN is not None:
     txt2img_toggles.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
     txt2img_toggles.append('Upscale images using RealESRGAN')
-"""
+
 txt2img_defaults = {
     'prompt': '',
     'ddim_steps': 50,
