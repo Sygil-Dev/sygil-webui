@@ -1581,14 +1581,25 @@ class ServerLauncher(threading.Thread):
         asyncio.set_event_loop(loop)
         gradio_params = {
             'show_error': True, 
-            'server_name': '0.0.0.0', 
+            'server_name': '0.0.0.0',
+            'server_port': 7860, 
             'share': opt.share
         }
         if not opt.share:
             demo.queue(concurrency_count=1)
         if opt.share and opt.share_password:
-            gradio_params['auth'] = ('webui', opt.share_password)    
-        self.demo.launch(**gradio_params)
+            gradio_params['auth'] = ('webui', opt.share_password)   
+        
+        # Check to see if Port 7860 is open 
+        port_status = 1
+        while port_status != 0:
+            try:
+                self.demo.launch(**gradio_params)
+            except (OSError) as e:
+                print ('Error: Port 7860 is not open yet. Please wait...')
+                time.sleep(10)
+            else:
+                port_status = 0
 
     def stop(self):
         self.demo.close() # this tends to hang
