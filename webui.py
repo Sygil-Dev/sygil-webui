@@ -1412,11 +1412,8 @@ def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
     return v2
 
 
+
 def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height, imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength):
-    global model
-    global RealESRGAN
-    global GFPGAN
-    global LDSR
 
     outpath = opt.outdir_imglab or opt.outdir or "outputs/imglab-samples"
     output = []
@@ -1661,9 +1658,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         torch.cuda.empty_cache()
         return combined_image
     def processLDSR(image):
-        #making sure SD is not loaded to avoid memory issues
         result = LDSR.superResolution(image)
-        
         return result   
        
     if image_batch != None:
@@ -1686,136 +1681,108 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         print("Processing images...")
         for image in images:
             if 0 in imgproc_toggles:
-                
+                ModelLoader(['model','RealESGAN','LDSR'],False,True) # Unload unused models
+                ModelLoader(['GFPGAN'],True,False) # Load used models
                 image = processGFPGAN(image,imgproc_gfpgan_strength)
                 outpathDir = os.path.join(outpath,'GFPGAN')
                 os.makedirs(outpathDir, exist_ok=True)
                 batchNumber = get_next_sequence_number(outpathDir)
                 outFilename = str(batchNumber)+'-'+'result'
-    
+                
                 if 1 not in imgproc_toggles:
                     output.append(image)
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
             
             if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
-                    try:
-                        del GFPGAN
-                        del model
-                        del RealESRGAN
-                        del LDSR
-                    except:
-                        pass
-                    torch_gc()
+                    
+                    ModelLoader(['model','GFPGAN','LDSR'],False,True) # Unload unused models
+                    ModelLoader(['RealESGAN'],True,False) # Load used models                    
                     image = processRealESRGAN(image)
                     outpathDir = os.path.join(outpath,'RealESRGAN')
                     os.makedirs(outpathDir, exist_ok=True)
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
-                    print("Reloading default models...")
-                    GFPGAN = load_GFPGAN()
-                    model = load_SD_model()[0]
-                    LDSR = load_LDSR()
-                    
-                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
                     output.append(image)
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+                
                 elif imgproc_upscale_toggles == 1:
-                    try:
-                        del GFPGAN
-                        del RealESRGAN
-                        del LDSR
-                    except:
-                        pass
-                    torch_gc()
-                    #make sure model is loaded
-                    try:
-                        #if it's not loaded, this will fail, triggering the load
-                        if model is None:
-                            model = load_SD_model()
-                    except:
-                        model = load_SD_model()
+
+                    ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
+                    ModelLoader(['RealESGAN','model'],True,False) # Load used models
                     image = processGoBig(image)
                     outpathDir = os.path.join(outpath,'GoBig')
                     os.makedirs(outpathDir, exist_ok=True)
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
-                    print("Reloading default models...")
-                    GFPGAN = load_GFPGAN()
-                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
-                    LDSR = load_LDSR()
                     output.append(image)
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)       
+                
                 elif imgproc_upscale_toggles == 2:
-                    try:
-                        del model
-                        del RealESRGAN
-                        del GFPGAN
-                    except:
-                        pass
-                    torch_gc()
-                    try:
-                        #if it's not loaded, this will fail, triggering the load
-                        if LDSR is None:
-                            LDSR = load_LDSR()
-                    except:
-                        LDSR = load_LDSR()
+
+                    ModelLoader(['model','GFPGAN','RealESGAN'],False,True) # Unload unused models
+                    ModelLoader(['LDSR'],True,False) # Load used models
                     image = processLDSR(image)
                     outpathDir = os.path.join(outpath,'LDSR')
                     os.makedirs(outpathDir, exist_ok=True)
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
-                    print("Reloading default models...")
-                    model = load_SD_model()[0]
-                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
-                    GFPGAN = load_GFPGAN()
                     output.append(image)
-                    torch_gc()
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+                
                 elif imgproc_upscale_toggles == 3:
-                    try:
-                        del GFPGAN
-                        del LDSR
-                    except:
-                        pass
-                    torch_gc()
-                    try:
-                        #if it's not loaded, this will fail, triggering the load
-                        if model is None:
-                            model = load_SD_model()
-                    except:
-                        model = load_SD_model()
+
+                    ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
+                    ModelLoader(['RealESGAN','model'],True,False) # Load used models
                     image = processGoBig(image)
-                    try:
-                        del model
-                        del RealESRGAN
-                    except:
-                        pass
-                    torch_gc()
-                    try:
-                        #if it's not loaded, this will fail, triggering the load
-                        if LDSR is None:
-                            LDSR = load_LDSR()
-                    except:
-                        LDSR = load_LDSR()
-                    LDSR = load_LDSR()
+                    ModelLoader(['model','GFPGAN','RealESGAN'],False,True) # Unload unused models
+                    ModelLoader(['LDSR'],True,False) # Load used models
                     image = processLDSR(image)
-                    del LDSR
-                    torch_gc()
                     outpathDir = os.path.join(outpath,'GoLatent')
                     os.makedirs(outpathDir, exist_ok=True)
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
-                    print("Reloading default models...")
-                    GFPGAN = load_GFPGAN()
-                    model = load_SD_model()[0]
-                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
-                    torch_gc()
                     output.append(image)
+                    
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
     
+    #LDSR is always unloaded to avoid memory issues
+    ModelLoader(['LDSR'],False,True)
+    print("Reloading default models...")
+    ModelLoader(['model','RealESGAN','GFPGAN'],True,False) # load back models
     print("Done.")
     return output
+
+def ModelLoader(models,load=False,unload=False):
+    #get global variables
+    global_vars = globals()
+    #check if m is in globals
+    if unload:
+        for m in models:
+            if m in global_vars:
+                #if it is, delete it
+                del global_vars[m]
+                if m =='model':
+                    m='Stable Diffusion'
+                print('Unloaded ' + m)
+    if load:
+        for m in models:
+            if m not in global_vars:
+                #if it isn't, load it
+                if m == 'GFPGAN':
+                    global_vars[m] = load_GFPGAN()
+                elif m == 'model':
+                    global_vars[m] = load_SD_model()[0]
+                elif m == 'RealESRGAN':
+                    global_vars[m] = load_RealESRGAN('RealESRGAN_x4plus')
+                elif m == 'LDSR':
+                    global_vars[m] = load_LDSR()
+                if m =='model':
+                    m='Stable Diffusion'
+                print('Loaded ' + m)
+        
+    torch_gc()
+
 
 def run_GFPGAN(image, strength):
     image = image.convert("RGB")
