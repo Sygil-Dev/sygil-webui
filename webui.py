@@ -1754,6 +1754,12 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     except:
                         pass
                     torch_gc()
+                    try:
+                        #if it's not loaded, this will fail, triggering the load
+                        if LDSR is None:
+                            LDSR = load_LDSR()
+                    except:
+                        LDSR = load_LDSR()
                     image = processLDSR(image)
                     outpathDir = os.path.join(outpath,'LDSR')
                     os.makedirs(outpathDir, exist_ok=True)
@@ -1773,6 +1779,12 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     except:
                         pass
                     torch_gc()
+                    try:
+                        #if it's not loaded, this will fail, triggering the load
+                        if model is None:
+                            model = load_SD_model()
+                    except:
+                        model = load_SD_model()
                     image = processGoBig(image)
                     try:
                         del model
@@ -1780,6 +1792,12 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     except:
                         pass
                     torch_gc()
+                    try:
+                        #if it's not loaded, this will fail, triggering the load
+                        if LDSR is None:
+                            LDSR = load_LDSR()
+                    except:
+                        LDSR = load_LDSR()
                     LDSR = load_LDSR()
                     image = processLDSR(image)
                     del LDSR
