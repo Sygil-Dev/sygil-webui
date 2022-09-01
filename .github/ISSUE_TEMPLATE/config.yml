@@ -9,10 +9,3 @@ contact_links:
   - name: Colab version specific bug? 
     url: https://github.com/altryne/sd-webui-colab/issues/new/choose
     about: Please open colab related bugs here
-  - name: Wanna chat with maintainers about possible collaboration or your specific issue? 
-    url: https://github.com/sponsors/hlky
-    about: Consider becoming a sponsor to hlky and supporting this project
-  - name: Wanna chat with maintainers about possible collaboration or specific ui issues? 
-    url: https://github.com/sponsors/altryne
-    about: Consider becoming a sponsor to altryne and supporting this project. 
-
