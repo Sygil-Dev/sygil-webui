@@ -24,20 +24,19 @@ def txt2img(*args, **kwargs):
     #Output should match output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats
     # info = f"""{args[0]} --seed {args[9]} --W {args[11]} --H {args[10]} -s {args[1]} -C {float(args[8])} --sampler {args[2]}  """.strip()
     args_and_names = {
-        "--seed": args[9],
-        "-W": args[11],
-        "-H": args[10],
-        "-s": args[1],
-        "-C": str(args[8]),
-        "--sampler": args[2],
+        "seed": args[9],
+        "width": args[11],
+        "height": args[10],
+        "steps": args[1],
+        "cfg": str(args[8]),
+        "sampler": args[2],
     }
     
-    full_string = f"{args[0]} "+ " ".join([f"{k} " for k,v in args_and_names.items()])
+    full_string = f"{args[0]}\n"+ " ".join([f"{k}:" for k,v in args_and_names.items()])
     info = {
         'text': full_string,
-        'entities': [{'entity':str(v), 'start': full_string.find(f"{k} "),'end': full_string.find(f"{k} ") + len(f"{k} ")} for k,v in args_and_names.items()]
+        'entities': [{'entity':str(v), 'start': full_string.find(f"{k}:"),'end': full_string.find(f"{k}:") + len(f"{k} ")} for k,v in args_and_names.items()]
      }
-    # generate a list of plcaeholder images with witdth and height looping over args[3]
     images = []
     for i in range(args[6]):
         images.append(f"http://placeimg.com/{args[11]}/{args[10]}/any")

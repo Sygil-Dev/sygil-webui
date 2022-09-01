@@ -112,7 +112,7 @@ def update_dimensions_info(width, height):
     return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
 
 def check_input_for_params(input_text, width, height, steps, seed, number, cfg_scale, sampler):
-    # # -W, --width
+    # -W, --width
     # -H, --height
     # -s, --steps
     # -S, --seed

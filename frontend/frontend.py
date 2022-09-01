@@ -10,7 +10,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
 
     with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
         with gr.Tabs(elem_id='tabss') as tabs:
-            with gr.TabItem("Stable Diffusion Text-to-Image Unified", id='txt2img_tab'):
+            with gr.TabItem("Text-to-Image", id='txt2img_tab'):
                 with gr.Row(elem_id="prompt_row"):
                     txt2img_prompt = gr.Textbox(label="Prompt",
                                                 elem_id='prompt_input',
@@ -23,49 +23,44 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
 
                 with gr.Row(elem_id='body').style(equal_height=False):
                     with gr.Column():
-                        txt2img_width = gr.Slider(minimum=64, maximum=2048, step=64, label="Width",
+                        txt2img_width = gr.Slider(minimum=64, maximum=1024, step=64, label="Width",
                                                   value=txt2img_defaults["width"])
-                        txt2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height",
+                        txt2img_height = gr.Slider(minimum=64, maximum=1024, step=64, label="Height",
                                                    value=txt2img_defaults["height"])
                         txt2img_cfg = gr.Slider(minimum=-40.0, maximum=30.0, step=0.5,
                                                 label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)',
                                                 value=txt2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=txt2img_defaults["seed"])
-                        txt2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1,
-                                                        label='Batch count (how many batches of images to generate)',
+                        txt2img_batch_count = gr.Slider(minimum=1, maximum=10, step=1,
+                                                        label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
-                        txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1,
-                                                       label='Batch size (how many images are in a batch; memory-hungry)',
-                                                       value=txt2img_defaults['batch_size'])
+
                         txt2img_dimensions_info_text_box = gr.Textbox(label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
-                        output_txt2img_gallery = gr.Gallery(label="Images", elem_id="txt2img_gallery_output").style(grid=[4, 4])
+                        with gr.Box():
+                            output_txt2img_gallery = gr.Gallery(label="Images", elem_id="txt2img_gallery_output").style(grid=[4, 4])
+                            gr.Markdown("Select an image from the gallery, then click one of the buttons below to perform an action.")
+                            with gr.Row(elem_id='txt2img_actions_row'):
+                                gr.Button("Copy to clipboard").click(fn=None,
+                                        inputs=output_txt2img_gallery,
+                                        outputs=[],
+                                        _js=js_copy_to_clipboard( 'txt2img_gallery_output'))
+                                output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
+                                if RealESRGAN is not None:
+                                    output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
 
-                        with gr.Tabs():
-                            with gr.TabItem("Generated image actions", id="text2img_actions_tab"):
-                                gr.Markdown(
-                                    'Select an image from the gallery, then click one of the buttons below to perform an action.')
-                                with gr.Row():
-                                    output_txt2img_copy_clipboard = gr.Button("Copy to clipboard").click(fn=None,
-                                                                                                         inputs=output_txt2img_gallery,
-                                                                                                         outputs=[],
-                                                                                                         _js=js_copy_to_clipboard('txt2img_gallery_output'))
-                                    output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
-                                    if RealESRGAN is not None:
-                                        output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
-
-                            with gr.TabItem("Output Info", id="text2img_output_info_tab"):
-                                output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
-                                with gr.Row():
-                                    output_txt2img_copy_params = gr.Button("Copy full parameters").click(
-                                        inputs=output_txt2img_params, outputs=[],
-                                        _js=js_copy_txt2img_output, fn=None, show_progress=False)
-                                    output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
-                                    output_txt2img_copy_seed = gr.Button("Copy only seed").click(
-                                        inputs=output_txt2img_seed, outputs=[],
-                                        _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
-                                output_txt2img_stats = gr.HTML(label='Stats')
+                        output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
+                        with gr.Group():
+                            with gr.Row(elem_id='txt2img_output_row'):
+                                output_txt2img_copy_params = gr.Button("Copy full parameters").click(
+                                    inputs=[output_txt2img_params], outputs=[],
+                                    _js=js_copy_txt2img_output, fn=None, show_progress=False)
+                                output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
+                                output_txt2img_copy_seed = gr.Button("Copy only seed").click(
+                                    inputs=[output_txt2img_seed], outputs=[],
+                                    _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                            output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
 
                         txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
@@ -79,13 +74,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                 txt2img_submit_on_enter = gr.Radio(['Yes', 'No'],
                                                                    label="Submit on enter? (no means multiline)",
                                                                    value=txt2img_defaults['submit_on_enter'],
-                                                                   interactive=True)
+                                                                   interactive=True, elem_id='submit_on_enter')
                                 txt2img_submit_on_enter.change(
                                     lambda x: gr.update(max_lines=1 if x == 'Yes' else 25), txt2img_submit_on_enter,
                                     txt2img_prompt)
                             with gr.TabItem('Advanced'):
                                 txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles,
                                                                    value=txt2img_toggle_defaults, type="index")
+                                txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1,
+                                                               label='Batch size (how many images are in a batch; memory-hungry)',
+                                                               value=txt2img_defaults['batch_size'])
                                 txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model',
                                                                             choices=['RealESRGAN_x4plus',
                                                                                      'RealESRGAN_x4plus_anime_6B'],
@@ -114,18 +112,19 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                      txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
                     [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
                 )
-                txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
-                txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
+                # txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
+                # txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
 
-                live_prompt_params = [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed, txt2img_batch_count, txt2img_cfg, txt2img_sampling]
+                live_prompt_params = [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed, txt2img_batch_count, txt2img_cfg]
                 txt2img_prompt.change(
-                    fn=uifn.check_input_for_params,
+                    fn=None,
                     inputs=live_prompt_params,
                     outputs=live_prompt_params,
-                    show_progress=False
+                    _js=js_parse_prompt
                 )
 
-            with gr.TabItem("Stable Diffusion Image-to-Image Unified", id="img2img_tab"):
+
+            with gr.TabItem("Image-to-Image Unified", id="img2img_tab"):
                 with gr.Row(elem_id="prompt_row"):
                     img2img_prompt = gr.Textbox(label="Prompt",
                                                 elem_id='img2img_prompt_input',
@@ -187,7 +186,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                 with gr.Row():
                                     output_img2img_copy_params = gr.Button("Copy full parameters").click(
                                         inputs=output_img2img_params, outputs=[],
-                                        _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                                        _js='(x) => {navigator.clipboard.writeText(x.replace(": ",":"))}', fn=None, show_progress=False)
                                     output_img2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                     output_img2img_copy_seed = gr.Button("Copy only seed").click(
                                         inputs=output_img2img_seed, outputs=[],
