@@ -1,17 +1,14 @@
 ''' Provides simple job management for gradio, allowing viewing and stopping in-progress multi-batch generations '''
 import gradio as gr
 from gradio.components import Component, Gallery
-from threading import Semaphore, Event
-from typing import Callable, List, Dict, Tuple, Optional
+from threading import Event
+from typing import Callable, List, Dict, Tuple, Optional, Any
 from dataclasses import dataclass, field
 from functools import partial
 from PIL.Image import Image
 import uuid
 
 # TODO: Session management
-# TODO: Maximum jobs
-# TODO: UI needs to show busy
-# TODO: Auto-Refresh
 
 
 @dataclass
@@ -39,7 +36,7 @@ def triggerChangeEvent():
 class JobManager:
     def __init__(self, max_jobs: int):
         self._max_jobs: int = max_jobs
-        self._jobs_avail: Semaphore = Semaphore(max_jobs)
+        self._jobs_avail: List[Any] = [None]*max_jobs
         self._jobs: Dict[JobKey, JobInfo] = {}
         self._session_key: gr.JSON = None
 
@@ -58,6 +55,7 @@ class JobManager:
                 filtered_output.append(output)
 
         job_info.finished = True
+        self._jobs_avail.append(None)
 
         # The wrapper added a dummy JSON output. Append a random text string
         # to fire the dummy objects 'change' event to notify that the job is done
@@ -227,7 +225,16 @@ class JobManager:
         def wrapped_func(*inputs):
             session_key = inputs[-1]
             inputs = inputs[:-1]
-            self._jobs[job_key] = JobInfo(inputs=inputs, func=func,
-                                          removed_output_idxs=removed_idxs, session_key=session_key)
-            return triggerChangeEvent()
+
+            ret = None
+            try:
+                self._jobs_avail.pop()
+                self._jobs[job_key] = JobInfo(inputs=inputs, func=func,
+                                              removed_output_idxs=removed_idxs, session_key=session_key)
+                ret = triggerChangeEvent()
+            except IndexError:
+                print("No jobs are available")
+
+            return ret
+
         return wrapped_func, inputs, [pre_call_dummyobj]
