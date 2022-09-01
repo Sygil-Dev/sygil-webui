@@ -31,7 +31,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                 value=txt2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=txt2img_defaults["seed"])
-                        txt2img_batch_count = gr.Slider(minimum=1, maximum=10, step=1,
+                        txt2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
                                                         label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
 
@@ -47,8 +47,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                         #_js=js_copy_to_clipboard( 'txt2img_gallery_output')
                                         )
                                 output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
-                                if RealESRGAN is not None:
-                                    output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
+                                output_txt2img_to_imglab = gr.Button("Send to Lab",visible=True)
 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                         with gr.Group():
@@ -202,19 +201,14 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                   value=img2img_defaults["width"])
                         img2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height",
                                                    value=img2img_defaults["height"])
-
                         img2img_cfg = gr.Slider(minimum=-40.0, maximum=30.0, step=0.5,
                                                 label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)',
                                                 value=img2img_defaults['cfg_scale'], elem_id='cfg_slider')
-
                         img2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=img2img_defaults["seed"])
-                        img2img_batch_count = gr.Slider(minimum=1, maximum=250, step=1,
+                        img2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
                                                         label='Batch count (how many batches of images to generate)',
                                                         value=img2img_defaults['n_iter'])
-                        img2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1,
-                                                       label='Batch size (how many images are in a batch; memory-hungry)',
-                                                       value=img2img_defaults['batch_size'])
                         img2img_dimensions_info_text_box = gr.Textbox(label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
                         img2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
@@ -288,7 +282,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     img2img,
                     [img2img_prompt, img2img_image_editor_mode, img2img_image_mask, img2img_mask,
                      img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
-                     img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg,
+                     img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                      img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                      img2img_embeddings],
                     [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
@@ -297,7 +291,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     return (img2img,
                     [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask,
                      img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
-                     img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg,
+                     img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                      img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                      img2img_embeddings],
                     [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats])
@@ -325,7 +319,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         with gr.Column():
                             with gr.Tabs():
                                 with gr.TabItem('Single Image'):
-                                    imgproc_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
+                                    imgproc_source = gr.Image(label="Source", source="upload", interactive=True, type="pil",elem_id="imglab_input")
 
                             #gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
                             #                            value=gfpgan_defaults['strength'])
@@ -423,6 +417,14 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         [imgproc_source, imgproc_folder,imgproc_prompt,imgproc_toggles,
                                                         imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height, imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength],
                                                         [imgproc_output])
+                                    output_txt2img_to_imglab.click(
+                                        uifn.copy_img_to_lab,
+                                        [output_txt2img_gallery],
+                                        [imgproc_source, tabs],
+                                        _js=call_JS("moveImageFromGallery",
+                                                    fromId="txt2img_gallery_output",
+                                                    toId="imglab_input")
+                                    )
                                     if RealESRGAN is None:
                                         with gr.Row():
                                             with gr.Column():
