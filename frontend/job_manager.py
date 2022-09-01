@@ -50,6 +50,19 @@ class JobManager:
         self._sessions: Dict[str, SessionInfo] = {}
         self._session_key: gr.JSON = None
 
+    def clear_all_finished_jobs(self):
+        ''' Removes all currently finished jobs, across all sessions.
+            Useful to free memory if a job is started and the browser is closed
+            before it finishes '''
+        for session in self._sessions.values():
+            session.finished_jobs.clear()
+
+    def stop_all_jobs(self):
+        ''' Stops all active jobs, across all sessions'''
+        for session in self._sessions.values():
+            for job in session.jobs.values():
+                job.should_stop.set()
+
     def _refresh_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Updates information from the active job '''
         session_info, job_info = self._get_call_info(func_key, session_key)

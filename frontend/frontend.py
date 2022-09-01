@@ -38,6 +38,26 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
 
+                        if job_manager is not None:
+                            with gr.Tabs():
+                                with gr.TabItem("Current Session"):
+                                    with gr.Row():
+                                        txt2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
+                                        txt2img_refresh_btn = gr.Button(
+                                            "Refresh", elem_id="refresh", variant="secondary")
+                                    txt2img_job_status = gr.Textbox(
+                                        placeholder="Job Status", interactive=False, show_label=False)
+                                with gr.TabItem("Maintenance"):
+                                    with gr.Row():
+                                        gr.Markdown("Stop all concurrent sessions, or free memory associated with jobs which were finished after the browser was closed")
+                                    with gr.Row():
+                                        txt2img_stop_all_sessions = gr.Button(
+                                            "Stop All Sessions", elem_id="stop_all", variant="secondary"
+                                        )
+                                        txt2img_free_done_sessions = gr.Button(
+                                            "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
+                                        )
+
                         txt2img_dimensions_info_text_box = gr.Textbox(label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
                         with gr.Box():
@@ -99,16 +119,20 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                    value=txt2img_defaults['variant_amount'])
                                 txt2img_variant_seed = gr.Textbox(label="Variant Seed (blank to randomize)", lines=1,
                                                                   max_lines=1, value=txt2img_defaults["variant_seed"])
-                            if job_manager is not None:
-                                with gr.TabItem("Job Management"):
-                                    with gr.Row():
-                                        txt2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
-                                        txt2img_refresh_btn = gr.Button(
-                                            "Refresh", elem_id="refresh", variant="secondary")
-                                    txt2img_job_status = gr.Textbox(
-                                        placeholder="Job Status", interactive=False, show_label=False)
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
+
+                if job_manager:
+                    txt2img_stop_all_sessions.click(
+                        job_manager.stop_all_jobs,
+                        [],
+                        []
+                    )
+                    txt2img_free_done_sessions.click(
+                        job_manager.clear_all_finished_jobs,
+                        [],
+                        []
+                    )
 
                 # If a JobManager was passed in then wrap the Generate functions
                 txt2img_func = txt2img
