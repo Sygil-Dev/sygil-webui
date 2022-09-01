@@ -995,7 +995,7 @@ Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s 
 Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
 
     for comment in comments:
-        info += "\n\n" + comment
+        info['text'] += "\n\n" + comment
 
     #mem_mon.stop()
     #del mem_mon
