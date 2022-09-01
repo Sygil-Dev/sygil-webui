@@ -27,6 +27,7 @@ parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write 
 parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default=None)
+parser.add_argument("--port", type=int, help="choose the port for the gradio webserver to use", default=7860)
 parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
 parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./src/realesrgan' if os.path.exists('./src/realesrgan') else './RealESRGAN'))
 parser.add_argument("--realesrgan-model", type=str, help="Upscaling model for RealESRGAN", default=('RealESRGAN_x4plus'))
@@ -143,10 +144,7 @@ def load_model_from_config(config, ckpt, verbose=False):
         print("unexpected keys:")
         print(u)
 
-    if device.type == "cpu":
-        model.cpu()
-    else:
-        model.cuda()
+    model.cuda()
     model.eval()
     return model
 
@@ -272,10 +270,8 @@ def create_random_tensors(shape, seeds):
     return x
 
 def torch_gc():
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
 def load_LDSR():
     model_name = 'model'
     yaml_name = 'project'
@@ -290,7 +286,6 @@ def load_LDSR():
     from LDSR import LDSR
     LDSRObject = LDSR(model_path, yaml_path)
     return LDSRObject
-
 def load_GFPGAN():
     model_name = 'GFPGANv1.3'
     model_path = os.path.join(GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
@@ -394,10 +389,7 @@ def load_SD_model():
 
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        if device.type == "cpu":
-            model.cpu()
-        else:
-            model.cuda()
+        model.cuda()
         model.eval()
         model.turbo = opt.optimized_turbo
 
@@ -410,13 +402,13 @@ def load_SD_model():
         _, _ = modelFS.load_state_dict(sd, strict=False)
         modelFS.eval()
 
-
         del sd
 
         if not opt.no_half:
             model = model.half()
             modelCS = modelCS.half()
             modelFS = modelFS.half()
+        return model,modelCS,modelFS,device, config
     else:
         config = OmegaConf.load(opt.config)
         model = load_model_from_config(config, opt.ckpt)
@@ -424,7 +416,11 @@ def load_SD_model():
         device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
         model = (model if opt.no_half else model.half()).to(device)
     return model, device,config
-model,device,config = load_SD_model()
+
+if opt.optimized:
+    model,modelCS,modelFS,device, config = load_SD_model()
+else:
+    model, device,config = load_SD_model()
 
 
 def load_embeddings(fp):
@@ -795,7 +791,7 @@ def process_images(
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda") if torch.cuda.is_available() else precision_scope("cpu"), (model.ema_scope() if not opt.optimized else nullcontext()):
+    with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
 
@@ -1517,7 +1513,6 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             image = torch.from_numpy(image)
 
             if opt.optimized:
-                global modelFS
                 modelFS.to(device)
 
             init_image = 2. * image - 1.
@@ -1783,6 +1778,10 @@ def ModelLoader(models,load=False,unload=False):
             if m in global_vars:
                 #if it is, delete it
                 del global_vars[m]
+                if opt.optimized:
+                    if m == 'model':
+                        del global_vars[m+'FS']
+                        del global_vars[m+'CS']
                 if m =='model':
                     m='Stable Diffusion'
                 print('Unloaded ' + m)
@@ -1793,7 +1792,11 @@ def ModelLoader(models,load=False,unload=False):
                 if m == 'GFPGAN':
                     global_vars[m] = load_GFPGAN()
                 elif m == 'model':
-                    global_vars[m] = load_SD_model()[0]
+                    sdLoader = load_SD_model()
+                    global_vars[m] = sdLoader[0]
+                    if opt.optimized:
+                        global_vars[m+'CS'] = sdLoader[1]
+                        global_vars[m+'FS'] = sdLoader[2]
                 elif m == 'RealESRGAN':
                     global_vars[m] = load_RealESRGAN('RealESRGAN_x4plus')
                 elif m == 'LDSR':
