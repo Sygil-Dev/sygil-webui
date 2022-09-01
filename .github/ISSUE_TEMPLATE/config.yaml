@@ -1,4 +1,5 @@
 blank_issues_enabled: false
+contact_links:
   - name: WebUI developer repository
     url: https://github.com/hlky/stable-diffusion-webui/issues/new/choose
     about: MOST BUGS SHOULD GO HERE Have a bug related to the features? Please open a bug on the developer repository.
