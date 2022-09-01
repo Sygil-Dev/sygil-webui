@@ -1,7 +1,0 @@
----
-blank_issues_enabled: true
-contact_links:
-  -
-    about: "Feature requests should be made in the discussions tab."
-    name: "\U00002728 Feature request"
-    url: "https://github.com/hlky/stable-diffusion-webui/discussions"
