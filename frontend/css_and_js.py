@@ -13,8 +13,8 @@ def readTextFile(*args):
 def css(opt):
     styling = readTextFile("css", "styles.css")
     # TODO: @altryne restore this before merge
-    # if not opt.no_progressbar_hiding:
-    #     styling += readTextFile("css", "no_progress_bar.css")
+    if not opt.no_progressbar_hiding:
+         styling += readTextFile("css", "no_progress_bar.css")
     return styling
 
 
@@ -27,6 +27,12 @@ def js(opt):
 
 def js_painterro_launch(to_id):
     return w(f"Painterro.init('{to_id}')")
+
+def js_move_image(from_id, to_id):
+    return w(f"moveImageFromGallery('{from_id}', '{to_id}')")
+
+def js_copy_to_clipboard(from_id):
+    return w(f"copyImageFromGalleryToClipboard('{from_id}')")
 
 def js_img2img_submit(prompt_row_id):
     return w(f"clickFirstVisibleButton('{prompt_row_id}')")

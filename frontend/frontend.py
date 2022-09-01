@@ -1,5 +1,5 @@
 import gradio as gr
-from frontend.css_and_js import css, js, call_JS
+from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2img_output
 import frontend.ui_functions as uifn
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda x: x, txt2img_defaults={}, RealESRGAN=True, GFPGAN=True,LDSR=True,
@@ -44,7 +44,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                 gr.Button("Copy to clipboard").click(fn=None,
                                         inputs=output_txt2img_gallery,
                                         outputs=[],
-                                        _js=js_copy_to_clipboard( 'txt2img_gallery_output'))
+                                        #_js=js_copy_to_clipboard( 'txt2img_gallery_output')
+                                        )
                                 output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                                 if RealESRGAN is not None:
                                     output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
@@ -54,7 +55,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             with gr.Row(elem_id='txt2img_output_row'):
                                 output_txt2img_copy_params = gr.Button("Copy full parameters").click(
                                     inputs=[output_txt2img_params], outputs=[],
-                                    _js=js_copy_txt2img_output, fn=None, show_progress=False)
+                                    _js=js_copy_txt2img_output,
+                                     fn=None, show_progress=False)
                                 output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                 output_txt2img_copy_seed = gr.Button("Copy only seed").click(
                                     inputs=[output_txt2img_seed], outputs=[],
