@@ -40,29 +40,6 @@ class JobManager:
         self._jobs: Dict[JobKey, JobInfo] = {}
         self._session_key: gr.JSON = None
 
-    def _call_func(self, job_key: JobKey) -> List[Component]:
-        ''' Runs the real function with job management. '''
-        job_info = self._jobs.get(job_key)
-        if not job_info:
-            return []
-
-        outputs = job_info.func(*job_info.inputs, job_info=job_info)
-
-        # Filter the function output for any removed outputs
-        filtered_output = []
-        for idx, output in enumerate(outputs):
-            if idx not in job_info.removed_output_idxs:
-                filtered_output.append(output)
-
-        job_info.finished = True
-        self._jobs_avail.append(None)
-
-        # The wrapper added a dummy JSON output. Append a random text string
-        # to fire the dummy objects 'change' event to notify that the job is done
-        filtered_output.append(triggerChangeEvent())
-
-        return tuple(filtered_output)
-
     def _refresh_func(self, job_key: JobKey) -> List[Component]:
         ''' Updates information from the active job '''
         job_info = self._jobs.get(job_key)
@@ -88,6 +65,29 @@ class JobManager:
                 stop_btn: gr.Button.update(variant="primary", value=stop_btn.value),
                 status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' for updates")
                 }
+
+   def _call_func(self, job_key: JobKey) -> List[Component]:
+        ''' Runs the real function with job management. '''
+        job_info = self._jobs.get(job_key)
+        if not job_info:
+            return []
+
+        outputs = job_info.func(*job_info.inputs, job_info=job_info)
+
+        # Filter the function output for any removed outputs
+        filtered_output = []
+        for idx, output in enumerate(outputs):
+            if idx not in job_info.removed_output_idxs:
+                filtered_output.append(output)
+
+        job_info.finished = True
+        self._jobs_avail.append(None)
+
+        # The wrapper added a dummy JSON output. Append a random text string
+        # to fire the dummy objects 'change' event to notify that the job is done
+        filtered_output.append(triggerChangeEvent())
+
+        return tuple(filtered_output)
 
     def _post_call_func(
             self, job_key: JobKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
