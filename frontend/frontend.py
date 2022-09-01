@@ -24,10 +24,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                 value=txt2img_defaults['prompt'],
                                                 show_label=False)
                     txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
-                    if job_manager is not None:
-                        txt2img_cancel_btn = gr.Button("Cancel", elem_id="cancel", variant="secondary")
-                        txt2img_refresh_btn = gr.Button("Refresh", elem_id="refresh", variant="secondary")
-
                 with gr.Row(elem_id='body').style(equal_height=False):
                     with gr.Column():
                         txt2img_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height",
@@ -103,6 +99,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                                    value=txt2img_defaults['variant_amount'])
                                 txt2img_variant_seed = gr.Textbox(label="Variant Seed (blank to randomize)", lines=1,
                                                                   max_lines=1, value=txt2img_defaults["variant_seed"])
+                            if job_manager is not None:
+                                with gr.TabItem("Job Management"):
+                                    with gr.Row():
+                                        txt2img_cancel_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
+                                        txt2img_refresh_btn = gr.Button("Refresh", elem_id="refresh", variant="secondary")
+                                    txt2img_job_status = gr.Textbox(placeholder="Job Status", interactive=False, show_label=False)
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
 
@@ -115,7 +117,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                         func=txt2img_func,
                         outputs=txt2img_outputs,
                         refresh_btn=txt2img_refresh_btn,
-                        cancel_btn=txt2img_cancel_btn
+                        cancel_btn=txt2img_cancel_btn,
+                        status_text=txt2img_job_status
                     )
 
                 txt2img_btn.click(

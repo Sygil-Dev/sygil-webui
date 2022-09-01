@@ -2,7 +2,7 @@
 import gradio as gr
 from gradio.components import Component, Gallery
 from threading import Semaphore, Event
-from typing import Callable, List, Dict, Tuple
+from typing import Callable, List, Dict, Tuple, Optional
 from dataclasses import dataclass, field
 from functools import partial
 from PIL.Image import Image
@@ -20,6 +20,7 @@ class JobInfo:
     func: Callable
     images: List[Image] = field(default_factory=list)
     should_stop: Event = field(default_factory=Event)
+    job_status: str = field(default_factory=str)
     finished: bool = False
     removed_output_idxs: List[int] = field(default_factory=list)
 
@@ -58,6 +59,14 @@ class JobManager:
 
         return tuple(filtered_output)
 
+    def _refresh_func(self, job_key: JobKey) -> List[Component]:
+        ''' Updates information from the active job '''
+        job_info = self._jobs.get(job_key)
+        if not job_info:
+            return [None, f"Job key not found: {job_key}"]
+
+        return [uuid.uuid4().hex, job_info.job_status]
+
     def _cancel_wrapped_func(self, job_key: JobKey) -> List[Component]:
         ''' Marks that the job should be stopped'''
         job_info = self._jobs.get(job_key)
@@ -71,15 +80,14 @@ class JobManager:
             Triggered by changing the update_gallery_obj dummy object '''
         job_info = self._jobs.get(job_key)
         if not job_info:
-            return {}
+            return []
         if job_info.finished:
             self._jobs.pop(job_key)
         return job_info.images
 
     def wrap_func(self, func: Callable, outputs: List[Component],
-                  refresh_btn: gr.Button = None, cancel_btn: gr.Button = None) -> Tuple[Callable, List[Component]]:
+                  refresh_btn: gr.Button = None, cancel_btn: gr.Button = None, status_text: Optional[gr.Textbox] = None) -> Tuple[Callable, List[Component]]:
         ''' Takes a gradio event listener function and its outputs and returns wrapped replacements that will be managed by JobManager
-
         Parameters:
         func (Callable) the original event listener to be wrapped.
                         This listener should be modified to take a 'job_info' parameter which, if not None, should can
@@ -87,6 +95,7 @@ class JobManager:
         outputs (List[Component]) the original outputs. The first gallery, if any, will be used for refreshing images
         refresh_btn: (gr.Button, optional) a button to use for updating the gallery with intermediate results
         cancel_btn: (gr.Button, optional) a button to use for cancelling the function
+        status_text: (gr.Textbox) a textbox to display job status updates
 
         Returns:
         Tuple(newFunc (Callable), newOutputs (List[Component]), which should be used as replacements for the
@@ -117,9 +126,9 @@ class JobManager:
 
         if refresh_btn:
             refresh_btn.click(
-                lambda: uuid.uuid4().hex,
+                partial(self._refresh_func, job_key),
                 [],
-                [update_gallery_obj]
+                [update_gallery_obj, status_text]
             )
 
         # TODO: reject existing jobs
