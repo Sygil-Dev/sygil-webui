@@ -5,8 +5,8 @@ window.SD = (() => {
    */
   class PainterroClass {
     static isOpen = false;
-    static async init (toId) {
-      const img = SD.x;
+    static async init ({ x, toId }) {
+      const img = x;
       const originalImage = Array.isArray(img) ? img[0] : img;
 
       if (window.Painterro === undefined) {
@@ -56,21 +56,35 @@ window.SD = (() => {
     static fallback (image) { return [image, image]; }
     static load () {
       return new Promise((resolve, reject) => {
-        /* Ensure Painterro window is always on top */
-        const style = document.createElement('style');
-        style.setAttribute('type', 'text/css');
-        style.appendChild(document.createTextNode(`
-          .ptro-holder-wrapper {
-              z-index: 100;
-          }
-        `));
-        document.head.appendChild(style);
+        const scriptId = '__painterro-script';
+        if (document.getElementById(scriptId)) {
+          reject(new Error('Tried to load painterro script, but script tag already exists.'));
+          return;
+        }
+
+        const styleId = '__painterro-css-override';
+        if (!document.getElementById(styleId)) {
+          /* Ensure Painterro window is always on top */
+          const style = document.createElement('style');
+          style.id = styleId;
+          style.setAttribute('type', 'text/css');
+          style.appendChild(document.createTextNode(`
+            .ptro-holder-wrapper {
+                z-index: 100;
+            }
+          `));
+          document.head.appendChild(style);
+        }
 
         const script = document.createElement('script');
-        script.id = '__painterro-script';
+        script.id = scriptId;
         script.src = 'https://unpkg.com/painterro@1.2.78/build/painterro.min.js';
         script.onload = () => resolve(true);
-        script.onerror = () => reject(false);
+        script.onerror = (e) => {
+          // remove self on error to enable reattempting load
+          document.head.removeChild(script);
+          reject(e);
+        };
         document.head.appendChild(script);
       });
     }
@@ -96,40 +110,57 @@ window.SD = (() => {
    */
   class SDClass {
     el = new ElementCache();
-    x;
     Painterro = PainterroClass;
-    with (x) {
-      this.x = x;
-      return this;
-    }
-    moveImageFromGallery (fromId, toId) {
-      if (!Array.isArray(this.x) || this.x.length === 0) return;
+    moveImageFromGallery ({ x, fromId, toId }) {
+      if (!Array.isArray(x) || x.length === 0) return;
 
       this.clearImageInput(this.el.get(`#${toId}`));
 
       const i = this.#getGallerySelectedIndex(this.el.get(`#${fromId}`));
 
-      return [this.x[i].replace('data:;','data:image/png;')];
+      return [x[i].replace('data:;','data:image/png;')];
     }
-    async copyImageFromGalleryToClipboard (fromId) {
-      if (!Array.isArray(this.x) || this.x.length === 0) return;
+    async copyImageFromGalleryToClipboard ({ x, fromId }) {
+      if (!Array.isArray(x) || x.length === 0) return;
 
       const i = this.#getGallerySelectedIndex(this.el.get(`#${fromId}`));
 
-      const data = this.x[i];
+      const data = x[i];
       const blob = await (await fetch(data.replace('data:;','data:image/png;'))).blob();
       const item = new ClipboardItem({'image/png': blob});
 
+      await this.copyToClipboard([item]);
+    }
+    clickFirstVisibleButton({ rowId }) {
+      const generateButtons = this.el.get(`#${rowId}`).querySelectorAll('.gr-button-primary');
+
+      if (!generateButtons) return;
+
+      for (let i = 0, arr = [...generateButtons]; i < arr.length; i++) {
+        const cs = window.getComputedStyle(arr[i]);
+
+        if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+          console.log(arr[i]);
+
+          arr[i].click();
+          break;
+        }
+      }
+    }
+    async gradioInputToClipboard ({ x }) { return this.copyToClipboard(x); }
+    async copyToClipboard (value) {
+      if (!value || typeof value === 'boolean') return;
       try {
-        navigator.clipboard.write([item]);
+        if (Array.isArray(value) &&
+            value.length &&
+            value[0] instanceof ClipboardItem) {
+          await navigator.clipboard.write(value);
+        } else {
+          await navigator.clipboard.writeText(value);
+        }
       } catch (e) {
         SDClass.error(e);
       }
-
-      return this.x;
-    }
-    clearImageInput (imageEditor) {
-      imageEditor?.querySelector('.modify-upload button:last-child')?.click();
     }
     static error (e) {
       console.error(e);
@@ -138,6 +169,9 @@ window.SD = (() => {
       } else if(typeof e === 'object' && Object.hasOwn(e, 'message')) {
         alert(e.message);
       }
+    }
+    clearImageInput (imageEditor) {
+      imageEditor?.querySelector('.modify-upload button:last-child')?.click();
     }
     #getGallerySelectedIndex (gallery) {
       const selected = gallery.querySelector(`.\\!ring-2`);
