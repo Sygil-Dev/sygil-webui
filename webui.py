@@ -3,39 +3,38 @@ import argparse, os, sys, glob, re
 from frontend.frontend import draw_gradio_ui
 from frontend.ui_functions import resize_image
 parser = argparse.ArgumentParser()
-parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default=None)
-parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
-parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write img2img results to (overrides --outdir)", default=None)
-parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
-parser.add_argument("--save-metadata", action='store_true', help="Whether to embed the generation parameters in the sample images", default=False)
-parser.add_argument("--skip-grid", action='store_true', help="do not save a grid, only individual samples. Helpful when evaluating lots of samples", default=False)
-parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
-parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="jpg:95")
-parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
-parser.add_argument("--config", type=str, default="configs/stable-diffusion/v1-inference.yaml", help="path to config which constructs model",)
 parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
-parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
-parser.add_argument("--optimized", action='store_true', help="load the model onto the device piecemeal instead of all at once to reduce VRAM usage at the cost of performance")
-parser.add_argument("--optimized-turbo", action='store_true', help="alternative optimization mode that does not save as much VRAM but runs siginificantly faster")
-parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=('./src/gfpgan' if os.path.exists('./src/gfpgan') else './GFPGAN')) # i disagree with where you're putting it but since all guidefags are doing it this way, there you go
-parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./src/realesrgan' if os.path.exists('./src/realesrgan') else './RealESRGAN'))
-parser.add_argument("--realesrgan-model", type=str, help="Upscaling model for RealESRGAN", default=('RealESRGAN_x4plus'))
-parser.add_argument("--no-verify-input", action='store_true', help="do not verify input to check if it's too long", default=False)
-parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats", default=False)
-parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware accleration in browser)", default=False)
-parser.add_argument("--share", action='store_true', help="Should share your server on gradio.app, this allows you to use the UI from your mobile app", default=False)
-parser.add_argument("--share-password", type=str, help="Sharing is open by default, use this to set a password. Username: webui", default=None)
+parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
+parser.add_argument("--config", type=str, default="configs/stable-diffusion/v1-inference.yaml", help="path to config which constructs model",)
 parser.add_argument("--defaults", type=str, help="path to configuration file providing UI defaults, uses same format as cli parameter", default='configs/webui/webui.yaml')
-parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=0)
+parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
+parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (overrides --gpu)", default=0)
 parser.add_argument("--extra-models-cpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
 parser.add_argument("--extra-models-gpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
-parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
-parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (overrides --gpu)", default=0)
+parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=('./src/gfpgan' if os.path.exists('./src/gfpgan') else './GFPGAN')) # i disagree with where you're putting it but since all guidefags are doing it this way, there you go
 parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
-parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
+parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=0)
+parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="jpg:95")
 parser.add_argument("--ldsr-dir", type=str, help="LDSR directory", default=('./src/latent-diffusion' if os.path.exists('./src/latent-diffusion') else './LDSR'))
-
+parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
+parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats", default=False)
+parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware accleration in browser)", default=False)
+parser.add_argument("--no-verify-input", action='store_true', help="do not verify input to check if it's too long", default=False)
+parser.add_argument("--optimized-turbo", action='store_true', help="alternative optimization mode that does not save as much VRAM but runs siginificantly faster")
+parser.add_argument("--optimized", action='store_true', help="load the model onto the device piecemeal instead of all at once to reduce VRAM usage at the cost of performance")
+parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write img2img results to (overrides --outdir)", default=None)
+parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
+parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
+parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default=None)
+parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
+parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./src/realesrgan' if os.path.exists('./src/realesrgan') else './RealESRGAN'))
+parser.add_argument("--realesrgan-model", type=str, help="Upscaling model for RealESRGAN", default=('RealESRGAN_x4plus'))
+parser.add_argument("--save-metadata", action='store_true', help="Whether to embed the generation parameters in the sample images", default=False)
+parser.add_argument("--share-password", type=str, help="Sharing is open by default, use this to set a password. Username: webui", default=None)
+parser.add_argument("--share", action='store_true', help="Should share your server on gradio.app, this allows you to use the UI from your mobile app", default=False)
+parser.add_argument("--skip-grid", action='store_true', help="do not save a grid, only individual samples. Helpful when evaluating lots of samples", default=False)
+parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -144,7 +143,10 @@ def load_model_from_config(config, ckpt, verbose=False):
         print("unexpected keys:")
         print(u)
 
-    model.cuda()
+    if device.type == "cpu":
+        model.cpu()
+    else:
+        model.cuda()
     model.eval()
     return model
 
@@ -270,8 +272,10 @@ def create_random_tensors(shape, seeds):
     return x
 
 def torch_gc():
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
 def load_LDSR():
     model_name = 'model'
     yaml_name = 'project'
@@ -286,6 +290,7 @@ def load_LDSR():
     from LDSR import LDSR
     LDSRObject = LDSR(model_path, yaml_path)
     return LDSRObject
+
 def load_GFPGAN():
     model_name = 'GFPGANv1.3'
     model_path = os.path.join(GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
@@ -389,7 +394,10 @@ def load_SD_model():
 
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
+        if device.type == "cpu":
+            model.cpu()
+        else:
+            model.cuda()
         model.eval()
         model.turbo = opt.optimized_turbo
 
@@ -402,13 +410,13 @@ def load_SD_model():
         _, _ = modelFS.load_state_dict(sd, strict=False)
         modelFS.eval()
 
+
         del sd
 
         if not opt.no_half:
             model = model.half()
             modelCS = modelCS.half()
             modelFS = modelFS.half()
-        return model,modelCS,modelFS,device, config
     else:
         config = OmegaConf.load(opt.config)
         model = load_model_from_config(config, opt.ckpt)
@@ -416,11 +424,7 @@ def load_SD_model():
         device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
         model = (model if opt.no_half else model.half()).to(device)
     return model, device,config
-
-if opt.optimized:
-    model,modelCS,modelFS,device, config = load_SD_model()
-else:
-    model, device,config = load_SD_model()
+model,device,config = load_SD_model()
 
 
 def load_embeddings(fp):
@@ -791,7 +795,7 @@ def process_images(
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
+    with torch.no_grad(), precision_scope("cuda") if torch.cuda.is_available() else precision_scope("cpu"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
 
@@ -1501,6 +1505,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             image = torch.from_numpy(image)
 
             if opt.optimized:
+                global modelFS
                 modelFS.to(device)
 
             init_image = 2. * image - 1.
@@ -1766,10 +1771,6 @@ def ModelLoader(models,load=False,unload=False):
             if m in global_vars:
                 #if it is, delete it
                 del global_vars[m]
-                if opt.optimized:
-                    if m == 'model':
-                        del global_vars[m+'FS']
-                        del global_vars[m+'CS']
                 if m =='model':
                     m='Stable Diffusion'
                 print('Unloaded ' + m)
@@ -1780,11 +1781,7 @@ def ModelLoader(models,load=False,unload=False):
                 if m == 'GFPGAN':
                     global_vars[m] = load_GFPGAN()
                 elif m == 'model':
-                    sdLoader = load_SD_model()
-                    global_vars[m] = sdLoader[0]
-                    if opt.optimized:
-                        global_vars[m+'CS'] = sdLoader[1]
-                        global_vars[m+'FS'] = sdLoader[2]
+                    global_vars[m] = load_SD_model()[0]
                 elif m == 'RealESRGAN':
                     global_vars[m] = load_RealESRGAN('RealESRGAN_x4plus')
                 elif m == 'LDSR':
@@ -2028,14 +2025,25 @@ class ServerLauncher(threading.Thread):
         asyncio.set_event_loop(loop)
         gradio_params = {
             'show_error': True, 
-            'server_name': '0.0.0.0', 
+            'server_name': '0.0.0.0',
+            'server_port': opt.port, 
             'share': opt.share
         }
         if not opt.share:
             demo.queue(concurrency_count=1)
         if opt.share and opt.share_password:
-            gradio_params['auth'] = ('webui', opt.share_password)    
-        self.demo.launch(**gradio_params)
+            gradio_params['auth'] = ('webui', opt.share_password)   
+        
+        # Check to see if Port 7860 is open 
+        port_status = 1
+        while port_status != 0:
+            try:
+                self.demo.launch(**gradio_params)
+            except (OSError) as e:
+                print (f'Error: Port: {opt.port} is not open yet. Please wait...')
+                time.sleep(10)
+            else:
+                port_status = 0
 
     def stop(self):
         self.demo.close() # this tends to hang
