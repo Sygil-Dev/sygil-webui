@@ -934,8 +934,9 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
-                #if imgProcessorTask == True:
-                #    output_images.append(image)
+                # this flag is used for imgProcessorTasks like GoBig, will return the image without saving it
+                if imgProcessorTask == True:
+                    output_images.append(image)
 
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
