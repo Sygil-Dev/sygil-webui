@@ -15,6 +15,16 @@ def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
     return gr.update(value=resized_cropped_image)
 
+def copy_img_to_lab(img):
+    try:
+        image_data = re.sub('^data:image/.+;base64,', '', img)
+        processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
+        tab_update = gr.update(selected='imgproc_tab')
+        img_update = gr.update(value=processed_image)
+        return processed_image, tab_update
+    except IndexError:
+        return [None, None]
+
 def copy_img_to_input(img):
     try:
         image_data = re.sub('^data:image/.+;base64,', '', img)
@@ -71,12 +81,6 @@ help_text = """
     If anything breaks, try switching modes again, switch tabs, clear the image, or reload.
 """
 
-def show_help():
-    return [gr.update(visible=False), gr.update(visible=True), gr.update(value=help_text)]
-
-def hide_help():
-    return [gr.update(visible=True), gr.update(visible=False), gr.update(value="")]
-
 def resize_image(resize_mode, im, width, height):
     LANCZOS = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
     if resize_mode == 0:
@@ -112,3 +116,7 @@ def resize_image(resize_mode, im, width, height):
             res.paste(resized.resize((fill_width, height), box=(resized.width, 0, resized.width, height)), box=(fill_width + src_w, 0))
 
     return res
+
+def update_dimensions_info(width, height):
+    pixel_count_formated = "{:,.0f}".format(width * height)
+    return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
