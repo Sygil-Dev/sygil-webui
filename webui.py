@@ -408,6 +408,7 @@ def load_SD_model():
             model = model.half()
             modelCS = modelCS.half()
             modelFS = modelFS.half()
+        return model,modelCS,modelFS,device, config
     else:
         config = OmegaConf.load(opt.config)
         model = load_model_from_config(config, opt.ckpt)
@@ -415,7 +416,11 @@ def load_SD_model():
         device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
         model = (model if opt.no_half else model.half()).to(device)
     return model, device,config
-model,device,config = load_SD_model()
+
+if opt.optimized:
+    model,modelCS,modelFS,device, config = load_SD_model()
+else:
+    model, device,config = load_SD_model()
 
 
 def load_embeddings(fp):
@@ -1496,7 +1501,6 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             image = torch.from_numpy(image)
 
             if opt.optimized:
-                global modelFS
                 modelFS.to(device)
 
             init_image = 2. * image - 1.
@@ -1762,6 +1766,10 @@ def ModelLoader(models,load=False,unload=False):
             if m in global_vars:
                 #if it is, delete it
                 del global_vars[m]
+                if opt.optimized:
+                    if m == 'model':
+                        del global_vars[m+'FS']
+                        del global_vars[m+'CS']
                 if m =='model':
                     m='Stable Diffusion'
                 print('Unloaded ' + m)
@@ -1772,7 +1780,11 @@ def ModelLoader(models,load=False,unload=False):
                 if m == 'GFPGAN':
                     global_vars[m] = load_GFPGAN()
                 elif m == 'model':
-                    global_vars[m] = load_SD_model()[0]
+                    sdLoader = load_SD_model()
+                    global_vars[m] = sdLoader[0]
+                    if opt.optimized:
+                        global_vars[m+'CS'] = sdLoader[1]
+                        global_vars[m+'FS'] = sdLoader[2]
                 elif m == 'RealESRGAN':
                     global_vars[m] = load_RealESRGAN('RealESRGAN_x4plus')
                 elif m == 'LDSR':
