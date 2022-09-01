@@ -565,7 +565,7 @@ def check_prompt_length(prompt, comments):
     comments.append(f"Warning: too many input tokens; some ({len(overflowing_words)}) have been truncated:\n{overflowing_text}\n")
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+normalize_prompt_weights, use_GFPGAN, write_info_files, write_info_to_one_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata):
     filename_i = os.path.join(sample_path_i, filename)
     if not jpg_sample:
@@ -586,7 +586,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             image.save(f"{filename_i}.png")
     else:
         image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
-    if write_info_files:
+    if write_info_files or write_info_to_one_file:
         # toggles differ for txt2img vs. img2img:
         offset = 0 if init_img is None else 2
         toggles = []
@@ -607,8 +607,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             toggles.append(4 + offset)
         if write_info_files:
             toggles.append(5 + offset)
+        if write_info_to_one_file:
+            toggles.append(6+offset)
         if use_GFPGAN:
-            toggles.append(6 + offset)
+            toggles.append(7 + offset)
+
         info_dict = dict(
             target="txt2img" if init_img is None else "img2img",
             prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
@@ -621,8 +624,31 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             #info_dict["init_mask"] = init_mask
             info_dict["denoising_strength"] = denoising_strength
             info_dict["resize_mode"] = resize_mode
-        with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
-            yaml.dump(info_dict, f, allow_unicode=True, width=10000)
+        if write_info_files:
+            with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
+                yaml.dump(info_dict, f, allow_unicode=True, width=10000)
+
+        if write_info_to_one_file:
+            ignore_list = ["prompt", "target", "toggles", "ddim_eta", "batch_size"]
+            rename_dict = {"ddim_steps": "steps", "n_iter": "number", "sampler_name": "sampler"} #changes the name of parameters to match with dynamic parameters
+            sample_log_path = os.path.join(sample_path_i, "log.yaml")
+            log_dump = info_dict.get("prompt") # making sure the first item that is listed in the txt is the prompt text
+            for key, value in info_dict.items():
+                if key in ignore_list:
+                    continue
+                found_key = rename_dict.get(key)
+
+                if key == "cfg_scale": #adds zeros to to cfg_scale necessary for dynamic params
+                    value = str(value).zfill(2)
+
+                if found_key:
+                    key = found_key
+                log_dump += f" {key} {value}"
+
+            log_dump = log_dump + " \n" #space at the end for dynamic params to accept the last param
+            with open(sample_log_path, "a", encoding="utf8") as log_file:
+                log_file.write(log_dump)
+
 
 
 def get_next_sequence_number(path, prefix=''):
@@ -727,7 +753,7 @@ def process_images(
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
-        uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
+        uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_info_to_one_file=False, jpg_sample=False,
         variant_amount=0.0, variant_seed=None,imgProcessorTask=True):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
     assert prompt is not None
@@ -894,7 +920,7 @@ def process_images(
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
                     save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+normalize_prompt_weights, use_GFPGAN, write_info_files, write_info_to_one_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     #output_images.append(gfpgan_image) #287
                     #if simple_templating:
@@ -910,7 +936,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+normalize_prompt_weights, use_GFPGAN,write_info_files, write_info_to_one_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     #output_images.append(esrgan_image) #287
                     #if simple_templating:
@@ -928,7 +954,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     gfpgan_esrgan_sample = output[:,:,::-1]
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+normalize_prompt_weights, use_GFPGAN, write_info_files, write_info_to_one_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     #output_images.append(gfpgan_esrgan_image) #287
                     #if simple_templating:
@@ -939,7 +965,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
 
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+normalize_prompt_weights, use_GFPGAN, write_info_files, write_info_to_one_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     if add_original_image or not simple_templating:
                         output_images.append(image)
@@ -1019,9 +1045,10 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     skip_grid = 3 not in toggles
     sort_samples = 4 in toggles
     write_info_files = 5 in toggles
-    jpg_sample = 6 in toggles
-    use_GFPGAN = 7 in toggles
-    use_RealESRGAN = 8 in toggles
+    write_to_one_file = 6 in toggles
+    jpg_sample = 7 in toggles
+    use_GFPGAN = 8 in toggles
+    use_RealESRGAN = 9 in toggles
 
     if sampler_name == 'PLMS':
         sampler = PLMSSampler(model)
@@ -1074,6 +1101,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             normalize_prompt_weights=normalize_prompt_weights,
             sort_samples=sort_samples,
             write_info_files=write_info_files,
+            write_info_to_one_file=write_to_one_file,
             jpg_sample=jpg_sample,
             variant_amount=variant_amount,
             variant_seed=variant_seed,
@@ -1135,13 +1163,11 @@ class Flagging(gr.FlaggingCallback):
 
 
 def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
-            toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
-            seed: int, height: int, width: int, resize_mode: int, fp = None):
+            toggles: List[int], realesrgan_model_name: str, n_iter: int, batch_size: int, cfg_scale: float, denoising_strength: float,
+            seed: int, height: int, width: int, resize_mode: int, fp):
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
     err = False
     seed = seed_to_int(seed)
-
-    batch_size = 1
 
     prompt_matrix = 0 in toggles
     normalize_prompt_weights = 1 in toggles
@@ -1317,6 +1343,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
                 uses_random_seed_loopback=random_seed_loopback,
                 sort_samples=sort_samples,
                 write_info_files=write_info_files,
+                write_info_to_one_file=write_info_to_one_file,
                 jpg_sample=jpg_sample,
             )
 
@@ -1372,6 +1399,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask
             uses_loopback=loopback,
             sort_samples=sort_samples,
             write_info_files=write_info_files,
+            write_info_to_one_file=write_info_to_one_file,
             jpg_sample=jpg_sample,
         )
 
@@ -1655,6 +1683,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     uses_loopback=False,
                     sort_samples=True,
                     write_info_files=True,
+                    write_info_to_one_file=False,
                     jpg_sample=False,
                     imgProcessorTask=True
                 )
@@ -1852,6 +1881,7 @@ txt2img_toggles = [
     'Save grid',
     'Sort samples by prompt',
     'Write sample info files',
+    'Write sample info to one file',
     'jpg samples',
 ]
 
@@ -1911,6 +1941,7 @@ img2img_toggles = [
     'Save grid',
     'Sort samples by prompt',
     'Write sample info files',
+    'Write sample info to one file',
     'jpg samples',
 ]
 """
