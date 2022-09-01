@@ -786,7 +786,8 @@ def process_images(
             seeds = all_seeds[n * batch_size:(n + 1) * batch_size]
 
             if job_info:
-                job_info.job_status = f"Iteration {n+1}/{n_iter}.\nSeed: {seeds[0]}\nPrompt: {prompts[0]}"
+                job_info.job_status = f"Iteration {n+1}/{n_iter}.\nSeed: {seeds[0]}\nPrompt: {prompts[0]}" \
+                                      f"\n\nSession Key:{job_info.session_key}"
 
             if opt.optimized:
                 modelCS.to(device)

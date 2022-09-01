@@ -18,6 +18,7 @@ import uuid
 class JobInfo:
     inputs: List[Component]
     func: Callable
+    session_key: str
     images: List[Image] = field(default_factory=list)
     should_stop: Event = field(default_factory=Event)
     job_status: str = field(default_factory=str)
@@ -36,6 +37,7 @@ class JobManager:
         self._max_jobs: int = max_jobs
         self._jobs_avail: Semaphore = Semaphore(max_jobs)
         self._jobs: Dict[JobKey, JobInfo] = {}
+        self._session_key: gr.JSON = None
 
     def _run_wrapped_func(self, job_key: JobKey) -> List[Component]:
         ''' Runs the real function with job management. '''
@@ -111,6 +113,12 @@ class JobManager:
         # Create a unique key for this job
         job_key = JobKey(job_id=uuid.uuid4().hex, func=func)
 
+        # Create a unique session key (next gradio release can use gr.State, see https://gradio.app/state_in_blocks/)
+        if self._session_key is None:
+            # When this gradio object is received as an event handler input it will resolve to a unique per-session id
+            self._session_key = gr.JSON(value=lambda: uuid.uuid4().hex, visible=False,
+                                        elem_id="JobManagerDummyObject_sessionKey")
+
         # Pull the gallery out of the original outputs and assign it to the gallery update dummy object
         gallery_comp = None
         removed_idxs = []
@@ -120,6 +128,9 @@ class JobManager:
                 gallery_comp = comp
                 del outputs[idx]
                 break
+
+        # Add the session key to the inputs
+        inputs += [self._session_key]
 
         # Create dummy objects
         update_gallery_obj = gr.JSON(visible=False, elem_id="JobManagerDummyObject")
@@ -165,7 +176,11 @@ class JobManager:
         )
 
         # Now replace the original function with one that creates a JobInfo and triggers the dummy obj
-        def wrapped_func(*args, **kwargs):
-            self._jobs[job_key] = JobInfo(inputs=args, func=func, removed_output_idxs=removed_idxs)
+
+        def wrapped_func(*inputs):
+            session_key = inputs[-1]
+            inputs = inputs[:-1]
+            self._jobs[job_key] = JobInfo(inputs=inputs, func=func,
+                                          removed_output_idxs=removed_idxs, session_key=session_key)
             return uuid.uuid4().hex  # ensures the 'change' event fires
         return wrapped_func, inputs, [dummy_obj]
