@@ -5,8 +5,8 @@ window.SD = (() => {
    */
   class PainterroClass {
     static isOpen = false;
-    static async init (toId) {
-      const img = SD.x;
+    static async init ({ x, toId }) {
+      const img = x;
       const originalImage = Array.isArray(img) ? img[0] : img;
 
       if (window.Painterro === undefined) {
@@ -110,42 +110,28 @@ window.SD = (() => {
    */
   class SDClass {
     el = new ElementCache();
-    x;
     Painterro = PainterroClass;
-    with (x) {
-      this.x = x;
-      return this;
-    }
-    moveImageFromGallery (fromId, toId) {
-      if (!Array.isArray(this.x) || this.x.length === 0) return;
+    moveImageFromGallery ({ x, fromId, toId }) {
+      if (!Array.isArray(x) || x.length === 0) return;
 
       this.clearImageInput(this.el.get(`#${toId}`));
 
       const i = this.#getGallerySelectedIndex(this.el.get(`#${fromId}`));
 
-      return [this.x[i].replace('data:;','data:image/png;')];
+      return [x[i].replace('data:;','data:image/png;')];
     }
-    async copyImageFromGalleryToClipboard (fromId) {
-      if (!Array.isArray(this.x) || this.x.length === 0) return;
+    async copyImageFromGalleryToClipboard ({ x, fromId }) {
+      if (!Array.isArray(x) || x.length === 0) return;
 
       const i = this.#getGallerySelectedIndex(this.el.get(`#${fromId}`));
 
-      const data = this.x[i];
+      const data = x[i];
       const blob = await (await fetch(data.replace('data:;','data:image/png;'))).blob();
       const item = new ClipboardItem({'image/png': blob});
 
-      try {
-        navigator.clipboard.write([item]);
-      } catch (e) {
-        SDClass.error(e);
-      }
-
-      return this.x;
+      await this.copyToClipboard([item]);
     }
-    clearImageInput (imageEditor) {
-      imageEditor?.querySelector('.modify-upload button:last-child')?.click();
-    }
-    clickFirstVisibleButton(rowId) {
+    clickFirstVisibleButton({ rowId }) {
       const generateButtons = this.el.get(`#${rowId}`).querySelectorAll('.gr-button-primary');
 
       if (!generateButtons) return;
@@ -161,6 +147,21 @@ window.SD = (() => {
         }
       }
     }
+    async gradioInputToClipboard ({ x }) { return this.copyToClipboard(x); }
+    async copyToClipboard (value) {
+      if (!value || typeof value === 'boolean') return;
+      try {
+        if (Array.isArray(value) &&
+            value.length &&
+            value[0] instanceof ClipboardItem) {
+          await navigator.clipboard.write(value);
+        } else {
+          await navigator.clipboard.writeText(value);
+        }
+      } catch (e) {
+        SDClass.error(e);
+      }
+    }
     static error (e) {
       console.error(e);
       if (typeof e === 'string') {
@@ -168,6 +169,9 @@ window.SD = (() => {
       } else if(typeof e === 'object' && Object.hasOwn(e, 'message')) {
         alert(e.message);
       }
+    }
+    clearImageInput (imageEditor) {
+      imageEditor?.querySelector('.modify-upload button:last-child')?.click();
     }
     #getGallerySelectedIndex (gallery) {
       const selected = gallery.querySelector(`.\\!ring-2`);
