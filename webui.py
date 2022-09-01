@@ -894,9 +894,9 @@ def process_images(
                     save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    output_images.append(gfpgan_image) #287
-                    if simple_templating:
-                        grid_captions.append( captions[i] + "\ngfpgan" )
+                    #output_images.append(gfpgan_image) #287
+                    #if simple_templating:
+                    #    grid_captions.append( captions[i] + "\ngfpgan" )
 
                 if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
                     skip_save = True # #287 >_>
@@ -910,9 +910,9 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    output_images.append(esrgan_image) #287
-                    if simple_templating:
-                        grid_captions.append( captions[i] + "\nesrgan" )
+                    #output_images.append(esrgan_image) #287
+                    #if simple_templating:
+                    #    grid_captions.append( captions[i] + "\nesrgan" )
 
                 if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
                     skip_save = True # #287 >_>
@@ -928,12 +928,12 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
-                    output_images.append(gfpgan_esrgan_image) #287
-                    if simple_templating:
-                        grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
+                    #output_images.append(gfpgan_esrgan_image) #287
+                    #if simple_templating:
+                    #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
-                if imgProcessorTask == True:
-                    output_images.append(image)
+                #if imgProcessorTask == True:
+                #    output_images.append(image)
 
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
@@ -951,6 +951,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     time.sleep(1)
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
+            grid = None
             if prompt_matrix:
                 if simple_templating:
                     grid = image_grid(output_images, batch_size, force_n_rows=frows, captions=grid_captions)
@@ -962,15 +963,12 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         import traceback
                         print("Error creating prompt_matrix text:", file=sys.stderr)
                         print(traceback.format_exc(), file=sys.stderr)
-            else:
+            elif batch_size > 1  or n_iter > 1:
                 grid = image_grid(output_images, batch_size)
- 
-            if grid and (batch_size > 1  or n_iter > 1):
-                output_images.insert(0, grid)
-
-            grid_count = get_next_sequence_number(outpath, 'grid-')
-            grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
-            grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
+            if grid is not None:
+                grid_count = get_next_sequence_number(outpath, 'grid-')
+                grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
+                grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
         toc = time.time()
 
