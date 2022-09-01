@@ -47,8 +47,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                         #_js=js_copy_to_clipboard( 'txt2img_gallery_output')
                                         )
                                 output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
-                                if RealESRGAN is not None:
-                                    output_txt2img_to_upscale_esrgan = gr.Button("Upscale w/ ESRGAN")
+                                output_txt2img_to_imglab = gr.Button("Send to Lab",visible=True)
 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                         with gr.Group():
@@ -320,7 +319,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         with gr.Column():
                             with gr.Tabs():
                                 with gr.TabItem('Single Image'):
-                                    imgproc_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
+                                    imgproc_source = gr.Image(label="Source", source="upload", interactive=True, type="pil",elem_id="imglab_input")
 
                             #gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
                             #                            value=gfpgan_defaults['strength'])
@@ -418,6 +417,14 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         [imgproc_source, imgproc_folder,imgproc_prompt,imgproc_toggles,
                                                         imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height, imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength],
                                                         [imgproc_output])
+                                    output_txt2img_to_imglab.click(
+                                        uifn.copy_img_to_lab,
+                                        [output_txt2img_gallery],
+                                        [imgproc_source, tabs],
+                                        _js=call_JS("moveImageFromGallery",
+                                                    fromId="txt2img_gallery_output",
+                                                    toId="imglab_input")
+                                    )
                                     if RealESRGAN is None:
                                         with gr.Row():
                                             with gr.Column():
