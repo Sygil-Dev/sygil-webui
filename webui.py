@@ -362,6 +362,8 @@ def try_loading_LDSR(model_name: str):
             import traceback
             print("Error loading LDSR:", file=sys.stderr)
             print(traceback.format_exc(), file=sys.stderr)
+    else:
+        print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
 try_loading_LDSR('model')
 
 def load_SD_model():
@@ -1851,13 +1853,11 @@ txt2img_toggles = [
     'jpg samples',
 ]
 
-"""
-# removed for now becuase of Image Lab implementation
 if GFPGAN is not None:
     txt2img_toggles.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
     txt2img_toggles.append('Upscale images using RealESRGAN')
-"""
+
 txt2img_defaults = {
     'prompt': '',
     'ddim_steps': 50,
