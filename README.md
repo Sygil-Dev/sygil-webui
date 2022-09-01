@@ -62,6 +62,15 @@ into the `/stable-diffusion/src/gfpgan/experiments/pretrained_models` directory.
 Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
 Put them into the `stable-diffusion/src/realesrgan/experiments/pretrained_models` directory. 
 
+### LDSR
+Quadruple your resolution using Latent Diffusion, to install:
+  - Git clone https://github.com/devilismyfriend/latent-diffusion into your stable-diffusion-main/src/ folder
+  - Rename latent-diffusion-main folder to latent-diffusion
+  - If on windows: run download_models.bat to download the required model files
+  - Otherwise to manually install the model download [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1) and rename last.ckpt to model.ckpt
+  - Place both under stable-diffusion-main/src/latent-diffusion/experiments/pretrained_models/
+  - Make sure you have both project.yaml and model.ckpt in that folder and path.
+  - LDSR should be wokring now.
 ### Web UI
 
 When launching, you may get a very long warning message related to some weights not being used. You may freely ignore it.
@@ -87,6 +96,7 @@ also a separate tab that just allows you to use GFPGAN on any picture, with a sl
 Lets you double the resolution of generated images. There is a checkbox in every tab to use RealESRGAN, and you can choose between the regular upscaler and the anime version.
 There is also a separate tab for using RealESRGAN on any picture.
 
+  
 ![](images/RealESRGAN.png)
 
 ### Sampling method selection
