@@ -20,14 +20,27 @@ RealESRGAN = True
 def run_goBIG():
     pass
 def txt2img(*args, **kwargs):
-  images = [
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80",
-    "https://images.unsplash.com/photo-1554151228-14d9def656e4?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=386&q=80",
-    "https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8aHVtYW4lMjBmYWNlfGVufDB8fDB8fA%3D%3D&w=1000&q=80",
-    "https://images.unsplash.com/photo-1546456073-92b9f0a8d413?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80",
-    "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=464&q=80",
-]
-  return images, 1234, 'random', 'random output'
+
+    #Output should match output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats
+    # info = f"""{args[0]} --seed {args[9]} --W {args[11]} --H {args[10]} -s {args[1]} -C {float(args[8])} --sampler {args[2]}  """.strip()
+    args_and_names = {
+        "seed": args[9],
+        "width": args[11],
+        "height": args[10],
+        "steps": args[1],
+        "cfg_scale": str(args[8]),
+        "sampler": args[2],
+    }
+    
+    full_string = f"{args[0]}\n"+ " ".join([f"{k}:" for k,v in args_and_names.items()])
+    info = {
+        'text': full_string,
+        'entities': [{'entity':str(v), 'start': full_string.find(f"{k}:"),'end': full_string.find(f"{k}:") + len(f"{k} ")} for k,v in args_and_names.items()]
+     }
+    images = []
+    for i in range(args[6]):
+        images.append(f"http://placeimg.com/{args[11]}/{args[10]}/any")
+    return images, int(time.time()) , info, 'random output'
 def img2img(*args, **kwargs):
     images = [
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80",
@@ -204,4 +217,4 @@ demo = draw_gradio_ui(opt,
                         )
 
 # demo.queue()
-demo.launch(share=False, debug=True)
+demo.launch(share=True, debug=True)
