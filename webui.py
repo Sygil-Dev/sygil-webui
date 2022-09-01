@@ -1728,6 +1728,13 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     except:
                         pass
                     torch_gc()
+                    #make sure model is loaded
+                    try:
+                        #if it's not loaded, this will fail, triggering the load
+                        if model is None:
+                            model = load_SD_model()
+                    except:
+                        model = load_SD_model()
                     image = processGoBig(image)
                     outpathDir = os.path.join(outpath,'GoBig')
                     os.makedirs(outpathDir, exist_ok=True)
@@ -1791,6 +1798,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
     
     print("Done.")
     return output
+
 def run_GFPGAN(image, strength):
     image = image.convert("RGB")
 
