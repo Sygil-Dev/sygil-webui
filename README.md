@@ -1,13 +1,13 @@
 ### [MAIN REPO](https://github.com/hlky/stable-diffusion)
 
-## This repo is for development, there may be bugs and new features
+# This repo is for development, there may be bugs and new features
 
-### :warning: 2022/08/30 - #297 #307 #308 are major changes. Make sure you **pull from main repo** :warning:
+## Feature request? Use [discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
 
 ### Questions about **_[Upscalers](https://github.com/hlky/stable-diffusion-webui/wiki/Upscalers)_**?
 ### Questions about **_[Optimized mode](https://github.com/hlky/stable-diffusion-webui/wiki/Optimized-mode)_**?
 
-### Feature request? Use [discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
+
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/altryne/sd-webui-colab/blob/main/Stable_Diffusion_WebUi_Altryne.ipynb)
 
@@ -43,8 +43,6 @@ Features:
 
 # Stable Diffusion web UI
 A browser interface based on Gradio library for Stable Diffusion.
-
-Original script with Gradio UI was written by a kind anonymopus user. This is a modification.
 
 ![](images/txt2img.jpg)
 
