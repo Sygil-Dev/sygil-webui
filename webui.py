@@ -33,6 +33,7 @@ parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu
 parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (overrides --gpu)", default=0)
 parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
+parser.add_argument("--port", type=int, help="choose the port for the gradio webserver to use", default=7860)
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -1582,7 +1583,7 @@ class ServerLauncher(threading.Thread):
         gradio_params = {
             'show_error': True, 
             'server_name': '0.0.0.0',
-            'server_port': 7860, 
+            'server_port': opt.port, 
             'share': opt.share
         }
         if not opt.share:
@@ -1596,7 +1597,7 @@ class ServerLauncher(threading.Thread):
             try:
                 self.demo.launch(**gradio_params)
             except (OSError) as e:
-                print ('Error: Port 7860 is not open yet. Please wait...')
+                print (f'Error: Port: {opt.port} is not open yet. Please wait...')
                 time.sleep(10)
             else:
                 port_status = 0
