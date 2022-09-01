@@ -102,9 +102,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                             if job_manager is not None:
                                 with gr.TabItem("Job Management"):
                                     with gr.Row():
-                                        txt2img_cancel_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
-                                        txt2img_refresh_btn = gr.Button("Refresh", elem_id="refresh", variant="secondary")
-                                    txt2img_job_status = gr.Textbox(placeholder="Job Status", interactive=False, show_label=False)
+                                        txt2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
+                                        txt2img_refresh_btn = gr.Button(
+                                            "Refresh", elem_id="refresh", variant="secondary")
+                                    txt2img_job_status = gr.Textbox(
+                                        placeholder="Job Status", interactive=False, show_label=False)
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
 
@@ -122,7 +124,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                         inputs=txt2img_inputs,
                         outputs=txt2img_outputs,
                         refresh_btn=txt2img_refresh_btn,
-                        cancel_btn=txt2img_cancel_btn,
+                        stop_btn=txt2img_stop_btn,
                         status_text=txt2img_job_status
                     )
 

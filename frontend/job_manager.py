@@ -1,4 +1,4 @@
-''' Provides simple job management for gradio, allowing viewing and canceling in-progress multi-batch generations '''
+''' Provides simple job management for gradio, allowing viewing and stopping in-progress multi-batch generations '''
 import gradio as gr
 from gradio.components import Component, Gallery
 from threading import Semaphore, Event
@@ -32,6 +32,10 @@ class JobKey:
     func: Callable
 
 
+def triggerChangeEvent():
+    return uuid.uuid4().hex
+
+
 class JobManager:
     def __init__(self, max_jobs: int):
         self._max_jobs: int = max_jobs
@@ -39,7 +43,7 @@ class JobManager:
         self._jobs: Dict[JobKey, JobInfo] = {}
         self._session_key: gr.JSON = None
 
-    def _run_wrapped_func(self, job_key: JobKey) -> List[Component]:
+    def _call_func(self, job_key: JobKey) -> List[Component]:
         ''' Runs the real function with job management. '''
         job_info = self._jobs.get(job_key)
         if not job_info:
@@ -57,7 +61,7 @@ class JobManager:
 
         # The wrapper added a dummy JSON output. Append a random text string
         # to fire the dummy objects 'change' event to notify that the job is done
-        filtered_output.append(uuid.uuid4().hex)
+        filtered_output.append(triggerChangeEvent())
 
         return tuple(filtered_output)
 
@@ -67,14 +71,35 @@ class JobManager:
         if not job_info:
             return [None, f"Job key not found: {job_key}"]
 
-        return [uuid.uuid4().hex, job_info.job_status]
+        return [triggerChangeEvent(), job_info.job_status]
 
-    def _cancel_wrapped_func(self, job_key: JobKey) -> List[Component]:
+    def _stop_wrapped_func(self, job_key: JobKey) -> List[Component]:
         ''' Marks that the job should be stopped'''
         job_info = self._jobs.get(job_key)
         if job_info:
             job_info.should_stop.set()
-        return []
+        return "Stopping after current batch finishes"
+
+    def _pre_call_func(
+            self, job_key: JobKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
+            status_text: gr.Textbox) -> List[Component]:
+        ''' Called when a job is about to start '''
+        # Buttons don't seem to update unless value is set on them as well...
+        return {output_dummy_obj: triggerChangeEvent(),
+                refresh_btn: gr.Button.update(variant="primary", value=refresh_btn.value),
+                stop_btn: gr.Button.update(variant="primary", value=stop_btn.value),
+                status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' for updates")
+                }
+
+    def _post_call_func(
+            self, job_key: JobKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
+            status_text: gr.Textbox) -> List[Component]:
+        ''' Called when a job completes '''
+        return {output_dummy_obj: triggerChangeEvent(),
+                refresh_btn: gr.Button.update(variant="secondary", value=refresh_btn.value),
+                stop_btn: gr.Button.update(variant="secondary", value=stop_btn.value),
+                status_text: gr.Textbox.update(value="Generation has finished!")
+                }
 
     def _update_gallery_event(self, job_key: JobKey) -> List[Component]:
         ''' Updates the gallery with results from the given job_key.
@@ -90,18 +115,18 @@ class JobManager:
     def wrap_func(
             self, func: Callable, inputs: List[Component],
             outputs: List[Component],
-            refresh_btn: gr.Button = None, cancel_btn: gr.Button = None, status_text: Optional[gr.Textbox] = None) -> Tuple[
+            refresh_btn: gr.Button = None, stop_btn: gr.Button = None, status_text: Optional[gr.Textbox] = None) -> Tuple[
             Callable, List[Component]]:
         ''' Takes a gradio event listener function and its input/outputs and returns wrapped replacements which will
             be managed by JobManager
         Parameters:
         func (Callable) the original event listener to be wrapped.
                         This listener should be modified to take a 'job_info' parameter which, if not None, should can
-                        be used by the function to check for cancel events and to store intermediate image results
+                        be used by the function to check for stop events and to store intermediate image results
         inputs (List[Component]) the original inputs
         outputs (List[Component]) the original outputs. The first gallery, if any, will be used for refreshing images
         refresh_btn: (gr.Button, optional) a button to use for updating the gallery with intermediate results
-        cancel_btn: (gr.Button, optional) a button to use for cancelling the function
+        stop_btn: (gr.Button, optional) a button to use for stopping the function
         status_text: (gr.Textbox) a textbox to display job status updates
 
         Returns:
@@ -111,7 +136,7 @@ class JobManager:
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
         # Create a unique key for this job
-        job_key = JobKey(job_id=uuid.uuid4().hex, func=func)
+        job_key = JobKey(job_id=triggerChangeEvent(), func=func)
 
         # Create a unique session key (next gradio release can use gr.State, see https://gradio.app/state_in_blocks/)
         if self._session_key is None:
@@ -141,6 +166,7 @@ class JobManager:
         )
 
         if refresh_btn:
+            refresh_btn.variant = 'secondary'
             refresh_btn.click(
                 partial(self._refresh_func, job_key),
                 [],
@@ -148,17 +174,18 @@ class JobManager:
             )
 
         # TODO: reject existing jobs
-        if cancel_btn:
-            cancel_btn.click(
-                partial(self._cancel_wrapped_func, job_key),
+        if stop_btn:
+            stop_btn.variant = 'secondary'
+            stop_btn.click(
+                partial(self._stop_wrapped_func, job_key),
                 [],
-                []
+                [status_text]
             )
 
         # (ab)use gr.JSON to forward events.
         # The gr.JSON object will fire its 'change' event when it is modified by being the output
-        # of another component. No other component appears to operate this way. This allows a method
-        # to forward events and allow multiple components to update the gallery (without locking it).
+        # of another component. This allows a method to forward events and allow multiple components
+        # to update the gallery (without locking it).
 
         # For example, the update_gallery_obj will update the gallery as in output of its 'change' event.
         # When its content changes it will update the gallery with the most recent images available from
@@ -166,13 +193,33 @@ class JobManager:
         # to it. This will trigger an update to the gallery, but testComponent didn't need to have
         # update_gallery_obj listed as an output, which would have locked it.
 
-        # Create the dummy object to replace the original output list, to be triggered when the original function
-        # would normally have been called.
-        dummy_obj = gr.JSON(visible=False, elem_id="JobManagerDummyObject")
-        dummy_obj.change(
-            partial(self._run_wrapped_func, job_key),
+        # Since some parameters are optional it makes sense to use the 'dict' return value type, which requires
+        # the Component as a key... so group together the UI components that the event listeners are going to update
+        # to make it easy to append to function calls and outputs
+        job_ui_params = [refresh_btn, stop_btn, status_text]
+        job_ui_outputs = [comp for comp in job_ui_params if comp is not None]
+
+        # Here a chain is constructed that will make a 'pre' call, a 'run' call, and a 'post' call,
+        # to be able to update the UI before and after, as well as run the actual call
+        post_call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_postCall")
+        post_call_dummyobj.change(
+            partial(self._post_call_func, job_key, update_gallery_obj, *job_ui_params),
             [],
-            outputs + [update_gallery_obj]
+            [update_gallery_obj] + job_ui_outputs
+        )
+
+        call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_runCall")
+        call_dummyobj.change(
+            partial(self._call_func, job_key),
+            [],
+            outputs + [post_call_dummyobj]
+        )
+
+        pre_call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_preCall")
+        pre_call_dummyobj.change(
+            partial(self._pre_call_func, job_key, call_dummyobj, *job_ui_params),
+            [],
+            [call_dummyobj] + job_ui_outputs
         )
 
         # Now replace the original function with one that creates a JobInfo and triggers the dummy obj
@@ -182,5 +229,5 @@ class JobManager:
             inputs = inputs[:-1]
             self._jobs[job_key] = JobInfo(inputs=inputs, func=func,
                                           removed_output_idxs=removed_idxs, session_key=session_key)
-            return uuid.uuid4().hex  # ensures the 'change' event fires
-        return wrapped_func, inputs, [dummy_obj]
+            return triggerChangeEvent()
+        return wrapped_func, inputs, [pre_call_dummyobj]
