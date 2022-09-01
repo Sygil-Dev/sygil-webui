@@ -27,6 +27,7 @@ parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write 
 parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default=None)
+parser.add_argument("--port", type=int, help="choose the port for the gradio webserver to use", default=7860)
 parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
 parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./src/realesrgan' if os.path.exists('./src/realesrgan') else './RealESRGAN'))
 parser.add_argument("--realesrgan-model", type=str, help="Upscaling model for RealESRGAN", default=('RealESRGAN_x4plus'))
