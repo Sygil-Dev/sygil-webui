@@ -1915,13 +1915,12 @@ img2img_toggles = [
     'Write sample info files',
     'jpg samples',
 ]
-"""
 # removed for now becuase of Image Lab implementation
 if GFPGAN is not None:
     img2img_toggles.append('Fix faces using GFPGAN')
 if RealESRGAN is not None:
     img2img_toggles.append('Upscale images using RealESRGAN')
-"""
+
 img2img_mask_modes = [
     "Keep masked area",
     "Regenerate only masked area",
