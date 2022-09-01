@@ -1,12 +1,16 @@
 import gradio as gr
 from frontend.css_and_js import *
 from frontend.css_and_js import css
+from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
+import uuid
+
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaults={}, RealESRGAN=True, GFPGAN=True,
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
                    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
-                   img2img_resize_modes=None, user_defaults={}, run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x):
+                   img2img_resize_modes=None, user_defaults={}, run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
+                   job_manager: JobManager = None) -> gr.Blocks:
 
     with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
         with gr.Tabs(elem_id='tabss') as tabs:
@@ -20,6 +24,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                                                 value=txt2img_defaults['prompt'],
                                                 show_label=False)
                     txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
+                    if job_manager is not None:
+                        txt2img_cancel_btn = gr.Button("Cancel", elem_id="cancel", variant="secondary")
+                        txt2img_refresh_btn = gr.Button("Refresh", elem_id="refresh", variant="secondary")
 
                 with gr.Row(elem_id='body').style(equal_height=False):
                     with gr.Column():
@@ -99,19 +106,31 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
 
+                # If a JobManager was passed in then wrap the Generate functions
+                txt2img_func = txt2img
+                txt2img_outputs = [output_txt2img_gallery, output_txt2img_seed,
+                                   output_txt2img_params, output_txt2img_stats]
+                if job_manager:
+                    txt2img_func, txt2img_outputs = job_manager.wrap_func(
+                        func=txt2img_func,
+                        outputs=txt2img_outputs,
+                        refresh_btn=txt2img_refresh_btn,
+                        cancel_btn=txt2img_cancel_btn
+                    )
+
                 txt2img_btn.click(
-                    txt2img,
+                    txt2img_func,
                     [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
                      txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
                      txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
-                    [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
+                    txt2img_outputs
                 )
                 txt2img_prompt.submit(
-                    txt2img,
+                    txt2img_func,
                     [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
                      txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
                      txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
-                    [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
+                    txt2img_outputs
                 )
 
             with gr.TabItem("Stable Diffusion Image-to-Image Unified", id="img2img_tab"):
