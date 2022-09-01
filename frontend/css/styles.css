@@ -1,5 +1,9 @@
 [data-testid="image"] {min-height: 512px !important}
-* #body>.col:nth-child(2){width:250%;max-width:89vw}
+* #body>.col:nth-child(2){
+    width:250%;
+    max-width:89vw
+}
+
 
 #prompt_input, #img2img_prompt_input {
     padding: 0px;
@@ -21,4 +25,40 @@ input[type=number]:disabled { -moz-appearance: textfield; }
 #gan_image {
     width: 512px;
     height: auto;
+}
+
+#highlight{
+ font-size: 1.2rem
+ }
+#highlight .uppercase{
+    text-transform: initial;
+
+}
+#highlight .textfield .textspan:nth-child(1){
+    font-size: 1.2rem
+}
+
+/* Mobile fixes and styles */
+@media only screen and (max-width: 768px) {
+    /* rearrange the columns on mobile */
+
+    #body>.col:nth-child(2){
+        width:100%;
+        max-width:100vw;
+        order: 1;
+    }
+    #body>.col:nth-child(1){
+        order: 2;
+    }
+    #body>.col:nth-child(3){
+        order: 3;
+    }
+
+    #txt2img_actions_row,
+    #txt2img_output_row{
+        flex-direction: row;
+        flex-wrap: wrap-reverse;
+    }
+    /* fix buttons layouts */
+
 }
