@@ -143,7 +143,10 @@ def load_model_from_config(config, ckpt, verbose=False):
         print("unexpected keys:")
         print(u)
 
-    model.cuda()
+    if device.type == "cpu":
+        model.cpu()
+    else:
+        model.cuda()
     model.eval()
     return model
 
@@ -269,8 +272,10 @@ def create_random_tensors(shape, seeds):
     return x
 
 def torch_gc():
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
 def load_LDSR():
     model_name = 'model'
     yaml_name = 'project'
@@ -285,6 +290,7 @@ def load_LDSR():
     from LDSR import LDSR
     LDSRObject = LDSR(model_path, yaml_path)
     return LDSRObject
+
 def load_GFPGAN():
     model_name = 'GFPGANv1.3'
     model_path = os.path.join(GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
@@ -388,7 +394,10 @@ def load_SD_model():
 
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
+        if device.type == "cpu":
+            model.cpu()
+        else:
+            model.cuda()
         model.eval()
         model.turbo = opt.optimized_turbo
 
@@ -400,6 +409,7 @@ def load_SD_model():
         modelFS = instantiate_from_config(config.modelFirstStage)
         _, _ = modelFS.load_state_dict(sd, strict=False)
         modelFS.eval()
+
 
         del sd
 
@@ -785,7 +795,7 @@ def process_images(
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
+    with torch.no_grad(), precision_scope("cuda") if torch.cuda.is_available() else precision_scope("cpu"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
 
