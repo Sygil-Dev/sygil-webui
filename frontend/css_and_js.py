@@ -1,4 +1,6 @@
 from os import path
+import json
+
 
 def readTextFile(*args):
     dir = path.dirname(__file__)
@@ -7,6 +9,7 @@ def readTextFile(*args):
         data = f.read()
     return data
 
+
 def css(opt):
     styling = readTextFile("css", "styles.css")
     # TODO: @altryne restore this before merge
@@ -14,22 +17,13 @@ def css(opt):
     #     styling += readTextFile("css", "no_progress_bar.css")
     return styling
 
+
 def js(opt):
     data = readTextFile("js", "index.js")
     data = "(z) => {" + data + "; return z ?? [] }"
     return data
 
-# Wrap the typical SD method call into async closure for ease of use
-# If you call frontend method without wrapping
-# DONT FORGET to bind input argument if you need it: SD.with(x)
-def w(sd_method_call):
-    return f"async (x) => {{ return await SD.with(x).{sd_method_call} ?? x ?? []; }}"
 
-def js_move_image(from_id, to_id):
-    return w(f"moveImageFromGallery('{from_id}', '{to_id}')")
-
-def js_copy_to_clipboard(from_id):
-    return w(f"copyImageFromGalleryToClipboard('{from_id}')")
 
 def js_painterro_launch(to_id):
     return w(f"Painterro.init('{to_id}')")
@@ -91,3 +85,14 @@ if (sampler_match) {
 return [txt2img_prompt, parseInt(txt2img_width), parseInt(txt2img_height), parseInt(txt2img_steps), txt2img_seed, parseInt(txt2img_batch_count), parseFloat(txt2img_cfg)];
 }
 """
+
+
+# @altryne this came up as conflict, still needed or no?
+# Wrap the typical SD method call into async closure for ease of use
+# Supplies the js function with a params object
+# That includes all the passed arguments and input from Gradio: x
+# Example call in Gradio component's event handler (pass the result to _js arg):
+# _js=call_JS("myJsMethod", arg1="string", arg2=100, arg3=[])
+def call_JS(sd_method, **kwargs):
+    param_str = json.dumps(kwargs)
+    return f"async (x) => {{ return await SD.{sd_method}({{ x, ...{param_str} }}) ?? []; }}"
