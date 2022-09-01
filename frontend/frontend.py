@@ -326,7 +326,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         with gr.Column():
                             with gr.Tabs():
                                 with gr.TabItem('Output'):
-                                    imgproc_output = gr.Image(label="Output")
+                                    imgproc_output = gr.Gallery(label="Output", elem_id="imgproc_gallery_output")
                             with gr.Row(elem_id="proc_options_row"):
                                 imgproc_toggles = gr.CheckboxGroup(label='Processor Modes', choices=imgproc_mode_toggles, type="index")
                             with gr.Tabs():

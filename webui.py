@@ -1419,7 +1419,8 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
     global LDSR
 
     outpath = opt.outdir_imglab or opt.outdir or "outputs/imglab-samples"
-    
+    output = []
+    images = []
     def processGFPGAN(image,strength):
         image = image.convert("RGB")
         cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(image, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
@@ -1429,23 +1430,29 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
 
         return result
     def processRealESRGAN(image):
+        if 'x2' in imgproc_realesrgan_model_name:
+            # downscale to 1/2 size
+            modelMode = imgproc_realesrgan_model_name.replace('x2','x4')
+        else:
+            modelMode = imgproc_realesrgan_model_name
         image = image.convert("RGB")
-        RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+        RealESRGAN = load_RealESRGAN(modelMode)
         result, res = RealESRGAN.enhance(np.array(image, dtype=np.uint8))
         result = Image.fromarray(result)
         if 'x2' in imgproc_realesrgan_model_name:
             # downscale to 1/2 size
             result = result.resize((result.width//2, result.height//2), LANCZOS)
+        
         return result
     def processGoBig(image):
-        result = processRealESRGAN(image)
+        result = processRealESRGAN(image,)
         if 'x4' in imgproc_realesrgan_model_name:
             #downscale to 1/2 size
             result = result.resize((result.width//2, result.height//2), LANCZOS)
             
         
 
-        #refactor params
+        #make sense of parameters
         n_iter = 1
         batch_size = 1
         seed = seed_to_int(imgproc_seed)
@@ -1636,7 +1643,6 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     jpg_sample=False,
                     imgProcessorTask=True
                 )
-            #reivew this again later
             #if initial_seed is None:
             #    initial_seed = seed
             #seed = seed + 1
@@ -1660,7 +1666,6 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         
         return result   
        
-    images=[]
     if image_batch != None:
         if image != None:
             print("Batch detected and single image detected, please only use one of the two. Aborting.")
@@ -1676,7 +1681,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             return None
         else:
             images.append(image)
-
+    
     if len(images) > 0:
         print("Processing images...")
         for image in images:
@@ -1687,8 +1692,11 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                 os.makedirs(outpathDir, exist_ok=True)
                 batchNumber = get_next_sequence_number(outpathDir)
                 outFilename = str(batchNumber)+'-'+'result'
-                
-                save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+    
+                if 1 not in imgproc_toggles:
+                    output.append(image)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+            
             if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
                     try:
@@ -1708,7 +1716,9 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     GFPGAN = load_GFPGAN()
                     model = load_SD_model()[0]
                     LDSR = load_LDSR()
-                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    
+                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
+                    output.append(image)
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
                 elif imgproc_upscale_toggles == 1:
                     try:
@@ -1725,9 +1735,9 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     outFilename = str(batchNumber)+'-'+'result'
                     print("Reloading default models...")
                     GFPGAN = load_GFPGAN()
-                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
                     LDSR = load_LDSR()
-                    
+                    output.append(image)
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)       
                 elif imgproc_upscale_toggles == 2:
                     try:
@@ -1744,8 +1754,9 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     outFilename = str(batchNumber)+'-'+'result'
                     print("Reloading default models...")
                     model = load_SD_model()[0]
-                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
                     GFPGAN = load_GFPGAN()
+                    output.append(image)
                     torch_gc()
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
                 elif imgproc_upscale_toggles == 3:
@@ -1773,13 +1784,13 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     print("Reloading default models...")
                     GFPGAN = load_GFPGAN()
                     model = load_SD_model()[0]
-                    RealESRGAN = load_RealESRGAN(imgproc_realesrgan_model_name)
+                    RealESRGAN = load_RealESRGAN('RealESRGAN_x4plus')
                     torch_gc()
+                    output.append(image)
                     save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
     
     print("Done.")
-    return images[0]
-
+    return output
 def run_GFPGAN(image, strength):
     image = image.convert("RGB")
 
