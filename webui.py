@@ -575,10 +575,10 @@ def check_prompt_length(prompt, comments):
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode):
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata):
     filename_i = os.path.join(sample_path_i, filename)
     if not jpg_sample:
-        if opt.save_metadata:
+        if opt.save_metadata and not skip_metadata:
             metadata = PngInfo()
             metadata.add_text("SD:prompt", prompts[i])
             metadata.add_text("SD:seed", str(seeds[i]))
@@ -1728,8 +1728,8 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
 
                 if 1 not in imgproc_toggles:
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
-
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, True)
+           
             if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
 
@@ -1741,7 +1741,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, True)
 
                 elif imgproc_upscale_toggles == 1:
 
@@ -1753,8 +1753,8 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
-
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, True)       
+                
                 elif imgproc_upscale_toggles == 2:
 
                     ModelLoader(['model','GFPGAN','RealESGAN'],False,True) # Unload unused models
@@ -1765,7 +1765,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, True)
 
                 elif imgproc_upscale_toggles == 3:
 
@@ -1780,8 +1780,8 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None)
+                    
+                    save_sample(image, outpathDir, outFilename, None, None, None, None, None, None, None, None, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, True)
 
     #LDSR is always unloaded to avoid memory issues
     ModelLoader(['LDSR'],False,True)
