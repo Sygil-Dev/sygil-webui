@@ -85,21 +85,26 @@ class JobManager:
             self._jobs.pop(job_key)
         return job_info.images
 
-    def wrap_func(self, func: Callable, outputs: List[Component],
-                  refresh_btn: gr.Button = None, cancel_btn: gr.Button = None, status_text: Optional[gr.Textbox] = None) -> Tuple[Callable, List[Component]]:
-        ''' Takes a gradio event listener function and its outputs and returns wrapped replacements that will be managed by JobManager
+    def wrap_func(
+            self, func: Callable, inputs: List[Component],
+            outputs: List[Component],
+            refresh_btn: gr.Button = None, cancel_btn: gr.Button = None, status_text: Optional[gr.Textbox] = None) -> Tuple[
+            Callable, List[Component]]:
+        ''' Takes a gradio event listener function and its input/outputs and returns wrapped replacements which will
+            be managed by JobManager
         Parameters:
         func (Callable) the original event listener to be wrapped.
                         This listener should be modified to take a 'job_info' parameter which, if not None, should can
                         be used by the function to check for cancel events and to store intermediate image results
+        inputs (List[Component]) the original inputs
         outputs (List[Component]) the original outputs. The first gallery, if any, will be used for refreshing images
         refresh_btn: (gr.Button, optional) a button to use for updating the gallery with intermediate results
         cancel_btn: (gr.Button, optional) a button to use for cancelling the function
         status_text: (gr.Textbox) a textbox to display job status updates
 
         Returns:
-        Tuple(newFunc (Callable), newOutputs (List[Component]), which should be used as replacements for the
-        passed in fucntion and outputs.
+        Tuple(newFunc (Callable), newInputs (List[Component]), newOutputs (List[Component]), which should be used as
+        replacements for the passed in function, inputs and outputs
         '''
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
@@ -163,4 +168,4 @@ class JobManager:
         def wrapped_func(*args, **kwargs):
             self._jobs[job_key] = JobInfo(inputs=args, func=func, removed_output_idxs=removed_idxs)
             return uuid.uuid4().hex  # ensures the 'change' event fires
-        return wrapped_func, [dummy_obj]
+        return wrapped_func, inputs, [dummy_obj]
