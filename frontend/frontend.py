@@ -368,12 +368,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                     imgproc_gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
                                                                 value=gfpgan_defaults['strength'],visible=GFPGAN is not None)
                                 with gr.TabItem('Upscale Settings'):
-                                    imgproc_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', interactive=RealESRGAN is not None,
-                                                                                choices= ['RealESRGAN_x4plus',
-                                                                                        'RealESRGAN_x4plus_anime_6B','RealESRGAN_x2plus',
-                                                                                        'RealESRGAN_x2plus_anime_6B'],
-                                                                                value='RealESRGAN_x4plus',
-                                                                                visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
                                     if LDSR:
                                         upscaleModes = ['RealESRGAN','GoBig','Latent Diffusion SR','GoLatent ']
                                     else:
@@ -384,6 +378,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
         """)
                                         upscaleModes = ['RealESRGAN','GoBig']
                                     imgproc_upscale_toggles = gr.Radio(label='Upscale Modes', choices=upscaleModes, type="index",visible=RealESRGAN is not None)
+                                    imgproc_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', interactive=RealESRGAN is not None,
+                                                                                choices= ['RealESRGAN_x4plus',
+                                                                                        'RealESRGAN_x4plus_anime_6B','RealESRGAN_x2plus',
+                                                                                        'RealESRGAN_x2plus_anime_6B'],
+                                                                                value='RealESRGAN_x4plus',
+                                                                                visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
+                                    
                                     with gr.Row(elem_id="ldsr_settings_row"):
                                         with gr.Column():
                                             imgproc_ldsr_steps = gr.Slider(minimum=0, maximum=500, step=10, label="LDSR Sampling Steps",
@@ -395,7 +396,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         
                                     with gr.Row(elem_id="proc_prompt_row"):
                                         with gr.Column():
-                                            imgproc_prompt = gr.Textbox(label="These settings are applied only for GoBig (and GoLatent modes)",
+                                            imgproc_prompt = gr.Textbox(label="GoBig/GoLatent generator settings",
                                                                         elem_id='prompt_input',
                                                                         placeholder="A corgi wearing a top hat as an oil painting.",
                                                                         lines=1,
