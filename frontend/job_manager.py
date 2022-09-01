@@ -8,7 +8,17 @@ from functools import partial
 from PIL.Image import Image
 import uuid
 
-# TODO: Session management
+
+@dataclass(eq=True, frozen=True)
+class FuncKey:
+    job_id: str
+    func: Callable
+
+
+@dataclass(eq=True, frozen=True)
+class JobKey:
+    func_key: FuncKey
+    session_key: str
 
 
 @dataclass
@@ -23,10 +33,10 @@ class JobInfo:
     removed_output_idxs: List[int] = field(default_factory=list)
 
 
-@dataclass(eq=True, frozen=True)
-class JobKey:
-    job_id: str
-    func: Callable
+@dataclass
+class SessionInfo:
+    jobs: Dict[FuncKey, JobInfo] = field(default_factory=dict)
+    finished_jobs: Dict[FuncKey, JobInfo] = field(default_factory=dict)
 
 
 def triggerChangeEvent():
@@ -37,27 +47,43 @@ class JobManager:
     def __init__(self, max_jobs: int):
         self._max_jobs: int = max_jobs
         self._jobs_avail: List[Any] = [None]*max_jobs
-        self._jobs: Dict[JobKey, JobInfo] = {}
+        self._sessions: Dict[str, SessionInfo] = {}
         self._session_key: gr.JSON = None
 
-    def _refresh_func(self, job_key: JobKey) -> List[Component]:
+    def _refresh_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Updates information from the active job '''
-        job_info = self._jobs.get(job_key)
-        if not job_info:
-            return [None, f"Job key not found: {job_key}"]
-
+        session_info, job_info = self._get_call_info(func_key, session_key)
+        if job_info is None:
+            return [None, f"Session {session_key} was not running function {func_key}"]
         return [triggerChangeEvent(), job_info.job_status]
 
-    def _stop_wrapped_func(self, job_key: JobKey) -> List[Component]:
+    def _stop_wrapped_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Marks that the job should be stopped'''
-        job_info = self._jobs.get(job_key)
-        if job_info:
-            job_info.should_stop.set()
+        session_info, job_info = self._get_call_info(func_key, session_key)
+        if job_info is None:
+            return f"Session {session_key} was not running function {func_key}"
+        job_info.should_stop.set()
         return "Stopping after current batch finishes"
 
+    def _get_call_info(self, func_key: FuncKey, session_key: str) -> Tuple[SessionInfo, JobInfo]:
+        ''' Helper to get the SessionInfo and JobInfo. '''
+        session_info = self._sessions.get(session_key, None)
+        if not session_info:
+            print(f"Couldn't find session {session_key} for call to {func_key}")
+            return None, None
+
+        job_info = session_info.jobs.get(func_key, None)
+        if not job_info:
+            job_info = session_info.finished_jobs.get(func_key, None)
+        if not job_info:
+            print(f"Couldn't find job {func_key} in session {session_key}")
+            return session_info, None
+
+        return session_info, job_info
+
     def _pre_call_func(
-            self, job_key: JobKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
-            status_text: gr.Textbox) -> List[Component]:
+            self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
+            status_text: gr.Textbox, session_key: str) -> List[Component]:
         ''' Called when a job is about to start '''
         # Buttons don't seem to update unless value is set on them as well...
         return {output_dummy_obj: triggerChangeEvent(),
@@ -66,10 +92,10 @@ class JobManager:
                 status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' for updates")
                 }
 
-   def _call_func(self, job_key: JobKey) -> List[Component]:
+    def _call_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Runs the real function with job management. '''
-        job_info = self._jobs.get(job_key)
-        if not job_info:
+        session_info, job_info = self._get_call_info(func_key, session_key)
+        if session_info is None or job_info is None:
             return []
 
         outputs = job_info.func(*job_info.inputs, job_info=job_info)
@@ -82,6 +108,7 @@ class JobManager:
 
         job_info.finished = True
         self._jobs_avail.append(None)
+        session_info.finished_jobs[func_key] = session_info.jobs.pop(func_key)
 
         # The wrapper added a dummy JSON output. Append a random text string
         # to fire the dummy objects 'change' event to notify that the job is done
@@ -90,8 +117,8 @@ class JobManager:
         return tuple(filtered_output)
 
     def _post_call_func(
-            self, job_key: JobKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
-            status_text: gr.Textbox) -> List[Component]:
+            self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
+            status_text: gr.Textbox, session_key: str) -> List[Component]:
         ''' Called when a job completes '''
         return {output_dummy_obj: triggerChangeEvent(),
                 refresh_btn: gr.Button.update(variant="secondary", value=refresh_btn.value),
@@ -99,15 +126,17 @@ class JobManager:
                 status_text: gr.Textbox.update(value="Generation has finished!")
                 }
 
-    def _update_gallery_event(self, job_key: JobKey) -> List[Component]:
-        ''' Updates the gallery with results from the given job_key.
-            Removes the job if it was finished.
+    def _update_gallery_event(self, func_key: FuncKey, session_key: str) -> List[Component]:
+        ''' Updates the gallery with results from the given job.
+            Frees the images after return if the job is finished.
             Triggered by changing the update_gallery_obj dummy object '''
-        job_info = self._jobs.get(job_key)
-        if not job_info:
+        session_info, job_info = self._get_call_info(func_key, session_key)
+        if session_info is None or job_info is None:
             return []
+
         if job_info.finished:
-            self._jobs.pop(job_key)
+            session_info.finished_jobs.pop(func_key)
+
         return job_info.images
 
     def wrap_func(
@@ -134,7 +163,7 @@ class JobManager:
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
         # Create a unique key for this job
-        job_key = JobKey(job_id=triggerChangeEvent(), func=func)
+        func_key = FuncKey(job_id=uuid.uuid4(), func=func)
 
         # Create a unique session key (next gradio release can use gr.State, see https://gradio.app/state_in_blocks/)
         if self._session_key is None:
@@ -158,25 +187,24 @@ class JobManager:
         # Create dummy objects
         update_gallery_obj = gr.JSON(visible=False, elem_id="JobManagerDummyObject")
         update_gallery_obj.change(
-            partial(self._update_gallery_event, job_key),
-            [],
+            partial(self._update_gallery_event, func_key),
+            [self._session_key],
             [gallery_comp]
         )
 
         if refresh_btn:
             refresh_btn.variant = 'secondary'
             refresh_btn.click(
-                partial(self._refresh_func, job_key),
-                [],
+                partial(self._refresh_func, func_key),
+                [self._session_key],
                 [update_gallery_obj, status_text]
             )
 
-        # TODO: reject existing jobs
         if stop_btn:
             stop_btn.variant = 'secondary'
             stop_btn.click(
-                partial(self._stop_wrapped_func, job_key),
-                [],
+                partial(self._stop_wrapped_func, func_key),
+                [self._session_key],
                 [status_text]
             )
 
@@ -201,22 +229,22 @@ class JobManager:
         # to be able to update the UI before and after, as well as run the actual call
         post_call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_postCall")
         post_call_dummyobj.change(
-            partial(self._post_call_func, job_key, update_gallery_obj, *job_ui_params),
-            [],
+            partial(self._post_call_func, func_key, update_gallery_obj, *job_ui_params),
+            [self._session_key],
             [update_gallery_obj] + job_ui_outputs
         )
 
         call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_runCall")
         call_dummyobj.change(
-            partial(self._call_func, job_key),
-            [],
+            partial(self._call_func, func_key),
+            [self._session_key],
             outputs + [post_call_dummyobj]
         )
 
         pre_call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_preCall")
         pre_call_dummyobj.change(
-            partial(self._pre_call_func, job_key, call_dummyobj, *job_ui_params),
-            [],
+            partial(self._pre_call_func, func_key, call_dummyobj, *job_ui_params),
+            [self._session_key],
             [call_dummyobj] + job_ui_outputs
         )
 
@@ -226,15 +254,21 @@ class JobManager:
             session_key = inputs[-1]
             inputs = inputs[:-1]
 
-            ret = None
+            # Get or create a session for this key
+            session_info = self._sessions.setdefault(session_key, SessionInfo())
+
+            # Is this session already running this job?
+            if func_key in session_info.jobs:
+                return {status_text: "This session is already running that function!"}
+
+            # Are there available jobs?
             try:
                 self._jobs_avail.pop()
-                self._jobs[job_key] = JobInfo(inputs=inputs, func=func,
-                                              removed_output_idxs=removed_idxs, session_key=session_key)
-                ret = triggerChangeEvent()
             except IndexError:
-                print("No jobs are available")
+                return {status_text: "No jobs are available"}
 
-            return ret
+            job = JobInfo(inputs=inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key)
+            session_info.jobs[func_key] = job
+            return {pre_call_dummyobj: triggerChangeEvent()}
 
-        return wrapped_func, inputs, [pre_call_dummyobj]
+        return wrapped_func, inputs, [pre_call_dummyobj, status_text]
