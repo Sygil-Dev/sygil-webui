@@ -110,11 +110,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
 
                 # If a JobManager was passed in then wrap the Generate functions
                 txt2img_func = txt2img
+                txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
+                                  txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
+                                  txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
+                                  txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
                 txt2img_outputs = [output_txt2img_gallery, output_txt2img_seed,
                                    output_txt2img_params, output_txt2img_stats]
                 if job_manager:
-                    txt2img_func, txt2img_outputs = job_manager.wrap_func(
+                    txt2img_func, txt2img_inputs, txt2img_outputs = job_manager.wrap_func(
                         func=txt2img_func,
+                        inputs=txt2img_inputs,
                         outputs=txt2img_outputs,
                         refresh_btn=txt2img_refresh_btn,
                         cancel_btn=txt2img_cancel_btn,
@@ -123,16 +128,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, txt2img_defaul
 
                 txt2img_btn.click(
                     txt2img_func,
-                    [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
-                     txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
-                     txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
+                    txt2img_inputs,
                     txt2img_outputs
                 )
                 txt2img_prompt.submit(
                     txt2img_func,
-                    [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
-                     txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
-                     txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
+                    txt2img_inputs,
                     txt2img_outputs
                 )
 
