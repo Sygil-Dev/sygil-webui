@@ -1,6 +1,7 @@
 import argparse, os, sys, glob, re
 
 from frontend.frontend import draw_gradio_ui
+from frontend.job_manager import JobManager, JobInfo
 from frontend.ui_functions import resize_image
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default=None)
@@ -33,6 +34,7 @@ parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu
 parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (overrides --gpu)", default=0)
 parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
+parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
 opt = parser.parse_args()
 
@@ -99,6 +101,12 @@ RealESRGAN_dir = opt.realesrgan_dir
 
 if opt.optimized_turbo:
     opt.optimized = True
+
+if opt.no_job_manager:
+    job_manager = None
+else:
+    job_manager = JobManager(opt.max_jobs)
+    opt.max_jobs += 1 # Leave a free job open for button clicks
 
 # should probably be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in opt.grid_format.split(':')]
@@ -687,7 +695,7 @@ def process_images(
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
-        variant_amount=0.0, variant_seed=None):
+        variant_amount=0.0, variant_seed=None, job_info: JobInfo = None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
     assert prompt is not None
     torch_gc()
@@ -745,7 +753,11 @@ def process_images(
         all_seeds = [seed + x for x in range(len(all_prompts))]
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
-    output_images = []
+    if job_info:
+        output_images = job_info.images
+    else:
+        output_images = []
+
     stats = []
     with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
         init_data = func_init()
@@ -765,6 +777,10 @@ def process_images(
                 all_seeds[si] += target_seed_randomizer
 
         for n in range(n_iter):
+            if job_info and job_info.should_stop.is_set():
+                print("Early exit requested")
+                break
+
             print(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
             seeds = all_seeds[n * batch_size:(n + 1) * batch_size]
@@ -955,7 +971,7 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
 
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
             ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None):
+            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None, job_info: JobInfo = None):
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
@@ -1024,6 +1040,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             jpg_sample=jpg_sample,
             variant_amount=variant_amount,
             variant_seed=variant_seed,
+            job_info=job_info,
         )
 
         del sampler
@@ -1591,7 +1608,8 @@ demo = draw_gradio_ui(opt,
                       RealESRGAN=RealESRGAN,
                       GFPGAN=GFPGAN,
                       run_GFPGAN=run_GFPGAN,
-                      run_RealESRGAN=run_RealESRGAN
+                      run_RealESRGAN=run_RealESRGAN,
+                      job_manager=job_manager
                         )
 
 class ServerLauncher(threading.Thread):
