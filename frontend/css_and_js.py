@@ -54,12 +54,12 @@ if (prompt_input.scrollWidth > prompt_input.clientWidth + 10 ) {
 
 let height_match =  /(?:-h|-H|--height|height)[ :]?(?<height>\d+) /.exec(txt2img_prompt);
 if (height_match) {
-    txt2img_height = height_match.groups.height.trim();
+    txt2img_height = Math.round(height_match.groups.height / 64) * 64;
     txt2img_prompt = txt2img_prompt.replace(height_match[0], '');
 }
 let width_match =  /(?:-w|-W|--width|width)[ :]?(?<width>\d+) /.exec(txt2img_prompt);
 if (width_match) {
-    txt2img_width = width_match.groups.width.trim();
+    txt2img_width = Math.round(width_match.groups.width / 64) * 64;
     txt2img_prompt = txt2img_prompt.replace(width_match[0], '');
 }
 let steps_match =  /(?:-s|--steps|steps)[ :]?(?<steps>\d+) /.exec(txt2img_prompt);
@@ -77,7 +77,7 @@ if (batch_count_match) {
     txt2img_batch_count = batch_count_match.groups.batch_count;
     txt2img_prompt = txt2img_prompt.replace(batch_count_match[0], '');
 }
-let cfg_scale_match =  /(?:-c|-C|--cfg-scale|cfg)[ :]?(?<cfgscale>\d\.?\d+) /.exec(txt2img_prompt);
+let cfg_scale_match =  /(?:-c|-C|--cfg-scale|cfg_scale|cfg)[ :]?(?<cfgscale>\d\.?\d+?) /.exec(txt2img_prompt);
 if (cfg_scale_match) {
     txt2img_cfg = parseFloat(cfg_scale_match.groups.cfgscale).toFixed(1);
     txt2img_prompt = txt2img_prompt.replace(cfg_scale_match[0], '');
@@ -88,6 +88,6 @@ if (sampler_match) {
     txt2img_prompt = txt2img_prompt.replace(sampler_match[0], '');
 }
 
-return [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed, txt2img_batch_count, txt2img_cfg];
+return [txt2img_prompt, parseInt(txt2img_width), parseInt(txt2img_height), parseInt(txt2img_steps), txt2img_seed, parseInt(txt2img_batch_count), parseFloat(txt2img_cfg)];
 }
 """

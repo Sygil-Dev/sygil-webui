@@ -28,7 +28,7 @@ def txt2img(*args, **kwargs):
         "width": args[11],
         "height": args[10],
         "steps": args[1],
-        "cfg": str(args[8]),
+        "cfg_scale": str(args[8]),
         "sampler": args[2],
     }
     
@@ -217,4 +217,4 @@ demo = draw_gradio_ui(opt,
                         )
 
 # demo.queue()
-demo.launch(share=False, debug=True)
+demo.launch(share=True, debug=True)

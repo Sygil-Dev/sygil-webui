@@ -110,35 +110,3 @@ def resize_image(resize_mode, im, width, height):
 def update_dimensions_info(width, height):
     pixel_count_formated = "{:,.0f}".format(width * height)
     return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
-
-def check_input_for_params(input_text, width, height, steps, seed, number, cfg_scale, sampler):
-    # -W, --width
-    # -H, --height
-    # -s, --steps
-    # -S, --seed
-    # -n, --number
-    # -C, --cfg-scale
-    # -A, --sampler
-
-    if height_match := re.search(' (-h|-H|--height)(?P<height> ?\d+) ', input_text):
-        height = gr.update(value=int(height_match.group('height')))
-        input_text = re.sub(height_match[0], ' ', input_text)
-    if width_match := re.search(' (-w|-W|--width)(?P<width> ?\d+) ', input_text):
-        width = gr.update(value=int(width_match.group('width')))
-        input_text = re.sub(width_match[0], ' ', input_text)
-    if steps_match := re.search(' (-s|--steps)(?P<steps> ?\d+) ', input_text):
-        steps = gr.update(value=int(steps_match.group('steps')))
-        input_text = re.sub(steps_match[0], ' ', input_text)
-    if seed_match := re.search(' (-S|--seed)(?P<seed> ?\d+)( |^)', input_text):
-        seed = gr.update(value=int(seed_match.group('seed')))
-        input_text = re.sub(seed_match[0], ' ', input_text)
-    if number_match := re.search(' (-n|-N|--number)(?P<number> ?\d+) ', input_text):
-        number = gr.update(value=int(number_match.group('number')))
-        input_text = re.sub(number_match[0], ' ', input_text)
-    if cfg_scale_match := re.search(' (-c|-C|--cfg-scale)(?P<cfg_scale> ?[\d.?\d]+) ', input_text):
-        cfg_scale = gr.update(value=float(cfg_scale_match.group('cfg_scale')))
-        input_text = re.sub(cfg_scale_match[0], ' ', input_text)
-    if sampler_match := re.search(' (-A|--sampler)(?P<sampler> ?\w+) ', input_text):
-        sampler = gr.update(value=sampler_match.group('sampler'))
-        input_text = re.sub(sampler_match[0], ' ', input_text)
-    return input_text, width, height, steps, seed, number, cfg_scale, sampler
