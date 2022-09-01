@@ -392,6 +392,10 @@ def get_font(fontsize):
     # latin1, so raise an exception instead if no usable font was found
     raise Exception(f"No usable font found (tried {', '.join(fonts)})")
 
+def load_embeddings(fp):
+    if fp is not None and hasattr(st.session_state["model"], "embedding_manager"):
+        st.session_state["model"].embedding_manager.load(fp.name)
+
 def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     if force_n_rows is not None:
         rows = force_n_rows
