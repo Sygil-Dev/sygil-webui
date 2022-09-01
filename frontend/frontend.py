@@ -1,3 +1,4 @@
+from email.policy import default
 import gradio as gr
 from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2img_output
 import frontend.ui_functions as uifn
@@ -381,13 +382,20 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
             <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
         </div>
         """)
-                                        upscaleModes = ['RealESRGAN','GoBig','Latent Diffusion SR']
-                                        #gr.Markdown("<b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
                                         upscaleModes = ['RealESRGAN','GoBig']
                                     imgproc_upscale_toggles = gr.Radio(label='Upscale Modes', choices=upscaleModes, type="index",visible=RealESRGAN is not None)
+                                    with gr.Row(elem_id="ldsr_settings_row"):
+                                        with gr.Column():
+                                            imgproc_ldsr_steps = gr.Slider(minimum=0, maximum=500, step=10, label="LDSR Sampling Steps",
+                                                    value=100,visible=LDSR is not None)
+                                            imgproc_ldsr_pre_downSample = gr.Dropdown(label='LDSR Pre Downsample mode (Lower resolution before processing for speed)',
+                                                        choices=["None", '1/2', '1/4'],value="None",visible=LDSR is not None)
+                                            imgproc_ldsr_post_downSample = gr.Dropdown(label='LDSR Post Downsample mode (aka SuperSampling)',
+                                                        choices=["None", "Original Size", '1/2', '1/4'],value="None",visible=LDSR is not None)
+                                                        
                                     with gr.Row(elem_id="proc_prompt_row"):
                                         with gr.Column():
-                                            imgproc_prompt = gr.Textbox(label="These settings are applied only for GoBig and GoLatent modes",
+                                            imgproc_prompt = gr.Textbox(label="These settings are applied only for GoBig (and GoLatent modes)",
                                                                         elem_id='prompt_input',
                                                                         placeholder="A corgi wearing a top hat as an oil painting.",
                                                                         lines=1,
@@ -415,7 +423,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                             imgproc_btn.click(
                                                         imgproc,
                                                         [imgproc_source, imgproc_folder,imgproc_prompt,imgproc_toggles,
-                                                        imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height, imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength],
+                                                        imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height,
+                                                         imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength,imgproc_ldsr_steps,imgproc_ldsr_pre_downSample,imgproc_ldsr_post_downSample],
                                                         [imgproc_output])
                                     output_txt2img_to_imglab.click(
                                         uifn.copy_img_to_lab,
