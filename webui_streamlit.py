@@ -150,7 +150,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
         model = load_model_from_config(config, defaults.general.ckpt)
     
         device = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        st.session_state["model"] = (model if defaults.general.no_half else model).to(device)    
+        st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(device)    
         
         print("Model loaded.")
 
@@ -818,18 +818,6 @@ class KDiffusionSampler:
         elif self.schedule == 'lms':
             samples_ddim = sample_lms(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
         return samples_ddim, None
-
-import math
-
-
-
-
-
-
-
-
-
-
 
 @torch.no_grad()
 def sample_euler(model, x, sigmas, extra_args=None, callback=None, disable=None, s_churn=0., s_tmin=0., s_tmax=float('inf'), s_noise=1.):
