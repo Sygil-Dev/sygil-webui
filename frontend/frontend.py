@@ -199,7 +199,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         with gr.Tabs():
                             with gr.TabItem("Editor Options"):
                                 with gr.Column():
-                                    gr.Markdown("Temporary workaround: Switch back and forth between modes once before generating")
                                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
                                                              value="Crop", elem_id='edit_mode_select')
                                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
@@ -279,9 +278,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         img2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
                                                         label='Batch count (how many batches of images to generate)',
                                                         value=img2img_defaults['n_iter'])
-                        img2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1,
-                                                label='Batch size (how many images are in a batch; memory-hungry)',
-                                                value=img2img_defaults['batch_size'], visible=False)
                         img2img_dimensions_info_text_box = gr.Textbox(label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
                         img2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
@@ -366,10 +362,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                 # If a JobManager was passed in then wrap the Generate functions
                 img2img_func = img2img
                 img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_mask, img2img_mask,
-                     img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
-                     img2img_realesrgan_model_name, img2img_batch_count, img2img_batch_size, img2img_cfg,
-                     img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
-                     img2img_embeddings]
+                                  img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                                  img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
+                                  img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
+                                  img2img_embeddings]
                 img2img_outputs = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
 
                 if job_manager:
