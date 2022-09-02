@@ -4,7 +4,16 @@
     max-width:89vw
 }
 
-
+#increment_btn_minus {
+    align-self: center;
+    background: none;
+    border: none;
+}
+#increment_btn_plus {
+    align-self: center;
+    background: none;
+    border: none;
+}
 #prompt_input, #img2img_prompt_input {
     padding: 0px;
     border: none;

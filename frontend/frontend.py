@@ -63,9 +63,14 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                     _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
+                        with gr.Row():
+                            increment_btn_minus = gr.Button("-", elem_id="increment_btn_minus")
+                            txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
+                                                    value=txt2img_defaults['ddim_steps'])
+                            increment_btn_plus = gr.Button("+", elem_id="increment_btn_plus")
+                            increment_btn_minus.click(fn=uifn.increment_down,inputs=[txt2img_steps], outputs=[txt2img_steps])
+                            increment_btn_plus.click(fn=uifn.increment_up,inputs=[txt2img_steps], outputs=[txt2img_steps])
 
-                        txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
-                                                  value=txt2img_defaults['ddim_steps'])
                         txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
                                                                 'k_euler', 'k_heun', 'k_lms'],
