@@ -44,12 +44,14 @@ js_copy_txt2img_output = "(x) => {navigator.clipboard.writeText(document.querySe
 
 js_parse_prompt ="""
 (txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed, txt2img_batch_count, txt2img_cfg) => {
+
     
 const prompt_input = document.querySelector('gradio-app').shadowRoot.querySelector('#prompt_input [data-testid="textbox"]');
 const multiline = document.querySelector('gradio-app').shadowRoot.querySelector('#submit_on_enter label:nth-child(2)')
 if (prompt_input.scrollWidth > prompt_input.clientWidth + 10 ) {
    multiline.click(); 
 }
+
 
 
 let height_match =  /(?:-h|-H|--height|height)[ :]?(?<height>\d+) /.exec(txt2img_prompt);

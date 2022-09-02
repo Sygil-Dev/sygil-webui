@@ -118,6 +118,21 @@ txt2img_defaults = {
     'variant_seed': ''
 }
 
+imgproc_defaults = {
+    'prompt': '',
+    'ddim_steps': 50,
+    'sampler_name': 'k_lms',
+    'cfg_scale': 7.5,
+    'seed': '',
+    'height': 512,
+    'width': 512,
+    'denoising_strength': 0.30
+}
+imgproc_mode_toggles = [
+    'Fix Faces',
+    'Upscale'
+]
+
 if 'txt2img' in user_defaults:
     txt2img_defaults.update(user_defaults['txt2img'])
 
@@ -200,6 +215,7 @@ demo = draw_gradio_ui(opt,
                       user_defaults=user_defaults,
                       txt2img=txt2img,
                       img2img=img2img,
+                      imgproc=lambda x: x,
                       txt2img_defaults=txt2img_defaults,
                       txt2img_toggles=txt2img_toggles,
                       txt2img_toggle_defaults=txt2img_toggle_defaults,
@@ -213,8 +229,10 @@ demo = draw_gradio_ui(opt,
                       RealESRGAN=RealESRGAN,
                       GFPGAN=GFPGAN,
                       run_GFPGAN=run_GFPGAN,
-                      run_RealESRGAN=run_RealESRGAN
+                      run_RealESRGAN=run_RealESRGAN,
+                      imgproc_defaults=imgproc_defaults,
+                      imgproc_mode_toggles={}
                         )
 
 # demo.queue()
-demo.launch(share=True, debug=True)
+demo.launch(share=False, debug=True)
