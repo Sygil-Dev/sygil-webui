@@ -2,6 +2,9 @@
 
 # This repo is for development, there may be bugs and new features
 
+# Notice
+- To use the new LDSR settings please make sure to re-clone the LDSR repo.
+
 ## Feature request? Use [discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
 
 ### Questions about **_[Upscalers](https://github.com/hlky/stable-diffusion-webui/wiki/Upscalers)_**?
