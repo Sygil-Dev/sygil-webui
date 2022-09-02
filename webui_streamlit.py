@@ -805,17 +805,17 @@ class KDiffusionSampler:
         x = x_T * sigmas[0]
         model_wrap_cfg = CFGDenoiser(self.model_wrap)
         samples_ddim = None
-        if self.schedule == 'dpm_2_a':
+        if self.schedule == 'dpm_2_ancestral':
             samples_ddim = sample_dpm_2_ancestral(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
         elif self.schedule == 'dpm_2':
             samples_ddim = sample_dpm_2(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
-        elif self.schedule == 'euler_a':
+        elif self.schedule == 'euler_aancestral':
             samples_ddim = sample_euler_ancestral(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
         elif self.schedule == 'euler':
             samples_ddim = sample_euler(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
         elif self.schedule == 'heun':
             samples_ddim = sample_heun(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)  
-        else:
+        elif self.schedule == 'lms':
             samples_ddim = sample_lms(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
         return samples_ddim, None
 
@@ -1870,8 +1870,8 @@ def layout():
             with col3:
                 sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
                 sampler_name = st.selectbox("Sampling method", 
-                                            ["k_lms", "PLMS", "DDIM", "k_dpm_2_a", "k_dpm_2", "k_euler_a", "k_euler", "k_heun", "lms"],
-                                            index=7, help="Sampling method to use. Default: k_lms")  
+                                            ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
+                                            index=0, help="Sampling method to use. Default: k_lms")  
                 
                 
                 basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
