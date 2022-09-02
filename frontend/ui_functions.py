@@ -1,6 +1,7 @@
 import re
 import gradio as gr
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
+from fractions import Fraction
 from io import BytesIO
 import base64
 import re
@@ -119,4 +120,8 @@ def resize_image(resize_mode, im, width, height):
 
 def update_dimensions_info(width, height):
     pixel_count_formated = "{:,.0f}".format(width * height)
-    return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
+    numerator = Fraction(width / height).limit_denominator().numerator
+    denominator = Fraction(width / height).limit_denominator().denominator
+
+    #return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
+    return f"Aspect ratio: {str(numerator)}:{str(denominator)}\nTotal pixel count: {pixel_count_formated}"
