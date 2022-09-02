@@ -3,13 +3,24 @@ import os, time
 # USER CHANGABLE ARGUMENTS
 
 # Change to `True` if you wish to enable these common arguments
+
+# Run upscaling models on the CPU
 extra_models_cpu = False
+
+# Automatically open a new browser window or tab on first launch
 inbrowser = False
-optimized_turbo = False
+
+# Run Stable Diffusion in Optimized Mode - Only requires 4Gb of VRAM, but is significantly slower
 optimized = False
+
+# Run in Optimized Turbo Mode - Needs more VRAM than regular optimized mode, but is faster
+optimized_turbo = False
+
+# Creates a public xxxxx.gradio.app share link to allow others to use your interface (requires properly forwarded ports to work correctly)
 share = False
 
-# Enter other `--arguments` you wish to use
+
+# Enter other `--arguments` you wish to use - Must be entered as a `--argument ` syntax
 other_arguments = ""
 
 
