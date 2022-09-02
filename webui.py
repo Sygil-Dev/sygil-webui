@@ -945,6 +945,8 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         output_images.append(image)
                         if simple_templating:
                             grid_captions.append( captions[i] )
+                    else:
+                        output_images.append(image)
 
             if opt.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
