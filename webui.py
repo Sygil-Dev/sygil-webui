@@ -1136,7 +1136,7 @@ class Flagging(gr.FlaggingCallback):
 
 def img2img(prompt: str, image_editor_mode: str, init_info, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
-            seed: int, height: int, width: int, resize_mode: int, fp):
+            seed: int, height: int, width: int, resize_mode: int, fp = None):
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
     err = False
     seed = seed_to_int(seed)
