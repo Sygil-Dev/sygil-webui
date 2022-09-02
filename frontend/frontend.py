@@ -222,6 +222,25 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     with gr.Column():
                         gr.Markdown('#### Img2Img Results')
                         output_img2img_gallery = gr.Gallery(label="Images", elem_id="img2img_gallery_output").style(grid=[4,4,4])
+                        if job_manager is not None:
+                            with gr.Tabs():
+                                with gr.TabItem("Current Session"):
+                                    with gr.Row():
+                                        img2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
+                                        img2img_refresh_btn = gr.Button(
+                                            "Refresh", elem_id="refresh", variant="secondary")
+                                    img2img_job_status = gr.Textbox(
+                                        placeholder="Job Status", interactive=False, show_label=False)
+                                with gr.TabItem("Maintenance"):
+                                    with gr.Row():
+                                        gr.Markdown("Stop all concurrent sessions, or free memory associated with jobs which were finished after the browser was closed")
+                                    with gr.Row():
+                                        img2img_stop_all_sessions = gr.Button(
+                                            "Stop All Sessions", elem_id="stop_all", variant="secondary"
+                                        )
+                                        img2img_free_done_sessions = gr.Button(
+                                            "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
+                                        )
                         with gr.Tabs():
                             with gr.TabItem("Generated image actions", id="img2img_actions_tab"):
                                 gr.Markdown("Select an image, then press one of the buttons below")
@@ -243,25 +262,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                         _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                 output_img2img_stats = gr.HTML(label='Stats')
 
-                        if job_manager is not None:
-                            with gr.Tabs():
-                                with gr.TabItem("Current Session"):
-                                    with gr.Row():
-                                        img2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
-                                        img2img_refresh_btn = gr.Button(
-                                            "Refresh", elem_id="refresh", variant="secondary")
-                                    img2img_job_status = gr.Textbox(
-                                        placeholder="Job Status", interactive=False, show_label=False)
-                                with gr.TabItem("Maintenance"):
-                                    with gr.Row():
-                                        gr.Markdown("Stop all concurrent sessions, or free memory associated with jobs which were finished after the browser was closed")
-                                    with gr.Row():
-                                        img2img_stop_all_sessions = gr.Button(
-                                            "Stop All Sessions", elem_id="stop_all", variant="secondary"
-                                        )
-                                        img2img_free_done_sessions = gr.Button(
-                                            "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
-                                        )
                 gr.Markdown('# img2img settings')
 
                 with gr.Row():
