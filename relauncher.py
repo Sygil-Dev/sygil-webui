@@ -8,7 +8,7 @@ import os, time
 extra_models_cpu = False
 
 # Automatically open a new browser window or tab on first launch
-inbrowser = False
+open_in_browser = False
 
 # Run Stable Diffusion in Optimized Mode - Only requires 4Gb of VRAM, but is significantly slower
 optimized = False
@@ -21,7 +21,7 @@ share = False
 
 
 # Enter other `--arguments` you wish to use - Must be entered as a `--argument ` syntax
-other_arguments = ""
+additional_arguments = ""
 
 
 
@@ -40,7 +40,7 @@ if optimized == True:
 if share == True:
     common_arguments += "--share "
 
-if inbrowser == True:
+if open_in_browser == True:
     inbrowser_argument = "--inbrowser "
 else:
     inbrowser_argument = ""
@@ -49,13 +49,16 @@ n = 0
 while True:
     if n == 0:
         print('Relauncher: Launching...')
-        os.system(f"python scripts/webui.py {common_arguments} {inbrowser_argument} {other_arguments}")
+        os.system(f"python scripts/webui.py {common_arguments} {inbrowser_argument} {additional_arguments}")
         
     else:
         print(f'\tRelaunch count: {n}')
         print('Relauncher: Launching...')
-        os.system(f"python scripts/webui.py {common_arguments} {other_arguments}")
+        os.system(f"python scripts/webui.py {common_arguments} {additional_arguments}")
     
-    print('Relauncher: Process is ending. Relaunching in 1s...')
     n += 1
+    if n > 100:
+        print ('Too many relaunch attempts. Aborting...')
+        break
+    print('Relauncher: Process is ending. Relaunching in 1s...')
     time.sleep(1)
