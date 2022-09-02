@@ -428,9 +428,15 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                          imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength,imgproc_ldsr_steps,imgproc_ldsr_pre_downSample,imgproc_ldsr_post_downSample],
                                                         [imgproc_output])
                                     output_txt2img_to_imglab.click(
-                                        uifn.copy_img_to_lab,
-                                        [output_txt2img_gallery],
-                                        [imgproc_source, tabs],
+                                        fn=uifn.copy_img_params_to_lab,
+                                        inputs = [output_txt2img_params],
+                                        outputs = [imgproc_prompt,imgproc_seed,imgproc_steps,imgproc_cfg,imgproc_sampling],
+                                        )
+                                    
+                                    output_txt2img_to_imglab.click(
+                                        fn=uifn.copy_img_to_lab,
+                                        inputs = [output_txt2img_gallery],
+                                        outputs = [imgproc_source, tabs],
                                         _js=call_JS("moveImageFromGallery",
                                                     fromId="txt2img_gallery_output",
                                                     toId="imglab_input")

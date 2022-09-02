@@ -21,10 +21,19 @@ def copy_img_to_lab(img):
         processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
         tab_update = gr.update(selected='imgproc_tab')
         img_update = gr.update(value=processed_image)
-        return processed_image, tab_update
+        return processed_image, tab_update,
     except IndexError:
         return [None, None]
-
+def copy_img_params_to_lab(params):
+    try:
+        prompt = params[0][0].replace('\n', ' ').replace('\r', '')
+        seed = int(params[1][1])
+        steps = int(params[7][1])
+        cfg_scale = float(params[9][1])
+        sampler = params[11][1]
+        return prompt,seed,steps,cfg_scale,sampler
+    except IndexError:
+        return [None, None]
 def copy_img_to_input(img):
     try:
         image_data = re.sub('^data:image/.+;base64,', '', img)
@@ -120,3 +129,4 @@ def resize_image(resize_mode, im, width, height):
 def update_dimensions_info(width, height):
     pixel_count_formated = "{:,.0f}".format(width * height)
     return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
+
