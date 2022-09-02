@@ -111,7 +111,12 @@ class JobManager:
         if session_info is None or job_info is None:
             return []
 
-        outputs = job_info.func(*job_info.inputs, job_info=job_info)
+        try:
+            outputs = job_info.func(*job_info.inputs, job_info=job_info)
+        except Exception as e:
+            job_info.job_status = f"Error: {e}"
+            print(f"Exception processing job {job_info}: {e}")
+            outputs = []
 
         # Filter the function output for any removed outputs
         filtered_output = []
