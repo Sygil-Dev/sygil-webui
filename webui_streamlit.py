@@ -150,7 +150,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
         model = load_model_from_config(config, defaults.general.ckpt)
     
         device = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(device)    
+        st.session_state["model"] = (model if defaults.general.no_half else model).to(device)    
         
         print("Model loaded.")
 
@@ -1192,7 +1192,7 @@ def get_font(fontsize):
 
 def load_embeddings(fp):
     if fp is not None and hasattr(st.session_state["model"], "embedding_manager"):
-        st.session_state["model"].embedding_manager.load(fp.name)
+        st.session_state["model"].embedding_manager.load(fp['name'])
 
 def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     if force_n_rows is not None:
@@ -1901,11 +1901,13 @@ def layout():
                 print("Loading models")
                 # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
                 load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
-                
+                fp = {
+                    'name': 'embeddings/alex/embeddings_gs-11000.pt'
+                }
                 try:
                     output_images, seed, info, stats = txt2img(prompt, sampling_steps, sampler_name, RealESRGAN_model, batch_count, batch_size, 
                                                                cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                               save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=None,
+                                                               save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=fp,
                                                                variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
                 except (StopException, KeyError):
                     print(f"Received Streamlit StopException")
