@@ -1,8 +1,8 @@
 name: Sync Files
+# Sync the files to main repo on "release" 
 on:
-  push:
-    branches:
-      - master
+  release:
+    types: [prereleased, released]
   workflow_dispatch:
 jobs:
   sync:
