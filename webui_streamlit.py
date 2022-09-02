@@ -849,14 +849,15 @@ def sample_euler(model, x, sigmas, extra_args=None, callback=None, disable=None,
         dt = sigmas[i + 1] - sigma_hat
         # Euler method
         x = x + d * dt
-        x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
-        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
-        
-        for i, x_sample in enumerate(x_samples_ddim):
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            x_sample = x_sample.astype(np.uint8)               
-            print(i)
-            st.session_state["preview_image"].image(x_sample, width=512)    
+        if i % 3 == 0:
+            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
+            
+            for i, x_sample in enumerate(x_samples_ddim):
+                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = x_sample.astype(np.uint8)               
+                print(i)
+                st.session_state["preview_image"].image(x_sample, width=512)     
     return x
 
 
@@ -875,14 +876,15 @@ def sample_euler_ancestral(model, x, sigmas, extra_args=None, callback=None, dis
         dt = sigma_down - sigmas[i]
         x = x + d * dt
         x = x + torch.randn_like(x) * sigma_up
-        x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
-        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
-        
-        for i, x_sample in enumerate(x_samples_ddim):
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            x_sample = x_sample.astype(np.uint8)               
-            print(i)
-            st.session_state["preview_image"].image(x_sample, width=512)  
+        if i % 3 == 0:
+            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
+            
+            for i, x_sample in enumerate(x_samples_ddim):
+                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = x_sample.astype(np.uint8)               
+                print(i)
+                st.session_state["preview_image"].image(x_sample, width=512)   
     return x
 
 
@@ -912,14 +914,15 @@ def sample_heun(model, x, sigmas, extra_args=None, callback=None, disable=None, 
             d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
             d_prime = (d + d_2) / 2
             x = x + d_prime * dt
-        x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
-        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
-        
-        for i, x_sample in enumerate(x_samples_ddim):
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            x_sample = x_sample.astype(np.uint8)               
-            print(i)
-            st.session_state["preview_image"].image(x_sample, width=512)  
+        if i % 3 == 0:
+            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
+            
+            for i, x_sample in enumerate(x_samples_ddim):
+                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = x_sample.astype(np.uint8)               
+                print(i)
+                st.session_state["preview_image"].image(x_sample, width=512)   
     return x
 
 
@@ -946,14 +949,15 @@ def sample_dpm_2(model, x, sigmas, extra_args=None, callback=None, disable=None,
         denoised_2 = model(x_2, sigma_mid * s_in, **extra_args)
         d_2 = to_d(x_2, sigma_mid, denoised_2)
         x = x + d_2 * dt_2
-        x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
-        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
-        
-        for i, x_sample in enumerate(x_samples_ddim):
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            x_sample = x_sample.astype(np.uint8)               
-            print(i)
-            st.session_state["preview_image"].image(x_sample, width=512)  
+        if i % 3 == 0:
+            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
+            
+            for i, x_sample in enumerate(x_samples_ddim):
+                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = x_sample.astype(np.uint8)               
+                print(i)
+                st.session_state["preview_image"].image(x_sample, width=512)  
     return x
 
 
@@ -977,14 +981,15 @@ def sample_dpm_2_ancestral(model, x, sigmas, extra_args=None, callback=None, dis
         d_2 = to_d(x_2, sigma_mid, denoised_2)
         x = x + d_2 * dt_2
         x = x + torch.randn_like(x) * sigma_up
-        x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
-        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
-        
-        for i, x_sample in enumerate(x_samples_ddim):
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            x_sample = x_sample.astype(np.uint8)               
-            print(i)
-            st.session_state["preview_image"].image(x_sample, width=512)  
+        if i % 3 == 0:
+            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
+            
+            for i, x_sample in enumerate(x_samples_ddim):
+                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = x_sample.astype(np.uint8)               
+                print(i)
+                st.session_state["preview_image"].image(x_sample, width=512)  
     return x
 
 
@@ -1007,14 +1012,15 @@ def sample_lms(model, x, sigmas, extra_args=None, callback=None, disable=None, o
         cur_order = min(i + 1, order)
         coeffs = [linear_multistep_coeff(cur_order, sigmas.cpu(), i, j) for j in range(cur_order)]
         x = x + sum(coeff * d for coeff, d in zip(coeffs, reversed(ds)))
-        x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
-        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
-        
-        for i, x_sample in enumerate(x_samples_ddim):
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            x_sample = x_sample.astype(np.uint8)               
-            print(i)
-            st.session_state["preview_image"].image(x_sample, width=512)  
+        if i % 3 == 0:
+            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
+            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
+            
+            for i, x_sample in enumerate(x_samples_ddim):
+                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = x_sample.astype(np.uint8)               
+                print(i)
+                st.session_state["preview_image"].image(x_sample, width=512) 
     return x
 
 
