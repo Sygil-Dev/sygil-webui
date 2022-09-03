@@ -1,3 +1,4 @@
+from gc import callbacks
 import warnings
 import streamlit as st
 from streamlit import StopException, StreamlitAPIException
@@ -178,6 +179,17 @@ def load_sd_from_config(ckpt, verbose=False):
 	return sd
 #
 
+def generation_callback_k(x):
+	#if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
+		# The following lines will convert the tensor we got on img to an actual image we can render on the UI.
+		# It can probably be done in a better way for someone who knows what they're doing. I don't.
+	x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x['denoised'])
+	x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
+	
+	pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0))           
+
+	st.session_state["preview_image"].image(pil_image, width=512) 
+
 def generation_callback(img, i):
 	if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 		# The following lines will convert the tensor we got on img to an actual image we can render on the UI.
@@ -320,18 +332,20 @@ class KDiffusionSampler:
 		x = x_T * sigmas[0]
 		model_wrap_cfg = CFGDenoiser(self.model_wrap)
 		samples_ddim = None
-		if self.schedule == 'dpm_2_ancestral':
-			samples_ddim = sample_dpm_2_ancestral(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
-		elif self.schedule == 'dpm_2':
-			samples_ddim = sample_dpm_2(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
-		elif self.schedule == 'euler_aancestral':
-			samples_ddim = sample_euler_ancestral(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
-		elif self.schedule == 'euler':
-			samples_ddim = sample_euler(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
-		elif self.schedule == 'heun':
-			samples_ddim = sample_heun(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)  
-		elif self.schedule == 'lms':
-			samples_ddim = sample_lms(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+		samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False, callback=generation_callback_k)
+		# if self.schedule == 'dpm_2_ancestral':
+		# 	samples_ddim = sample_dpm_2_ancestral(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+		# elif self.schedule == 'dpm_2':
+		# 	samples_ddim = sample_dpm_2(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+		# elif self.schedule == 'euler_ancestral':
+		# 	samples_ddim = sample_euler_ancestral(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+		# elif self.schedule == 'euler':
+		# 	samples_ddim = sample_euler(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+		# elif self.schedule == 'heun':
+		# 	samples_ddim = sample_heun(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)  
+		# elif self.schedule == 'lms':
+		# 	samples_ddim = sample_lms(model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+		#
 		return samples_ddim, None
 
 @torch.no_grad()
