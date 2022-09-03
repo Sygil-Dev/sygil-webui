@@ -22,16 +22,64 @@ def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
     return gr.update(value=resized_cropped_image)
 
+def toggle_options_gfpgan(selection):
+    if 0 in selection:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_upscalers(selection):
+    if 1 in selection:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_realesrgan(selection):
+    if selection == 0 or selection == 1 or selection == 3:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_gobig(selection):
+    if selection == 1:
+        #print(selection)
+        return gr.update(visible=True)
+    if selection == 3:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_ldsr(selection):
+    if selection == 2 or selection == 3:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def increment_down(value):
+    return value - 1
+
+def increment_up(value):
+    return value + 1
+
 def copy_img_to_lab(img):
     try:
         image_data = re.sub('^data:image/.+;base64,', '', img)
         processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
         tab_update = gr.update(selected='imgproc_tab')
         img_update = gr.update(value=processed_image)
-        return processed_image, tab_update
+        return processed_image, tab_update,
     except IndexError:
         return [None, None]
-
+def copy_img_params_to_lab(params):
+    try:
+        prompt = params[0][0].replace('\n', ' ').replace('\r', '')
+        seed = int(params[1][1])
+        steps = int(params[7][1])
+        cfg_scale = float(params[9][1])
+        sampler = params[11][1]
+        return prompt,seed,steps,cfg_scale,sampler
+    except IndexError:
+        return [None, None]
 def copy_img_to_input(img):
     try:
         image_data = re.sub('^data:image/.+;base64,', '', img)
@@ -127,7 +175,6 @@ def resize_image(resize_mode, im, width, height):
 def update_dimensions_info(width, height):
     pixel_count_formated = "{:,.0f}".format(width * height)
     return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
-
 
 def get_png_nfo( image: Image ):
     info_text = ""
