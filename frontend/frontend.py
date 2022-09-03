@@ -1,11 +1,22 @@
+import sys
+from tkinter.filedialog import askopenfilename
 import gradio as gr
 from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2img_output
+from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
+import uuid
+try:
+    import pyperclip
+except ImportError:
+    print("Warning: pyperclip is not installed. Pasting settings is unavailable.", file=sys.stderr)
+    pyperclip = None
+
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda x: x, txt2img_defaults={}, RealESRGAN=True, GFPGAN=True,LDSR=True,
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
                    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
-                   img2img_resize_modes=None, imgproc_defaults={},imgproc_mode_toggles={},user_defaults={}, run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x):
+                   img2img_resize_modes=None, imgproc_defaults={},imgproc_mode_toggles={},user_defaults={}, run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
+                   job_manager: JobManager = None) -> gr.Blocks:
 
     with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
         with gr.Tabs(elem_id='tabss') as tabs:
@@ -19,7 +30,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                 value=txt2img_defaults['prompt'],
                                                 show_label=False)
                     txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
-
                 with gr.Row(elem_id='body').style(equal_height=False):
                     with gr.Column():
                         txt2img_width = gr.Slider(minimum=64, maximum=1024, step=64, label="Width",
@@ -34,6 +44,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         txt2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
                                                         label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
+
+                        txt2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
 
                         txt2img_dimensions_info_text_box = gr.Textbox(label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
@@ -52,14 +64,17 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                         with gr.Group():
                             with gr.Row(elem_id='txt2img_output_row'):
-                                output_txt2img_copy_params = gr.Button("Copy full parameters").click(
+                                output_txt2img_copy_params = gr.Button("Copy all").click(
                                     inputs=[output_txt2img_params], outputs=[],
                                     _js=js_copy_txt2img_output,
                                      fn=None, show_progress=False)
                                 output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
-                                output_txt2img_copy_seed = gr.Button("Copy only seed").click(
+                                output_txt2img_copy_seed = gr.Button("Copy seed").click(
                                     inputs=[output_txt2img_seed], outputs=[],
                                     _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                                input_txt2img_paste_parameters = gr.Button('Paste settings', visible=pyperclip is not None)
+                                input_txt2img_from_file = gr.Button('From file...')
+                                input_txt2img_defaults = gr.Button('Restore defaults')
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
 
@@ -98,23 +113,63 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
 
+                txt2img_func = txt2img
+                txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
+                                  txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
+                                  txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
+                                  txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
+                txt2img_outputs = [output_txt2img_gallery, output_txt2img_seed,
+                                   output_txt2img_params, output_txt2img_stats]
+
+                # If a JobManager was passed in then wrap the Generate functions
+                if txt2img_job_ui:
+                    txt2img_func, txt2img_inputs, txt2img_outputs = txt2img_job_ui.wrap_func(
+                        func=txt2img_func,
+                        inputs=txt2img_inputs,
+                        outputs=txt2img_outputs
+                    )
+
                 txt2img_btn.click(
-                    txt2img,
-                    [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
-                     txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
-                     txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
-                    [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
+                    txt2img_func,
+                    txt2img_inputs,
+                    txt2img_outputs
                 )
                 txt2img_prompt.submit(
-                    txt2img,
-                    [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
-                     txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
-                     txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed],
-                    [output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats]
+                    txt2img_func,
+                    txt2img_inputs,
+                    txt2img_outputs
                 )
+                txt2img_settings_elements = [
+                    txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
+                    txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
+                    txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed
+                ]
+                txt2img_settings_checkboxgroup_info = [(3, txt2img_toggles.choices)]
+                input_txt2img_defaults.click(
+                    fn=lambda *x: uifn.load_settings(
+                        *x, txt2img_defaults, uifn.LOAD_SETTINGS_TXT2IMG_NAMES, txt2img_settings_checkboxgroup_info
+                    ),
+                    inputs=txt2img_settings_elements,
+                    outputs=txt2img_settings_elements
+                )
+
+                def from_file_func(*inputs):
+                    file_path = askopenfilename()
+                    return uifn.load_settings(
+                        *inputs, file_path, uifn.LOAD_SETTINGS_TXT2IMG_NAMES, txt2img_settings_checkboxgroup_info)
+
+                input_txt2img_from_file.click(
+                    from_file_func, inputs=txt2img_settings_elements, outputs=txt2img_settings_elements)
+
+                input_txt2img_paste_parameters.click(
+                    lambda *x: uifn.load_settings(
+                        *x, pyperclip.paste(), uifn.LOAD_SETTINGS_TXT2IMG_NAMES, txt2img_settings_checkboxgroup_info),
+                    inputs=txt2img_settings_elements,
+                    outputs=txt2img_settings_elements
+                )
+
                 # txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
                 # txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
-
                 live_prompt_params = [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed, txt2img_batch_count, txt2img_cfg]
                 txt2img_prompt.change(
                     fn=None,
@@ -149,7 +204,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
 
                         with gr.Tabs():
                             with gr.TabItem("Editor Options"):
-                                with gr.Column():
+                                with gr.Row():
                                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
                                                              value="Crop", elem_id='edit_mode_select')
                                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
@@ -173,6 +228,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     with gr.Column():
                         gr.Markdown('#### Img2Img Results')
                         output_img2img_gallery = gr.Gallery(label="Images", elem_id="img2img_gallery_output").style(grid=[4,4,4])
+                        img2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
                         with gr.Tabs():
                             with gr.TabItem("Generated image actions", id="img2img_actions_tab"):
                                 gr.Markdown("Select an image, then press one of the buttons below")
@@ -193,6 +249,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                         inputs=output_img2img_seed, outputs=[],
                                         _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                 output_img2img_stats = gr.HTML(label='Stats')
+
                 gr.Markdown('# img2img settings')
 
                 with gr.Row():
@@ -278,24 +335,31 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                        fromId="img2img_gallery_output")
                                                            )
 
+                img2img_func = img2img
+                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask,
+                                  img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                                  img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
+                                  img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
+                                  img2img_embeddings]
+                img2img_outputs = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
+
+                # If a JobManager was passed in then wrap the Generate functions
+                if img2img_job_ui:
+                    img2img_func, img2img_inputs, img2img_outputs = img2img_job_ui.wrap_func(
+                        func=img2img_func,
+                        inputs=img2img_inputs,
+                        outputs=img2img_outputs,
+                    )
+
                 img2img_btn_mask.click(
-                    img2img,
-                    [img2img_prompt, img2img_image_editor_mode, img2img_image_mask, img2img_mask,
-                     img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
-                     img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
-                     img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
-                     img2img_embeddings],
-                    [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
+                    img2img_func,
+                    img2img_inputs,
+                    img2img_outputs
                 )
                 def img2img_submit_params():
-                    return (img2img,
-                    [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask,
-                     img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
-                     img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
-                     img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
-                     img2img_embeddings],
-                    [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats])
-
+                    return (img2img_func,
+                    img2img_inputs,
+                    img2img_outputs)
 
                 img2img_btn_editor.click(*img2img_submit_params())
 
@@ -326,6 +390,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             #select folder with images to process
                                 with gr.TabItem('Batch Process'):
                                     imgproc_folder = gr.File(label="Batch Process", file_count="multiple",source="upload", interactive=True, type="file")
+                            imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="PngNfo", visible=False, max_lines=5)
                             with gr.Row():
                                 imgproc_btn = gr.Button("Process", variant="primary")
                             gr.HTML("""
@@ -417,6 +482,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         [imgproc_source, imgproc_folder,imgproc_prompt,imgproc_toggles,
                                                         imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height, imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength],
                                                         [imgproc_output])
+
+                                            imgproc_source.change(
+                                                        uifn.get_png_nfo,
+                                                        [imgproc_source],
+                                                        [imgproc_pngnfo] )
+
                                     output_txt2img_to_imglab.click(
                                         uifn.copy_img_to_lab,
                                         [output_txt2img_gallery],
