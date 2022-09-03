@@ -989,10 +989,10 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
-                    if add_original_image or not simple_templating:
-                        output_images.append(image)
-                        if simple_templating:
-                            grid_captions.append( captions[i] )
+                if add_original_image or not simple_templating:
+                    output_images.append(image)
+                    if simple_templating:
+                        grid_captions.append( captions[i] )
 
             if opt.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
