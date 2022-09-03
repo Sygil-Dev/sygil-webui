@@ -171,9 +171,15 @@ def crash(e, s):
     global device
 
     print(s, '\n', e)
-
-    del model
-    del device
+    try:
+        del model
+        del device
+    except:
+        try:
+            del device
+        except:
+            pass
+        pass
 
     print('exiting...calling os._exit(0)')
     t = threading.Timer(0.25, os._exit, args=[0])
@@ -906,7 +912,7 @@ def process_images(
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
                     time.sleep(1)
 
-            cur_variant_amount = variant_amount 
+            cur_variant_amount = variant_amount
             if variant_amount == 0.0:
                 # we manually generate all input noises because each one should have a specific seed
                 x = create_random_tensors(shape, seeds=seeds)
@@ -1011,8 +1017,9 @@ def process_images(
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
-                #if imgProcessorTask == True:
-                #    output_images.append(image)
+                # this flag is used for imgProcessorTasks like GoBig, will return the image without saving it
+                if imgProcessorTask == True:
+                    output_images.append(image)
 
                 if save_each:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
