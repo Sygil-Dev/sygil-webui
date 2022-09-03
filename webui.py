@@ -40,7 +40,6 @@ parser.add_argument("--skip-grid", action='store_true', help="do not save a grid
 parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
-parser.add_argument("--custom-css", action='store_true', help="Place custom.css in css folder to load a custom theme of the UI", default=True)
 
 opt = parser.parse_args()
 
