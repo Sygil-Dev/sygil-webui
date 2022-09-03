@@ -17,6 +17,7 @@ parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=(
 parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
 parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=0)
 parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="jpg:95")
+parser.add_argument("--inbrowser", action='store_true', help="automatically launch the interface in a new tab on the default browser", default=False)
 parser.add_argument("--ldsr-dir", type=str, help="LDSR directory", default=('./src/latent-diffusion' if os.path.exists('./src/latent-diffusion') else './LDSR'))
 parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
 parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats", default=False)
@@ -2098,10 +2099,11 @@ class ServerLauncher(threading.Thread):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         gradio_params = {
-            'show_error': True,
+            'inbrowser': opt.inbrowser,
             'server_name': '0.0.0.0',
             'server_port': opt.port,
-            'share': opt.share
+            'share': opt.share, 
+            'show_error': True
         }
         if not opt.share:
             demo.queue(concurrency_count=opt.max_jobs)
@@ -2114,7 +2116,7 @@ class ServerLauncher(threading.Thread):
             try:
                 self.demo.launch(**gradio_params)
             except (OSError) as e:
-                print (f'Error: Port: {opt.port} is not open yet. Please wait...')
+                print (f'Error: Port: {opt.port} is not open yet. Please wait, this may take upwards of 60 seconds...')
                 time.sleep(10)
             else:
                 port_status = 0
