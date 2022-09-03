@@ -1,4 +1,5 @@
-# UI defaults configuration file. Is read automatically if located at configs/webui/webui.yaml, or specify path via --defaults.
+# UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_streamlit.yaml.
+# Any changes made here will be available automatically on the web app without having to stop it.
 general:
     gpu: 0
     outdir: outputs
@@ -23,6 +24,8 @@ general:
     optimized: False
     optimized_turbo: False
     no_progressbar_hiding: False
+    update_preview: True
+    update_preview_frequency: 1
 
 txt2img:
     prompt:
@@ -41,35 +44,9 @@ txt2img:
     save_as_jpg: False
     use_GFPGAN: True
     use_RealESRGAN: True
-    RealESRGAN_model: "RealESRGAN_x4plus_anime_6B"
+    RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     
-#txt2img:
-  #prompt:
-  #ddim_steps: 50
-  # Adding an int to toggles enables the corresponding feature.
-  # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
-  # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
-  # 2: Save individual images
-  # 3: Save grid
-  # 4: Sort samples by prompt
-  # 5: Write sample info files
-  # 6: jpg samples
-  # 7: Fix faces using GFPGAN
-  # 8: Upscale images using Real-ESRGAN
-  #toggles: [1, 2, 3, 4, 5]
-  #sampler_name: k_lms
-  #ddim_eta: 0.0  # legacy name, applies to all algorithms.
-  #n_iter: 1
-  #batch_size: 1
-  #cfg_scale: 7.5
-  # Leave blank for random seed:
-  #seed:
-  #height: 512
-  #width: 512
-  # Textual inversion embeddings file path:
-  #fp:
-
 img2img:
   prompt:
   ddim_steps: 50
