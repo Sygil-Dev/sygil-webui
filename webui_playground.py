@@ -23,19 +23,18 @@ def run_goBIG():
     pass
 
 
-def txt2img(*args, **kwargs):
-    # Output should match output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats
-    # info = f"""{args[0]} --seed {args[9]} --W {args[11]} --H {args[10]} -s {args[1]} -C {float(args[8])} --sampler {args[2]}  """.strip()
+def mock_processing(prompt: str, seed: str, width: int, height: int, steps: int,
+                    cfg_scale: float, sampler: str, batch_count: int):
     args_and_names = {
-        "seed": args[9],
-        "width": args[11],
-        "height": args[10],
-        "steps": args[1],
-        "cfg_scale": str(args[8]),
-        "sampler": args[2],
+        "seed": seed,
+        "width": width,
+        "height": height,
+        "steps": steps,
+        "cfg_scale": str(cfg_scale),
+        "sampler": sampler,
     }
 
-    full_string = f"{args[0]}\n" + " ".join([f"{k}:" for k, v in args_and_names.items()])
+    full_string = f"{prompt}\n" + " ".join([f"{k}:" for k, v in args_and_names.items()])
     info = {
         'text': full_string,
         'entities': [
@@ -43,20 +42,37 @@ def txt2img(*args, **kwargs):
             k, v in args_and_names.items()]
     }
     images = []
-    for i in range(args[6]):
-        images.append(f"http://placeimg.com/{args[11]}/{args[10]}/any")
+    for i in range(batch_count):
+        images.append(f"http://placeimg.com/{width}/{height}/any")
     return images, int(time.time()), info, 'random output'
 
 
+def txt2img(*args, **kwargs):
+    # Output should match output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats
+    # info = f"""{args[0]} --seed {args[9]} --W {args[11]} --H {args[10]} -s {args[1]} -C {float(args[8])} --sampler {args[2]}  """.strip()
+    return mock_processing(
+        prompt=args[0],
+        seed=args[9],
+        width=args[11],
+        height=args[10],
+        steps=args[1],
+        cfg_scale=args[8],
+        sampler=args[2],
+        batch_count=args[6]
+    )
+
+
 def img2img(*args, **kwargs):
-    images = [
-        "http://placeimg.com/387/581/people",
-        "http://placeimg.com/386/581/people",
-        "http://placeimg.com/1000/1000/people",
-        "http://placeimg.com/387/581/people",
-        "http://placeimg.com/464/580/people",
-    ]
-    return images, 1234, 'random', 'random'
+    return mock_processing(
+        prompt=args[0],
+        seed=args[12],
+        width=args[14],
+        height=args[13],
+        steps=args[5],
+        cfg_scale=args[10],
+        sampler=args[6],
+        batch_count=args[9]
+    )
 
 
 def run_GFPGAN(*args, **kwargs):
@@ -245,4 +261,4 @@ demo = draw_gradio_ui(opt,
                       )
 
 # demo.queue()
-demo.launch(share=True, debug=True)
+demo.launch(share=False, debug=True)

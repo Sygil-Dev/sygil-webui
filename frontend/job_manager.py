@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from PIL.Image import Image
 import uuid
+import traceback
 
 
 @dataclass(eq=True, frozen=True)
@@ -231,7 +232,7 @@ class JobManager:
             outputs = job_info.func(*job_info.inputs, job_info=job_info)
         except Exception as e:
             job_info.job_status = f"Error: {e}"
-            print(f"Exception processing job {job_info}: {e}")
+            print(f"Exception processing job {job_info}: {e}\n{traceback.format_exc()}")
             outputs = []
 
         # Filter the function output for any removed outputs
