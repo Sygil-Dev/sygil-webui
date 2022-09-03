@@ -586,10 +586,10 @@ def check_prompt_length(prompt, comments):
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                 normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
-                save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False):
+                save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_metadata=True):
     filename_i = os.path.join(sample_path_i, filename)
     if not jpg_sample:
-        if opt.save_metadata and not skip_metadata:
+        if opt.save_metadata and save_metadata:
             metadata = PngInfo()
             metadata.add_text("SD:prompt", prompts[i])
             metadata.add_text("SD:seed", str(seeds[i]))
@@ -956,9 +956,9 @@ def process_images(
                     if save_each:
                         save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                     normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
-                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_metadata=True)
                     output_images.append(gfpgan_image) #287
-                    # save_each = True # #287 >_>
+                    # save_each = False # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan" )
 
@@ -971,7 +971,7 @@ def process_images(
                     if save_each:
                         save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                     normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
-                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_metadata=True)
                     output_images.append(esrgan_image) #287
                     # save_each = False # #287 >_>
                     #if simple_templating:
@@ -988,7 +988,7 @@ def process_images(
                     if save_each:
                         save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                     normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
-                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_metadata=True)
                     output_images.append(gfpgan_esrgan_image) #287
                     # save_each = False # #287 >_>
                     #if simple_templating:
@@ -1273,7 +1273,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: Dict[str,Image.Image
     def init():
         image = init_img.convert("RGB")
         image = resize_image(resize_mode, image, width, height)
-        #image = init_img.convert("RGB")
+        #image = image.convert("RGB") #todo: mask mode -> ValueError: could not convert string to float:
         image = np.array(image).astype(np.float32) / 255.0
         image = image[None].transpose(0, 3, 1, 2)
         image = torch.from_numpy(image)
