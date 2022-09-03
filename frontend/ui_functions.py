@@ -1,10 +1,17 @@
 import re
+import sys
+import os
 import gradio as gr
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from io import BytesIO
 import base64
 import re
+import yaml
 
+LOAD_SETTINGS_TXT2IMG_NAMES = [
+    "prompt", "ddim_steps", "sampler_name", "toggles", "realesrgan_model_name", "ddim_eta",
+    "n_iter", "batch_size", "cfg_scale", "seed", "height", "width", "fp", "variant_amount", "variant_seed"
+]
 
 def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
     if choice == "Mask":
@@ -121,6 +128,7 @@ def update_dimensions_info(width, height):
     pixel_count_formated = "{:,.0f}".format(width * height)
     return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
 
+
 def get_png_nfo( image: Image ):
     info_text = ""
     visible = bool(image and any(image.info))
@@ -129,3 +137,41 @@ def get_png_nfo( image: Image ):
             info_text += f"{key}: {value}\n"
         info_text = info_text.rstrip('\n')
     return gr.Textbox.update(value=info_text, visible=visible)
+
+def load_settings(*values):
+    new_settings, key_names, checkboxgroup_info = values[-3:]
+    values = list(values[:-3])
+
+    if new_settings:
+        if type(new_settings) is str:
+            if os.path.exists(new_settings):
+                with open(new_settings, "r", encoding="utf8") as f:
+                    new_settings = yaml.safe_load(f)
+            elif new_settings.startswith("file://") and os.path.exists(new_settings[7:]):
+                with open(new_settings[7:], "r", encoding="utf8") as f:
+                    new_settings = yaml.safe_load(f)
+            else:
+                new_settings = yaml.safe_load(new_settings)
+        if type(new_settings) is not dict:
+            new_settings = {"prompt": new_settings}
+        if "txt2img" in new_settings:
+            new_settings = new_settings["txt2img"]
+        target = new_settings.pop("target", "txt2img")
+        if target != "txt2img":
+            print(f"Warning: applying settings to txt2img even though {target} is specified as target.", file=sys.stderr)
+
+        skipped_settings = {}
+        for key in new_settings.keys():
+            if key in key_names:
+                values[key_names.index(key)] = new_settings[key]
+            else:
+                skipped_settings[key] = new_settings[key]
+        if skipped_settings:
+            print(f"Settings could not be applied: {skipped_settings}", file=sys.stderr)
+
+    # Convert lists of checkbox indices to lists of checkbox labels:
+    for (cbg_index, cbg_choices) in checkboxgroup_info:
+        values[cbg_index] = [cbg_choices[i] for i in values[cbg_index]]
+
+    return values
+
