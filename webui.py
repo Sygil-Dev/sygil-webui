@@ -950,7 +950,7 @@ def process_images(
     normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
     skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     output_images.append(gfpgan_image) #287
-                    skip_save = True # #287 >_>
+                    # skip_save = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan" )
 
@@ -967,7 +967,7 @@ def process_images(
     normalize_prompt_weights, use_GFPGAN,write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
     skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     output_images.append(esrgan_image) #287
-                    skip_save = True # #287 >_>
+                    # skip_save = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\nesrgan" )
 
@@ -986,7 +986,7 @@ def process_images(
     normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
     skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     output_images.append(gfpgan_esrgan_image) #287
-                    skip_save = True # #287 >_>
+                    # skip_save = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
