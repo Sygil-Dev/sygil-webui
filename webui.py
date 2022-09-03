@@ -618,7 +618,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
         if write_info_files:
             toggles.append(5 + offset)
         if write_sample_info_to_log_file:
-            toggles.append(6+offset)
+            toggles.append(6 + offset)
         if use_GFPGAN:
             toggles.append(7 + offset)
 
@@ -782,18 +782,23 @@ def process_images(
     sample_path = os.path.join(outpath, "samples")
     os.makedirs(sample_path, exist_ok=True)
 
-    if not ("|" in prompt) and prompt.startswith("@"):
-        prompt = prompt[1:]
+    # Removing this allows "@" to signify only corrected images
+    # if not ("|" in prompt) and prompt.startswith("@"):
+    #     prompt = prompt[1:]
 
     comments = []
 
     prompt_matrix_parts = []
     simple_templating = False
     add_original_image = True
+
+    if prompt.startswith("@") and not prompt_matrix:
+        simple_templating = True
+        add_original_image = not (use_RealESRGAN or use_GFPGAN)
+        prompt = prompt[1:]
+
     if prompt_matrix:
         if prompt.startswith("@"):
-            simple_templating = True
-            add_original_image = not (use_RealESRGAN or use_GFPGAN)
             all_seeds, n_iter, prompt_matrix_parts, all_prompts, frows = oxlamon_matrix(prompt, seed, n_iter, batch_size)
         else:
             all_prompts = []
@@ -935,21 +940,21 @@ def process_images(
                 original_sample = x_sample
                 original_filename = filename
                 if use_GFPGAN and GFPGAN is not None and not use_RealESRGAN:
-                    skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = GFPGAN.enhance(original_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
-                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                    if not skip_save:
+                        save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     output_images.append(gfpgan_image) #287
+                    skip_save = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan" )
 
                 if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
-                    skip_save = True # #287 >_>
                     torch_gc()
                     if RealESRGAN.model.name != realesrgan_model_name:
                         try_loading_RealESRGAN(realesrgan_model_name)
@@ -957,15 +962,16 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     esrgan_filename = original_filename + '-esrgan4x'
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
-                    save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN,write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
-                    #output_images.append(esrgan_image) #287
+                    if not skip_save:
+                        save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+    normalize_prompt_weights, use_GFPGAN,write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                    output_images.append(esrgan_image) #287
+                    skip_save = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\nesrgan" )
 
                 if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
-                    skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
@@ -975,10 +981,12 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
                     gfpgan_esrgan_sample = output[:,:,::-1]
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
-                    save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                    if not skip_save:
+                        save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                     output_images.append(gfpgan_esrgan_image) #287
+                    skip_save = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
@@ -991,7 +999,7 @@ normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                 if add_original_image or not simple_templating:
                     output_images.append(image)
-                    if simple_templating:
+                    if simple_templating and len(captions) > 0:
                         grid_captions.append( captions[i] )
 
             if opt.optimized:
@@ -2103,7 +2111,7 @@ class ServerLauncher(threading.Thread):
             'inbrowser': opt.inbrowser,
             'server_name': '0.0.0.0',
             'server_port': opt.port,
-            'share': opt.share, 
+            'share': opt.share,
             'show_error': True
         }
         if not opt.share:
