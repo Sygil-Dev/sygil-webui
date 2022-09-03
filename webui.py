@@ -782,7 +782,7 @@ def process_images(
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
         variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
-    assert prompt is not None
+    prompt = prompt or ''
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -1508,7 +1508,7 @@ def split_weighted_subprompts(input_string, normalize=True):
     weight_sum = sum(map(lambda x: x[1], parsed_prompts))
     if weight_sum == 0:
         print("Warning: Subprompt weights add up to zero. Discarding and using even weights instead.")
-        equal_weight = 1 / len(parsed_prompts)
+        equal_weight = 1 / (len(parsed_prompts) or 1)
         return [(x[0], equal_weight) for x in parsed_prompts]
     return [(x[0], x[1] / weight_sum) for x in parsed_prompts]
 
