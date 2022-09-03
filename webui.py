@@ -37,7 +37,7 @@ parser.add_argument("--save-metadata", action='store_true', help="Store generati
 parser.add_argument("--share-password", type=str, help="Sharing is open by default, use this to set a password. Username: webui", default=None)
 parser.add_argument("--share", action='store_true', help="Should share your server on gradio.app, this allows you to use the UI from your mobile app", default=False)
 parser.add_argument("--skip-grid", action='store_true', help="do not save a grid, only individual samples. Helpful when evaluating lots of samples", default=False)
-parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
+parser.add_argument("--save-each", action='store_true', help="save individual samples. For speed measurements.", default=False)
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
 opt = parser.parse_args()
@@ -591,8 +591,8 @@ def check_prompt_length(prompt, comments):
     comments.append(f"Warning: too many input tokens; some ({len(overflowing_words)}) have been truncated:\n{overflowing_text}\n")
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True):
+                normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
+                skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True):
     filename_i = os.path.join(sample_path_i, filename)
     if not jpg_sample:
         if opt.save_metadata and not skip_metadata:
@@ -625,7 +625,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 toggles.append(2)
             if uses_random_seed_loopback:
                 toggles.append(3)
-        if not skip_save:
+        if save_each:
             toggles.append(2 + offset)
         if not skip_grid:
             toggles.append(3 + offset)
@@ -775,7 +775,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
 
 def process_images(
-        outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
+        outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, save_each, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
@@ -909,7 +909,7 @@ def process_images(
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
                     time.sleep(1)
 
-            cur_variant_amount = variant_amount 
+            cur_variant_amount = variant_amount
             if variant_amount == 0.0:
                 # we manually generate all input noises because each one should have a specific seed
                 x = create_random_tensors(shape, seeds=seeds)
@@ -974,10 +974,12 @@ def process_images(
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
-                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True)
+                    if save_each:
+                        save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
+                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True)
                     output_images.append(gfpgan_image) #287
+                    # save_each = True # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan" )
 
@@ -988,10 +990,12 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     esrgan_filename = original_filename + '-esrgan4x'
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
-                    save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN,write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True)
+                    if save_each:
+                        save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
+                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True)
                     output_images.append(esrgan_image) #287
+                    # save_each = False # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\nesrgan" )
 
@@ -1004,10 +1008,12 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
                     gfpgan_esrgan_sample = output[:,:,::-1]
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
-                    save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True)
+                    if save_each:
+                        save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
+                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True)
                     output_images.append(gfpgan_esrgan_image) #287
+                    # save_each = False # #287 >_>
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
@@ -1015,10 +1021,10 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 if imgProcessorTask == True:
                     output_images.append(image)
 
-                if not skip_save:
+                if save_each:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                                normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, save_each,
+                                skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                 if add_original_image or not simple_templating:
                     output_images.append(image)
                     if simple_templating:
@@ -1092,7 +1098,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     seed = seed_to_int(seed)
     prompt_matrix = 0 in toggles
     normalize_prompt_weights = 1 in toggles
-    skip_save = 2 not in toggles
+    save_each = 2 in toggles
     skip_grid = 3 not in toggles
     sort_samples = 4 in toggles
     write_info_files = 5 in toggles
@@ -1143,7 +1149,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             prompt=prompt,
             seed=seed,
             sampler_name=sampler_name,
-            skip_save=skip_save,
+            save_each=save_each,
             skip_grid=skip_grid,
             batch_size=batch_size,
             n_iter=n_iter,
@@ -1235,7 +1241,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
     normalize_prompt_weights = 1 in toggles
     loopback = 2 in toggles
     random_seed_loopback = 3 in toggles
-    skip_save = 4 not in toggles
+    save_each = 4 in toggles
     skip_grid = 5 not in toggles
     sort_samples = 6 in toggles
     write_info_files = 7 in toggles
@@ -1389,7 +1395,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
                 prompt=prompt,
                 seed=seed,
                 sampler_name=sampler_name,
-                skip_save=skip_save,
+                save_each=save_each,
                 skip_grid=skip_grid,
                 batch_size=1,
                 n_iter=1,
@@ -1448,7 +1454,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
             prompt=prompt,
             seed=seed,
             sampler_name=sampler_name,
-            skip_save=skip_save,
+            save_each=save_each,
             skip_grid=skip_grid,
             batch_size=batch_size,
             n_iter=n_iter,
@@ -1580,7 +1586,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         height = int(imgproc_height)
         cfg_scale = float(imgproc_cfg)
         denoising_strength = float(imgproc_denoising)
-        skip_save = True
+        save_each = True
         skip_grid = True
         prompt = imgproc_prompt
         t_enc = int(denoising_strength * ddim_steps)
@@ -1734,7 +1740,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     prompt=prompt,
                     seed=seed,
                     sampler_name=sampler_name,
-                    skip_save=skip_save,
+                    save_each=save_each,
                     skip_grid=skip_grid,
                     batch_size=batch_size,
                     n_iter=n_iter,
@@ -1780,8 +1786,9 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         return combined_image
     def processLDSR(image):
         result = LDSR.superResolution(image,int(imgproc_ldsr_steps),str(imgproc_ldsr_pre_downSample),str(imgproc_ldsr_post_downSample))
-        return result   
-    
+        return result
+
+
 
     if image_batch != None:
         if image != None:
@@ -1808,7 +1815,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
                      ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
-                     ModelLoader(['RealESGAN'],True,False,imgproc_realesrgan_model_name) # Load used models 
+                     ModelLoader(['RealESGAN'],True,False,imgproc_realesrgan_model_name) # Load used models
                 elif imgproc_upscale_toggles == 1:
                         ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
                         ModelLoader(['RealESGAN','model'],True,False) # Load used models
@@ -2156,7 +2163,7 @@ class ServerLauncher(threading.Thread):
             'inbrowser': opt.inbrowser,
             'server_name': '0.0.0.0',
             'server_port': opt.port,
-            'share': opt.share, 
+            'share': opt.share,
             'show_error': True
         }
         if not opt.share:
