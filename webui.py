@@ -1222,7 +1222,7 @@ class Flagging(gr.FlaggingCallback):
         print("Logged:", filenames[0])
 
 
-def img2img(prompt: str, image_editor_mode: str, init_info: Dict[str,Image.Image], mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
+def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask: any, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
             seed: int, height: int, width: int, resize_mode: int, fp = None, job_info: JobInfo = None):
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
@@ -1270,11 +1270,10 @@ def img2img(prompt: str, image_editor_mode: str, init_info: Dict[str,Image.Image
         raise Exception("Unknown sampler: " + sampler_name)
 
     if image_editor_mode == 'Mask':
-        init_img = init_info["image"]
+        init_img = init_info_mask["image"]
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
-        init_mask = init_info["mask"]
-        print(init_mask)
+        init_mask = init_info_mask["mask"]
         init_mask = resize_image(resize_mode, init_mask, width, height)
         keep_mask = mask_mode == 0
         init_mask = init_mask.convert("RGB")
