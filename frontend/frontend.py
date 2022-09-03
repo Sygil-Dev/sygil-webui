@@ -478,35 +478,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
             <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
         </div>
         """)
-            with gr.TabItem("Settings", id="settings_tab"):
-                with gr.Column():
-                    with gr.Tabs():
-                        with gr.TabItem("General"):
-                            #file path to config
-                            with gr.Column():
-                                gr.Label(label="WebUI Settings")
-                                gr.Textbox(label="SD Model Config File Path", value='test', default="configs/stable-diffusion/v1-inference.yaml")
-                                gr.Textbox(label="SD Model Weights File Path", value='test', default="models/ldm/stable-diffusion-v1/model.ckpt")
-                                gr.Textbox(label="RealESRGAN Model File Path", value='test', default="models/realesrgan/RealESRGAN_x4plus.pth")
-                                gr.Textbox(label="GFPGAN Model File Path", value='test', default="models/gfpgan/gfpgan_2x.pth")
-                                gr.Textbox(label="LDSR Model Config File Path", value='test', default="configs/ldsr/ldsr_x4.yaml")
-                                gr.Textbox(label="LDSR Model Weights File Path", value='test', default="models/ldsr/ldsr_x4.pth")
-                                gr.Textbox(label="Embeddings Directory Path", value='test', default="models/ldsr/ldsr_mean.npy")
-                                gr.Checkbox(label="Use GPU", value=True, default=True)
-                                gr.Number(label="GPU ID", value=0, default=0)
-
-                        with gr.TabItem("Text-To-Image"):
-                            with gr.Column():
-                                # 
-                                pass
-                        with gr.TabItem("Image-to-Image"):
-                            pass
-                        with gr.TabItem("Image Lab"):
-                            pass
-                        with gr.TabItem("Tweaks"):
-                            pass
-                        with gr.TabItem("Experiments"):
-                            pass
             """
             if GFPGAN is not None:
                 gfpgan_defaults = {
