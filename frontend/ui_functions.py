@@ -176,6 +176,14 @@ def update_dimensions_info(width, height):
     pixel_count_formated = "{:,.0f}".format(width * height)
     return f"Aspect ratio: {round(width / height, 5)}\nTotal pixel count: {pixel_count_formated}"
 
+def get_png_nfo( image: Image ):
+    info_text = ""
+    visible = bool(image and any(image.info))
+    if visible:
+        for key,value in image.info.items():
+            info_text += f"{key}: {value}\n"
+        info_text = info_text.rstrip('\n')
+    return gr.Textbox.update(value=info_text, visible=visible)
 
 def load_settings(*values):
     new_settings, key_names, checkboxgroup_info = values[-3:]
@@ -213,3 +221,4 @@ def load_settings(*values):
         values[cbg_index] = [cbg_choices[i] for i in values[cbg_index]]
 
     return values
+

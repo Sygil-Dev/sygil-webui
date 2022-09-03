@@ -402,6 +402,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             #select folder with images to process
                                 with gr.TabItem('Batch Process'):
                                     imgproc_folder = gr.File(label="Batch Process", file_count="multiple",source="upload", interactive=True, type="file")
+                            imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="PngNfo", visible=False, max_lines=5)
                             with gr.Row():
                                 imgproc_btn = gr.Button("Process", variant="primary")
                             gr.HTML("""
@@ -519,6 +520,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height,
                                                             imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength,imgproc_ldsr_steps,imgproc_ldsr_pre_downSample,imgproc_ldsr_post_downSample],
                                                         [imgproc_output])
+
+                                            imgproc_source.change(
+                                                        uifn.get_png_nfo,
+                                                        [imgproc_source],
+                                                        [imgproc_pngnfo] )
+
                                     output_txt2img_to_imglab.click(
                                         fn=uifn.copy_img_params_to_lab,
                                         inputs = [output_txt2img_params],
