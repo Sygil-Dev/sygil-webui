@@ -64,12 +64,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
                         with gr.Row():
-                            increment_btn_minus = gr.Button("-", elem_id="increment_btn_minus")
+                            #Commenting out incrementing/decrementing buttons for now
+                            #increment_btn_minus = gr.Button("-", elem_id="increment_btn_minus")
                             txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
                                                     value=txt2img_defaults['ddim_steps'])
-                            increment_btn_plus = gr.Button("+", elem_id="increment_btn_plus")
-                            increment_btn_minus.click(fn=uifn.increment_down,inputs=[txt2img_steps], outputs=[txt2img_steps])
-                            increment_btn_plus.click(fn=uifn.increment_up,inputs=[txt2img_steps], outputs=[txt2img_steps])
+                            #increment_btn_plus = gr.Button("+", elem_id="increment_btn_plus")
+                            #increment_btn_minus.click(fn=uifn.increment_down,inputs=[txt2img_steps], outputs=[txt2img_steps])
+                            #increment_btn_plus.click(fn=uifn.increment_up,inputs=[txt2img_steps], outputs=[txt2img_steps])
 
                         txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
@@ -360,7 +361,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                         #.change toggles to show options
                                         #imgproc_toggles.change()
                             with gr.Box(visible=False) as gfpgan_group:
-                                imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
 
                                 gfpgan_defaults = {
                                     'strength': 100,
@@ -377,11 +377,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                     #gr.Markdown("")
                                     #gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
                                 with gr.Column():
-                                    gr.Markdown("<b>GFPGAN Settinngs</b>")
+                                    gr.Markdown("<b>GFPGAN Settings</b>")
                                     imgproc_gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
                                                                 value=gfpgan_defaults['strength'],visible=GFPGAN is not None)
                             with gr.Box(visible=False) as upscale_group:
-                                imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscale_group])
 
                                 if LDSR:
                                     upscaleModes = ['RealESRGAN','GoBig','Latent Diffusion SR','GoLatent ']
@@ -396,12 +395,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                     gr.Markdown("<b>Upscaler Selection</b>")
                                     imgproc_upscale_toggles = gr.Radio(label = '',choices=upscaleModes, type="index",visible=RealESRGAN is not None,value='RealESRGAN')
                             with gr.Box(visible=False) as upscalerSettings_group:
-                                imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscalerSettings_group])
 
                                 with gr.Box(visible=True) as realesrgan_group:
                                     with gr.Column():
                                         gr.Markdown("<b>RealESRGAN Settings</b>")
-                                        imgproc_upscale_toggles.change(fn=uifn.toggle_options_realesrgan, inputs=[imgproc_upscale_toggles], outputs=[realesrgan_group])
                                         imgproc_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', interactive=RealESRGAN is not None,
                                                                                     choices= ['RealESRGAN_x4plus',
                                                                                             'RealESRGAN_x4plus_anime_6B','RealESRGAN_x2plus',
@@ -409,7 +406,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                                     value='RealESRGAN_x4plus',
                                                                                     visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
                                 with gr.Box(visible=False) as ldsr_group:
-                                    imgproc_upscale_toggles.change(fn=uifn.toggle_options_ldsr, inputs=[imgproc_upscale_toggles], outputs=[ldsr_group])
                                     with gr.Row(elem_id="ldsr_settings_row"):
                                         with gr.Column():
                                             gr.Markdown("<b>Latent Diffusion Super Sampling Settings</b>")
@@ -420,7 +416,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                             imgproc_ldsr_post_downSample = gr.Dropdown(label='LDSR Post Downsample mode (aka SuperSampling)',
                                                         choices=["None", "Original Size", '1/2', '1/4'],value="None",visible=LDSR is not None)
                                 with gr.Box(visible=False) as gobig_group:   
-                                    imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles], outputs=[gobig_group])                 
                                     with gr.Row(elem_id="proc_prompt_row"):
                                         with gr.Column():
                                             gr.Markdown("<b>GoBig Settings</b>")
@@ -478,6 +473,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
             <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
         </div>
         """)
+            imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
+            imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscale_group])
+            imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscalerSettings_group])
+            imgproc_upscale_toggles.change(fn=uifn.toggle_options_realesrgan, inputs=[imgproc_upscale_toggles], outputs=[realesrgan_group])
+            imgproc_upscale_toggles.change(fn=uifn.toggle_options_ldsr, inputs=[imgproc_upscale_toggles], outputs=[ldsr_group])
+            imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles], outputs=[gobig_group])                 
+
             """
             if GFPGAN is not None:
                 gfpgan_defaults = {
