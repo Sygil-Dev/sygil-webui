@@ -181,3 +181,12 @@ to get otherwise.
 Example: (cherrypicked result; original picture by anon)
 
 ![](images/loopback.jpg)
+
+## Development Info 
+There is a different directory structure on this dev repo to simplify things and a github action is used to sync things to the right place in the [main repo](https://github.com/hlky/stable-diffusion). The config for this sync is in `.github/sync.yml`.
+
+There is a helper script for local development to replicate the actions of this github action.
+- Run `python sync_local.py --dest MAIN_REPO_FOLDER` to replicate the effect of this sync. 
+- To copy changes back you can run  `python sync_local.py --dest MAIN_REPO_FOLDER --reverse`.
+
+You can the file `webui_playground.py`, which does not load the models, to more rapidly iterate on UI changes and then copy those changes into `webui.py`, 
