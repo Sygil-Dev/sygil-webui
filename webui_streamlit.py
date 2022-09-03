@@ -1894,13 +1894,11 @@ def layout():
 				print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
-				fp = {
-		        'name': 'embeddings/alex/embeddings_gs-11000.pt'
-		}
+				
 				try:
 					output_images, seed, info, stats = txt2img(prompt, sampling_steps, sampler_name, RealESRGAN_model, batch_count, batch_size, 
 		                                               cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-		                                                                   save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=None,
+		                                                                   save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
 		                                                                   variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 				except (StopException, KeyError):
 					print(f"Received Streamlit StopException")
@@ -1909,23 +1907,7 @@ def layout():
 				# use the current col2 first tab to show the preview_img and update it as its generated.
 				#preview_image.image(output_images, width=750)
 
-
-		# Pink Panther aka todo part
-
-		#layout_lower_col1, layout_lower_col2, layout_lower_col3 = st.columns([1,2,1], gap="large")
-
-		#with layout_lower_col2:
-			#generated_image_actions, output_info = st.tabs(["Generated image actions", "Output Info"])    
-			#with generated_image_actions:
-				#st.container()
-				#st.write("Select an image from the gallery, then click one of the buttons below to perform an action.")
-				#button1_col, button2_col, button3_col, button4_col = st.columns([1,1,1,1])  
-				#with button1_col:
-					#st.button("Copy to clipboard")
-				#with button2_col:
-					#st.button("Push to img2img")
-				#with button3_col:
-					#st.button("Upscale w/ ESRGAN")         
+      
 
 if __name__ == '__main__':
 	layout()     
