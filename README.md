@@ -188,7 +188,7 @@ saving output image, and replacing input image with it. Batch count setting cont
 this you get.
 
 Usually, when doing this, you would choose one of many images for the next iteration yourself, so the usefulness
-of this feature may be questionable, but I've managed to get some very nice outputs with it that I wasn't abble
+of this feature may be questionable, but I've managed to get some very nice outputs with it that I wasn't able
 to get otherwise.
 
 Example: (cherrypicked result; original picture by anon)
