@@ -1,6 +1,6 @@
-import gradio as gr 
+import gradio as gr
 import time
-import os 
+import os
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from io import BytesIO
 import base64
@@ -16,12 +16,15 @@ TBD - extract all the UI into this file and import from the main webui.
 """
 
 GFPGAN = True
-RealESRGAN = True 
+RealESRGAN = True
+
+
 def run_goBIG():
     pass
-def txt2img(*args, **kwargs):
 
-    #Output should match output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats
+
+def txt2img(*args, **kwargs):
+    # Output should match output_txt2img_gallery, output_txt2img_seed, output_txt2img_params, output_txt2img_stats
     # info = f"""{args[0]} --seed {args[9]} --W {args[11]} --H {args[10]} -s {args[1]} -C {float(args[8])} --sampler {args[2]}  """.strip()
     args_and_names = {
         "seed": args[9],
@@ -31,43 +34,52 @@ def txt2img(*args, **kwargs):
         "cfg_scale": str(args[8]),
         "sampler": args[2],
     }
-    
-    full_string = f"{args[0]}\n"+ " ".join([f"{k}:" for k,v in args_and_names.items()])
+
+    full_string = f"{args[0]}\n" + " ".join([f"{k}:" for k, v in args_and_names.items()])
     info = {
         'text': full_string,
-        'entities': [{'entity':str(v), 'start': full_string.find(f"{k}:"),'end': full_string.find(f"{k}:") + len(f"{k} ")} for k,v in args_and_names.items()]
-     }
+        'entities': [
+            {'entity': str(v), 'start': full_string.find(f"{k}:"), 'end': full_string.find(f"{k}:") + len(f"{k} ")} for
+            k, v in args_and_names.items()]
+    }
     images = []
     for i in range(args[6]):
         images.append(f"http://placeimg.com/{args[11]}/{args[10]}/any")
-    return images, int(time.time()) , info, 'random output'
+    return images, int(time.time()), info, 'random output'
+
+
 def img2img(*args, **kwargs):
     images = [
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80",
-    "https://images.unsplash.com/photo-1554151228-14d9def656e4?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=386&q=80",
-    "https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8aHVtYW4lMjBmYWNlfGVufDB8fDB8fA%3D%3D&w=1000&q=80",
-    "https://images.unsplash.com/photo-1546456073-92b9f0a8d413?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80",
-    "https://images.unsplash.com/photo-1601412436009-d964bd02edbc?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=464&q=80",
+        "http://placeimg.com/387/581/people",
+        "http://placeimg.com/386/581/people",
+        "http://placeimg.com/1000/1000/people",
+        "http://placeimg.com/387/581/people",
+        "http://placeimg.com/464/580/people",
     ]
     return images, 1234, 'random', 'random'
 
+
 def run_GFPGAN(*args, **kwargs):
-  time.sleep(.1)
-  return "yo"
+    time.sleep(.1)
+    return "yo"
+
+
 def run_RealESRGAN(*args, **kwargs):
-  time.sleep(.2)
-  return "yo"
+    time.sleep(.2)
+    return "yo"
 
 
 class model():
-  def __init__():
-    pass
+    def __init__():
+        pass
+
 
 class opt():
     def __init__(self, name):
         self.name = name
 
-    no_progressbar_hiding = True 
+    no_progressbar_hiding = True
+
 
 css_hide_progressbar = """
 .wrap .m-12 svg { display:none!important; }
@@ -76,7 +88,7 @@ css_hide_progressbar = """
 .meta-text { display:none!important; }
 """
 
-css =  css_hide_progressbar
+css = css_hide_progressbar
 css = css + """
 [data-testid="image"] {min-height: 512px !important};
 #main_body {display:none !important};
@@ -125,6 +137,21 @@ txt2img_toggle_defaults = [txt2img_toggles[i] for i in txt2img_defaults['toggles
 
 sample_img2img = "assets/stable-samples/img2img/sketch-mountains-input.jpg"
 sample_img2img = sample_img2img if os.path.exists(sample_img2img) else None
+
+imgproc_defaults = {
+    'prompt': '',
+    'ddim_steps': 50,
+    'sampler_name': 'k_lms',
+    'cfg_scale': 7.5,
+    'seed': '',
+    'height': 512,
+    'width': 512,
+    'denoising_strength': 0.30
+}
+imgproc_mode_toggles = [
+    'Fix Faces',
+    'Upscale'
+]
 
 # make sure these indicies line up at the top of img2img()
 img2img_toggles = [
@@ -178,7 +205,6 @@ if 'img2img' in user_defaults:
 img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
 
-
 css_hide_progressbar = """
 .wrap .m-12 svg { display:none!important; }
 .wrap .m-12::before { content:"Loading..." }
@@ -210,11 +236,13 @@ demo = draw_gradio_ui(opt,
                       img2img_mask_modes=img2img_mask_modes,
                       img2img_resize_modes=img2img_resize_modes,
                       sample_img2img=sample_img2img,
+                      imgproc_defaults=imgproc_defaults,
+                      imgproc_mode_toggles=imgproc_mode_toggles,
                       RealESRGAN=RealESRGAN,
                       GFPGAN=GFPGAN,
                       run_GFPGAN=run_GFPGAN,
                       run_RealESRGAN=run_RealESRGAN
-                        )
+                      )
 
 # demo.queue()
 demo.launch(share=True, debug=True)
