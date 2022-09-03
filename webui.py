@@ -1729,11 +1729,11 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         print("Processing images...")
         #pre load models not in loop
         if 0 in imgproc_toggles:
-            ModelLoader(['model','RealESGAN','LDSR'],False,True) # Unload unused models
+            ModelLoader(['RealESGAN','LDSR'],False,True) # Unload unused models
             ModelLoader(['GFPGAN'],True,False) # Load used models
         if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
-                     ModelLoader(['model','GFPGAN','LDSR'],False,True) # Unload unused models
+                     ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
                      ModelLoader(['RealESGAN'],True,False,imgproc_realesrgan_model_name) # Load used models 
                 elif imgproc_upscale_toggles == 1:
                         ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
