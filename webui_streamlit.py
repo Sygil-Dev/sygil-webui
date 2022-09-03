@@ -837,7 +837,7 @@ def sample_euler(model, x, sigmas, extra_args=None, callback=None, disable=None,
 		dt = sigmas[i + 1] - sigma_hat
 		# Euler method
 		x = x + d * dt
-		if i % 3 == 0:
+		if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
 			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
 
@@ -864,7 +864,7 @@ def sample_euler_ancestral(model, x, sigmas, extra_args=None, callback=None, dis
 		dt = sigma_down - sigmas[i]
 		x = x + d * dt
 		x = x + torch.randn_like(x) * sigma_up
-		if i % 3 == 0:
+		if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
 			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
 
@@ -903,7 +903,7 @@ def sample_heun(model, x, sigmas, extra_args=None, callback=None, disable=None, 
 			d_prime = (d + d_2) / 2
 			x = x + d_prime * dt
 
-		if i % 3 == 0:
+		if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
 			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
 
@@ -939,7 +939,7 @@ def sample_dpm_2(model, x, sigmas, extra_args=None, callback=None, disable=None,
 		denoised_2 = model(x_2, sigma_mid * s_in, **extra_args)
 		d_2 = to_d(x_2, sigma_mid, denoised_2)
 		x = x + d_2 * dt_2
-		if i % 3 == 0:
+		if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
 			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
 
@@ -971,7 +971,7 @@ def sample_dpm_2_ancestral(model, x, sigmas, extra_args=None, callback=None, dis
 		d_2 = to_d(x_2, sigma_mid, denoised_2)
 		x = x + d_2 * dt_2
 		x = x + torch.randn_like(x) * sigma_up
-		if i % 3 == 0:
+		if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
 			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
 
@@ -1002,7 +1002,8 @@ def sample_lms(model, x, sigmas, extra_args=None, callback=None, disable=None, o
 		cur_order = min(i + 1, order)
 		coeffs = [linear_multistep_coeff(cur_order, sigmas.cpu(), i, j) for j in range(cur_order)]
 		x = x + sum(coeff * d for coeff, d in zip(coeffs, reversed(ds)))
-		if i % 3 == 0:
+		
+		if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(x)
 			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)            
 
@@ -1814,9 +1815,18 @@ def layout():
     """
 
 	st.markdown(css, unsafe_allow_html=True)
-
+	
 	with st.sidebar:
-		st.write("Global Settings")
+		# we should use an expander and group things together when more options are added so the sidebar is not too messy.
+		#with st.expander("Global Settings:"):
+		st.write("Global Settings:")
+		defaults.general.update_preview = st.checkbox("Update Image Preview", value=defaults.general.update_preview,
+							      help="If enabled the image preview will be updated during the generation instead of at the end. You can use the Update Preview \
+							      Frequency option bellow to customize how frequent it's updated. By default this is enabled and the frequency is set to 1 step.")
+		defaults.general.update_preview_frequency = st.text_input("Update Image Preview Frequency", value=defaults.general.update_preview_frequency,
+									  help="Frequency in steps at which the the preview image is updated. By default the frequency is set to 1 step.")
+				
+			
 
 	tab1, tab2, tab3, tab4 = st.tabs(["Stable Diffusion Text-to-Image Unified", "Stable Diffusion Image-to-Image Unified", "GFPGAN", "RealESRGAN"])
 
@@ -1825,6 +1835,7 @@ def layout():
 
 			input_col1, generate_col1 = st.columns([10,1])
 			with input_col1:
+				#prompt = st.text_area("Input Text","")
 				prompt = st.text_input("Input Text","")
 
 			# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
