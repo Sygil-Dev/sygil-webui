@@ -1,4 +1,5 @@
 ''' Provides simple job management for gradio, allowing viewing and stopping in-progress multi-batch generations '''
+from __future__ import annotations
 import gradio as gr
 from gradio.components import Component, Gallery
 from threading import Event, Timer
@@ -49,6 +50,42 @@ def triggerChangeEvent():
     return uuid.uuid4().hex
 
 
+@dataclass
+class JobManagerUi:
+    def wrap_func(
+            self,
+            func: Callable,
+            inputs: List[Component],
+            outputs: List[Component]) -> Tuple[Callable, List[Component], List[Component]]:
+        ''' Takes a gradio event listener function and its input/outputs and returns wrapped replacements which will
+            be managed by JobManager
+        Parameters:
+        func (Callable) the original event listener to be wrapped.
+                        This listener should be modified to take a 'job_info' parameter which, if not None, should can
+                        be used by the function to check for stop events and to store intermediate image results
+        inputs (List[Component]) the original inputs
+        outputs (List[Component]) the original outputs. The first gallery, if any, will be used for refreshing images
+        refresh_btn: (gr.Button, optional) a button to use for updating the gallery with intermediate results
+        stop_btn: (gr.Button, optional) a button to use for stopping the function
+        status_text: (gr.Textbox) a textbox to display job status updates
+
+        Returns:
+        Tuple(newFunc (Callable), newInputs (List[Component]), newOutputs (List[Component]), which should be used as
+        replacements for the passed in function, inputs and outputs
+        '''
+        return self._job_manager._wrap_func(
+            func=func, inputs=inputs, outputs=outputs,
+            refresh_btn=self._refresh_btn, stop_btn=self._stop_btn, status_text=self._status_text
+        )
+
+    _refresh_btn: gr.Button
+    _stop_btn: gr.Button
+    _status_text: gr.Textbox
+    _stop_all_session_btn: gr.Button
+    _free_done_sessions_btn: gr.Button
+    _job_manager: JobManager
+
+
 class JobManager:
     def __init__(self, max_jobs: int):
         self._max_jobs: int = max_jobs
@@ -56,6 +93,33 @@ class JobManager:
         self._job_queue: List[QueueItem] = []
         self._sessions: Dict[str, SessionInfo] = {}
         self._session_key: gr.JSON = None
+
+    def draw_gradio_ui(self) -> JobManagerUi:
+        ''' draws the job manager ui in gradio
+            Returns:
+            ui (JobManagerUi): object which can connect functions to the ui
+        '''
+        assert gr.context.Context.block is not None, "draw_gradio_ui must be called within a 'gr.Blocks' 'with' context"
+        with gr.Tabs():
+            with gr.TabItem("Current Session"):
+                with gr.Row():
+                    stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
+                    refresh_btn = gr.Button("Refresh", elem_id="refresh", variant="secondary")
+                status_text = gr.Textbox(placeholder="Job Status", interactive=False, show_label=False)
+            with gr.TabItem("Maintenance"):
+                with gr.Row():
+                    gr.Markdown(
+                        "Stop all concurrent sessions, or free memory associated with jobs which were finished after the browser was closed")
+                with gr.Row():
+                    stop_all_sessions_btn = gr.Button(
+                        "Stop All Sessions", elem_id="stop_all", variant="secondary"
+                    )
+                    free_done_sessions_btn = gr.Button(
+                        "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
+                    )
+        return JobManagerUi(_refresh_btn=refresh_btn, _stop_btn=stop_btn, _status_text=status_text,
+                            _stop_all_session_btn=stop_all_sessions_btn, _free_done_sessions_btn=free_done_sessions_btn,
+                            _job_manager=self)
 
     def clear_all_finished_jobs(self):
         ''' Removes all currently finished jobs, across all sessions.
@@ -210,27 +274,12 @@ class JobManager:
 
         return job_info.images
 
-    def wrap_func(
-            self, func: Callable, inputs: List[Component],
-            outputs: List[Component],
-            refresh_btn: gr.Button = None, stop_btn: gr.Button = None, status_text: Optional[gr.Textbox] = None) -> Tuple[
-            Callable, List[Component]]:
-        ''' Takes a gradio event listener function and its input/outputs and returns wrapped replacements which will
-            be managed by JobManager
-        Parameters:
-        func (Callable) the original event listener to be wrapped.
-                        This listener should be modified to take a 'job_info' parameter which, if not None, should can
-                        be used by the function to check for stop events and to store intermediate image results
-        inputs (List[Component]) the original inputs
-        outputs (List[Component]) the original outputs. The first gallery, if any, will be used for refreshing images
-        refresh_btn: (gr.Button, optional) a button to use for updating the gallery with intermediate results
-        stop_btn: (gr.Button, optional) a button to use for stopping the function
-        status_text: (gr.Textbox) a textbox to display job status updates
+    def _wrap_func(
+            self, func: Callable, inputs: List[Component], outputs: List[Component],
+            refresh_btn: gr.Button = None, stop_btn: gr.Button = None,
+            status_text: Optional[gr.Textbox] = None) -> Tuple[Callable, List[Component]]:
+        ''' handles JobManageUI's wrap_func'''
 
-        Returns:
-        Tuple(newFunc (Callable), newInputs (List[Component]), newOutputs (List[Component]), which should be used as
-        replacements for the passed in function, inputs and outputs
-        '''
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
         # Create a unique key for this job

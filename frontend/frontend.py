@@ -38,25 +38,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
 
-                        if job_manager is not None:
-                            with gr.Tabs():
-                                with gr.TabItem("Current Session"):
-                                    with gr.Row():
-                                        txt2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
-                                        txt2img_refresh_btn = gr.Button(
-                                            "Refresh", elem_id="refresh", variant="secondary")
-                                    txt2img_job_status = gr.Textbox(
-                                        placeholder="Job Status", interactive=False, show_label=False)
-                                with gr.TabItem("Maintenance"):
-                                    with gr.Row():
-                                        gr.Markdown("Stop all concurrent sessions, or free memory associated with jobs which were finished after the browser was closed")
-                                    with gr.Row():
-                                        txt2img_stop_all_sessions = gr.Button(
-                                            "Stop All Sessions", elem_id="stop_all", variant="secondary"
-                                        )
-                                        txt2img_free_done_sessions = gr.Button(
-                                            "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
-                                        )
+                        txt2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
 
                         txt2img_dimensions_info_text_box = gr.Textbox(label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
@@ -121,19 +103,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
 
-                if job_manager:
-                    txt2img_stop_all_sessions.click(
-                        job_manager.stop_all_jobs,
-                        [],
-                        []
-                    )
-                    txt2img_free_done_sessions.click(
-                        job_manager.clear_all_finished_jobs,
-                        [],
-                        []
-                    )
-
-                # If a JobManager was passed in then wrap the Generate functions
                 txt2img_func = txt2img
                 txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
                                   txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
@@ -141,14 +110,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                   txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
                 txt2img_outputs = [output_txt2img_gallery, output_txt2img_seed,
                                    output_txt2img_params, output_txt2img_stats]
-                if job_manager:
-                    txt2img_func, txt2img_inputs, txt2img_outputs = job_manager.wrap_func(
+
+                # If a JobManager was passed in then wrap the Generate functions
+                if txt2img_job_ui:
+                    txt2img_func, txt2img_inputs, txt2img_outputs = txt2img_job_ui.wrap_func(
                         func=txt2img_func,
                         inputs=txt2img_inputs,
-                        outputs=txt2img_outputs,
-                        refresh_btn=txt2img_refresh_btn,
-                        stop_btn=txt2img_stop_btn,
-                        status_text=txt2img_job_status
+                        outputs=txt2img_outputs
                     )
 
                 txt2img_btn.click(
@@ -222,25 +190,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     with gr.Column():
                         gr.Markdown('#### Img2Img Results')
                         output_img2img_gallery = gr.Gallery(label="Images", elem_id="img2img_gallery_output").style(grid=[4,4,4])
-                        if job_manager is not None:
-                            with gr.Tabs():
-                                with gr.TabItem("Current Session"):
-                                    with gr.Row():
-                                        img2img_stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
-                                        img2img_refresh_btn = gr.Button(
-                                            "Refresh", elem_id="refresh", variant="secondary")
-                                    img2img_job_status = gr.Textbox(
-                                        placeholder="Job Status", interactive=False, show_label=False)
-                                with gr.TabItem("Maintenance"):
-                                    with gr.Row():
-                                        gr.Markdown("Stop all concurrent sessions, or free memory associated with jobs which were finished after the browser was closed")
-                                    with gr.Row():
-                                        img2img_stop_all_sessions = gr.Button(
-                                            "Stop All Sessions", elem_id="stop_all", variant="secondary"
-                                        )
-                                        img2img_free_done_sessions = gr.Button(
-                                            "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
-                                        )
+                        img2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
                         with gr.Tabs():
                             with gr.TabItem("Generated image actions", id="img2img_actions_tab"):
                                 gr.Markdown("Select an image, then press one of the buttons below")
@@ -347,19 +297,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                        fromId="img2img_gallery_output")
                                                            )
 
-                if job_manager:
-                    img2img_stop_all_sessions.click(
-                        job_manager.stop_all_jobs,
-                        [],
-                        []
-                    )
-                    img2img_free_done_sessions.click(
-                        job_manager.clear_all_finished_jobs,
-                        [],
-                        []
-                    )
-
-                # If a JobManager was passed in then wrap the Generate functions
                 img2img_func = img2img
                 img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask,
                                   img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
@@ -368,14 +305,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                   img2img_embeddings]
                 img2img_outputs = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
 
-                if job_manager:
-                    img2img_func, img2img_inputs, img2img_outputs = job_manager.wrap_func(
+                # If a JobManager was passed in then wrap the Generate functions
+                if img2img_job_ui:
+                    img2img_func, img2img_inputs, img2img_outputs = img2img_job_ui.wrap_func(
                         func=img2img_func,
                         inputs=img2img_inputs,
                         outputs=img2img_outputs,
-                        refresh_btn=img2img_refresh_btn,
-                        stop_btn=img2img_stop_btn,
-                        status_text=img2img_job_status
                     )
 
                 img2img_btn_mask.click(
