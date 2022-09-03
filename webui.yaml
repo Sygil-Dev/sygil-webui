@@ -4,15 +4,16 @@ txt2img:
   prompt:
   ddim_steps: 50
   # Adding an int to toggles enables the corresponding feature.
-  # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
-  # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
-  # 2: Save individual images
-  # 3: Save grid
-  # 4: Sort samples by prompt
-  # 5: Write sample info files
-  # 6: jpg samples
-  # 7: Fix faces using GFPGAN
-  # 8: Upscale images using Real-ESRGAN
+  #  0:  Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
+  #  1:  Normalize Prompt Weights (ensure sum of weights add up to 1.0)
+  #  2:  Save individual images
+  #  3:  Save grid
+  #  4:  Sort samples by prompt
+  #  5:  Write sample info files
+  #  6:  write sample info to log file
+  #  7:  jpg samples
+  #  8:  Fix faces using GFPGAN
+  #  9:  Upscale images using RealESRGAN
   toggles: [1, 2, 3, 4, 5]
   sampler_name: k_lms
   ddim_eta: 0.0  # legacy name, applies to all algorithms.
