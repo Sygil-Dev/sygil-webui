@@ -70,7 +70,7 @@ class JobManager:
             for job in session.jobs.values():
                 job.should_stop.set()
 
-    def _get_job_token(self, block: bool = False, *args) -> Optional[int]:
+    def _get_job_token(self, block: bool = False) -> Optional[int]:
         ''' Attempts to acquire a job token, optionally blocking until available '''
         token = None
         while token is None:
@@ -131,7 +131,7 @@ class JobManager:
         if self._avail_job_tokens:
             try:
                 # Notify next queued job it may begin
-                queue_item = self._job_queue.pop()
+                queue_item = self._job_queue.pop(0)
                 queue_item.wait_event.set()
 
                 # Check again in a few seconds, just in case the queued
