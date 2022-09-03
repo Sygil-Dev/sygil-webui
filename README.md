@@ -3,7 +3,7 @@
 # This repo is for development, there may be bugs and new features
 
 # Notice
-- To use the new LDSR settings please make sure to re-clone the LDSR repo.
+-New LDSR settings added to Image Lab, To use the new LDSR settings please make sure to re-clone the LDSR (Instructions added below) to insure you have the latest.
 
 ## Feature request? Use [discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
 
