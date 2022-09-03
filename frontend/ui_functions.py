@@ -15,12 +15,45 @@ def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
     return gr.update(value=resized_cropped_image)
 
+def toggle_options_gfpgan(selection):
+    if 0 in selection:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_upscalers(selection):
+    if 1 in selection:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_realesrgan(selection):
+    if selection == 0 or selection == 1 or selection == 3:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_gobig(selection):
+    if selection == 1:
+        #print(selection)
+        return gr.update(visible=True)
+    if selection == 3:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+def toggle_options_ldsr(selection):
+    if selection == 2 or selection == 3:
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
 def increment_down(value):
     return value - 1
 
 def increment_up(value):
     return value + 1
-    
+
 def copy_img_to_lab(img):
     try:
         image_data = re.sub('^data:image/.+;base64,', '', img)

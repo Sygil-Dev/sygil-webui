@@ -353,55 +353,78 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                 with gr.TabItem('Output'):
                                     imgproc_output = gr.Gallery(label="Output", elem_id="imgproc_gallery_output")
                             with gr.Row(elem_id="proc_options_row"):
-                                imgproc_toggles = gr.CheckboxGroup(label='Processor Modes', choices=imgproc_mode_toggles, type="index")
-                            with gr.Tabs():
-                                with gr.TabItem('Fix Face Settings'):
-                                    gfpgan_defaults = {
-                                        'strength': 100,
-                                    }
+                                with gr.Box():
+                                    with gr.Column():
+                                        gr.Markdown("<b>Processor Selection</b>")
+                                        imgproc_toggles = gr.CheckboxGroup(label = '',choices=imgproc_mode_toggles, type="index")
+                                        #.change toggles to show options
+                                        #imgproc_toggles.change()
+                            with gr.Box(visible=False) as gfpgan_group:
+                                imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
 
-                                    if 'gfpgan' in user_defaults:
-                                        gfpgan_defaults.update(user_defaults['gfpgan'])
-                                    if GFPGAN is None:
-                                        gr.HTML("""
-        <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-            <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
-        </div>
-        """)
-                                        #gr.Markdown("")
-                                        #gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
+                                gfpgan_defaults = {
+                                    'strength': 100,
+                                }
+
+                                if 'gfpgan' in user_defaults:
+                                    gfpgan_defaults.update(user_defaults['gfpgan'])
+                                if GFPGAN is None:
+                                    gr.HTML("""
+    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+        <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+    </div>
+    """)
+                                    #gr.Markdown("")
+                                    #gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
+                                with gr.Column():
+                                    gr.Markdown("<b>GFPGAN Settinngs</b>")
                                     imgproc_gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
                                                                 value=gfpgan_defaults['strength'],visible=GFPGAN is not None)
-                                with gr.TabItem('Upscale Settings'):
-                                    if LDSR:
-                                        upscaleModes = ['RealESRGAN','GoBig','Latent Diffusion SR','GoLatent ']
-                                    else:
-                                        gr.HTML("""
-        <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-            <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
-        </div>
-        """)
-                                        upscaleModes = ['RealESRGAN','GoBig']
-                                    imgproc_upscale_toggles = gr.Radio(label='Upscale Modes', choices=upscaleModes, type="index",visible=RealESRGAN is not None)
-                                    imgproc_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', interactive=RealESRGAN is not None,
-                                                                                choices= ['RealESRGAN_x4plus',
-                                                                                        'RealESRGAN_x4plus_anime_6B','RealESRGAN_x2plus',
-                                                                                        'RealESRGAN_x2plus_anime_6B'],
-                                                                                value='RealESRGAN_x4plus',
-                                                                                visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
-                                    
+                            with gr.Box(visible=False) as upscale_group:
+                                imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscale_group])
+
+                                if LDSR:
+                                    upscaleModes = ['RealESRGAN','GoBig','Latent Diffusion SR','GoLatent ']
+                                else:
+                                    gr.HTML("""
+    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+        <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+    </div>
+    """)
+                                    upscaleModes = ['RealESRGAN','GoBig']
+                                with gr.Column():
+                                    gr.Markdown("<b>Upscaler Selection</b>")
+                                    imgproc_upscale_toggles = gr.Radio(label = '',choices=upscaleModes, type="index",visible=RealESRGAN is not None,value='RealESRGAN')
+                            with gr.Box(visible=False) as upscalerSettings_group:
+                                imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscalerSettings_group])
+
+                                with gr.Box(visible=True) as realesrgan_group:
+                                    with gr.Column():
+                                        gr.Markdown("<b>RealESRGAN Settings</b>")
+                                        imgproc_upscale_toggles.change(fn=uifn.toggle_options_realesrgan, inputs=[imgproc_upscale_toggles], outputs=[realesrgan_group])
+                                        imgproc_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', interactive=RealESRGAN is not None,
+                                                                                    choices= ['RealESRGAN_x4plus',
+                                                                                            'RealESRGAN_x4plus_anime_6B','RealESRGAN_x2plus',
+                                                                                            'RealESRGAN_x2plus_anime_6B'],
+                                                                                    value='RealESRGAN_x4plus',
+                                                                                    visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
+                                with gr.Box(visible=False) as ldsr_group:
+                                    imgproc_upscale_toggles.change(fn=uifn.toggle_options_ldsr, inputs=[imgproc_upscale_toggles], outputs=[ldsr_group])
                                     with gr.Row(elem_id="ldsr_settings_row"):
                                         with gr.Column():
+                                            gr.Markdown("<b>Latent Diffusion Super Sampling Settings</b>")
                                             imgproc_ldsr_steps = gr.Slider(minimum=0, maximum=500, step=10, label="LDSR Sampling Steps",
                                                     value=100,visible=LDSR is not None)
                                             imgproc_ldsr_pre_downSample = gr.Dropdown(label='LDSR Pre Downsample mode (Lower resolution before processing for speed)',
                                                         choices=["None", '1/2', '1/4'],value="None",visible=LDSR is not None)
                                             imgproc_ldsr_post_downSample = gr.Dropdown(label='LDSR Post Downsample mode (aka SuperSampling)',
                                                         choices=["None", "Original Size", '1/2', '1/4'],value="None",visible=LDSR is not None)
-                                                        
+                                with gr.Box(visible=False) as gobig_group:   
+                                    imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles], outputs=[gobig_group])                 
                                     with gr.Row(elem_id="proc_prompt_row"):
                                         with gr.Column():
-                                            imgproc_prompt = gr.Textbox(label="GoBig/GoLatent generator settings",
+                                            gr.Markdown("<b>GoBig Settings</b>")
+                                            imgproc_prompt = gr.Textbox(label="",
                                                                         elem_id='prompt_input',
                                                                         placeholder="A corgi wearing a top hat as an oil painting.",
                                                                         lines=1,
@@ -430,7 +453,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                         imgproc,
                                                         [imgproc_source, imgproc_folder,imgproc_prompt,imgproc_toggles,
                                                         imgproc_upscale_toggles,imgproc_realesrgan_model_name,imgproc_sampling, imgproc_steps, imgproc_height,
-                                                         imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength,imgproc_ldsr_steps,imgproc_ldsr_pre_downSample,imgproc_ldsr_post_downSample],
+                                                            imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,imgproc_gfpgan_strength,imgproc_ldsr_steps,imgproc_ldsr_pre_downSample,imgproc_ldsr_post_downSample],
                                                         [imgproc_output])
                                     output_txt2img_to_imglab.click(
                                         fn=uifn.copy_img_params_to_lab,
@@ -455,7 +478,35 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
             <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
         </div>
         """)
-            
+            with gr.TabItem("Settings", id="settings_tab"):
+                with gr.Column():
+                    with gr.Tabs():
+                        with gr.TabItem("General"):
+                            #file path to config
+                            with gr.Column():
+                                gr.Label(label="WebUI Settings")
+                                gr.Textbox(label="SD Model Config File Path", value='test', default="configs/stable-diffusion/v1-inference.yaml")
+                                gr.Textbox(label="SD Model Weights File Path", value='test', default="models/ldm/stable-diffusion-v1/model.ckpt")
+                                gr.Textbox(label="RealESRGAN Model File Path", value='test', default="models/realesrgan/RealESRGAN_x4plus.pth")
+                                gr.Textbox(label="GFPGAN Model File Path", value='test', default="models/gfpgan/gfpgan_2x.pth")
+                                gr.Textbox(label="LDSR Model Config File Path", value='test', default="configs/ldsr/ldsr_x4.yaml")
+                                gr.Textbox(label="LDSR Model Weights File Path", value='test', default="models/ldsr/ldsr_x4.pth")
+                                gr.Textbox(label="Embeddings Directory Path", value='test', default="models/ldsr/ldsr_mean.npy")
+                                gr.Checkbox(label="Use GPU", value=True, default=True)
+                                gr.Number(label="GPU ID", value=0, default=0)
+
+                        with gr.TabItem("Text-To-Image"):
+                            with gr.Column():
+                                # 
+                                pass
+                        with gr.TabItem("Image-to-Image"):
+                            pass
+                        with gr.TabItem("Image Lab"):
+                            pass
+                        with gr.TabItem("Tweaks"):
+                            pass
+                        with gr.TabItem("Experiments"):
+                            pass
             """
             if GFPGAN is not None:
                 gfpgan_defaults = {
