@@ -1,7 +1,7 @@
 ''' Provides simple job management for gradio, allowing viewing and stopping in-progress multi-batch generations '''
 import gradio as gr
 from gradio.components import Component, Gallery
-from threading import Event
+from threading import Event, Timer
 from typing import Callable, List, Dict, Tuple, Optional, Any
 from dataclasses import dataclass, field
 from functools import partial
@@ -26,6 +26,7 @@ class JobInfo:
     inputs: List[Component]
     func: Callable
     session_key: str
+    job_token: Optional[int] = None
     images: List[Image] = field(default_factory=list)
     should_stop: Event = field(default_factory=Event)
     job_status: str = field(default_factory=str)
@@ -39,6 +40,11 @@ class SessionInfo:
     finished_jobs: Dict[FuncKey, JobInfo] = field(default_factory=dict)
 
 
+@dataclass
+class QueueItem:
+    wait_event: Event
+
+
 def triggerChangeEvent():
     return uuid.uuid4().hex
 
@@ -46,7 +52,8 @@ def triggerChangeEvent():
 class JobManager:
     def __init__(self, max_jobs: int):
         self._max_jobs: int = max_jobs
-        self._jobs_avail: List[Any] = [None]*max_jobs
+        self._avail_job_tokens: List[Any] = list(range(max_jobs))
+        self._job_queue: List[QueueItem] = []
         self._sessions: Dict[str, SessionInfo] = {}
         self._session_key: gr.JSON = None
 
@@ -62,6 +69,31 @@ class JobManager:
         for session in self._sessions.values():
             for job in session.jobs.values():
                 job.should_stop.set()
+
+    def _get_job_token(self, block: bool = False, *args) -> Optional[int]:
+        ''' Attempts to acquire a job token, optionally blocking until available '''
+        token = None
+        while token is None:
+            try:
+                token = self._avail_job_tokens.pop()
+                break
+            except IndexError:
+                pass
+
+            if not block:
+                break
+
+            # No token and requested to block, so queue up
+            wait_event = Event()
+            self._job_queue.append(QueueItem(wait_event))
+            wait_event.wait()
+
+        return token
+
+    def _release_job_token(self, token: int) -> None:
+        ''' Returns a job token to allow another job to start '''
+        self._avail_job_tokens.append(token)
+        self._run_queued_jobs()
 
     def _refresh_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Updates information from the active job '''
@@ -94,10 +126,30 @@ class JobManager:
 
         return session_info, job_info
 
+    def _run_queued_jobs(self) -> None:
+        ''' Runs queued jobs for any available slots '''
+        if self._avail_job_tokens:
+            try:
+                # Notify next queued job it may begin
+                queue_item = self._job_queue.pop()
+                queue_item.wait_event.set()
+
+                # Check again in a few seconds, just in case the queued
+                # waiter closed the browser while still queued
+                Timer(3.0, self._run_queued_jobs).start()
+            except IndexError:
+                pass  # No queued jobs
+
     def _pre_call_func(
             self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
             status_text: gr.Textbox, session_key: str) -> List[Component]:
         ''' Called when a job is about to start '''
+        session_info, job_info = self._get_call_info(func_key, session_key)
+
+        # If we didn't already get a token then queue up for one
+        if job_info.job_token is None:
+            job_info.token = self._get_job_token(block=True)
+
         # Buttons don't seem to update unless value is set on them as well...
         return {output_dummy_obj: triggerChangeEvent(),
                 refresh_btn: gr.Button.update(variant="primary", value=refresh_btn.value),
@@ -125,8 +177,9 @@ class JobManager:
                 filtered_output.append(output)
 
         job_info.finished = True
-        self._jobs_avail.append(None)
         session_info.finished_jobs[func_key] = session_info.jobs.pop(func_key)
+
+        self._release_job_token(job_info.job_token)
 
         # The wrapper added a dummy JSON output. Append a random text string
         # to fire the dummy objects 'change' event to notify that the job is done
@@ -279,14 +332,14 @@ class JobManager:
             if func_key in session_info.jobs:
                 return {status_text: "This session is already running that function!"}
 
-            # Are there available jobs?
-            try:
-                self._jobs_avail.pop()
-            except IndexError:
-                return {status_text: "No jobs are available"}
-
-            job = JobInfo(inputs=inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key)
+            job_token = self._get_job_token(block=False)
+            job = JobInfo(inputs=inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key,
+                          job_token=job_token)
             session_info.jobs[func_key] = job
-            return {pre_call_dummyobj: triggerChangeEvent()}
+
+            ret = {pre_call_dummyobj: triggerChangeEvent()}
+            if job_token is None:
+                ret[status_text] = "Job is queued"
+            return ret
 
         return wrapped_func, inputs, [pre_call_dummyobj, status_text]
