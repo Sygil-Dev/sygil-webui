@@ -81,9 +81,7 @@ class JobManagerUi:
         '''
         return self._job_manager._wrap_func(
             func=func, inputs=inputs, outputs=outputs,
-            refresh_btn=self._refresh_btn, stop_btn=self._stop_btn, status_text=self._status_text,
-            active_image=self._active_image, active_image_stop_btn=self._active_image_stop_btn,
-            active_image_refresh_btn=self._active_image_refresh_btn
+            job_ui=self
         )
 
     _refresh_btn: gr.Button
@@ -319,10 +317,7 @@ class JobManager:
         return job_info.images
 
     def _wrap_func(
-            self, func: Callable, inputs: List[Component], outputs: List[Component],
-            refresh_btn: gr.Button = None, stop_btn: gr.Button = None,
-            status_text: Optional[gr.Textbox] = None, active_image: Optional[Image] = None,
-            active_image_stop_btn: Optional[Image] = None, active_image_refresh_btn: Optional[Image] = None) -> Tuple[Callable, List[Component]]:
+            self, func: Callable, inputs: List[Component], outputs: List[Component], job_ui: JobManagerUi) -> Tuple[Callable, List[Component]]:
         ''' handles JobManageUI's wrap_func'''
 
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
@@ -357,34 +352,34 @@ class JobManager:
             [gallery_comp]
         )
 
-        if refresh_btn:
-            refresh_btn.variant = 'secondary'
-            refresh_btn.click(
+        if job_ui._refresh_btn:
+            job_ui._refresh_btn.variant = 'secondary'
+            job_ui._refresh_btn.click(
                 partial(self._refresh_func, func_key),
                 [self._session_key],
-                [update_gallery_obj, status_text]
+                [update_gallery_obj, job_ui._status_text]
             )
 
-        if stop_btn:
-            stop_btn.variant = 'secondary'
-            stop_btn.click(
+        if job_ui._stop_btn:
+            job_ui._stop_btn.variant = 'secondary'
+            job_ui._stop_btn.click(
                 partial(self._stop_wrapped_func, func_key),
                 [self._session_key],
-                [status_text]
+                [job_ui._status_text]
             )
 
-        if active_image and active_image_refresh_btn:
-            active_image_refresh_btn.click(
+        if job_ui._active_image and job_ui._active_image_refresh_btn:
+            job_ui._active_image_refresh_btn.click(
                 partial(self._refresh_cur_iter_func, func_key),
                 [self._session_key],
-                [active_image, status_text]
+                [job_ui._active_image, job_ui._status_text]
             )
 
-        if active_image_stop_btn:
-            active_image_stop_btn.click(
+        if job_ui._active_image_stop_btn:
+            job_ui._active_image_stop_btn.click(
                 partial(self._stop_cur_iter_func, func_key),
                 [self._session_key],
-                [active_image, status_text]
+                [job_ui._active_image, job_ui._status_text]
             )
 
         # (ab)use gr.JSON to forward events.
@@ -401,8 +396,8 @@ class JobManager:
         # Since some parameters are optional it makes sense to use the 'dict' return value type, which requires
         # the Component as a key... so group together the UI components that the event listeners are going to update
         # to make it easy to append to function calls and outputs
-        job_ui_params = [refresh_btn, stop_btn, status_text,
-                         active_image, active_image_refresh_btn, active_image_stop_btn]
+        job_ui_params = [job_ui._refresh_btn, job_ui._stop_btn, job_ui._status_text,
+                         job_ui._active_image, job_ui._active_image_refresh_btn, job_ui._active_image_stop_btn]
         job_ui_outputs = [comp for comp in job_ui_params if comp is not None]
 
         # Here a chain is constructed that will make a 'pre' call, a 'run' call, and a 'post' call,
@@ -439,7 +434,7 @@ class JobManager:
 
             # Is this session already running this job?
             if func_key in session_info.jobs:
-                return {status_text: "This session is already running that function!"}
+                return {job_ui._status_text: "This session is already running that function!"}
 
             job_token = self._get_job_token(block=False)
             job = JobInfo(inputs=inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key,
@@ -448,7 +443,7 @@ class JobManager:
 
             ret = {pre_call_dummyobj: triggerChangeEvent()}
             if job_token is None:
-                ret[status_text] = "Job is queued"
+                ret[job_ui._status_text] = "Job is queued"
             return ret
 
-        return wrapped_func, inputs, [pre_call_dummyobj, status_text]
+        return wrapped_func, inputs, [pre_call_dummyobj, job_ui._status_text]
