@@ -943,6 +943,7 @@ def process_images(
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
             for i, x_sample in enumerate(x_samples_ddim):
                 sanitized_prompt = prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})
+                sanitized_prompt = sanitized_prompt.lower()
                 if variant_seed != None and variant_seed != '':
                     if variant_amount == 0.0:
                         seed_used = f"{current_seeds[i]}-{variant_seed}"
