@@ -159,10 +159,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     with gr.Column():
                         gr.Markdown('#### Img2Img Input')
                         img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                        type="pil", tool="select", elem_id="img2img_editor",
-                                                        image_mode="RGBA")
+                                                        type="pil", tool="select", elem_id="img2img_editor", image_mode="RGBA"
+                                                        )
                         img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                      type="pil", tool="sketch", visible=False,
+                                                      type="pil", tool="sketch", visible=False, image_mode="RGBA",
                                                       elem_id="img2img_mask")
 
                         with gr.Tabs():
@@ -179,7 +179,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                value=3, visible=False)
 
                                     img2img_resize = gr.Radio(label="Resize mode",
-                                                choices=["Just resize"],
+                                                choices=["Just resize", "Crop and resize", "Resize and fill"],
                                                 type="index",
                                                 value=img2img_resize_modes[img2img_defaults['resize_mode']])
 
@@ -261,11 +261,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                      img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength]
                 )
 
-                img2img_image_editor.edit(
-                    uifn.update_image_mask,
-                    [img2img_image_editor, img2img_resize, img2img_width, img2img_height],
-                    img2img_image_mask
-                )
+                # img2img_image_editor.edit(
+                #     uifn.update_image_mask,
+                #     [img2img_image_editor, img2img_resize, img2img_width, img2img_height],
+                #     img2img_image_mask
+                # )
 
                 output_txt2img_copy_to_input_btn.click(
                     uifn.copy_img_to_input,
@@ -299,11 +299,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                            )
 
                 img2img_func = img2img
-                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_image_mask, img2img_mask,
+                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_mask,
                                   img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
                                   img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                                   img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
-                                  img2img_embeddings]
+                                  img2img_image_editor, img2img_image_mask, img2img_embeddings]
                 img2img_outputs = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
 
                 # If a JobManager was passed in then wrap the Generate functions
@@ -320,6 +320,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     img2img_outputs
                 )
                 def img2img_submit_params():
+                    #print([img2img_prompt, img2img_image_editor_mode, img2img_mask,
+                    #              img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                    #              img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
+                    #              img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
+                    #              img2img_image_editor, img2img_image_mask, img2img_embeddings])
                     return (img2img_func,
                     img2img_inputs,
                     img2img_outputs)

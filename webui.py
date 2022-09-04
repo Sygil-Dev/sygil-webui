@@ -1222,9 +1222,14 @@ class Flagging(gr.FlaggingCallback):
         print("Logged:", filenames[0])
 
 
-def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask: any, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
+def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
-            seed: int, height: int, width: int, resize_mode: int, fp = None, job_info: JobInfo = None):
+            seed: int, height: int, width: int, resize_mode: int, init_info: any = None, init_info_mask: any = None, fp = None, job_info: JobInfo = None):
+    print([prompt, image_editor_mode, init_info, init_info_mask, mask_mode,
+                                  mask_blur_strength, ddim_steps, sampler_name, toggles,
+                                  realesrgan_model_name, n_iter, cfg_scale,
+                                  denoising_strength, seed, height, width, resize_mode,
+                                  fp])
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
     err = False
     seed = seed_to_int(seed)
@@ -1273,13 +1278,15 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
         init_img = init_info_mask["image"]
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
+        init_img = init_img.convert("RGB")
         init_mask = init_info_mask["mask"]
-        init_mask = resize_image(resize_mode, init_mask, width, height)
-        keep_mask = mask_mode == 0
         init_mask = init_mask.convert("RGB")
+        init_mask = resize_image(resize_mode, init_mask, width, height)
+        init_mask = init_mask.convert("RGB")
+        keep_mask = mask_mode == 0
         init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
     else:
-        init_img = init_info.convert("RGB")
+        init_img = init_info
         init_mask = None
         keep_mask = False
 
@@ -1289,14 +1296,14 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
     def init():
         image = init_img.convert("RGB")
         image = resize_image(resize_mode, image, width, height)
-        #image = image.convert("RGB") #todo: mask mode -> ValueError: could not convert string to float:
+        #image = image.convert("RGB")
         image = np.array(image).astype(np.float32) / 255.0
         image = image[None].transpose(0, 3, 1, 2)
         image = torch.from_numpy(image)
 
         mask_channel = None
         if image_editor_mode == "Uncrop":
-            alpha = init_img.convert("RGB")
+            alpha = init_img.convert("RGBA")
             alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
             mask_channel = alpha.split()[-1]
             mask_channel = mask_channel.filter(ImageFilter.GaussianBlur(4))
@@ -1304,7 +1311,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
             mask_channel[mask_channel >= 255] = 255
             mask_channel[mask_channel < 255] = 0
             mask_channel = Image.fromarray(mask_channel).filter(ImageFilter.GaussianBlur(2))
-        elif init_mask is not None:
+        elif image_editor_mode == "Mask":
             alpha = init_mask.convert("RGBA")
             alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
             mask_channel = alpha.split()[1]
@@ -1323,7 +1330,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
         init_image = init_image.to(device)
         init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
         init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
-
+        
         if opt.optimized:
             mem = torch.cuda.memory_allocated()/1e6
             modelFS.to("cpu")
@@ -2011,9 +2018,9 @@ imgproc_mode_toggles = [
     'Upscale'
 ]
 
-sample_img2img = "assets/stable-samples/img2img/sketch-mountains-input.jpg"
-sample_img2img = sample_img2img if os.path.exists(sample_img2img) else None
-
+#sample_img2img = "assets/stable-samples/img2img/sketch-mountains-input.jpg"
+#sample_img2img = sample_img2img if os.path.exists(sample_img2img) else None
+sample_img2img = None
 # make sure these indicies line up at the top of img2img()
 img2img_toggles = [
     'Create prompt matrix (separate multiple prompts using |, and get all combinations of them)',
@@ -2077,22 +2084,13 @@ def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
     return gr.update(value=resized_cropped_image)
 
-def copy_img_to_input(img):
-    try:
-        image_data = re.sub('^data:image/.+;base64,', '', img)
-        processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-        tab_update = gr.update(selected='img2img_tab')
-        img_update = gr.update(value=processed_image)
-        return {img2img_image_mask: processed_image, img2img_image_editor: img_update, tabs: tab_update}
-    except IndexError:
-        return [None, None]
 
 
 def copy_img_to_upscale_esrgan(img):
     update = gr.update(selected='realesrgan_tab')
     image_data = re.sub('^data:image/.+;base64,', '', img)
     processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-    return {realesrgan_source: processed_image, tabs: update}
+    return {'realesrgan_source': processed_image, 'tabs': update}
 
 
 help_text = """
