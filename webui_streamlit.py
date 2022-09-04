@@ -180,26 +180,29 @@ def load_sd_from_config(ckpt, verbose=False):
 #
 
 def generation_callback(img, i=0):
+	
+	if i == 0:	
+		if img['i']: i = img['i']
+	
 	if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 		#print (img)
 		#print (type(img))
 		# The following lines will convert the tensor we got on img to an actual image we can render on the UI.
 		# It can probably be done in a better way for someone who knows what they're doing. I don't.		
-		if torch.is_tensor(img):
-			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(img)
-			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
-			
-			pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0))           
+		#print (img,isinstance(img, torch.Tensor))
+		if isinstance(img, torch.Tensor):
+			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(img)          
 		else:
 			# When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
-			# {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
-			
+			# {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}			
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(img["denoised"])
-			x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
 			
-			pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0)) 			
+		x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
+		
+		pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0)) 			
 	
 		st.session_state["preview_image"].image(pil_image, width=512) 	
+		
 
 class MemUsageMonitor(threading.Thread):
 	stop_flag = False
@@ -313,13 +316,6 @@ def linear_multistep_coeff(order, t, i, j):
 			prod *= (tau - t[i - k]) / (t[i - j] - t[i - k])
 		return prod
 	return integrate.quad(fn, t[i], t[i + 1], epsrel=1e-4)[0]
-
-def get_ancestral_step(sigma_from, sigma_to):
-	"""Calculates the noise level (sigma_down) to step down to and the amount
-	of noise to add (sigma_up) when doing an ancestral sampling step."""
-	sigma_up = (sigma_to ** 2 * (sigma_from ** 2 - sigma_to ** 2) / sigma_from ** 2) ** 0.5
-	sigma_down = (sigma_to ** 2 - sigma_up ** 2) ** 0.5
-	return sigma_down, sigma_up
 
 class KDiffusionSampler:
 	def __init__(self, m, sampler):
@@ -1191,8 +1187,8 @@ def layout():
 				with preview_tab:
 					st.write("Image")
 					#Image for testing
-					image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
-					new_image = image.resize((175, 240))
+					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
+					#new_image = image.resize((175, 240))
 					#preview_image = st.image(image)
 	
 					# create an empty container for the image and use session_state to hold it globally.
@@ -1224,16 +1220,25 @@ def layout():
 		                                  help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
 					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
 					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
-					use_GFPGAN = st.checkbox("Use GFPGAN", value=True, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
-					use_RealESRGAN = st.checkbox("Use RealESRGAN", value=True, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-					RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+					
+					if os.path.exists(defaults.general.GFPGAN_dir):
+						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+					else:
+						use_GFPGAN = False
+					
+					if os.path.exists(defaults.general.RealESRGAN_dir):
+						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+						RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+					else:
+						use_RealESRGAN = False
+						RealESRGAN_model = "RealESRGAN_x4plus"
 
 					variant_amount = st.slider("Variant Amount:", value=defaults.txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
 					variant_seed = st.text_input("Variant Seed:", value=defaults.txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
 
 
 			if generate_button:
-				print("Loading models")
+				#print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
 				
