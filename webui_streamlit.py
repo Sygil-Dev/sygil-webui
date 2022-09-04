@@ -1,4 +1,3 @@
-from gc import callbacks
 import warnings
 import streamlit as st
 from streamlit import StopException, StreamlitAPIException
@@ -143,8 +142,8 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
 		config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
 		model = load_model_from_config(config, defaults.general.ckpt)
 
-		device = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-		st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(device)    
+		st.session_state["device"] = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
+		st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(st.session_state["device"] )    
 
 		print("Model loaded.")
 
@@ -477,7 +476,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 			if m in global_vars:
 				#if it is, delete it
 				del global_vars[m]
-				if opt.optimized:
+				if defaults.general.optimized:
 					if m == 'model':
 						del global_vars[m+'FS']
 						del global_vars[m+'CS']
@@ -491,9 +490,9 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 				if m == 'GFPGAN':
 					global_vars[m] = load_GFPGAN()
 				elif m == 'model':
-					sdLoader = load_SD_model()
+					sdLoader = load_sd_from_config()
 					global_vars[m] = sdLoader[0]
-					if opt.optimized:
+					if defaults.general.optimized:
 						global_vars[m+'CS'] = sdLoader[1]
 						global_vars[m+'FS'] = sdLoader[2]
 				elif m == 'RealESRGAN':
@@ -1096,18 +1095,19 @@ def resize_image(resize_mode, im, width, height):
 
 	return res
 
-def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask: any,
-	    mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
-            realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
-            seed: int, height: int, width: int, resize_mode: int, fp = None,
+def img2img(prompt: str = '', init_info: any = None, ddim_steps: int = 50, sampler_name: str = 'DDIM',
+             n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
+            seed: int = -1, height: int = 512, width: int = 512, fp = None,
 	    variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
 	    write_info_files:bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
 	    separate_prompts:bool = False, normalize_prompt_weights:bool = True,
 	    save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
 	    save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True):
 	
-	outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
+	outpath = defaults.general.outdir_img2img or defaults.general.outdir or "outputs/img2img-samples"
 	err = False
+	loopback = False
+	skip_save = False
 	seed = seed_to_int(seed)
 
 	batch_size = 1
@@ -1125,88 +1125,48 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
 	#use_GFPGAN = 10 in toggles
 	#use_RealESRGAN = 11 in toggles
 	
-	ModelLoader(['model'],True,False)
-	if use_GFPGAN and not use_RealESRGAN:
-		ModelLoader(['GFPGAN'],True,False)
-		ModelLoader(['RealESRGAN'],False,True)
-	if use_RealESRGAN and not use_GFPGAN:
-		ModelLoader(['GFPGAN'],False,True)
-		ModelLoader(['RealESRGAN'],True,False,realesrgan_model_name)
-	if use_RealESRGAN and use_GFPGAN:
-		ModelLoader(['GFPGAN','RealESRGAN'],True,False,realesrgan_model_name)
-	if sampler_name == 'DDIM':
-		sampler = DDIMSampler(model)
+	if sampler_name == 'PLMS':
+		sampler = PLMSSampler(st.session_state["model"])
+	elif sampler_name == 'DDIM':
+		sampler = DDIMSampler(st.session_state["model"])
 	elif sampler_name == 'k_dpm_2_a':
-		sampler = KDiffusionSampler(model,'dpm_2_ancestral')
+		sampler = KDiffusionSampler(st.session_state["model"],'dpm_2_ancestral')
 	elif sampler_name == 'k_dpm_2':
-		sampler = KDiffusionSampler(model,'dpm_2')
+		sampler = KDiffusionSampler(st.session_state["model"],'dpm_2')
 	elif sampler_name == 'k_euler_a':
-		sampler = KDiffusionSampler(model,'euler_ancestral')
+		sampler = KDiffusionSampler(st.session_state["model"],'euler_ancestral')
 	elif sampler_name == 'k_euler':
-		sampler = KDiffusionSampler(model,'euler')
+		sampler = KDiffusionSampler(st.session_state["model"],'euler')
 	elif sampler_name == 'k_heun':
-		sampler = KDiffusionSampler(model,'heun')
+		sampler = KDiffusionSampler(st.session_state["model"],'heun')
 	elif sampler_name == 'k_lms':
-		sampler = KDiffusionSampler(model,'lms')
+		sampler = KDiffusionSampler(st.session_state["model"],'lms')
 	else:
 		raise Exception("Unknown sampler: " + sampler_name)
 
-	if image_editor_mode == 'Mask':
-		init_img = init_info_mask["image"]
-		init_img = init_img.convert("RGB")
-		init_img = resize_image(resize_mode, init_img, width, height)
-		init_mask = init_info_mask["mask"]
-		init_mask = resize_image(resize_mode, init_mask, width, height)
-		keep_mask = mask_mode == 0
-		init_mask = init_mask.convert("RGB")
-		init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
-	else:
-		init_img = init_info.convert("RGB")
-		init_mask = None
-		keep_mask = False
+	init_img = init_info
+	init_mask = None
+	keep_mask = False
 
 	assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
 	t_enc = int(denoising_strength * ddim_steps)
 
 	def init():
-		image = init_img.convert("RGB")
-		image = resize_image(resize_mode, image, width, height)
-		#image = image.convert("RGB") #todo: mask mode -> ValueError: could not convert string to float:
+		
+		image = init_img
 		image = np.array(image).astype(np.float32) / 255.0
 		image = image[None].transpose(0, 3, 1, 2)
 		image = torch.from_numpy(image)
 
-		mask_channel = None
-		if image_editor_mode == "Uncrop":
-			alpha = init_img.convert("RGB")
-			alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
-			mask_channel = alpha.split()[-1]
-			mask_channel = mask_channel.filter(ImageFilter.GaussianBlur(4))
-			mask_channel = np.array(mask_channel)
-			mask_channel[mask_channel >= 255] = 255
-			mask_channel[mask_channel < 255] = 0
-			mask_channel = Image.fromarray(mask_channel).filter(ImageFilter.GaussianBlur(2))
-		elif init_mask is not None:
-			alpha = init_mask.convert("RGBA")
-			alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
-			mask_channel = alpha.split()[1]
-
 		mask = None
-		if mask_channel is not None:
-			mask = np.array(mask_channel).astype(np.float32) / 255.0
-			mask = (1 - mask)
-			mask = np.tile(mask, (4, 1, 1))
-			mask = mask[None].transpose(0, 1, 2, 3)
-			mask = torch.from_numpy(mask).to(device)
-		if opt.optimized:
-			modelFS.to(device)
-
+		if defaults.general.optimized:
+			modelFS.to(st.session_state["device"] )
+		
 		init_image = 2. * image - 1.
-		init_image = init_image.to(device)
-		init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
-		init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
+		init_image = init_image.to(st.session_state["device"])
+		init_latent = (st.session_state["model"] if not defaults.general.optimized else modelFS).get_first_stage_encoding((st.session_state["model"]  if not defaults.general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
 
-		if opt.optimized:
+		if defaults.general.optimized:
 			mem = torch.cuda.memory_allocated()/1e6
 			modelFS.to("cpu")
 			while(torch.cuda.memory_allocated()/1e6 >= mem):
@@ -1242,7 +1202,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
 			x0, z_mask = init_data
 
 			sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
-			z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc_steps]*batch_size).to(device))
+			z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc_steps]*batch_size).to(st.session_state["device"] ))
 
 			# Obliterate masked image
 			if z_mask is not None and obliterate:
@@ -1330,32 +1290,30 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
 	    prompt=prompt,
 	    seed=seed,
 	    sampler_name=sampler_name,
-	    skip_save=skip_save,
-	    skip_grid=skip_grid,
+	    skip_save=False,
+	    skip_grid=False,
 	    batch_size=batch_size,
 	    n_iter=n_iter,
 	    steps=ddim_steps,
 	    cfg_scale=cfg_scale,
 	    width=width,
 	    height=height,
-	    prompt_matrix=prompt_matrix,
+	    prompt_matrix=False,
 	    use_GFPGAN=use_GFPGAN,
 	    use_RealESRGAN=use_RealESRGAN,
-	    realesrgan_model_name=realesrgan_model_name,
+	    realesrgan_model_name="",
 	    fp=fp,
 	    normalize_prompt_weights=normalize_prompt_weights,
 	    init_img=init_img,
 	    init_mask=init_mask,
 	    keep_mask=keep_mask,
-	    mask_blur_strength=mask_blur_strength,
+	    mask_blur_strength=2,
 	    denoising_strength=denoising_strength,
-	    resize_mode=resize_mode,
+	    resize_mode=0,
 	    uses_loopback=loopback,
-	    sort_samples=sort_samples,
+	    sort_samples=False,
 	    write_info_files=write_info_files,
-	    write_sample_info_to_log_file=write_sample_info_to_log_file,
-	    jpg_sample=jpg_sample,
-	    job_info=job_info
+	    jpg_sample=True
 	)
 
 	del sampler
@@ -1453,6 +1411,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 		err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
 		stats = err_msg
 		return [], seed, 'err', stats
+
+
 
 
 def layout():
@@ -1632,7 +1592,7 @@ def layout():
 				uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
 								   help="Upload an image which will be used for the image to image generation."
 								   )
-				
+		
 				height = st.slider("Height:", min_value=64, max_value=2048, value=defaults.img2img.height, step=64)
 				width = st.slider("Width:", min_value=64, max_value=2048, value=defaults.img2img.width, step=64)
 				seed = st.text_input("Seed:", value=defaults.img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
@@ -1672,41 +1632,40 @@ def layout():
 										       help="How many images are at once in a batch.\
 								       It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 								       Default: 1")									
-
+			
 			with col2_img2img_layout:
-				editor_tab = st.tabs(["Editor"])
+				preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
 				
-				editor_image = st.empty()
-				st.session_state["editor_image"] = editor_image
-				
-				if uploaded_images:
-					image = Image.open(uploaded_images)
-					img_array = np.array(image) # if you want to pass it to OpenCV
-					st.image(image, use_column_width=True)
+				with preview_tab:
+					st.write("Image")
+					#Image for testing
+					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
+					#new_image = image.resize((175, 240))
+					#preview_image = st.image(image)
+	
+					# create an empty container for the image and use session_state to hold it globally.
+					preview_image = st.empty()
+					st.session_state["preview_image"] = preview_image
 					
-
-			with col3_img2img_layout:
-				result_tab = st.tabs(["Result"])
+				with gallery_tab:
+					st.write('Here should be the image gallery, if I could make a grid in streamlit.')
 				
-				preview_image = st.empty()
-				st.session_state["preview_image"] = preview_image
-				
-				if uploaded_images:
-					image = Image.open(uploaded_images)
-					img_array = np.array(image) # if you want to pass it to OpenCV
-					st.image(image, use_column_width=True)
+				# if uploaded_images:
+				# 	image = Image.open(uploaded_images)
+				# 	img_array = np.array(image) # if you want to pass it to OpenCV
+				# 	st.image(image, use_column_width=True)
 
 			if generate_button:
 				#print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
-				
-				try:
-					output_images, seed, info, stats = img2img(prompt, 0, "", "", 0,
-										   0, sampling_steps, sampler_name, RealESRGAN_model,
-										   batch_count, cfg_scale, 0.0, seed, height, width, 0)
-				except (StopException, KeyError):
-					print(f"Received Streamlit StopException")
+				if uploaded_images:
+					image = Image.open(uploaded_images)
+					img_array = np.array(image) # if you want to pass it to OpenCV
+					try:
+						output_images, seed, info, stats = img2img(prompt=prompt, init_info=image, ddim_steps=sampling_steps, sampler_name=sampler_name, n_iter=batch_count)
+					except (StopException, KeyError):
+						print(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
