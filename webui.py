@@ -136,6 +136,13 @@ elif grid_format[0] == 'webp':
         grid_quality = abs(grid_quality)
 
 
+def toImgOpenCV(imgPIL): # Conver imgPIL to imgOpenCV
+            i = np.array(imgPIL) # After mapping from PIL to numpy : [R,G,B,A]
+                                # numpy Image Channel system: [B,G,R,A]
+            red = i[:,:,0].copy(); i[:,:,0] = i[:,:,2].copy(); i[:,:,2] = red
+            return i
+def toImgPIL(imgOpenCV): return Image.fromarray(cv2.cvtColor(imgOpenCV, cv2.COLOR_BGR2RGB))
+
 def chunk(it, size):
     it = iter(it)
     return iter(lambda: tuple(islice(it, size)), ())
@@ -1542,9 +1549,10 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
     output = []
     images = []
     def processGFPGAN(image,strength):
-        image = image.convert("RGB")
-        cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(image, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
-        result = Image.fromarray(restored_img)
+        cvimage = toImgOpenCV(image)
+        cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(cvimage, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
+        #save restored image
+        result = toImgPIL(restored_img)
         if strength < 1.0:
             result = Image.blend(image, result, strength)
 
@@ -1923,15 +1931,14 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 def run_GFPGAN(image, strength):
     ModelLoader(['LDSR','RealESRGAN'],False,True)
     ModelLoader(['GFPGAN'],True,False)
-    image = image.convert("RGB")
-
-    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(image, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
-    res = Image.fromarray(restored_img)
-
+    cvimage = toImgOpenCV(image)
+    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(cvimage, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
+    #save restored image
+    result = toImgPIL(restored_img)
     if strength < 1.0:
-        res = Image.blend(image, res, strength)
+        result = Image.blend(image, result, strength)
 
-    return res
+    return result
 
 def run_RealESRGAN(image, model_name: str):
     ModelLoader(['GFPGAN','LDSR'],False,True)
