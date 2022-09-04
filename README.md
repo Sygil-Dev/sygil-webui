@@ -19,7 +19,7 @@
 
 Features:
 
-* Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
+* [Gradio GUI](https://github.com/gradio-app/gradio): Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
 * :fire: :fire: Optimized support!! :fire: :fire:
 * 🔥 NEW! [webui.cmd](https://github.com/hlky/stable-diffusion) updates with any changes in environment.yaml file so the environment will always be up to date as long as you get the new environment.yaml file 🔥
@@ -45,7 +45,7 @@ Features:
 * and ????
 
 # Stable Diffusion web UI
-A browser interface based on Gradio library for Stable Diffusion.
+A browser interface based on [Gradio library](https://github.com/gradio-app/gradio) for Stable Diffusion.
 
 ![](images/txt2img.jpg)
 
