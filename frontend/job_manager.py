@@ -30,7 +30,12 @@ class JobInfo:
     session_key: str
     job_token: Optional[int] = None
     images: List[Image] = field(default_factory=list)
+    active_image: Image = None
     should_stop: Event = field(default_factory=Event)
+    refresh_active_image_requested: Event = field(default_factory=Event)
+    refresh_active_image_done: Event = field(default_factory=Event)
+    stop_cur_iter: Event = field(default_factory=Event)
+    active_iteration_cnt: int = field(default_factory=int)
     job_status: str = field(default_factory=str)
     finished: bool = False
     removed_output_idxs: List[int] = field(default_factory=list)
@@ -76,7 +81,9 @@ class JobManagerUi:
         '''
         return self._job_manager._wrap_func(
             func=func, inputs=inputs, outputs=outputs,
-            refresh_btn=self._refresh_btn, stop_btn=self._stop_btn, status_text=self._status_text
+            refresh_btn=self._refresh_btn, stop_btn=self._stop_btn, status_text=self._status_text,
+            active_image=self._active_image, active_image_stop_btn=self._active_image_stop_btn,
+            active_image_refresh_btn=self._active_image_refresh_btn
         )
 
     _refresh_btn: gr.Button
@@ -84,6 +91,9 @@ class JobManagerUi:
     _status_text: gr.Textbox
     _stop_all_session_btn: gr.Button
     _free_done_sessions_btn: gr.Button
+    _active_image: gr.Image
+    _active_image_stop_btn: gr.Button
+    _active_image_refresh_btn: gr.Button
     _job_manager: JobManager
 
 
@@ -104,9 +114,13 @@ class JobManager:
         with gr.Tabs():
             with gr.TabItem("Current Session"):
                 with gr.Row():
-                    stop_btn = gr.Button("Stop", elem_id="stop", variant="secondary")
-                    refresh_btn = gr.Button("Refresh", elem_id="refresh", variant="secondary")
+                    stop_btn = gr.Button("Stop All Batches", elem_id="stop", variant="secondary")
+                    refresh_btn = gr.Button("View Finished Batches", elem_id="refresh", variant="secondary")
                 status_text = gr.Textbox(placeholder="Job Status", interactive=False, show_label=False)
+                with gr.Row():
+                    active_image_stop_btn = gr.Button("Skip Active Batch", variant="secondary")
+                    active_image_refresh_btn = gr.Button("View Batch Progress", variant="secondary")
+                active_image = gr.Image(type="pil", interactive=False, visible=False, elem_id="active_iteration_image")
             with gr.TabItem("Maintenance"):
                 with gr.Row():
                     gr.Markdown(
@@ -120,7 +134,8 @@ class JobManager:
                     )
         return JobManagerUi(_refresh_btn=refresh_btn, _stop_btn=stop_btn, _status_text=status_text,
                             _stop_all_session_btn=stop_all_sessions_btn, _free_done_sessions_btn=free_done_sessions_btn,
-                            _job_manager=self)
+                            _active_image=active_image, _active_image_stop_btn=active_image_stop_btn,
+                            _active_image_refresh_btn=active_image_refresh_btn, _job_manager=self)
 
     def clear_all_finished_jobs(self):
         ''' Removes all currently finished jobs, across all sessions.
@@ -175,6 +190,26 @@ class JobManager:
         job_info.should_stop.set()
         return "Stopping after current batch finishes"
 
+    def _refresh_cur_iter_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
+        ''' Updates information from the active iteration '''
+        session_info, job_info = self._get_call_info(func_key, session_key)
+        if job_info is None:
+            return [None, f"Session {session_key} was not running function {func_key}"]
+
+        job_info.refresh_active_image_requested.set()
+        if job_info.refresh_active_image_done.wait(timeout=10.0):
+            job_info.refresh_active_image_done.clear()
+            return [gr.Image.update(value=job_info.active_image, visible=True), f"Sample iteration {job_info.active_iteration_cnt}"]
+        return [gr.Image.update(visible=False), "Timed out getting image"]
+
+    def _stop_cur_iter_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
+        ''' Marks that the active iteration should be stopped'''
+        session_info, job_info = self._get_call_info(func_key, session_key)
+        if job_info is None:
+            return [None, f"Session {session_key} was not running function {func_key}"]
+        job_info.stop_cur_iter.set()
+        return [gr.Image.update(visible=False), "Stopping current iteration"]
+
     def _get_call_info(self, func_key: FuncKey, session_key: str) -> Tuple[SessionInfo, JobInfo]:
         ''' Helper to get the SessionInfo and JobInfo. '''
         session_info = self._sessions.get(session_key, None)
@@ -207,7 +242,8 @@ class JobManager:
 
     def _pre_call_func(
             self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
-            status_text: gr.Textbox, session_key: str) -> List[Component]:
+            status_text: gr.Textbox, active_image: gr.Image, active_refresh_btn: gr.Button, active_stop_btn: gr.Button,
+            session_key: str) -> List[Component]:
         ''' Called when a job is about to start '''
         session_info, job_info = self._get_call_info(func_key, session_key)
 
@@ -219,7 +255,9 @@ class JobManager:
         return {output_dummy_obj: triggerChangeEvent(),
                 refresh_btn: gr.Button.update(variant="primary", value=refresh_btn.value),
                 stop_btn: gr.Button.update(variant="primary", value=stop_btn.value),
-                status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' for updates")
+                status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' for updates"),
+                active_refresh_btn: gr.Button.update(variant="primary", value=active_refresh_btn.value),
+                active_stop_btn: gr.Button.update(variant="primary", value=active_stop_btn.value),
                 }
 
     def _call_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
@@ -254,12 +292,16 @@ class JobManager:
 
     def _post_call_func(
             self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
-            status_text: gr.Textbox, session_key: str) -> List[Component]:
+            status_text: gr.Textbox, active_image: gr.Image, active_refresh_btn: gr.Button, active_stop_btn: gr.Button,
+            session_key: str) -> List[Component]:
         ''' Called when a job completes '''
         return {output_dummy_obj: triggerChangeEvent(),
                 refresh_btn: gr.Button.update(variant="secondary", value=refresh_btn.value),
                 stop_btn: gr.Button.update(variant="secondary", value=stop_btn.value),
-                status_text: gr.Textbox.update(value="Generation has finished!")
+                status_text: gr.Textbox.update(value="Generation has finished!"),
+                active_refresh_btn: gr.Button.update(variant="secondary", value=active_refresh_btn.value),
+                active_stop_btn: gr.Button.update(variant="secondary", value=active_stop_btn.value),
+                active_image: gr.Image.update(visible=False)
                 }
 
     def _update_gallery_event(self, func_key: FuncKey, session_key: str) -> List[Component]:
@@ -278,7 +320,8 @@ class JobManager:
     def _wrap_func(
             self, func: Callable, inputs: List[Component], outputs: List[Component],
             refresh_btn: gr.Button = None, stop_btn: gr.Button = None,
-            status_text: Optional[gr.Textbox] = None) -> Tuple[Callable, List[Component]]:
+            status_text: Optional[gr.Textbox] = None, active_image: Optional[Image] = None,
+            active_image_stop_btn: Optional[Image] = None, active_image_refresh_btn: Optional[Image] = None) -> Tuple[Callable, List[Component]]:
         ''' handles JobManageUI's wrap_func'''
 
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
@@ -329,6 +372,20 @@ class JobManager:
                 [status_text]
             )
 
+        if active_image and active_image_refresh_btn:
+            active_image_refresh_btn.click(
+                partial(self._refresh_cur_iter_func, func_key),
+                [self._session_key],
+                [active_image, status_text]
+            )
+
+        if active_image_stop_btn:
+            active_image_stop_btn.click(
+                partial(self._stop_cur_iter_func, func_key),
+                [self._session_key],
+                [active_image, status_text]
+            )
+
         # (ab)use gr.JSON to forward events.
         # The gr.JSON object will fire its 'change' event when it is modified by being the output
         # of another component. This allows a method to forward events and allow multiple components
@@ -343,7 +400,8 @@ class JobManager:
         # Since some parameters are optional it makes sense to use the 'dict' return value type, which requires
         # the Component as a key... so group together the UI components that the event listeners are going to update
         # to make it easy to append to function calls and outputs
-        job_ui_params = [refresh_btn, stop_btn, status_text]
+        job_ui_params = [refresh_btn, stop_btn, status_text,
+                         active_image, active_image_refresh_btn, active_image_stop_btn]
         job_ui_outputs = [comp for comp in job_ui_params if comp is not None]
 
         # Here a chain is constructed that will make a 'pre' call, a 'run' call, and a 'post' call,

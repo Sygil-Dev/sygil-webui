@@ -64,9 +64,10 @@ import torch
 import torch.nn as nn
 import yaml
 import glob
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Callable, Any
 from pathlib import Path
 from collections import namedtuple
+from functools import partial
 
 from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
@@ -262,14 +263,20 @@ class KDiffusionSampler:
         self.schedule = sampler
     def get_sampler_name(self):
         return self.schedule
-    def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T):
+    def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T, img_callback: Callable = None ):
         sigmas = self.model_wrap.get_sigmas(S)
         x = x_T * sigmas[0]
         model_wrap_cfg = CFGDenoiser(self.model_wrap)
-
-        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False, callback=partial(KDiffusionSampler.img_callback_wrapper, img_callback))
 
         return samples_ddim, None
+
+    @classmethod
+    def img_callback_wrapper(cls, callback: Callable, *args):
+        ''' Converts a KDiffusion callback to the standard img_callback '''
+        if callback:
+            arg_dict = args[0]
+            callback(image_sample=arg_dict['x'], iter_num=arg_dict['i'])
 
 
 def create_random_tensors(shape, seeds):
@@ -932,7 +939,40 @@ def process_images(
                 # finally, slerp base_x noise to target_x noise for creating a variant
                 x = slerp(device, max(0.0, min(1.0, cur_variant_amount)), base_x, target_x)
 
-            samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
+            def iteration_callback(image_sample: torch.Tensor, iter_num: int):
+                if job_info:
+                    job_info.active_iteration_cnt = iter_num
+                    if job_info.refresh_active_image_requested.is_set():
+                        job_info.refresh_active_image_requested.clear()
+
+                        batch_ddim = (model if not opt.optimized else modelFS).decode_first_stage(image_sample)
+                        batch_ddim = torch.clamp((batch_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+
+                        images: List[Image.Image] = []
+                        # Convert tensor to image (copied from code below)
+                        for ddim in batch_ddim:
+                            x_sample = 255. * rearrange(batch_ddim[0].cpu().numpy(), 'c h w -> h w c')
+                            x_sample = x_sample.astype(np.uint8)
+                            image = Image.fromarray(x_sample)
+                            images.append(image)
+
+                        grid = image_grid(images, len(images))
+
+                        # Notify the requester that the image is updated
+                        job_info.active_image = grid
+                        job_info.refresh_active_image_done.set()
+
+                    # Interrupt current iteration?
+                    if job_info.stop_cur_iter.is_set():
+                        job_info.stop_cur_iter.clear()
+                        raise StopIteration()
+
+            try:
+                samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name, img_callback=iteration_callback)
+            except StopIteration:
+                print("Skipping iteration")
+                job_info.job_status = "Skipping iteration"
+                continue
 
             if opt.optimized:
                 modelFS.to(device)
@@ -1131,8 +1171,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     def init():
         pass
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
-        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, img_callback: Callable = None):
+        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=img_callback)
         return samples_ddim
 
     try:
@@ -1332,7 +1372,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
 
         return init_latent, mask,
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, img_callback: Callable = None):
         t_enc_steps = t_enc
         obliterate = False
         if ddim_steps == t_enc_steps:
@@ -1354,7 +1394,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
 
             sigma_sched = sigmas[ddim_steps - t_enc_steps - 1:]
             model_wrap_cfg = CFGMaskedDenoiser(sampler.model_wrap)
-            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False)
+            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False, callback=partial(KDiffusionSampler.img_callback_wrapper, img_callback))
         else:
 
             x0, z_mask = init_data
