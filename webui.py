@@ -951,7 +951,7 @@ def process_images(
                         images: List[Image.Image] = []
                         # Convert tensor to image (copied from code below)
                         for ddim in batch_ddim:
-                            x_sample = 255. * rearrange(batch_ddim[0].cpu().numpy(), 'c h w -> h w c')
+                            x_sample = 255. * rearrange(ddim.cpu().numpy(), 'c h w -> h w c')
                             x_sample = x_sample.astype(np.uint8)
                             image = Image.fromarray(x_sample)
                             images.append(image)
