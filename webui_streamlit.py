@@ -45,7 +45,7 @@ from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, mak
      extract_into_tensor
 
 # we use slugify to make the filenames safe for windows and linux, its better than doing it manually
-# install it with 'pip install slugify'
+# install it with 'pip install python-slugify'
 from slugify import slugify
 
 try:
