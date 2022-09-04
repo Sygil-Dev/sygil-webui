@@ -2028,7 +2028,7 @@ txt2img_defaults = {
     'fp': None,
     'variant_amount': 0.0,
     'variant_seed': '',
-    'submit_on_enter': 'Yes',
+    'submit_on_enter': 'No',
 }
 
 if 'txt2img' in user_defaults:

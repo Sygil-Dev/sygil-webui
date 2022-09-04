@@ -113,7 +113,7 @@ class JobManager:
             with gr.TabItem("Current Session"):
                 with gr.Row():
                     stop_btn = gr.Button("Stop All Batches", elem_id="stop", variant="secondary")
-                    refresh_btn = gr.Button("View Finished Batches", elem_id="refresh", variant="secondary")
+                    refresh_btn = gr.Button("Refresh Finished Batches", elem_id="refresh", variant="secondary")
                 status_text = gr.Textbox(placeholder="Job Status", interactive=False, show_label=False)
                 with gr.Row():
                     active_image_stop_btn = gr.Button("Skip Active Batch", variant="secondary")
@@ -254,7 +254,7 @@ class JobManager:
         return {output_dummy_obj: triggerChangeEvent(),
                 refresh_btn: gr.Button.update(variant="primary", value=refresh_btn.value),
                 stop_btn: gr.Button.update(variant="primary", value=stop_btn.value),
-                status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' for updates"),
+                status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' to see finished images, 'View Batch Progress' for active images"),
                 active_refresh_btn: gr.Button.update(variant="primary", value=active_refresh_btn.value),
                 active_stop_btn: gr.Button.update(variant="primary", value=active_stop_btn.value),
                 }
