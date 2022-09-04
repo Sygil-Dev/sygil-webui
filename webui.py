@@ -69,7 +69,7 @@ import glob
 from typing import List, Union, Dict
 from pathlib import Path
 from collections import namedtuple
-
+import cv2
 from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
