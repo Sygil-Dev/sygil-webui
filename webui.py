@@ -939,12 +939,12 @@ def process_images(
                 # finally, slerp base_x noise to target_x noise for creating a variant
                 x = slerp(device, max(0.0, min(1.0, cur_variant_amount)), base_x, target_x)
 
-            def iteration_callback(image_sample: torch.Tensor, iter_num: int):
+            def sample_iteration_callback(image_sample: torch.Tensor, iter_num: int):
+                ''' Called from the sampler every iteration '''
                 if job_info:
                     job_info.active_iteration_cnt = iter_num
-                    if job_info.refresh_active_image_requested.is_set():
-                        job_info.refresh_active_image_requested.clear()
-
+                    record_periodic_image = job_info.rec_steps_enabled and (0 == iter_num % job_info.rec_steps_intrvl)
+                    if record_periodic_image or job_info.refresh_active_image_requested.is_set():
                         batch_ddim = (model if not opt.optimized else modelFS).decode_first_stage(image_sample)
                         batch_ddim = torch.clamp((batch_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
@@ -956,11 +956,20 @@ def process_images(
                             image = Image.fromarray(x_sample)
                             images.append(image)
 
-                        grid = image_grid(images, len(images))
+                        caption = f"Iter {iter_num}"
+                        grid = image_grid(images, len(images), force_n_rows=1, captions=[caption]*len(images))
+
+                        # Save the images if recording steps, and append existing saved steps
+                        if job_info.rec_steps_enabled:
+                            job_info.rec_steps_imgs.append(grid)
 
                         # Notify the requester that the image is updated
-                        job_info.active_image = grid
-                        job_info.refresh_active_image_done.set()
+                        if job_info.refresh_active_image_requested.is_set():
+                            if job_info.rec_steps_enabled:
+                                grid = image_grid(job_info.rec_steps_imgs, 1)
+                            job_info.active_image = grid
+                            job_info.refresh_active_image_done.set()
+                            job_info.refresh_active_image_requested.clear()
 
                     # Interrupt current iteration?
                     if job_info.stop_cur_iter.is_set():
@@ -968,7 +977,7 @@ def process_images(
                         raise StopIteration()
 
             try:
-                samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name, img_callback=iteration_callback)
+                samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name, img_callback=sample_iteration_callback)
             except StopIteration:
                 print("Skipping iteration")
                 job_info.job_status = "Skipping iteration"
@@ -1063,6 +1072,19 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     output_images.append(image)
                     if simple_templating:
                         grid_captions.append( captions[i] )
+
+            # Save the progress images?
+            if job_info:
+                if job_info.rec_steps_enabled and (job_info.rec_steps_to_file or job_info.rec_steps_to_gallery):
+                    steps_grid = image_grid(job_info.rec_steps_imgs, 1)
+                    if job_info.rec_steps_to_gallery:
+                        output_images.append( steps_grid )
+                    if job_info.rec_steps_to_file:
+                        steps_grid_filename = f"{original_filename}_step_grid"
+                        save_sample(steps_grid, sample_path_i, steps_grid_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+
 
             if opt.optimized:
                 mem = torch.cuda.memory_allocated()/1e6

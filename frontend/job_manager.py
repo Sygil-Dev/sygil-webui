@@ -1,7 +1,7 @@
 ''' Provides simple job management for gradio, allowing viewing and stopping in-progress multi-batch generations '''
 from __future__ import annotations
 import gradio as gr
-from gradio.components import Component, Gallery
+from gradio.components import Component, Gallery, Slider
 from threading import Event, Timer
 from typing import Callable, List, Dict, Tuple, Optional, Any
 from dataclasses import dataclass, field
@@ -31,6 +31,11 @@ class JobInfo:
     job_token: Optional[int] = None
     images: List[Image] = field(default_factory=list)
     active_image: Image = None
+    rec_steps_enabled: bool = False
+    rec_steps_imgs: List[Image] = field(default_factory=list)
+    rec_steps_intrvl: int = None
+    rec_steps_to_gallery: bool = False
+    rec_steps_to_file: bool = False
     should_stop: Event = field(default_factory=Event)
     refresh_active_image_requested: Event = field(default_factory=Event)
     refresh_active_image_done: Event = field(default_factory=Event)
@@ -92,6 +97,10 @@ class JobManagerUi:
     _active_image: gr.Image
     _active_image_stop_btn: gr.Button
     _active_image_refresh_btn: gr.Button
+    _rec_steps_intrvl_sldr: gr.Slider
+    _rec_steps_checkbox: gr.Checkbox
+    _save_rec_steps_to_gallery_chkbx: gr.Checkbox
+    _save_rec_steps_to_file_chkbx: gr.Checkbox
     _job_manager: JobManager
 
 
@@ -110,7 +119,7 @@ class JobManager:
         '''
         assert gr.context.Context.block is not None, "draw_gradio_ui must be called within a 'gr.Blocks' 'with' context"
         with gr.Tabs():
-            with gr.TabItem("Current Session"):
+            with gr.TabItem("Job Controls"):
                 with gr.Row():
                     stop_btn = gr.Button("Stop All Batches", elem_id="stop", variant="secondary")
                     refresh_btn = gr.Button("Refresh Finished Batches", elem_id="refresh", variant="secondary")
@@ -119,6 +128,14 @@ class JobManager:
                     active_image_stop_btn = gr.Button("Skip Active Batch", variant="secondary")
                     active_image_refresh_btn = gr.Button("View Batch Progress", variant="secondary")
                 active_image = gr.Image(type="pil", interactive=False, visible=False, elem_id="active_iteration_image")
+            with gr.TabItem("Batch Progress Settings"):
+                with gr.Row():
+                    record_steps_checkbox = gr.Checkbox(value=False, label="Enable Batch Progress Grid")
+                    record_steps_interval_slider = gr.Slider(
+                        value=3, label="Record Interval (steps)", minimum=1, maximum=25)
+                with gr.Row() as record_steps_box:
+                    steps_to_gallery_checkbox = gr.Checkbox(value=False, label="Save Progress Grid to Gallery")
+                    steps_to_file_checkbox = gr.Checkbox(value=False, label="Save Progress Progress to File")
             with gr.TabItem("Maintenance"):
                 with gr.Row():
                     gr.Markdown(
@@ -130,10 +147,15 @@ class JobManager:
                     free_done_sessions_btn = gr.Button(
                         "Clear Finished Jobs", elem_id="clear_finished", variant="secondary"
                     )
+
         return JobManagerUi(_refresh_btn=refresh_btn, _stop_btn=stop_btn, _status_text=status_text,
                             _stop_all_session_btn=stop_all_sessions_btn, _free_done_sessions_btn=free_done_sessions_btn,
                             _active_image=active_image, _active_image_stop_btn=active_image_stop_btn,
-                            _active_image_refresh_btn=active_image_refresh_btn, _job_manager=self)
+                            _active_image_refresh_btn=active_image_refresh_btn,
+                            _rec_steps_checkbox=record_steps_checkbox,
+                            _save_rec_steps_to_gallery_chkbx=steps_to_gallery_checkbox,
+                            _save_rec_steps_to_file_chkbx=steps_to_file_checkbox,
+                            _rec_steps_intrvl_sldr=record_steps_interval_slider, _job_manager=self)
 
     def clear_all_finished_jobs(self):
         ''' Removes all currently finished jobs, across all sessions.
@@ -316,8 +338,9 @@ class JobManager:
 
         return job_info.images
 
-    def _wrap_func(
-            self, func: Callable, inputs: List[Component], outputs: List[Component], job_ui: JobManagerUi) -> Tuple[Callable, List[Component]]:
+    def _wrap_func(self, func: Callable, inputs: List[Component],
+                   outputs: List[Component],
+                   job_ui: JobManagerUi) -> Tuple[Callable, List[Component]]:
         ''' handles JobManageUI's wrap_func'''
 
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
@@ -340,9 +363,6 @@ class JobManager:
                 gallery_comp = comp
                 del outputs[idx]
                 break
-
-        # Add the session key to the inputs
-        inputs += [self._session_key]
 
         # Create dummy objects
         update_gallery_obj = gr.JSON(visible=False, elem_id="JobManagerDummyObject")
@@ -433,11 +453,21 @@ class JobManager:
             [call_dummyobj] + job_ui_outputs
         )
 
-        # Now replace the original function with one that creates a JobInfo and triggers the dummy obj
+        # Add any components that we want the runtime values for
+        added_inputs = [self._session_key, job_ui._rec_steps_checkbox, job_ui._save_rec_steps_to_gallery_chkbx,
+                        job_ui._save_rec_steps_to_file_chkbx, job_ui._rec_steps_intrvl_sldr]
 
-        def wrapped_func(*inputs):
-            session_key = inputs[-1]
-            inputs = inputs[:-1]
+        # Now replace the original function with one that creates a JobInfo and triggers the dummy obj
+        def wrapped_func(*wrapped_inputs):
+            # Remove the added_inputs (pop opposite order of list)
+
+            wrapped_inputs = list(wrapped_inputs)
+            rec_steps_interval: int = wrapped_inputs.pop()
+            save_rec_steps_file: bool = wrapped_inputs.pop()
+            save_rec_steps_grid: bool = wrapped_inputs.pop()
+            record_steps_enabled: bool = wrapped_inputs.pop()
+            session_key: str = wrapped_inputs.pop()
+            job_inputs = tuple(wrapped_inputs)
 
             # Get or create a session for this key
             session_info = self._sessions.setdefault(session_key, SessionInfo())
@@ -447,8 +477,10 @@ class JobManager:
                 return {job_ui._status_text: "This session is already running that function!"}
 
             job_token = self._get_job_token(block=False)
-            job = JobInfo(inputs=inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key,
-                          job_token=job_token)
+            job = JobInfo(
+                inputs=job_inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key,
+                job_token=job_token, rec_steps_enabled=record_steps_enabled, rec_steps_intrvl=rec_steps_interval,
+                rec_steps_to_gallery=save_rec_steps_grid, rec_steps_to_file=save_rec_steps_file)
             session_info.jobs[func_key] = job
 
             ret = {pre_call_dummyobj: triggerChangeEvent()}
@@ -456,4 +488,4 @@ class JobManager:
                 ret[job_ui._status_text] = "Job is queued"
             return ret
 
-        return wrapped_func, inputs, [pre_call_dummyobj, job_ui._status_text]
+        return wrapped_func, inputs + added_inputs, [pre_call_dummyobj, job_ui._status_text]
