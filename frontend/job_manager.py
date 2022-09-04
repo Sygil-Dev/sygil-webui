@@ -149,6 +149,7 @@ class JobManager:
         for session in self._sessions.values():
             for job in session.jobs.values():
                 job.should_stop.set()
+                job.stop_cur_iter.set()
 
     def _get_job_token(self, block: bool = False) -> Optional[int]:
         ''' Attempts to acquire a job token, optionally blocking until available '''
