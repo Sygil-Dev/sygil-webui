@@ -886,6 +886,7 @@ def process_images(
 
             if job_info:
                 job_info.job_status = f"Processing Iteration {n+1}/{n_iter}. Batch size {batch_size}"
+                job_info.rec_steps_imgs.clear()
                 for idx,(p,s) in enumerate(zip(prompts,seeds)):
                     job_info.job_status += f"\nItem {idx}: Seed {s}\nPrompt: {p}"
 
