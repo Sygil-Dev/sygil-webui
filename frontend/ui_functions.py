@@ -16,7 +16,8 @@ def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
                 gr.Radio.update(choices=["Keep masked area", "Regenerate only masked area"],
                 label="Mask Mode",
                 value="Regenerate only masked area", visible=True),
-                gr.Slider.update(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=True)]
+                gr.Slider.update(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=True),
+                gr.Image.update(visible=True)]
     else:
         return [gr.Image.update(visible=True), 
                 gr.Image.update(visible=False),
@@ -26,7 +27,8 @@ def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
                 gr.Radio.update(choices=["Keep masked area", "Regenerate only masked area"],
                 label="Mask Mode",
                 value="Regenerate only masked area", visible=False),
-                gr.Slider.update(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False)]
+                gr.Slider.update(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False),
+                gr.Image.update(visible=False)]
 
 def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
