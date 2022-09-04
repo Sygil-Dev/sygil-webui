@@ -327,7 +327,7 @@ class JobManager:
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
         # Create a unique key for this job
-        func_key = FuncKey(job_id=uuid.uuid4(), func=func)
+        func_key = FuncKey(job_id=uuid.uuid4().hex, func=func)
 
         # Create a unique session key (next gradio release can use gr.State, see https://gradio.app/state_in_blocks/)
         if self._session_key is None:
