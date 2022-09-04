@@ -65,13 +65,13 @@ def txt2img(*args, **kwargs):
 def img2img(*args, **kwargs):
     return mock_processing(
         prompt=args[0],
-        seed=args[12],
-        width=args[14],
-        height=args[13],
-        steps=args[5],
-        cfg_scale=args[10],
-        sampler=args[6],
-        batch_count=args[9]
+        seed=args[13],
+        width=args[15],
+        height=args[14],
+        steps=args[6],
+        cfg_scale=args[11],
+        sampler=args[7],
+        batch_count=args[10]
     )
 
 
