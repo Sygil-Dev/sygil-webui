@@ -784,7 +784,7 @@ def process_images(
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
         variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
-    assert prompt is not None
+    prompt = prompt or ''
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -1224,7 +1224,7 @@ class Flagging(gr.FlaggingCallback):
         print("Logged:", filenames[0])
 
 
-def img2img(prompt: str, image_editor_mode: str, init_info: Dict[str,Image.Image], mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
+def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask: any, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
             seed: int, height: int, width: int, resize_mode: int, fp = None, job_info: JobInfo = None):
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
@@ -1272,11 +1272,10 @@ def img2img(prompt: str, image_editor_mode: str, init_info: Dict[str,Image.Image
         raise Exception("Unknown sampler: " + sampler_name)
 
     if image_editor_mode == 'Mask':
-        init_img = init_info["image"]
+        init_img = init_info_mask["image"]
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
-        init_mask = init_info["mask"]
-        print(init_mask)
+        init_mask = init_info_mask["mask"]
         init_mask = resize_image(resize_mode, init_mask, width, height)
         keep_mask = mask_mode == 0
         init_mask = init_mask.convert("RGB")
@@ -1510,7 +1509,7 @@ def split_weighted_subprompts(input_string, normalize=True):
     weight_sum = sum(map(lambda x: x[1], parsed_prompts))
     if weight_sum == 0:
         print("Warning: Subprompt weights add up to zero. Discarding and using even weights instead.")
-        equal_weight = 1 / len(parsed_prompts)
+        equal_weight = 1 / (len(parsed_prompts) or 1)
         return [(x[0], equal_weight) for x in parsed_prompts]
     return [(x[0], x[1] / weight_sum) for x in parsed_prompts]
 

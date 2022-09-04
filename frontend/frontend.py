@@ -1,17 +1,8 @@
-from email.policy import default
-import sys
-from tkinter.filedialog import askopenfilename
 import gradio as gr
 from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2img_output
 from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
 import uuid
-try:
-    import pyperclip
-except ImportError:
-    print("Warning: pyperclip is not installed. Pasting settings is unavailable.", file=sys.stderr)
-    pyperclip = None
-
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda x: x, txt2img_defaults={}, RealESRGAN=True, GFPGAN=True,LDSR=True,
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
@@ -31,6 +22,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                 value=txt2img_defaults['prompt'],
                                                 show_label=False)
                     txt2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
+
                 with gr.Row(elem_id='body').style(equal_height=False):
                     with gr.Column():
                         txt2img_width = gr.Slider(minimum=64, maximum=1024, step=64, label="Width",
@@ -65,28 +57,19 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                         with gr.Group():
                             with gr.Row(elem_id='txt2img_output_row'):
-                                output_txt2img_copy_params = gr.Button("Copy all").click(
+                                output_txt2img_copy_params = gr.Button("Copy full parameters").click(
                                     inputs=[output_txt2img_params], outputs=[],
                                     _js=js_copy_txt2img_output,
                                      fn=None, show_progress=False)
                                 output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
-                                output_txt2img_copy_seed = gr.Button("Copy seed").click(
+                                output_txt2img_copy_seed = gr.Button("Copy only seed").click(
                                     inputs=[output_txt2img_seed], outputs=[],
                                     _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
-                                input_txt2img_paste_parameters = gr.Button('Paste settings', visible=pyperclip is not None)
-                                input_txt2img_from_file = gr.Button('From file...')
-                                input_txt2img_defaults = gr.Button('Restore defaults')
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
-                        with gr.Row():
-                            #Commenting out incrementing/decrementing buttons for now
-                            #increment_btn_minus = gr.Button("-", elem_id="increment_btn_minus")
-                            txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
-                                                    value=txt2img_defaults['ddim_steps'])
-                            #increment_btn_plus = gr.Button("+", elem_id="increment_btn_plus")
-                            #increment_btn_minus.click(fn=uifn.increment_down,inputs=[txt2img_steps], outputs=[txt2img_steps])
-                            #increment_btn_plus.click(fn=uifn.increment_up,inputs=[txt2img_steps], outputs=[txt2img_steps])
 
+                        txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
+                                                  value=txt2img_defaults['ddim_steps'])
                         txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
                                                                 'k_euler', 'k_heun', 'k_lms'],
@@ -145,38 +128,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     txt2img_func,
                     txt2img_inputs,
                     txt2img_outputs
-                )
-
-                txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
-                txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
-
-                txt2img_settings_elements = [
-                    txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles, txt2img_realesrgan_model_name,
-                    txt2img_ddim_eta, txt2img_batch_count, txt2img_batch_size, txt2img_cfg, txt2img_seed,
-                    txt2img_height, txt2img_width, txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed
-                ]
-                txt2img_settings_checkboxgroup_info = [(3, txt2img_toggles.choices)]
-                input_txt2img_defaults.click(
-                    fn=lambda *x: uifn.load_settings(
-                        *x, txt2img_defaults, uifn.LOAD_SETTINGS_TXT2IMG_NAMES, txt2img_settings_checkboxgroup_info
-                    ),
-                    inputs=txt2img_settings_elements,
-                    outputs=txt2img_settings_elements
-                )
-
-                def from_file_func(*inputs):
-                    file_path = askopenfilename()
-                    return uifn.load_settings(
-                        *inputs, file_path, uifn.LOAD_SETTINGS_TXT2IMG_NAMES, txt2img_settings_checkboxgroup_info)
-
-                input_txt2img_from_file.click(
-                    from_file_func, inputs=txt2img_settings_elements, outputs=txt2img_settings_elements)
-
-                input_txt2img_paste_parameters.click(
-                    lambda *x: uifn.load_settings(
-                        *x, pyperclip.paste(), uifn.LOAD_SETTINGS_TXT2IMG_NAMES, txt2img_settings_checkboxgroup_info),
-                    inputs=txt2img_settings_elements,
-                    outputs=txt2img_settings_elements
                 )
 
                 # txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
@@ -348,7 +299,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                            )
 
                 img2img_func = img2img
-                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_mask,
+                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_image_mask, img2img_mask,
                                   img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
                                   img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                                   img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
