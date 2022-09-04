@@ -1,17 +1,10 @@
 import re
-import sys
-import os
 import gradio as gr
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from io import BytesIO
 import base64
 import re
-import yaml
 
-LOAD_SETTINGS_TXT2IMG_NAMES = [
-    "prompt", "ddim_steps", "sampler_name", "toggles", "realesrgan_model_name", "ddim_eta",
-    "n_iter", "batch_size", "cfg_scale", "seed", "height", "width", "fp", "variant_amount", "variant_seed"
-]
 
 def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
     if choice == "Mask":
@@ -221,4 +214,3 @@ def load_settings(*values):
         values[cbg_index] = [cbg_choices[i] for i in values[cbg_index]]
 
     return values
-
