@@ -382,6 +382,16 @@ class JobManager:
                 [job_ui._active_image, job_ui._status_text]
             )
 
+        if job_ui._stop_all_session_btn:
+            job_ui._stop_all_session_btn.click(
+                self.stop_all_jobs, [], []
+            )
+
+        if job_ui._free_done_sessions_btn:
+            job_ui._free_done_sessions_btn.click(
+                self.clear_all_finished_jobs, [], []
+            )
+
         # (ab)use gr.JSON to forward events.
         # The gr.JSON object will fire its 'change' event when it is modified by being the output
         # of another component. This allows a method to forward events and allow multiple components
