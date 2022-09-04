@@ -135,7 +135,7 @@ class JobManager:
                         value=3, label="Record Interval (steps)", minimum=1, maximum=25)
                 with gr.Row() as record_steps_box:
                     steps_to_gallery_checkbox = gr.Checkbox(value=False, label="Save Progress Grid to Gallery")
-                    steps_to_file_checkbox = gr.Checkbox(value=False, label="Save Progress Progress to File")
+                    steps_to_file_checkbox = gr.Checkbox(value=False, label="Save Progress Grid to File")
             with gr.TabItem("Maintenance"):
                 with gr.Row():
                     gr.Markdown(
