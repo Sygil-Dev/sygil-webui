@@ -1,5 +1,7 @@
 import argparse, os, sys, glob, re
 
+import cv2
+
 from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
 from frontend.ui_functions import resize_image
@@ -1388,7 +1390,17 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
         history = []
         initial_seed = None
 
+        do_color_correction = False
+        try:
+            from skimage import exposure
+            do_color_correction = True
+        except:
+            print("Install scikit-image to perform color correction on loopback")
+
         for i in range(n_iter):
+            if do_color_correction and i == 0:
+                correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
+
             output_images, seed, info, stats = process_images(
                 outpath=outpath,
                 func_init=init,
@@ -1430,6 +1442,17 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
                 initial_seed = seed
 
             init_img = output_images[0]
+
+            if do_color_correction and correction_target is not None:
+                init_img = Image.fromarray(cv2.cvtColor(exposure.match_histograms(
+                    cv2.cvtColor(
+                        np.asarray(init_img),
+                        cv2.COLOR_RGB2LAB
+                    ),
+                    correction_target,
+                    channel_axis=2
+                ), cv2.COLOR_LAB2RGB).astype("uint8"))
+
             if not random_seed_loopback:
                 seed = seed + 1
             else:
