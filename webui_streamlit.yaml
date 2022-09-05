@@ -6,8 +6,8 @@ general:
     ckpt: "models/ldm/stable-diffusion-v1/model.ckpt"
     fp:
         name: 'embeddings/alex/embeddings_gs-11000.pt'
-    GFPGAN_dir: "./src/GFPGAN"
-    RealESRGAN_dir: "./src/RealESRGAN"
+    GFPGAN_dir: "./src/gfpgan"
+    RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
     outdir_txt2img: outputs/txt2img-samples
     outdir_img2img: outputs/img2img-samples
@@ -50,7 +50,7 @@ txt2img:
     
 img2img:
   prompt:
-  ddim_steps: 50
+  sampling_steps: 50
   # Adding an int to toggles enables the corresponding feature.
   # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
   # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
@@ -63,12 +63,7 @@ img2img:
   # 8: jpg samples
   # 9: Fix faces using GFPGAN
   # 10: Upscale images using Real-ESRGAN
-  toggles: [1, 4, 5, 6, 7]
   sampler_name: k_lms
-  ddim_eta: 0.0
-  n_iter: 1
-  batch_size: 1
-  cfg_scale: 5.0
   denoising_strength: 0.75
   # 0: Keep masked area
   # 1: Regenerate only masked area
@@ -79,10 +74,27 @@ img2img:
   resize_mode: 0
   # Leave blank for random seed:
   seed:
+  ddim_eta: 0.0
+  cfg_scale: 5.0
+  batch_count: 1
+  batch_size: 1
   height: 512
   width: 512
   # Textual inversion embeddings file path:
-  fp:
+  fp: ""
+  loopback: False
+  random_seed_loopback: False
+  separate_prompts: False
+  normalize_prompt_weights: True
+  save_individual_images: True
+  save_grid: True
+  group_by_prompt: True
+  save_as_jpg: False
+  use_GFPGAN: True
+  use_RealESRGAN: False
+  RealESRGAN_model: "RealESRGAN_x4plus"
+  variant_amount: 0.0
+    
 
 gfpgan:
   strength: 100
