@@ -73,7 +73,7 @@ Quadruple your resolution using Latent Diffusion, to install:
   - Otherwise to manually install the model download [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1) and rename last.ckpt to model.ckpt
   - Place both under stable-diffusion-main/src/latent-diffusion/experiments/pretrained_models/
   - Make sure you have both project.yaml and model.ckpt in that folder and path.
-  - LDSR should be wokring now.
+  - LDSR should be working now.
 ### Web UI
 
 When launching, you may get a very long warning message related to some weights not being used. You may freely ignore it.
