@@ -132,7 +132,7 @@ class JobManager:
                 with gr.Row():
                     record_steps_checkbox = gr.Checkbox(value=False, label="Enable Batch Progress Grid")
                     record_steps_interval_slider = gr.Slider(
-                        value=3, label="Record Interval (steps)", minimum=1, maximum=25)
+                        value=3, label="Record Interval (steps)", minimum=1, maximum=25, step=1)
                 with gr.Row() as record_steps_box:
                     steps_to_gallery_checkbox = gr.Checkbox(value=False, label="Save Progress Grid to Gallery")
                     steps_to_file_checkbox = gr.Checkbox(value=False, label="Save Progress Grid to File")
