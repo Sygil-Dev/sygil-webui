@@ -180,8 +180,13 @@ def load_sd_from_config(ckpt, verbose=False):
 
 def generation_callback(img, i=0):
 	
-	if i == 0:	
-		if img['i']: i = img['i']
+	try:
+		if i == 0:	
+			if img['i']: i = img['i']
+	except TypeError:
+		pass
+	
+	
 	
 	if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 		#print (img)
@@ -200,7 +205,15 @@ def generation_callback(img, i=0):
 		
 		pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0)) 			
 	
+		# update image on the UI so we can see the progress
 		st.session_state["preview_image"].image(pil_image, width=512) 	
+		
+	# Show a progress bar so we can keep track of the progress even when the image progress is not been shown,
+	# Dont worry, it doesnt affect the performance.
+	percent = int(100 * float(i+1)/float(st.session_state.sampling_steps))
+	st.session_state["progress_bar_text"].text(f"Running step: {i+1}/{st.session_state.sampling_steps} {percent}%")
+	st.session_state["progress_bar"] = st.session_state["progress_bar"].progress(percent)
+		
 		
 
 class MemUsageMonitor(threading.Thread):
@@ -1498,26 +1511,33 @@ def layout():
 				preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
 				
 				with preview_tab:
-					st.write("Image")
+					#st.write("Image")
 					#Image for testing
 					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
 					#new_image = image.resize((175, 240))
 					#preview_image = st.image(image)
 	
-					# create an empty container for the image and use session_state to hold it globally.
-					preview_image = st.empty()
-					st.session_state["preview_image"] = preview_image
+					# create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
+					st.session_state["preview_image"] = st.empty()
+					
+					st.session_state["loading"] = st.empty()
+					
+					st.session_state["progress_bar_text"] = st.empty()
+					st.session_state["progress_bar"] = st.empty()
+					
+					message = st.empty()
 					
 				with gallery_tab:
 					st.write('Here should be the image gallery, if I could make a grid in streamlit.')
 
 			with col3:
-				sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
 				sampler_name = st.selectbox("Sampling method", 
 		                            ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
 		                                            index=0, help="Sampling method to use. Default: k_lms")  
-
-
+				
+				
+				
 				#basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
 
 				#with basic_tab:
@@ -1552,14 +1572,17 @@ def layout():
 
 			if generate_button:
 				#print("Loading models")
-				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
+				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
 				
 				try:
-					output_images, seed, info, stats = txt2img(prompt, sampling_steps, sampler_name, RealESRGAN_model, batch_count, batch_size, 
+					output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, batch_size, 
 		                                               cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
 		                                                                   save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
 		                                                                   variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+					
+					message.success('Done!', icon="✅")
+					
 				except (StopException, KeyError):
 					print(f"Received Streamlit StopException")
 
@@ -1634,26 +1657,35 @@ def layout():
 								       Default: 1")									
 			
 			with col2_img2img_layout:
-				preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
+					editor_tab = st.tabs(["Editor"])
+
+					editor_image = st.empty()
+					st.session_state["editor_image"] = editor_image
 				
-				with preview_tab:
-					st.write("Image")
-					#Image for testing
-					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
-					#new_image = image.resize((175, 240))
-					#preview_image = st.image(image)
-	
-					# create an empty container for the image and use session_state to hold it globally.
-					preview_image = st.empty()
-					st.session_state["preview_image"] = preview_image
+					if uploaded_images:
+						image = Image.open(uploaded_images)
+						img_array = np.array(image) # if you want to pass it to OpenCV
+						st.image(image, use_column_width=True)
+				
+				
+					with col3_img2img_layout:
+						result_tab = st.tabs(["Result"])
+						
+						# create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
+						st.session_state["preview_image"] = st.empty()
 					
-				with gallery_tab:
-					st.write('Here should be the image gallery, if I could make a grid in streamlit.')
+						st.session_state["loading"] = st.empty()
+					
+						st.session_state["progress_bar_text"] = st.empty()
+						st.session_state["progress_bar"] = st.empty()
+					
+						message = st.empty()
 				
-				# if uploaded_images:
-				# 	image = Image.open(uploaded_images)
-				# 	img_array = np.array(image) # if you want to pass it to OpenCV
-				# 	st.image(image, use_column_width=True)
+						if uploaded_images:
+							image = Image.open(uploaded_images)
+							img_array = np.array(image) # if you want to pass it to OpenCV
+							st.image(image, use_column_width=True)
+							
 
 			if generate_button:
 				#print("Loading models")
@@ -1662,8 +1694,12 @@ def layout():
 				if uploaded_images:
 					image = Image.open(uploaded_images)
 					img_array = np.array(image) # if you want to pass it to OpenCV
+					
 					try:
 						output_images, seed, info, stats = img2img(prompt=prompt, init_info=image, ddim_steps=sampling_steps, sampler_name=sampler_name, n_iter=batch_count)
+						
+						#show a message when the generation is complete.
+						message.success('Done!', icon="✅")
 					except (StopException, KeyError):
 						print(f"Received Streamlit StopException")
 
