@@ -157,13 +157,19 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     img2img_btn_editor = gr.Button("Generate", variant="primary", elem_id="img2img_edit_btn")
                 with gr.Row().style(equal_height=False):
                     with gr.Column():
-                        gr.Markdown('#### Img2Img Input')
-                        img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                        type="pil", tool="select", elem_id="img2img_editor",
-                                                        image_mode="RGBA")
-                        img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                      type="pil", tool="sketch", visible=False,
-                                                      elem_id="img2img_mask")
+                        with gr.Tabs():
+                            with gr.TabItem("Img2Img Input"):
+                            #gr.Markdown('#### Img2Img Input')
+                                img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
+                                                                type="pil", tool="select", elem_id="img2img_editor",
+                                                                image_mode="RGBA")
+                                img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
+                                                            type="pil", tool="sketch", visible=False,
+                                                            elem_id="img2img_mask")
+
+                            with gr.TabItem("Img2Img Mask Input"):
+                                img2img_mask_input = gr.Image(label="Mask",source="upload", interactive=False,
+                                                      type="pil", visible=True)
 
                         with gr.Tabs():
                             with gr.TabItem("Editor Options"):
@@ -172,10 +178,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                              value="Crop", elem_id='edit_mode_select')
                                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
                                                 label="Mask Mode", type="index",
-                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)
-
-                                    img2img_mask_input = gr.Image(label="External mask",source="upload", interactive=True,
-                                                      type="pil", visible=False)
+                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)  
 
                                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
                                                                label="How much blurry should the mask be? (to avoid hard edges)",
