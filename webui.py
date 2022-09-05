@@ -962,7 +962,8 @@ def process_images(
 
                         # Save the images if recording steps, and append existing saved steps
                         if job_info.rec_steps_enabled:
-                            job_info.rec_steps_imgs.append(grid)
+                            gallery_img_size = tuple( int(0.25*dim) for dim in images[0].size)
+                            job_info.rec_steps_imgs.append(grid.resize(gallery_img_size))
 
                         # Notify the requester that the image is updated
                         if job_info.refresh_active_image_requested.is_set():
@@ -1079,7 +1080,8 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 if job_info.rec_steps_enabled and (job_info.rec_steps_to_file or job_info.rec_steps_to_gallery):
                     steps_grid = image_grid(job_info.rec_steps_imgs, 1)
                     if job_info.rec_steps_to_gallery:
-                        output_images.append( steps_grid )
+                        gallery_img_size = tuple(2*dim for dim in image.size)
+                        output_images.append( steps_grid.resize( gallery_img_size ) )
                     if job_info.rec_steps_to_file:
                         steps_grid_filename = f"{original_filename}_step_grid"
                         save_sample(steps_grid, sample_path_i, steps_grid_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
