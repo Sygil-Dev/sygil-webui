@@ -6,8 +6,8 @@ general:
     ckpt: "models/ldm/stable-diffusion-v1/model.ckpt"
     fp:
         name: 'embeddings/alex/embeddings_gs-11000.pt'
-    GFPGAN_dir: "./src/GFPGAN"
-    RealESRGAN_dir: "./src/RealESRGAN"
+    GFPGAN_dir: "./src/gfpgan"
+    RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
     outdir_txt2img: outputs/txt2img-samples
     outdir_img2img: outputs/img2img-samples
@@ -91,7 +91,7 @@ img2img:
   group_by_prompt: True
   save_as_jpg: False
   use_GFPGAN: True
-  use_RealESRGAN: True
+  use_RealESRGAN: False
   RealESRGAN_model: "RealESRGAN_x4plus"
   variant_amount: 0.0
     
