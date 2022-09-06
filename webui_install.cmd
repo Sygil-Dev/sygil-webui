@@ -36,15 +36,8 @@ IF "%CONDA_PATH%"=="" (
 )
 
 :foundPath
-call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
-python "%CD%"\scripts\relauncher.py
+call "%CONDA_PATH%\Scripts\activate.bat"
+call conda env create -n "%conda_env_name%" -f environment.yaml
 
-:PROMPT
-set SETUPTOOLS_USE_DISTUTILS=stdlib
-IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python scripts/relauncher.py
-) ELSE (
-  ECHO Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
-)
 
 pause
