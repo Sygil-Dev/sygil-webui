@@ -2,8 +2,6 @@
 
 # [Installation](https://github.com/hlky/stable-diffusion/wiki/Installation)
 
-## [Development, testing, bleeding edge, maybe have bugs](https://github.com/hlky/stable-diffusion-webui)
-
 ### Have an **issue**? 
 
 * If the issue involves _a bug_ in **textual-inversion** create the issue on **_[hlky/stable-diffusion-webui](https://github.com/hlky/stable-diffusion-webui)_**
@@ -11,7 +9,7 @@
 
 
 ## More documentation about features, troubleshooting, common issues very soon
-### Want to help with documentation? Documented something? Use [Discussions](https://github.com/hlky/stable-diffusion/discussions)
+### Want to help with documentation? Documented something? Use [Discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
 
 ## **Important**
 
