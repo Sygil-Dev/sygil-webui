@@ -104,6 +104,7 @@ invalid_filename_chars = '<>:"/\|?*\n'
 GFPGAN_dir = opt.gfpgan_dir
 RealESRGAN_dir = opt.realesrgan_dir
 LDSR_dir = opt.ldsr_dir
+returned_info = {}
 
 if opt.optimized_turbo:
     opt.optimized = True
@@ -505,71 +506,64 @@ def seed_to_int(s):
         n = n >> 32
     return n
 
-def draw_prompt_matrix(im, width, height, all_prompts):
-    def wrap(text, d, font, line_length):
-        lines = ['']
-        for word in text.split():
-            line = f'{lines[-1]} {word}'.strip()
-            if d.textlength(line, font=font) <= line_length:
-                lines[-1] = line
+
+def round_to_multiple(dimension, dimension_ceiling, multiple=64, round_down=True):
+    if round_down:
+        rounded_dimension = multiple * math.ceil(dimension / multiple)
+    else:
+        rounded_dimension = multiple * math.floor(dimension / multiple)
+    return rounded_dimension
+
+
+def crop_image(img, mask, width, height):
+    def get_mask_and_img(img, mask,dimension, coords, target_width, target_height):
+        longest_target_dimension = round_to_multiple(dimension, dimension)
+        func_crop_coords = (coords[0], coords[1], coords[0]+longest_target_dimension, coords[1]+longest_target_dimension)
+        resized_img = img.crop(func_crop_coords)
+        scale_dimension = target_width if target_width > target_height else target_height
+        resized_img = resized_img.resize((scale_dimension, scale_dimension), resample=Image.Resampling.LANCZOS)
+
+        resized_mask = mask.crop(func_crop_coords)
+        cropped_img_width, cropped_img_height = resized_mask.size
+        resized_mask = resized_mask.resize((scale_dimension, scale_dimension), resample=Image.Resampling.LANCZOS)
+
+        alpha_mask = resized_mask.convert("RGBA")
+        mask_data = alpha_mask.getdata()
+        container = []
+        for item in mask_data:
+            if item[0] == 0 and item[1] == 0 and item[2] == 0:
+                container.append((255, 255, 255, 0))
             else:
-                lines.append(word)
-        return '\n'.join(lines)
+                container.append(item)
+        alpha_mask.putdata(container)
 
-    def draw_texts(pos, x, y, texts, sizes):
-        for i, (text, size) in enumerate(zip(texts, sizes)):
-            active = pos & (1 << i) != 0
+        results = {
+            "cropped_img": resized_img,
+            "org_img": rgb_image,
+            "cropped_mask": alpha_mask,
+            "coords": crop_coords,
+            "scale_width": width,
+            "scale_height": height,
+            "org_width": cropped_img_width,
+            "org_height": cropped_img_height
+        }
+        return results
 
-            if not active:
-                text = '\u0336'.join(text) + '\u0336'
+    rgb_image = img.convert("RGB")
+    rgb_mask = mask.convert("RGB")
+    np_mask = np.array(rgb_mask)
+    white_columns = np.where(np_mask.max(axis=0)>= 255)[0]
+    white_rows = np.where(np_mask.max(axis=1)>= 255)[0]
+    crop_coords = (min(white_columns), min(white_rows), max(white_columns), max(white_rows))
+    crop_to_size = rgb_image.crop(crop_coords)
+    cropped_img_width, cropped_img_height = crop_to_size.size
 
-            d.multiline_text((x, y + size[1] / 2), text, font=fnt, fill=color_active if active else color_inactive, anchor="mm", align="center")
+    if cropped_img_width > cropped_img_height:
+        results_dict = get_mask_and_img(rgb_image, mask, cropped_img_width, crop_coords, width, height)
+    else:
+        results_dict = get_mask_and_img(rgb_image, mask, cropped_img_height, crop_coords, width, height)
 
-            y += size[1] + line_spacing
-
-    fontsize = (width + height) // 25
-    line_spacing = fontsize // 2
-    fnt = get_font(fontsize)
-    color_active = (0, 0, 0)
-    color_inactive = (153, 153, 153)
-
-    pad_top = height // 4
-    pad_left = width * 3 // 4 if len(all_prompts) > 2 else 0
-
-    cols = im.width // width
-    rows = im.height // height
-
-    prompts = all_prompts[1:]
-
-    result = Image.new("RGB", (im.width + pad_left, im.height + pad_top), "white")
-    result.paste(im, (pad_left, pad_top))
-
-    d = ImageDraw.Draw(result)
-
-    boundary = math.ceil(len(prompts) / 2)
-    prompts_horiz = [wrap(x, d, fnt, width) for x in prompts[:boundary]]
-    prompts_vert = [wrap(x, d, fnt, pad_left) for x in prompts[boundary:]]
-
-    sizes_hor = [(x[2] - x[0], x[3] - x[1]) for x in [d.multiline_textbbox((0, 0), x, font=fnt) for x in prompts_horiz]]
-    sizes_ver = [(x[2] - x[0], x[3] - x[1]) for x in [d.multiline_textbbox((0, 0), x, font=fnt) for x in prompts_vert]]
-    hor_text_height = sum([x[1] + line_spacing for x in sizes_hor]) - line_spacing
-    ver_text_height = sum([x[1] + line_spacing for x in sizes_ver]) - line_spacing
-
-    for col in range(cols):
-        x = pad_left + width * col + width / 2
-        y = pad_top / 2 - hor_text_height / 2
-
-        draw_texts(col, x, y, prompts_horiz, sizes_hor)
-
-    for row in range(rows):
-        x = pad_left / 2
-        y = pad_top + height * row + height / 2 - ver_text_height / 2
-
-        draw_texts(row, x, y, prompts_vert, sizes_ver)
-
-    return result
-
-
+    return results_dict
 
 
 def check_prompt_length(prompt, comments):
@@ -780,7 +774,7 @@ def process_images(
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
-        variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None):
+        variant_amount=0.0, variant_seed=None,imgProcessorTask=False,resize_mask=False, job_info: JobInfo = None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
     prompt = prompt or ''
     torch_gc()
@@ -938,7 +932,6 @@ def process_images(
                 modelFS.to(device)
 
 
-
             x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
             for i, x_sample in enumerate(x_samples_ddim):
@@ -967,6 +960,17 @@ def process_images(
                 image = Image.fromarray(x_sample)
                 original_sample = x_sample
                 original_filename = filename
+
+                if resize_mask:
+                    scaled_img = image.resize((returned_info["org_width"], returned_info["org_height"]), resample=Image.Resampling.LANCZOS).convert("RGB")
+                    scaled_mask = returned_info["cropped_mask"].resize((returned_info["org_width"], returned_info["org_height"]), resample=Image.Resampling.LANCZOS).convert("RGBA")
+                    scaled_mask = scaled_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
+                    returned_info["org_img"].paste(scaled_img, (returned_info["coords"][0], returned_info["coords"][1]), mask=scaled_mask)
+                    image = returned_info["org_img"].copy()
+                    original_sample = np.asarray(image).astype(np.uint8)
+                    #returned_info["org_img"].save(sample_path_i+"\\"+filename+" test.png", format="PNG")
+
+
                 if use_GFPGAN and GFPGAN is not None and not use_RealESRGAN:
                     skip_save = True # #287 >_>
                     torch_gc()
@@ -998,7 +1002,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
                     skip_save = True # #287 >_>
                     torch_gc()
-                    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(original_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
                     output, img_mode = RealESRGAN.enhance(gfpgan_sample[:,:,::-1])
                     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
@@ -1016,9 +1020,12 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     output_images.append(image)
 
                 if not skip_save:
-                    save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                    save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps,
+                                cfg_scale,
+                                normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file,
+                                prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+                                skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i,
+                                denoising_strength, resize_mode, False)
                 if add_original_image or not simple_templating:
                     output_images.append(image)
                     if simple_templating:
@@ -1270,11 +1277,19 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
         raise Exception("Unknown sampler: " + sampler_name)
 
     if image_editor_mode == 'Mask':
+        global returned_info
         init_img = init_info_mask["image"]
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
         init_mask = init_info_mask["mask"]
         init_mask = resize_image(resize_mode, init_mask, width, height)
+        resize_mask = mask_mode == 2
+
+        if resize_mask:
+            returned_info = crop_image(init_img, init_mask, width, height)
+            init_img = returned_info["cropped_img"]
+            init_mask = returned_info["cropped_mask"]
+
         keep_mask = mask_mode == 0
         init_mask = init_mask.convert("RGB")
         init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
@@ -1282,13 +1297,15 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
         init_img = init_info.convert("RGB")
         init_mask = None
         keep_mask = False
+        resize_mask = False
 
     assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
     t_enc = int(denoising_strength * ddim_steps)
 
     def init():
         image = init_img.convert("RGB")
-        image = resize_image(resize_mode, image, width, height)
+        if resize_mask:
+            image = resize_image(resize_mode, image, width, height)
         #image = image.convert("RGB") #todo: mask mode -> ValueError: could not convert string to float:
         image = np.array(image).astype(np.float32) / 255.0
         image = image[None].transpose(0, 3, 1, 2)
@@ -1473,6 +1490,7 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
             write_info_files=write_info_files,
             write_sample_info_to_log_file=write_sample_info_to_log_file,
             jpg_sample=jpg_sample,
+            resize_mask=resize_mask,
             job_info=job_info
         )
 
@@ -2042,6 +2060,7 @@ img2img_resize_modes = [
     "Just resize",
     "Crop and resize",
     "Resize and fill",
+    "Resize Masked Area"
 ]
 
 img2img_defaults = {
