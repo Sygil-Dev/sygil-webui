@@ -276,7 +276,7 @@ class KDiffusionSampler:
         ''' Converts a KDiffusion callback to the standard img_callback '''
         if callback:
             arg_dict = args[0]
-            callback(image_sample=arg_dict['x'], iter_num=arg_dict['i'])
+            callback(image_sample=arg_dict['denoised'], iter_num=arg_dict['i'])
 
 
 def create_random_tensors(shape, seeds):
