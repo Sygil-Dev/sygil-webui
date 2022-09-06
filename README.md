@@ -19,7 +19,7 @@
 
 Features:
 
-* Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
+* [Gradio GUI](https://github.com/gradio-app/gradio): Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
 * :fire: :fire: Optimized support!! :fire: :fire:
 * 🔥 NEW! [webui.cmd](https://github.com/hlky/stable-diffusion) updates with any changes in environment.yaml file so the environment will always be up to date as long as you get the new environment.yaml file 🔥
@@ -45,7 +45,7 @@ Features:
 * and ????
 
 # Stable Diffusion web UI
-A browser interface based on Gradio library for Stable Diffusion.
+A browser interface based on [Gradio library](https://github.com/gradio-app/gradio) for Stable Diffusion.
 
 ![](images/txt2img.jpg)
 
@@ -73,7 +73,7 @@ Quadruple your resolution using Latent Diffusion, to install:
   - Otherwise to manually install the model download [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1) and rename last.ckpt to model.ckpt
   - Place both under stable-diffusion-main/src/latent-diffusion/experiments/pretrained_models/
   - Make sure you have both project.yaml and model.ckpt in that folder and path.
-  - LDSR should be wokring now.
+  - LDSR should be working now.
 ### Web UI
 
 When launching, you may get a very long warning message related to some weights not being used. You may freely ignore it.
@@ -202,4 +202,4 @@ There is a helper script for local development to replicate the actions of this 
 - Run `python sync_local.py --dest MAIN_REPO_FOLDER` to replicate the effect of this sync. 
 - To copy changes back you can run  `python sync_local.py --dest MAIN_REPO_FOLDER --reverse`.
 
-You can the file `webui_playground.py`, which does not load the models, to more rapidly iterate on UI changes and then copy those changes into `webui.py`, 
+You can use the file `webui_playground.py`, which does not load the models, to more rapidly iterate on UI changes and then copy those changes into `webui.py`, 
