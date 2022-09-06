@@ -57,20 +57,21 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                         with gr.Group():
                             with gr.Row(elem_id='txt2img_output_row'):
-                                output_txt2img_copy_params = gr.Button("Copy full parameters").click(
+                                output_txt2img_copy_params = gr.Button("Copy all").click(
                                     inputs=[output_txt2img_params], outputs=[],
                                     _js=js_copy_txt2img_output,
                                      fn=None, show_progress=False)
                                 output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
-                                output_txt2img_copy_seed = gr.Button("Copy only seed").click(
+                                output_txt2img_copy_seed = gr.Button("Copy seed").click(
                                     inputs=[output_txt2img_seed], outputs=[],
                                     _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
+                        with gr.Row():
 
-                        txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
-                                                  value=txt2img_defaults['ddim_steps'])
-                        txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
+                            txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
+                                                    value=txt2img_defaults['ddim_steps'])
+                            txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
                                                                 'k_euler', 'k_heun', 'k_lms'],
                                                        value=txt2img_defaults['sampler_name'])
@@ -170,7 +171,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                 with gr.Row():
                                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
                                                              value="Crop", elem_id='edit_mode_select')
-                                    img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
+                                    img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area", "Resize and regenerate only masked area"],
                                                 label="Mask Mode", type="index",
                                                 value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)
 
