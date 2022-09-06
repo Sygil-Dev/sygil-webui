@@ -319,12 +319,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     img2img_inputs,
                     img2img_outputs
                 )
-                def img2img_submit_params():
-                    return (img2img_func,
+                
+                img2img_btn_editor.click(
+                    img2img_func,
                     img2img_inputs,
                     img2img_outputs)
-
-                img2img_btn_editor.click(*img2img_submit_params())
 
                 # GENERATE ON ENTER
                 img2img_prompt.submit(None, None, None,
