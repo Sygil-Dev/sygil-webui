@@ -218,7 +218,7 @@ class JobManager:
             return [None, f"Session {session_key} was not running function {func_key}"]
 
         job_info.refresh_active_image_requested.set()
-        if job_info.refresh_active_image_done.wait(timeout=10.0):
+        if job_info.refresh_active_image_done.wait(timeout=20.0):
             job_info.refresh_active_image_done.clear()
             return [gr.Image.update(value=job_info.active_image, visible=True), f"Sample iteration {job_info.active_iteration_cnt}"]
         return [gr.Image.update(visible=False), "Timed out getting image"]

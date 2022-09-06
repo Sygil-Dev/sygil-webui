@@ -64,6 +64,7 @@ import torch
 import torch.nn as nn
 import yaml
 import glob
+import copy
 from typing import List, Union, Dict, Callable, Any
 from pathlib import Path
 from collections import namedtuple
@@ -940,14 +941,32 @@ def process_images(
                 # finally, slerp base_x noise to target_x noise for creating a variant
                 x = slerp(device, max(0.0, min(1.0, cur_variant_amount)), base_x, target_x)
 
+
+            # If in optimized mode then make a CPU-copy of the model to generate preview images
+            if opt.optimized:
+                step_preview_model = copy.deepcopy(modelFS).to("cpu")
+                if not opt.no_half:
+                    step_preview_model.float()
+            else:
+                step_preview_model = model
+
             def sample_iteration_callback(image_sample: torch.Tensor, iter_num: int):
                 ''' Called from the sampler every iteration '''
                 if job_info:
                     job_info.active_iteration_cnt = iter_num
                     record_periodic_image = job_info.rec_steps_enabled and (0 == iter_num % job_info.rec_steps_intrvl)
                     if record_periodic_image or job_info.refresh_active_image_requested.is_set():
-                        batch_ddim = (model if not opt.optimized else modelFS).decode_first_stage(image_sample)
+                        preview_start_time = time.time()
+                        if opt.optimized:
+                            image_sample = image_sample.to("cpu")
+
+                        batch_ddim = step_preview_model.decode_first_stage(image_sample)
                         batch_ddim = torch.clamp((batch_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+                        preview_elapsed_timed = time.time() - preview_start_time
+
+                        if preview_elapsed_timed > 1:
+                            print(
+                                f"Warning: Preview generation is slow! It took {preview_elapsed_timed:.2f}s to generate one preview!")
 
                         images: List[Image.Image] = []
                         # Convert tensor to image (copied from code below)
