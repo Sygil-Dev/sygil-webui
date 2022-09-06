@@ -1,4 +1,4 @@
-name: sdwebui
+name: ldm
 channels:
   - pytorch
   - defaults

@@ -17,7 +17,7 @@ MODEL_FILES=(
 
 # Conda environment installs/updates
 # @see https://github.com/ContinuumIO/docker-images/issues/89#issuecomment-467287039
-ENV_NAME="sdwebui"
+ENV_NAME="ldm"
 ENV_FILE="/sd/environment.yaml"
 ENV_UPDATED=0
 ENV_MODIFIED=$(date -r $ENV_FILE "+%s")

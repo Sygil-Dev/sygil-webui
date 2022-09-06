@@ -1,6 +1,6 @@
 @echo off
 
-set conda_env_name=sdwebui
+set conda_env_name=ldm
 
 :: Put the path to conda directory after "=" sign if it's installed at non-standard path:
 set custom_conda_path=
@@ -36,6 +36,9 @@ IF "%CONDA_PATH%"=="" (
 )
 
 :foundPath
+call "%CONDA_PATH%\Scripts\activate.bat"
+call conda env create -n "%conda_env_name%" -f environment.yaml
+call conda env update -n "%conda_env_name%" --file environment.yaml --prune
 call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
 python "%CD%"\scripts\relauncher.py
 
@@ -46,5 +49,3 @@ IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
 ) ELSE (
   ECHO Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
 )
-
-pause
