@@ -603,6 +603,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             metadata.add_text("SD:seed", str(seeds[i]))
             metadata.add_text("SD:width", str(width))
             metadata.add_text("SD:height", str(height))
+            metadata.add_text("SD:sampler_name", str(sampler_name))
             metadata.add_text("SD:steps", str(steps))
             metadata.add_text("SD:cfg_scale", str(cfg_scale))
             metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
