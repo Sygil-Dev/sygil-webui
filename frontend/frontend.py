@@ -57,21 +57,20 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False, elem_id='highlight')
                         with gr.Group():
                             with gr.Row(elem_id='txt2img_output_row'):
-                                output_txt2img_copy_params = gr.Button("Copy all").click(
+                                output_txt2img_copy_params = gr.Button("Copy full parameters").click(
                                     inputs=[output_txt2img_params], outputs=[],
                                     _js=js_copy_txt2img_output,
                                      fn=None, show_progress=False)
                                 output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
-                                output_txt2img_copy_seed = gr.Button("Copy seed").click(
+                                output_txt2img_copy_seed = gr.Button("Copy only seed").click(
                                     inputs=[output_txt2img_seed], outputs=[],
                                     _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
-                        with gr.Row():
 
-                            txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
-                                                    value=txt2img_defaults['ddim_steps'])
-                            txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
+                        txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
+                                                  value=txt2img_defaults['ddim_steps'])
+                        txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
                                                                 'k_euler', 'k_heun', 'k_lms'],
                                                        value=txt2img_defaults['sampler_name'])
@@ -158,19 +157,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     img2img_btn_editor = gr.Button("Generate", variant="primary", elem_id="img2img_edit_btn")
                 with gr.Row().style(equal_height=False):
                     with gr.Column():
-                        with gr.Tabs():
-                            with gr.TabItem("Img2Img Input"):
-                            #gr.Markdown('#### Img2Img Input')
-                                img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=False,
-                                                                type="pil", tool="select", elem_id="img2img_editor",
-                                                                image_mode="RGBA", visible=False)
-                                img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                            type="pil", tool="sketch", visible=True,
-                                                            elem_id="img2img_mask")
-
-                            with gr.TabItem("Img2Img Mask Input"):
-                                img2img_mask_input = gr.Image(label="Mask",source="upload", interactive=False,
-                                                      type="pil", visible=True)
+                        gr.Markdown('#### Img2Img Input')
+                        img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
+                                                        type="pil", tool="sketch", elem_id="img2img_editor", image_mode="RGBA"
+                                                        )
+                        img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=False,
+                                                      type="pil", tool="sketch", visible=False, image_mode="RGBA",
+                                                      elem_id="img2img_mask")
 
                         with gr.Tabs():
                             with gr.TabItem("Editor Options"):
@@ -179,7 +172,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                              value="Mask", elem_id='edit_mode_select', visible=False)
                                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
                                                 label="Mask Mode", type="index",
-                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=True)  
+                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=True)
 
                                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
                                                                label="How much blurry should the mask be? (to avoid hard edges)",
@@ -263,16 +256,22 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
 
                 img2img_image_editor_mode.change(
                     uifn.change_image_editor_mode,
-                    [img2img_image_editor_mode, img2img_image_editor, img2img_resize, img2img_width, img2img_height],
+                    [img2img_image_editor_mode,
+                     img2img_image_editor,
+                     img2img_image_mask,
+                     img2img_resize,
+                     img2img_width,
+                     img2img_height
+                     ],
                     [img2img_image_editor, img2img_image_mask, img2img_btn_editor, img2img_btn_mask,
-                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength, img2img_mask_input]
+                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength]
                 )
 
-                img2img_image_editor.edit(
-                    uifn.update_image_mask,
-                    [img2img_image_editor, img2img_resize, img2img_width, img2img_height],
-                    img2img_image_mask
-                )
+                # img2img_image_editor_mode.change(
+                #     uifn.update_image_mask,
+                #     [img2img_image_editor, img2img_resize, img2img_width, img2img_height],
+                #     img2img_image_mask
+                # )
 
                 output_txt2img_copy_to_input_btn.click(
                     uifn.copy_img_to_input,
@@ -306,11 +305,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                            )
 
                 img2img_func = img2img
-                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_image_mask, img2img_mask,
+                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_mask,
                                   img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
                                   img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                                   img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
-                                  img2img_embeddings, img2img_mask_input]
+                                  img2img_image_editor, img2img_image_mask, img2img_embeddings]
                 img2img_outputs = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
 
                 # If a JobManager was passed in then wrap the Generate functions
@@ -321,32 +320,22 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         outputs=img2img_outputs,
                     )
 
-                def generate(*args):
-                    args_list = list(args)
-                    init_info_mask = args_list[2]
-                    # Get the mask input and remove it from the list
-                    mask_input = args_list[-1]
-                    del args_list[-1]
-
-                    # If an external mask is set, use it
-                    if mask_input:
-                        init_info_mask['mask'] = mask_input
-
-                    args_list[2] = init_info_mask
-
-                    # Return the result of img2img
-                    return img2img_func(*args_list)
-
                 img2img_btn_mask.click(
-                    generate,
+                    img2img_func,
                     img2img_inputs,
                     img2img_outputs
                 )
-                
-                img2img_btn_editor.click(
-                    img2img_func,
+                def img2img_submit_params():
+                    #print([img2img_prompt, img2img_image_editor_mode, img2img_mask,
+                    #              img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                    #              img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
+                    #              img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
+                    #              img2img_image_editor, img2img_image_mask, img2img_embeddings])
+                    return (img2img_func,
                     img2img_inputs,
                     img2img_outputs)
+
+                img2img_btn_editor.click(*img2img_submit_params())
 
                 # GENERATE ON ENTER
                 img2img_prompt.submit(None, None, None,
@@ -374,7 +363,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             #                            value=gfpgan_defaults['strength'])
                             #select folder with images to process
                                 with gr.TabItem('Batch Process'):
-                                    imgproc_folder = gr.File(label="Batch Process", file_count="multiple", interactive=True, type="file")
+                                    imgproc_folder = gr.File(label="Batch Process", file_count="multiple",source="upload", interactive=True, type="file")
                             imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="PngNfo", visible=False, max_lines=5)
                             with gr.Row():
                                 imgproc_btn = gr.Button("Process", variant="primary")
@@ -580,7 +569,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
         <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
         <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
-        If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">development repository</a>.</p>
+        If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
     </div>
     """)
         # Hack: Detect the load event on the frontend
