@@ -6,14 +6,17 @@ import base64
 import re
 
 
-def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
+def change_image_editor_mode(choice, cropped_image, masked_image, resize_mode, width, height):
     if choice == "Mask":
-        return [gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
-    return [gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)]
+        update_image_result = update_image_mask(cropped_image, resize_mode, width, height)
+        return [gr.update(visible=False), update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
+
+    update_image_result = update_image_mask(masked_image["image"] if masked_image is not None else None, resize_mode, width, height)
+    return [update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)]
 
 def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
-    return gr.update(value=resized_cropped_image)
+    return gr.update(value=resized_cropped_image, visible=True)
 
 def toggle_options_gfpgan(selection):
     if 0 in selection:
