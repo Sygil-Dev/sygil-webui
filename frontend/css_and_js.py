@@ -15,8 +15,13 @@ def css(opt):
     # TODO: @altryne restore this before merge
     if not opt.no_progressbar_hiding:
          styling += readTextFile("css", "no_progress_bar.css")
+    if opt.custom_css:
+        try:
+            styling += readTextFile("css", "custom.css")
+            print("Custom CSS loaded")
+        except:
+            pass
     return styling
-
 
 def js(opt):
     data = readTextFile("js", "index.js")

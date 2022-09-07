@@ -6,17 +6,33 @@ import base64
 import re
 
 
-def change_image_editor_mode(choice, cropped_image, masked_image, resize_mode, width, height):
+def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
     if choice == "Mask":
-        update_image_result = update_image_mask(cropped_image, resize_mode, width, height)
-        return [gr.update(visible=False), update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
-
-    update_image_result = update_image_mask(masked_image["image"], resize_mode, width, height)
-    return [update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)]
+         return [gr.Image.update(visible=False), 
+                gr.Image.update(visible=True),
+                gr.Button.update("Generate", variant="primary", visible=False),
+                gr.Button.update("Generate", variant="primary", visible=True),
+                gr.Button.update("Advanced Editor", visible=False),
+                gr.Radio.update(choices=["Keep masked area", "Regenerate only masked area"],
+                label="Mask Mode",
+                value="Regenerate only masked area", visible=True),
+                gr.Slider.update(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=True),
+                gr.Image.update(interactive=True)]
+    else:
+        return [gr.Image.update(visible=True), 
+                gr.Image.update(visible=False),
+                gr.Button.update("Generate", variant="primary", visible=True),
+                gr.Button.update("Generate", variant="primary", visible=False),
+                gr.Button.update("Advanced Editor", visible=True),
+                gr.Radio.update(choices=["Keep masked area", "Regenerate only masked area"],
+                label="Mask Mode",
+                value="Regenerate only masked area", visible=False),
+                gr.Slider.update(minimum=1, maximum=10, step=1, label="How much blurry should the mask be? (to avoid hard edges)", value=3, visible=False),
+                gr.Image.update(interactive=False)]
 
 def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
-    return gr.update(value=resized_cropped_image, visible=True)
+    return gr.Image.update(value=resized_cropped_image)
 
 def toggle_options_gfpgan(selection):
     if 0 in selection:
