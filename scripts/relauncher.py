@@ -1,4 +1,4 @@
-import os, time
+import os, time, sys
 
 # USER CHANGABLE ARGUMENTS
 
@@ -29,7 +29,9 @@ additional_arguments = ""
 
 # BEGIN RELAUNCHER PYTHON CODE
 
-common_arguments = ""
+args_string = ' '.join(sys.argv[1:])
+
+common_arguments = args_string
 
 if extra_models_cpu == True:
     common_arguments += "--extra-models-cpu "
