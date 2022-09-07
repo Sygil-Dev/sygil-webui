@@ -773,7 +773,15 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
-
+def replace_wildcard(chunk):
+    if not " " in chunk:
+        file_dir = os.path.dirname(os.path.realpath("__file__"))
+        replacement_file = os.path.join(file_dir, "scripts/wildcards/" + chunk + ".txt")
+        if os.path.exists(replacement_file):
+            lines = open(replacement_file, encoding="utf8").read().splitlines()
+            my_line = random.choice(lines)
+            return(my_line)
+    return(chunk)
 
 def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
@@ -841,6 +849,8 @@ def process_images(
 
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
+        
+    all_prompts = list(map(lambda one_prompt: "".join(map(replace_wildcard, one_prompt.split("__"))), all_prompts))
     original_seeds = all_seeds.copy()
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
