@@ -1556,9 +1556,10 @@ def layout():
 
 			with col3:
 				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
-				sampler_name = st.selectbox("Sampling method", 
-                                                            ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
-                                            index=0, help="Sampling method to use. Default: k_lms")  
+				
+				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+				sampler_name = st.selectbox("Sampling method", sampler_name_list,
+                                            index=sampler_name_list.index(defaults.txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
 
 
 
