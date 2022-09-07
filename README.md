@@ -73,6 +73,9 @@ into the `/stable-diffusion-webui/src/gfpgan/experiments/pretrained_models` dire
 Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
 Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
 
+### LDSR
+* Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [ model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/
+
 ### Web UI
 
 When launching, you may get a very long warning message related to some weights not being used. You may freely ignore it.
