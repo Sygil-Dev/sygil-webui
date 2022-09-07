@@ -33,9 +33,9 @@ dependencies:
     - facexlib>=0.2.3
     - python-slugify>=6.1.2
     - streamlit>=1.12.2
-    - taming-transformers>=0.0.1
-    - openai-clip>=1.0.1
-    - gfpgan>=1.3.5
-    - realesrgan>=0.2.5.0
+    - -e git+https://github.com/CompVis/taming-transformers#egg=taming-transformers
+    - -e git+https://github.com/openai/CLIP#egg=clip
+    - -e git+https://github.com/TencentARC/GFPGAN#egg=GFPGAN
+    - -e git+https://github.com/xinntao/Real-ESRGAN#egg=realesrgan
     - -e git+https://github.com/hlky/k-diffusion-sd#egg=k_diffusion
     - -e .
