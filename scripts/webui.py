@@ -849,7 +849,7 @@ def process_images(
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
         
-    all_prompts = list(map(lambda one_prompt: "".join(map(replace_wildcard, one_prompt.split("__"))), all_prompts))
+    all_prompts = ["".join(replace_wildcard(chunk) for chunk in one_prompt.split("__")) for one_prompt in all_prompts]
     original_seeds = all_seeds.copy()
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
