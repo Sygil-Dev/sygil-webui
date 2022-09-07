@@ -774,7 +774,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
 def replace_wildcard(chunk):
-    if not " " in chunk:
+    if " " not in chunk:
         file_dir = os.path.dirname(os.path.realpath("__file__"))
         replacement_file = os.path.join(file_dir, "scripts/wildcards/" + chunk + ".txt")
         if os.path.exists(replacement_file):
