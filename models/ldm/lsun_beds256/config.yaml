@@ -22,15 +22,15 @@ model:
         out_channels: 3
         model_channels: 224
         attention_resolutions:
-        - 8
-        - 4
-        - 2
+          - 8
+          - 4
+          - 2
         num_res_blocks: 2
         channel_mult:
-        - 1
-        - 2
-        - 3
-        - 4
+          - 1
+          - 2
+          - 3
+          - 4
         num_head_channels: 32
     first_stage_config:
       target: ldm.models.autoencoder.VQModelInterface
@@ -45,11 +45,11 @@ model:
           out_ch: 3
           ch: 128
           ch_mult:
-          - 1
-          - 2
-          - 4
+            - 1
+            - 2
+            - 4
           num_res_blocks: 2
-          attn_resolutions: []
+          attn_resolutions: [ ]
           dropout: 0.0
         lossconfig:
           target: torch.nn.Identity

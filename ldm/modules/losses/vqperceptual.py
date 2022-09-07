@@ -1,21 +1,21 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
 from einops import repeat
-
 from taming.modules.discriminator.model import NLayerDiscriminator, weights_init
 from taming.modules.losses.lpips import LPIPS
 from taming.modules.losses.vqperceptual import hinge_d_loss, vanilla_d_loss
+from torch import nn
 
 
 def hinge_d_loss_with_exemplar_weights(logits_real, logits_fake, weights):
     assert weights.shape[0] == logits_real.shape[0] == logits_fake.shape[0]
-    loss_real = torch.mean(F.relu(1. - logits_real), dim=[1,2,3])
-    loss_fake = torch.mean(F.relu(1. + logits_fake), dim=[1,2,3])
+    loss_real = torch.mean(F.relu(1. - logits_real), dim=[1, 2, 3])
+    loss_fake = torch.mean(F.relu(1. + logits_fake), dim=[1, 2, 3])
     loss_real = (weights * loss_real).sum() / weights.sum()
     loss_fake = (weights * loss_fake).sum() / weights.sum()
     d_loss = 0.5 * (loss_real + loss_fake)
     return d_loss
+
 
 def adopt_weight(weight, global_step, threshold=0, value=0.):
     if global_step < threshold:
@@ -32,12 +32,13 @@ def measure_perplexity(predicted_indices, n_embed):
     cluster_use = torch.sum(avg_probs > 0)
     return perplexity, cluster_use
 
+
 def l1(x, y):
-    return torch.abs(x-y)
+    return torch.abs(x - y)
 
 
 def l2(x, y):
-    return torch.pow((x-y), 2)
+    return torch.pow((x - y), 2)
 
 
 class VQLPIPSWithDiscriminator(nn.Module):
@@ -99,7 +100,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                 global_step, last_layer=None, cond=None, split="train", predicted_indices=None):
         if not exists(codebook_loss):
             codebook_loss = torch.tensor([0.]).to(inputs.device)
-        #rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
+        # rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
         rec_loss = self.pixel_loss(inputs.contiguous(), reconstructions.contiguous())
         if self.perceptual_weight > 0:
             p_loss = self.perceptual_loss(inputs.contiguous(), reconstructions.contiguous())
@@ -108,7 +109,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
             p_loss = torch.tensor([0.0])
 
         nll_loss = rec_loss
-        #nll_loss = torch.sum(nll_loss) / nll_loss.shape[0]
+        # nll_loss = torch.sum(nll_loss) / nll_loss.shape[0]
         nll_loss = torch.mean(nll_loss)
 
         # now the GAN part

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+
 from torch.utils.data import Dataset, ConcatDataset, ChainDataset, IterableDataset
 
 
@@ -6,6 +7,7 @@ class Txt2ImgIterableBaseDataset(IterableDataset):
     '''
     Define an interface to make the IterableDatasets for text2img data chainable
     '''
+
     def __init__(self, num_records=0, valid_ids=None, size=256):
         super().__init__()
         self.num_records = num_records

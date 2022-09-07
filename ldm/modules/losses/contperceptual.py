@@ -53,7 +53,7 @@ class LPIPSWithDiscriminator(nn.Module):
         nll_loss = rec_loss / torch.exp(self.logvar) + self.logvar
         weighted_nll_loss = nll_loss
         if weights is not None:
-            weighted_nll_loss = weights*nll_loss
+            weighted_nll_loss = weights * nll_loss
         weighted_nll_loss = torch.sum(weighted_nll_loss) / weighted_nll_loss.shape[0]
         nll_loss = torch.sum(nll_loss) / nll_loss.shape[0]
         kl_loss = posteriors.kl()
@@ -82,8 +82,10 @@ class LPIPSWithDiscriminator(nn.Module):
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
             loss = weighted_nll_loss + self.kl_weight * kl_loss + d_weight * disc_factor * g_loss
 
-            log = {"{}/total_loss".format(split): loss.clone().detach().mean(), "{}/logvar".format(split): self.logvar.detach(),
-                   "{}/kl_loss".format(split): kl_loss.detach().mean(), "{}/nll_loss".format(split): nll_loss.detach().mean(),
+            log = {"{}/total_loss".format(split): loss.clone().detach().mean(),
+                   "{}/logvar".format(split): self.logvar.detach(),
+                   "{}/kl_loss".format(split): kl_loss.detach().mean(),
+                   "{}/nll_loss".format(split): nll_loss.detach().mean(),
                    "{}/rec_loss".format(split): rec_loss.detach().mean(),
                    "{}/d_weight".format(split): d_weight.detach(),
                    "{}/disc_factor".format(split): torch.tensor(disc_factor),
@@ -108,4 +110,3 @@ class LPIPSWithDiscriminator(nn.Module):
                    "{}/logits_fake".format(split): logits_fake.detach().mean()
                    }
             return d_loss, log
-

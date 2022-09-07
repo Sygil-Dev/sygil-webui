@@ -20,15 +20,15 @@ model:
       target: ldm.lr_scheduler.LambdaLinearScheduler
       params:
         warm_up_steps:
-        - 10000
+          - 10000
         cycle_lengths:
-        - 10000000000000
+          - 10000000000000
         f_start:
-        - 1.0e-06
+          - 1.0e-06
         f_max:
-        - 1.0
+          - 1.0
         f_min:
-        - 1.0
+          - 1.0
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:
@@ -37,17 +37,17 @@ model:
         out_channels: 4
         model_channels: 192
         attention_resolutions:
-        - 1
-        - 2
-        - 4
-        - 8
+          - 1
+          - 2
+          - 4
+          - 8
         num_res_blocks: 2
         channel_mult:
-        - 1
-        - 2
-        - 2
-        - 4
-        - 4
+          - 1
+          - 2
+          - 2
+          - 4
+          - 4
         num_heads: 8
         use_scale_shift_norm: true
         resblock_updown: true
@@ -64,12 +64,12 @@ model:
           out_ch: 3
           ch: 128
           ch_mult:
-          - 1
-          - 2
-          - 4
-          - 4
+            - 1
+            - 2
+            - 4
+            - 4
           num_res_blocks: 2
-          attn_resolutions: []
+          attn_resolutions: [ ]
           dropout: 0.0
         lossconfig:
           target: torch.nn.Identity

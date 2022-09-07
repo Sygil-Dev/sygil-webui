@@ -1,17 +1,23 @@
-import argparse, os, sys, glob, random
-import torch
-import numpy as np
+import argparse
 import copy
-from omegaconf import OmegaConf
-from PIL import Image
-from tqdm import tqdm, trange
-from itertools import islice
-from einops import rearrange
-from torchvision.utils import make_grid
+import glob
+import os
+import random
+import sys
 import time
+from contextlib import contextmanager, nullcontext
+from itertools import islice
+
+import numpy as np
+import torch
+from PIL import Image
+from einops import rearrange
+from omegaconf import OmegaConf
 from pytorch_lightning import seed_everything
 from torch import autocast
-from contextlib import contextmanager, nullcontext
+from torchvision.utils import make_grid
+from tqdm import tqdm, trange
+
 from ldm.util import instantiate_from_config
 
 
@@ -165,12 +171,12 @@ li = []
 lo = []
 for key, value in sd.items():
     sp = key.split('.')
-    if(sp[0]) == 'model':
-        if('input_blocks' in sp):
+    if (sp[0]) == 'model':
+        if ('input_blocks' in sp):
             li.append(key)
-        elif('middle_block' in sp):
+        elif ('middle_block' in sp):
             li.append(key)
-        elif('time_embed' in sp):
+        elif ('time_embed' in sp):
             li.append(key)
         else:
             lo.append(key)
@@ -187,16 +193,14 @@ if opt.small_batch:
 else:
     config.modelUNet.params.small_batch = False
 
-
-
 model = instantiate_from_config(config.modelUNet)
 _, _ = model.load_state_dict(sd, strict=False)
 model.eval()
-    
+
 modelCS = instantiate_from_config(config.modelCondStage)
 _, _ = modelCS.load_state_dict(sd, strict=False)
 modelCS.eval()
-    
+
 modelFS = instantiate_from_config(config.modelFirstStage)
 _, _ = modelFS.load_state_dict(sd, strict=False)
 modelFS.eval()
@@ -208,7 +212,6 @@ if opt.precision == "autocast":
 start_code = None
 if opt.fixed_code:
     start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=device)
-
 
 batch_size = opt.n_samples
 n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
@@ -223,61 +226,56 @@ else:
         data = f.read().splitlines()
         data = list(chunk(data, batch_size))
 
-
-precision_scope = autocast if opt.precision=="autocast" else nullcontext
+precision_scope = autocast if opt.precision == "autocast" else nullcontext
 with torch.no_grad():
-
     all_samples = list()
     for n in trange(opt.n_iter, desc="Sampling"):
         for prompts in tqdm(data, desc="data"):
-             with precision_scope("cuda"):
+            with precision_scope("cuda"):
                 modelCS.to(device)
                 uc = None
                 if opt.scale != 1.0:
                     uc = modelCS.get_learned_conditioning(batch_size * [""])
                 if isinstance(prompts, tuple):
                     prompts = list(prompts)
-                
+
                 c = modelCS.get_learned_conditioning(prompts)
                 shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
-                mem = torch.cuda.memory_allocated()/1e6
+                mem = torch.cuda.memory_allocated() / 1e6
                 modelCS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
+                while (torch.cuda.memory_allocated() / 1e6 >= mem):
                     time.sleep(1)
 
-
                 samples_ddim = model.sample(S=opt.ddim_steps,
-                                conditioning=c,
-                                batch_size=opt.n_samples,
-                                shape=shape,
-                                verbose=False,
-                                unconditional_guidance_scale=opt.scale,
-                                unconditional_conditioning=uc,
-                                eta=opt.ddim_eta,
-                                x_T=start_code)
+                                            conditioning=c,
+                                            batch_size=opt.n_samples,
+                                            shape=shape,
+                                            verbose=False,
+                                            unconditional_guidance_scale=opt.scale,
+                                            unconditional_conditioning=uc,
+                                            eta=opt.ddim_eta,
+                                            x_T=start_code)
 
                 modelFS.to(device)
                 print("saving images")
                 for i in range(batch_size):
-                    
                     x_samples_ddim = modelFS.decode_first_stage(samples_ddim[i].unsqueeze(0))
                     x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
-                # for x_sample in x_samples_ddim:
+                    # for x_sample in x_samples_ddim:
                     x_sample = 255. * rearrange(x_sample[0].cpu().numpy(), 'c h w -> h w c')
                     Image.fromarray(x_sample.astype(np.uint8)).save(
                         os.path.join(sample_path, f"{base_count:05}.png"))
                     base_count += 1
 
-
-                mem = torch.cuda.memory_allocated()/1e6
+                mem = torch.cuda.memory_allocated() / 1e6
                 modelFS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
+                while (torch.cuda.memory_allocated() / 1e6 >= mem):
                     time.sleep(1)
 
                 # if not opt.skip_grid:
                 #     all_samples.append(x_samples_ddim)
                 del samples_ddim
-                print("memory_final = ", torch.cuda.memory_allocated()/1e6)
+                print("memory_final = ", torch.cuda.memory_allocated() / 1e6)
 
         # if not skip_grid:
         #     # additionally, save as grid
@@ -292,6 +290,6 @@ with torch.no_grad():
 
 toc = time.time()
 
-time_taken = (toc-tic)/60.0
+time_taken = (toc - tic) / 60.0
 
 print(("Your samples are ready in {0:.2f} minutes and waiting for you here \n" + sample_path).format(time_taken))

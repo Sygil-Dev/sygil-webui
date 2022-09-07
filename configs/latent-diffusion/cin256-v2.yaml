@@ -15,7 +15,7 @@ model:
     conditioning_key: crossattn
     monitor: val/loss
     use_ema: False
-    
+
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:
@@ -24,20 +24,20 @@ model:
         out_channels: 3
         model_channels: 192
         attention_resolutions:
-        - 8
-        - 4
-        - 2
+          - 8
+          - 4
+          - 2
         num_res_blocks: 2
         channel_mult:
-        - 1
-        - 2
-        - 3
-        - 5
+          - 1
+          - 2
+          - 3
+          - 5
         num_heads: 1
         use_spatial_transformer: true
         transformer_depth: 1
         context_dim: 512
-    
+
     first_stage_config:
       target: ldm.models.autoencoder.VQModelInterface
       params:
@@ -51,15 +51,15 @@ model:
           out_ch: 3
           ch: 128
           ch_mult:
-          - 1
-          - 2
-          - 4
+            - 1
+            - 2
+            - 4
           num_res_blocks: 2
-          attn_resolutions: []
+          attn_resolutions: [ ]
           dropout: 0.0
         lossconfig:
           target: torch.nn.Identity
-    
+
     cond_stage_config:
       target: ldm.modules.encoders.modules.ClassEmbedder
       params:

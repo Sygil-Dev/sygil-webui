@@ -1,18 +1,23 @@
-import os, yaml, pickle, shutil, tarfile, glob
-import cv2
-import albumentations
-import PIL
-import numpy as np
-import torchvision.transforms.functional as TF
-from omegaconf import OmegaConf
+import glob
+import os
+import pickle
+import shutil
+import tarfile
+import yaml
 from functools import partial
-from PIL import Image
-from tqdm import tqdm
-from torch.utils.data import Dataset, Subset
 
+import PIL
+import albumentations
+import cv2
+import numpy as np
 import taming.data.utils as tdu
-from taming.data.imagenet import str_to_indices, give_synsets_from_indices, download, retrieve
+import torchvision.transforms.functional as TF
+from PIL import Image
+from omegaconf import OmegaConf
 from taming.data.imagenet import ImagePaths
+from taming.data.imagenet import str_to_indices, give_synsets_from_indices, download, retrieve
+from torch.utils.data import Dataset, Subset
+from tqdm import tqdm
 
 from ldm.modules.image_degradation import degradation_fn_bsr, degradation_fn_bsr_light
 
@@ -20,13 +25,13 @@ from ldm.modules.image_degradation import degradation_fn_bsr, degradation_fn_bsr
 def synset2idx(path_to_yaml="data/index_synset.yaml"):
     with open(path_to_yaml) as f:
         di2s = yaml.load(f)
-    return dict((v,k) for k,v in di2s.items())
+    return dict((v, k) for k, v in di2s.items())
 
 
 class ImageNetBase(Dataset):
     def __init__(self, config=None):
         self.config = config or OmegaConf.create()
-        if not type(self.config)==dict:
+        if not type(self.config) == dict:
             self.config = OmegaConf.to_container(self.config)
         self.keep_orig_class_label = self.config.get("keep_orig_class_label", False)
         self.process_images = True  # if False we skip loading & processing images and self.data contains filepaths
@@ -68,7 +73,7 @@ class ImageNetBase(Dataset):
         URL = "https://heibox.uni-heidelberg.de/f/9f28e956cd304264bb82/?dl=1"
         self.human_dict = os.path.join(self.root, "synset_human.txt")
         if (not os.path.exists(self.human_dict) or
-                not os.path.getsize(self.human_dict)==SIZE):
+                not os.path.getsize(self.human_dict) == SIZE):
             download(URL, self.human_dict)
 
     def _prepare_idx_to_synset(self):
@@ -166,7 +171,7 @@ class ImageNetTrain(ImageNetBase):
             datadir = self.datadir
             if not os.path.exists(datadir):
                 path = os.path.join(self.root, self.FILES[0])
-                if not os.path.exists(path) or not os.path.getsize(path)==self.SIZES[0]:
+                if not os.path.exists(path) or not os.path.getsize(path) == self.SIZES[0]:
                     import academictorrents as at
                     atpath = at.get(self.AT_HASH, datastore=self.root)
                     assert atpath == path
@@ -187,7 +192,7 @@ class ImageNetTrain(ImageNetBase):
             filelist = glob.glob(os.path.join(datadir, "**", "*.JPEG"))
             filelist = [os.path.relpath(p, start=datadir) for p in filelist]
             filelist = sorted(filelist)
-            filelist = "\n".join(filelist)+"\n"
+            filelist = "\n".join(filelist) + "\n"
             with open(self.txt_filelist, "w") as f:
                 f.write(filelist)
 
@@ -231,7 +236,7 @@ class ImageNetValidation(ImageNetBase):
             datadir = self.datadir
             if not os.path.exists(datadir):
                 path = os.path.join(self.root, self.FILES[0])
-                if not os.path.exists(path) or not os.path.getsize(path)==self.SIZES[0]:
+                if not os.path.exists(path) or not os.path.getsize(path) == self.SIZES[0]:
                     import academictorrents as at
                     atpath = at.get(self.AT_HASH, datastore=self.root)
                     assert atpath == path
@@ -242,7 +247,7 @@ class ImageNetValidation(ImageNetBase):
                     tar.extractall(path=datadir)
 
                 vspath = os.path.join(self.root, self.FILES[1])
-                if not os.path.exists(vspath) or not os.path.getsize(vspath)==self.SIZES[1]:
+                if not os.path.exists(vspath) or not os.path.getsize(vspath) == self.SIZES[1]:
                     download(self.VS_URL, vspath)
 
                 with open(vspath, "r") as f:
@@ -261,12 +266,11 @@ class ImageNetValidation(ImageNetBase):
             filelist = glob.glob(os.path.join(datadir, "**", "*.JPEG"))
             filelist = [os.path.relpath(p, start=datadir) for p in filelist]
             filelist = sorted(filelist)
-            filelist = "\n".join(filelist)+"\n"
+            filelist = "\n".join(filelist) + "\n"
             with open(self.txt_filelist, "w") as f:
                 f.write(filelist)
 
             tdu.mark_prepared(self.root)
-
 
 
 class ImageNetSR(Dataset):
@@ -296,12 +300,12 @@ class ImageNetSR(Dataset):
         self.LR_size = int(size / downscale_f)
         self.min_crop_f = min_crop_f
         self.max_crop_f = max_crop_f
-        assert(max_crop_f <= 1.)
+        assert (max_crop_f <= 1.)
         self.center_crop = not random_crop
 
         self.image_rescaler = albumentations.SmallestMaxSize(max_size=size, interpolation=cv2.INTER_AREA)
 
-        self.pil_interpolation = False # gets reset later if incase interp_op is from pillow
+        self.pil_interpolation = False  # gets reset later if incase interp_op is from pillow
 
         if degradation == "bsrgan":
             self.degradation_process = partial(degradation_fn_bsr, sf=downscale_f)
@@ -311,17 +315,17 @@ class ImageNetSR(Dataset):
 
         else:
             interpolation_fn = {
-            "cv_nearest": cv2.INTER_NEAREST,
-            "cv_bilinear": cv2.INTER_LINEAR,
-            "cv_bicubic": cv2.INTER_CUBIC,
-            "cv_area": cv2.INTER_AREA,
-            "cv_lanczos": cv2.INTER_LANCZOS4,
-            "pil_nearest": PIL.Image.NEAREST,
-            "pil_bilinear": PIL.Image.BILINEAR,
-            "pil_bicubic": PIL.Image.BICUBIC,
-            "pil_box": PIL.Image.BOX,
-            "pil_hamming": PIL.Image.HAMMING,
-            "pil_lanczos": PIL.Image.LANCZOS,
+                "cv_nearest": cv2.INTER_NEAREST,
+                "cv_bilinear": cv2.INTER_LINEAR,
+                "cv_bicubic": cv2.INTER_CUBIC,
+                "cv_area": cv2.INTER_AREA,
+                "cv_lanczos": cv2.INTER_LANCZOS4,
+                "pil_nearest": PIL.Image.NEAREST,
+                "pil_bilinear": PIL.Image.BILINEAR,
+                "pil_bicubic": PIL.Image.BICUBIC,
+                "pil_box": PIL.Image.BOX,
+                "pil_hamming": PIL.Image.HAMMING,
+                "pil_lanczos": PIL.Image.LANCZOS,
             }[degradation]
 
             self.pil_interpolation = degradation.startswith("pil_")
@@ -366,8 +370,8 @@ class ImageNetSR(Dataset):
         else:
             LR_image = self.degradation_process(image=image)["image"]
 
-        example["image"] = (image/127.5 - 1.0).astype(np.float32)
-        example["LR_image"] = (LR_image/127.5 - 1.0).astype(np.float32)
+        example["image"] = (image / 127.5 - 1.0).astype(np.float32)
+        example["LR_image"] = (LR_image / 127.5 - 1.0).astype(np.float32)
 
         return example
 
@@ -379,7 +383,7 @@ class ImageNetSRTrain(ImageNetSR):
     def get_base(self):
         with open("data/imagenet_train_hr_indices.p", "rb") as f:
             indices = pickle.load(f)
-        dset = ImageNetTrain(process_images=False,)
+        dset = ImageNetTrain(process_images=False, )
         return Subset(dset, indices)
 
 
@@ -390,5 +394,5 @@ class ImageNetSRValidation(ImageNetSR):
     def get_base(self):
         with open("data/imagenet_val_hr_indices.p", "rb") as f:
             indices = pickle.load(f)
-        dset = ImageNetValidation(process_images=False,)
+        dset = ImageNetValidation(process_images=False, )
         return Subset(dset, indices)

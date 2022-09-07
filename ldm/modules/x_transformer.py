@@ -1,11 +1,12 @@
 """shout-out to https://github.com/lucidrains/x-transformers/tree/main/x_transformers"""
-import torch
-from torch import nn, einsum
-import torch.nn.functional as F
+from collections import namedtuple
 from functools import partial
 from inspect import isfunction
-from collections import namedtuple
+
+import torch
+import torch.nn.functional as F
 from einops import rearrange, repeat, reduce
+from torch import nn, einsum
 
 # constants
 
@@ -64,18 +65,21 @@ def default(val, d):
 def always(val):
     def inner(*args, **kwargs):
         return val
+
     return inner
 
 
 def not_equals(val):
     def inner(x):
         return x != val
+
     return inner
 
 
 def equals(val):
     def inner(x):
         return x == val
+
     return inner
 
 
@@ -252,7 +256,7 @@ class Attention(nn.Module):
         self.sparse_topk = sparse_topk
 
         # entmax
-        #self.attn_fn = entmax15 if use_entmax15 else F.softmax
+        # self.attn_fn = entmax15 if use_entmax15 else F.softmax
         self.attn_fn = F.softmax
 
         # add memory key / values
@@ -544,7 +548,6 @@ class Encoder(AttentionLayers):
         super().__init__(causal=False, **kwargs)
 
 
-
 class TransformerWrapper(nn.Module):
     def __init__(
             self,
@@ -571,7 +574,7 @@ class TransformerWrapper(nn.Module):
 
         self.token_emb = nn.Embedding(num_tokens, emb_dim)
         self.pos_emb = AbsolutePositionalEmbedding(emb_dim, max_seq_len) if (
-                    use_pos_emb and not attn_layers.has_pos_emb) else always(0)
+                use_pos_emb and not attn_layers.has_pos_emb) else always(0)
         self.emb_dropout = nn.Dropout(emb_dropout)
 
         self.project_emb = nn.Linear(emb_dim, dim) if emb_dim != dim else nn.Identity()
@@ -638,4 +641,3 @@ class TransformerWrapper(nn.Module):
             return out, attn_maps
 
         return out
-

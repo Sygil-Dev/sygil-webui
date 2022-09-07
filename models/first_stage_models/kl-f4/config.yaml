@@ -18,11 +18,11 @@ model:
       out_ch: 3
       ch: 128
       ch_mult:
-      - 1
-      - 2
-      - 4
+        - 1
+        - 2
+        - 4
       num_res_blocks: 2
-      attn_resolutions: []
+      attn_resolutions: [ ]
       dropout: 0.0
 data:
   target: main.DataModuleFromConfig

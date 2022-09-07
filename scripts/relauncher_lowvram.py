@@ -15,7 +15,7 @@ open_in_browser = False
 optimized = True
 
 # If low vram mode, should generate higher-resolution images
-low_vram_mode = False
+low_vram_mode = True
 
 # Run in Optimized Turbo Mode - Needs more VRAM than regular optimized mode, but is faster
 optimized_turbo = True

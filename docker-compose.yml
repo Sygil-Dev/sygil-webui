@@ -18,7 +18,7 @@ services:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]
+            - capabilities: [ gpu ]
 
 volumes:
   conda_env:

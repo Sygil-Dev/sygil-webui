@@ -22,18 +22,18 @@ model:
         out_channels: 4
         model_channels: 256
         attention_resolutions:
-        #note: this isn\t actually the resolution but
-        # the downsampling factor, i.e. this corresnponds to
-        # attention on spatial resolution 8,16,32, as the
-        # spatial reolution of the latents is 32 for f8
-        - 4
-        - 2
-        - 1
+          #note: this isn\t actually the resolution but
+          # the downsampling factor, i.e. this corresnponds to
+          # attention on spatial resolution 8,16,32, as the
+          # spatial reolution of the latents is 32 for f8
+          - 4
+          - 2
+          - 1
         num_res_blocks: 2
         channel_mult:
-        - 1
-        - 2
-        - 4
+          - 1
+          - 2
+          - 4
         num_head_channels: 32
         use_spatial_transformer: true
         transformer_depth: 1
@@ -52,13 +52,13 @@ model:
           out_ch: 3
           ch: 128
           ch_mult:
-          - 1
-          - 2
-          - 2
-          - 4
+            - 1
+            - 2
+            - 2
+            - 4
           num_res_blocks: 2
           attn_resolutions:
-          - 32
+            - 32
           dropout: 0.0
         lossconfig:
           target: torch.nn.Identity

@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-import cv2
-import torch
-
-from functools import partial
 import random
-from scipy import ndimage
+from functools import partial
+
+import albumentations
+import cv2
+import numpy as np
 import scipy
 import scipy.stats as ss
+import torch
+from scipy import ndimage
 from scipy.interpolate import interp2d
 from scipy.linalg import orth
-import albumentations
 
 import ldm.modules.image_degradation.utils_image as util
 
@@ -326,8 +326,8 @@ def add_blur(img, sf=4):
     wd2 = 4.0 + sf
     wd = 2.0 + 0.2 * sf
 
-    wd2 = wd2/4
-    wd = wd/4
+    wd2 = wd2 / 4
+    wd = wd / 4
 
     if random.random() < 0.5:
         l1 = wd2 * random.random()
@@ -621,8 +621,6 @@ def degradation_bsrgan_variant(image, sf=4, isp_model=None):
     return example
 
 
-
-
 if __name__ == '__main__':
     print("hey")
     img = util.imread_uint('utils/test.png', 3)
@@ -637,7 +635,8 @@ if __name__ == '__main__':
         img_lq = deg_fn(img)["image"]
         img_hq, img_lq = util.uint2single(img_hq), util.uint2single(img_lq)
         print(img_lq)
-        img_lq_bicubic = albumentations.SmallestMaxSize(max_size=h, interpolation=cv2.INTER_CUBIC)(image=img_hq)["image"]
+        img_lq_bicubic = albumentations.SmallestMaxSize(max_size=h, interpolation=cv2.INTER_CUBIC)(image=img_hq)[
+            "image"]
         print(img_lq.shape)
         print("bicubic", img_lq_bicubic.shape)
         print(img_hq.shape)

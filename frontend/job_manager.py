@@ -1,14 +1,16 @@
 ''' Provides simple job management for gradio, allowing viewing and stopping in-progress multi-batch generations '''
 from __future__ import annotations
-import gradio as gr
-from gradio.components import Component, Gallery
-from threading import Event, Timer
-from typing import Callable, List, Dict, Tuple, Optional, Any
+
+import traceback
+import uuid
 from dataclasses import dataclass, field
 from functools import partial
+from threading import Event, Timer
+from typing import Callable, List, Dict, Tuple, Optional, Any
+
+import gradio as gr
 from PIL.Image import Image
-import uuid
-import traceback
+from gradio.components import Component, Gallery
 
 
 @dataclass(eq=True, frozen=True)

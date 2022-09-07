@@ -8,11 +8,12 @@
 # thanks!
 
 
-import os
 import math
+import os
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 from einops import repeat
 
 from ldm.util import instantiate_from_config
@@ -214,6 +215,7 @@ class SiLU(nn.Module):
 class GroupNorm32(nn.GroupNorm):
     def forward(self, x):
         return super().forward(x.float()).type(x.dtype)
+
 
 def conv_nd(dims, *args, **kwargs):
     """
