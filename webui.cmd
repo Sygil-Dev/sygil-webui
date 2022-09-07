@@ -38,6 +38,7 @@ IF "%CONDA_PATH%"=="" (
 :foundPath
 call "%CONDA_PATH%\Scripts\activate.bat"
 call conda env create -n "%conda_env_name%" -f environment.yaml
+call conda env update -n "%conda_env_name%" --file environment.yaml --prune
 call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
 python "%CD%"\scripts\relauncher.py
 
