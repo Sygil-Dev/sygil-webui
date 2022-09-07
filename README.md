@@ -1,6 +1,6 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/altryne/sd-webui-colab/blob/main/Stable_Diffusion_WebUi_Altryne.ipynb)
 
-# [Installation](https://github.com/hlky/stable-diffusion/wiki/Installation)
+# [Installation](https://github.com/sd-webui/stable-diffusion-webui/wiki/INSTALLATION)
 
 ### Have an **issue**? 
 
