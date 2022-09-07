@@ -38,7 +38,7 @@ if optimized_turbo:
 if optimized:
     common_arguments += "--optimized "
 if low_vram_mode:
-    common_arguments += "----config optimizedSD/v1-inference_lowvram.yaml "
+    common_arguments += "--config optimizedSD/v1-inference_lowvram.yaml "
 if share:
     common_arguments += "--share "
 
