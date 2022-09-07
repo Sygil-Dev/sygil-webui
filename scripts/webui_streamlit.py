@@ -1537,7 +1537,7 @@ def layout():
 				with preview_tab:
 					#st.write("Image")
 					#Image for testing
-					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
+					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw).convert('RGB')
 					#new_image = image.resize((175, 240))
 					#preview_image = st.image(image)
 
@@ -1691,7 +1691,7 @@ def layout():
 				st.session_state["editor_image"] = editor_image
 
 				if uploaded_images:
-					image = Image.open(uploaded_images)
+					image = Image.open(uploaded_images).convert('RGB')
 					#img_array = np.array(image) # if you want to pass it to OpenCV
 					new_img = image.resize((width, height))
 					st.image(new_img)
@@ -1713,7 +1713,7 @@ def layout():
 					message = st.empty()
 
 					#if uploaded_images:
-						#image = Image.open(uploaded_images)
+						#image = Image.open(uploaded_images).convert('RGB')
 						##img_array = np.array(image) # if you want to pass it to OpenCV
 						#new_img = image.resize((width, height))
 						#st.image(new_img, use_column_width=True)
@@ -1724,7 +1724,7 @@ def layout():
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
 				if uploaded_images:
-					image = Image.open(uploaded_images)
+					image = Image.open(uploaded_images).convert('RGB')
 					new_img = image.resize((width, height))
 					#img_array = np.array(image) # if you want to pass it to OpenCV
 
