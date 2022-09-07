@@ -1442,11 +1442,11 @@ def img2img(prompt: str, image_editor_mode: str, init_info: any, init_info_mask:
 
     if image_editor_mode == 'Mask':
         global returned_info
-        init_img = init_info["image"]
+        init_img = init_info_mask["image"]
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
-        init_img = init_img.convert("RGB")
-        init_mask = init_info["mask"]
+        image = image.convert("RGB")
+        init_mask = init_info_mask["mask"]
         init_mask = resize_image(resize_mode, init_mask, width, height)
         resize_mask = mask_mode == 2
 

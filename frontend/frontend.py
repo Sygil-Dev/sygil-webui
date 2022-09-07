@@ -161,11 +161,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         with gr.Tabs():
                             with gr.TabItem("Img2Img Input"):
                             #gr.Markdown('#### Img2Img Input')
-                                img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=False,
-                                                                type="pil", tool="select", elem_id="img2img_editor",
-                                                                image_mode="RGBA", visible=False)
                                 img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                            type="pil", tool="sketch", visible=True,
+                                                                type="pil", tool="select", elem_id="img2img_editor",
+                                                                image_mode="RGBA")
+                                img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
+                                                            type="pil", tool="sketch", visible=False,
                                                             elem_id="img2img_mask")
 
                             with gr.TabItem("Img2Img Mask Input"):
@@ -176,10 +176,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             with gr.TabItem("Editor Options"):
                                 with gr.Row():
                                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
-                                                             value="Mask", elem_id='edit_mode_select', visible=False)
-                                    img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
+                                                             value="Crop", elem_id='edit_mode_select')
+                                    img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area", "Resize and regenerate only masked area"],
                                                 label="Mask Mode", type="index",
-                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=True)  
+                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)  
 
                                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
                                                                label="How much blurry should the mask be? (to avoid hard edges)",
@@ -188,7 +188,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                     img2img_resize = gr.Radio(label="Resize mode",
                                                 choices=["Just resize", "Crop and resize", "Resize and fill"],
                                                 type="index",
-                                                value=img2img_resize_modes[img2img_defaults['resize_mode']], visible=False)
+                                                value=img2img_resize_modes[img2img_defaults['resize_mode']])
 
                                 img2img_painterro_btn = gr.Button("Advanced Editor")
                             with gr.TabItem("Hints"):
@@ -323,16 +323,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
 
                 def generate(*args):
                     args_list = list(args)
-                    init_info_mask = args_list[2]
+                    init_info_mask = args_list[3]
                     # Get the mask input and remove it from the list
-                    mask_input = args_list[-1]
-                    del args_list[-1]
+                    mask_input = args_list[18]
+                    del args_list[18]
 
                     # If an external mask is set, use it
                     if mask_input:
                         init_info_mask['mask'] = mask_input
 
-                    args_list[2] = init_info_mask
+                    args_list[3] = init_info_mask
 
                     # Return the result of img2img
                     return img2img_func(*args_list)

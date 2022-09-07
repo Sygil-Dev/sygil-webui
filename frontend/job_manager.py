@@ -288,7 +288,7 @@ class JobManager:
             return []
 
         try:
-            outputs = job_info.func(*job_info.inputs)
+            outputs = job_info.func(*job_info.inputs, job_info=job_info)
         except Exception as e:
             job_info.job_status = f"Error: {e}"
             print(f"Exception processing job {job_info}: {e}\n{traceback.format_exc()}")
