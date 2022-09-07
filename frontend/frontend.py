@@ -34,8 +34,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                 value=txt2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=txt2img_defaults["seed"])
+                        txt2img_batch_size = gr.Slider(minimum=1, maximum=50, step=1,
+                                                       label='Images per batch',
+                                                       value=txt2img_defaults['batch_size'])
                         txt2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
-                                                        label='Number of images to generate',
+                                                        label='Number of batches to generate',
                                                         value=txt2img_defaults['n_iter'])
 
                         txt2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
@@ -86,9 +89,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             with gr.TabItem('Advanced'):
                                 txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles,
                                                                    value=txt2img_toggle_defaults, type="index")
-                                txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1,
-                                                               label='Batch size (how many images are in a batch; memory-hungry)',
-                                                               value=txt2img_defaults['batch_size'])
                                 txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model',
                                                                             choices=['RealESRGAN_x4plus',
                                                                                      'RealESRGAN_x4plus_anime_6B'],

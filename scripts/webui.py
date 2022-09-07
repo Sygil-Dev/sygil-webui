@@ -940,11 +940,10 @@ def process_images(
             if opt.optimized:
                 modelFS.to(device)
 
+            for i in range(len(samples_ddim)):
+                x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim[i].unsqueeze(0))
+                x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
-
-            x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim)
-            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
-            for i, x_sample in enumerate(x_samples_ddim):
                 sanitized_prompt = prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})
                 if variant_seed != None and variant_seed != '':
                     if variant_amount == 0.0:
@@ -965,7 +964,7 @@ def process_images(
                     sanitized_prompt = sanitized_prompt
                     filename = f"{base_count:05}-{steps}_{sampler_name}_{seed_used}_{cur_variant_amount:.2f}_{sanitized_prompt}"[:128] #same as before
 
-                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                x_sample = 255. * rearrange(x_sample[0].cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
                 image = Image.fromarray(x_sample)
                 original_sample = x_sample
