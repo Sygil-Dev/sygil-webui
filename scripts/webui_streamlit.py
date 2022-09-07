@@ -89,14 +89,14 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(defaults.general.gpu)
 @retry(tries=5)
 def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus"):
 	"""Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
-	
+
 	print ("Loading models.")
-	
+
 	# Generate random run ID
 	# Used to link runs linked w/ continue_prev_run which is not yet implemented
 	# Use URL and filesystem safe version just in case.
 	st.session_state["run_id"] = base64.urlsafe_b64encode(
-            os.urandom(6)
+                os.urandom(6)
             ).decode("ascii")
 
 	# check what models we want to use and if the they are already loaded.
@@ -183,14 +183,14 @@ def load_sd_from_config(ckpt, verbose=False):
 #
 @retry(tries=5)
 def generation_callback(img, i=0):
-	
+
 	try:
 		if i == 0:	
 			if img['i']: i = img['i']
 	except TypeError:
 		pass
-	
-	
+
+
 	if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
 		#print (img)
 		#print (type(img))
@@ -203,29 +203,29 @@ def generation_callback(img, i=0):
 			# When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
 			# {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}			
 			x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(img["denoised"])
-			
+
 		x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
-		
+
 		pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0)) 			
-	
+
 		# update image on the UI so we can see the progress
 		st.session_state["preview_image"].image(pil_image) 	
-		
+
 	# Show a progress bar so we can keep track of the progress even when the image progress is not been shown,
 	# Dont worry, it doesnt affect the performance.	
 	if st.session_state["generation_mode"] == "txt2img":
 		percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
 		st.session_state["progress_bar_text"].text(
-		        f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
+                        f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
 	else:
 		round_sampling_steps = round(st.session_state.sampling_steps * st.session_state["denoising_strength"])
 		percent = int(100 * float(i+1 if i+1 < round_sampling_steps else round_sampling_steps)/float(round_sampling_steps))
 		st.session_state["progress_bar_text"].text(
-		        f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")		
-	
+                        f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")		
+
 	st.session_state["progress_bar"] = st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
-		
-		
+
+
 
 class MemUsageMonitor(threading.Thread):
 	stop_flag = False
@@ -353,8 +353,8 @@ class KDiffusionSampler:
 		model_wrap_cfg = CFGDenoiser(self.model_wrap)
 		samples_ddim = None
 		samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas,
-									      extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,
-											  'cond_scale': unconditional_guidance_scale}, disable=False, callback=generation_callback)
+                                                                              extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,
+                                                                                          'cond_scale': unconditional_guidance_scale}, disable=False, callback=generation_callback)
 		#
 		return samples_ddim, None
 
@@ -420,9 +420,9 @@ def load_GFPGAN():
 def load_RealESRGAN(model_name: str):
 	from basicsr.archs.rrdbnet_arch import RRDBNet
 	RealESRGAN_models = {
-            'RealESRGAN_x4plus': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4),
+                'RealESRGAN_x4plus': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4),
             'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
-    }
+        }
 
 	model_path = os.path.join(defaults.general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
 	if not os.path.exists(os.path.join(defaults.general.RealESRGAN_dir, "experiments","pretrained_models", f"{model_name}.pth")):
@@ -591,7 +591,7 @@ def check_prompt_length(prompt, comments):
 	max_length = (st.session_state["model"] if not defaults.general.optimized else modelCS).cond_stage_model.max_length
 
 	info = (st.session_state["model"] if not defaults.general.optimized else modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
-                                                                                                                 return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
+                                                                                                                     return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
 	ovf = info['overflowing_tokens'][0]
 	overflowing_count = ovf.shape[0]
 	if overflowing_count == 0:
@@ -606,9 +606,9 @@ def check_prompt_length(prompt, comments):
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                 save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images):
-	
+
 	filename_i = os.path.join(sample_path_i, filename)
-	
+
 	if not jpg_sample:
 		if defaults.general.save_metadata:
 			metadata = PngInfo()
@@ -627,7 +627,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 			image.save(f"{filename_i}.png")
 	else:
 		image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
-		
+
 	if write_info_files:
 		# toggles differ for txt2img vs. img2img:
 		offset = 0 if init_img is None else 2
@@ -652,11 +652,11 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 		if use_GFPGAN:
 			toggles.append(6 + offset)
 		info_dict = dict(
-	        target="txt2img" if init_img is None else "img2img",
-	            prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
-	                ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-	                seed=seeds[i], width=width, height=height
-	)
+                        target="txt2img" if init_img is None else "img2img",
+                prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
+                    ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
+                        seed=seeds[i], width=width, height=height
+                )
 		if init_img is not None:
 			# Not yet any use for these, but they bloat up the files:
 			#info_dict["init_img"] = init_img
@@ -800,7 +800,7 @@ def process_images(
 	prompt_matrix_parts = []
 	simple_templating = False
 	add_original_image = not (use_RealESRGAN or use_GFPGAN)
-	
+
 	if prompt_matrix:
 		if prompt.startswith("@"):
 			simple_templating = True
@@ -921,17 +921,17 @@ def process_images(
 
 			for i, x_sample in enumerate(x_samples_ddim):				
 				sanitized_prompt = slugify(prompts[i])
-				
+
 				if sort_samples:
 					full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
-					
-					
+
+
 					sanitized_prompt = sanitized_prompt[:220-len(full_path)]
 					sample_path_i = os.path.join(sample_path, sanitized_prompt)
-					
+
 					#print(f"output folder length: {len(os.path.join(os.getcwd(), sample_path_i))}")
 					#print(os.path.join(os.getcwd(), sample_path_i))
-					
+
 					os.makedirs(sample_path_i, exist_ok=True)
 					base_count = get_next_sequence_number(sample_path_i)
 					filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}"
@@ -946,7 +946,7 @@ def process_images(
 				image = Image.fromarray(x_sample)
 				original_sample = x_sample
 				original_filename = filename
-				
+
 				if use_GFPGAN and st.session_state["GFPGAN"] is not None and not use_RealESRGAN:
 					#skip_save = True # #287 >_>
 					torch_gc()
@@ -956,9 +956,9 @@ def process_images(
 					gfpgan_filename = original_filename + '-gfpgan'
 
 					save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-					            normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback,
-					            uses_random_seed_loopback, save_grid, sort_samples, sampler_name, ddim_eta,
-					            n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
+                                                    normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback,
+                                                    uses_random_seed_loopback, save_grid, sort_samples, sampler_name, ddim_eta,
+                                                    n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
 
 					output_images.append(gfpgan_image) #287
 					if simple_templating:
@@ -967,23 +967,23 @@ def process_images(
 				if use_RealESRGAN and st.session_state["RealESRGAN"] is not None and not use_GFPGAN:
 					#skip_save = True # #287 >_>
 					torch_gc()
-					
+
 					if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
 						#try_loading_RealESRGAN(realesrgan_model_name)
 						load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
-						
+
 					output, img_mode = st.session_state["RealESRGAN"].enhance(x_sample[:,:,::-1])
 					esrgan_filename = original_filename + '-esrgan4x'
 					esrgan_sample = output[:,:,::-1]
 					esrgan_image = Image.fromarray(esrgan_sample)
-					
+
 					#save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-					            #normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-		                                    #save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+							#normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+							#save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
 
 					save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-					            normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-		                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
+                                                    normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
 
 					output_images.append(esrgan_image) #287
 					if simple_templating:
@@ -994,30 +994,30 @@ def process_images(
 					torch_gc()
 					cropped_faces, restored_faces, restored_img = st.session_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
 					gfpgan_sample = restored_img[:,:,::-1]
-					
+
 					if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
 						#try_loading_RealESRGAN(realesrgan_model_name)
 						load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
-						
+
 					output, img_mode = st.session_state["RealESRGAN"].enhance(gfpgan_sample[:,:,::-1])
 					gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
 					gfpgan_esrgan_sample = output[:,:,::-1]
 					gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)						    
-				
+
 					save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-					            normalize_prompt_weights, False, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-		                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
+                                                    normalize_prompt_weights, False, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
 
 					output_images.append(gfpgan_esrgan_image) #287
-					
+
 					if simple_templating:
 						grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
-						
+
 				if save_individual_images:
 					save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
-					            normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-		                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images)
-					
+                                                    normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images)
+
 					if not use_GFPGAN or not use_RealESRGAN:
 						output_images.append(image)
 
@@ -1060,11 +1060,11 @@ def process_images(
 	time_diff = time.time()-start_time
 
 	info = f"""
-	{prompt}
-	Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and st.session_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and st.session_state["RealESRGAN"] is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+                {prompt}
+                Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and st.session_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and st.session_state["RealESRGAN"] is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
 	stats = f'''
-	Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
-	Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+                Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
+                Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
 
 	for comment in comments:
 		info += "\n\n" + comment
@@ -1116,14 +1116,14 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
             ddim_steps: int = 50, sampler_name: str = 'DDIM',
             n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
             seed: int = -1, height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
-	    variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
-	    write_info_files:bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
-	    separate_prompts:bool = False, normalize_prompt_weights:bool = True,
-	    save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-	    save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True, loopback: bool = False,
+            variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
+            write_info_files:bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
+            separate_prompts:bool = False, normalize_prompt_weights:bool = True,
+            save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
+            save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True, loopback: bool = False,
             random_seed_loopback: bool = False
             ):
-	
+
 	outpath = defaults.general.outdir_img2img or defaults.general.outdir or "outputs/img2img-samples"
 	err = False
 	#loopback = False
@@ -1144,7 +1144,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	#jpg_sample = 9 in toggles
 	#use_GFPGAN = 10 in toggles
 	#use_RealESRGAN = 11 in toggles
-	
+
 	if sampler_name == 'PLMS':
 		sampler = PLMSSampler(st.session_state["model"])
 	elif sampler_name == 'DDIM':
@@ -1172,7 +1172,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	t_enc = int(denoising_strength * ddim_steps)
 
 	def init():
-		
+
 		image = init_img
 		image = np.array(image).astype(np.float32) / 255.0
 		image = image[None].transpose(0, 3, 1, 2)
@@ -1181,7 +1181,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		mask = None
 		if defaults.general.optimized:
 			modelFS.to(st.session_state["device"] )
-		
+
 		init_image = 2. * image - 1.
 		init_image = init_image.to(st.session_state["device"])
 		init_latent = (st.session_state["model"] if not defaults.general.optimized else modelFS).get_first_stage_encoding((st.session_state["model"]  if not defaults.general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
@@ -1217,9 +1217,9 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			sigma_sched = sigmas[ddim_steps - t_enc_steps - 1:]
 			model_wrap_cfg = CFGMaskedDenoiser(sampler.model_wrap)
 			samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched,
-			                                                                           extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,
-			                                                                                       'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False,
-			                                                                           callback=generation_callback)
+                                                                                                   extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,
+                                                                                                               'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False,
+                                                                                                   callback=generation_callback)
 		else:
 
 			x0, z_mask = init_data
@@ -1234,9 +1234,9 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 
 								# decode it
 			samples_ddim = sampler.decode(z_enc, conditioning, t_enc_steps,
-	                                  unconditional_guidance_scale=cfg_scale,
-	                                    unconditional_conditioning=unconditional_conditioning,
-	                                    z_mask=z_mask, x0=x0)
+                                                      unconditional_guidance_scale=cfg_scale,
+                                          unconditional_conditioning=unconditional_conditioning,
+                                            z_mask=z_mask, x0=x0)
 		return samples_ddim
 
 
@@ -1245,7 +1245,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		output_images, info = None, None
 		history = []
 		initial_seed = None
-		
+
 		do_color_correction = False
 		try:
 			from skimage import exposure
@@ -1256,61 +1256,61 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		for i in range(1):
 			if do_color_correction and i == 0:
 				correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
-				
+
 			output_images, seed, info, stats = process_images(
-			        outpath=outpath,
-			        func_init=init,
-			        func_sample=sample,
-			        prompt=prompt,
-			        seed=seed,
-			        sampler_name=sampler_name,
-			        save_grid=save_grid,
-			        batch_size=1,
-			        n_iter=n_iter,
-			        steps=ddim_steps,
-			        cfg_scale=cfg_scale,
-			        width=width,
-			        height=height,
-			        prompt_matrix=separate_prompts,
-			        use_GFPGAN=use_GFPGAN,
-			        use_RealESRGAN=use_RealESRGAN, # Forcefully disable upscaling when using loopback
-			        realesrgan_model_name=RealESRGAN_model,
-			        fp=fp,
-			        normalize_prompt_weights=normalize_prompt_weights,
-			        save_individual_images=save_individual_images,
-			        init_img=init_img,
-			        init_mask=init_mask,
-			        keep_mask=keep_mask,
-			        mask_blur_strength=mask_blur_strength,
-			        denoising_strength=denoising_strength,
-			        resize_mode=resize_mode,
-			        uses_loopback=loopback,
-			        uses_random_seed_loopback=random_seed_loopback,
-			        sort_samples=group_by_prompt,
-			        write_info_files=write_info_files,
-			        jpg_sample=save_as_jpg
-			    )
+                                outpath=outpath,
+                                func_init=init,
+                                func_sample=sample,
+                                prompt=prompt,
+                                seed=seed,
+                                sampler_name=sampler_name,
+                                save_grid=save_grid,
+                                batch_size=1,
+                                n_iter=n_iter,
+                                steps=ddim_steps,
+                                cfg_scale=cfg_scale,
+                                width=width,
+                                height=height,
+                                prompt_matrix=separate_prompts,
+                                use_GFPGAN=use_GFPGAN,
+                                use_RealESRGAN=use_RealESRGAN, # Forcefully disable upscaling when using loopback
+                                realesrgan_model_name=RealESRGAN_model,
+                                fp=fp,
+                                normalize_prompt_weights=normalize_prompt_weights,
+                                save_individual_images=save_individual_images,
+                                init_img=init_img,
+                                init_mask=init_mask,
+                                keep_mask=keep_mask,
+                                mask_blur_strength=mask_blur_strength,
+                                denoising_strength=denoising_strength,
+                                resize_mode=resize_mode,
+                                uses_loopback=loopback,
+                                uses_random_seed_loopback=random_seed_loopback,
+                                sort_samples=group_by_prompt,
+                                write_info_files=write_info_files,
+                                jpg_sample=save_as_jpg
+                        )
 
 			if initial_seed is None:
 				initial_seed = seed
 
 			init_img = output_images[0]
-			
+
 			if do_color_correction and correction_target is not None:
 				init_img = Image.fromarray(cv2.cvtColor(exposure.match_histograms(
-					cv2.cvtColor(
-					    np.asarray(init_img),
-					cv2.COLOR_RGB2LAB
-					),
-				    correction_target,
-				    channel_axis=2
-				    ), cv2.COLOR_LAB2RGB).astype("uint8"))
-				
+                                        cv2.cvtColor(
+                                                np.asarray(init_img),
+                                            cv2.COLOR_RGB2LAB
+                                        ),
+                                        correction_target,
+                                    channel_axis=2
+                                    ), cv2.COLOR_LAB2RGB).astype("uint8"))
+
 			if not random_seed_loopback:
 				seed = seed + 1
 			else:
 				seed = seed_to_int(None)
-				
+
 			denoising_strength = max(denoising_strength * 0.95, 0.1)
 			history.append(init_img)
 
@@ -1319,37 +1319,37 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 
 	else:
 		output_images, seed, info, stats = process_images(
-		        outpath=outpath,
-		        func_init=init,
-		        func_sample=sample,
-		        prompt=prompt,
-		        seed=seed,
-		        sampler_name=sampler_name,
-		        save_grid=save_grid,
-		        batch_size=batch_size,
-		        n_iter=n_iter,
-		        steps=ddim_steps,
-		        cfg_scale=cfg_scale,
-		        width=width,
-		        height=height,
-		        prompt_matrix=separate_prompts,
-		        use_GFPGAN=use_GFPGAN,
-		        use_RealESRGAN=use_RealESRGAN,
-		        realesrgan_model_name=RealESRGAN_model,
-		        fp=fp,
-		        normalize_prompt_weights=normalize_prompt_weights,
-		        save_individual_images=save_individual_images,
-		        init_img=init_img,
-		        init_mask=init_mask,
-		        keep_mask=keep_mask,
-		        mask_blur_strength=2,
-		        denoising_strength=denoising_strength,
-		        resize_mode=resize_mode,
-		        uses_loopback=loopback,
-		        sort_samples=group_by_prompt,
-		        write_info_files=write_info_files,
-		        jpg_sample=save_as_jpg
-		    )
+                        outpath=outpath,
+                        func_init=init,
+                        func_sample=sample,
+                        prompt=prompt,
+                        seed=seed,
+                        sampler_name=sampler_name,
+                        save_grid=save_grid,
+                        batch_size=batch_size,
+                        n_iter=n_iter,
+                        steps=ddim_steps,
+                        cfg_scale=cfg_scale,
+                        width=width,
+                        height=height,
+                        prompt_matrix=separate_prompts,
+                        use_GFPGAN=use_GFPGAN,
+                        use_RealESRGAN=use_RealESRGAN,
+                        realesrgan_model_name=RealESRGAN_model,
+                        fp=fp,
+                        normalize_prompt_weights=normalize_prompt_weights,
+                        save_individual_images=save_individual_images,
+                        init_img=init_img,
+                        init_mask=init_mask,
+                        keep_mask=keep_mask,
+                        mask_blur_strength=2,
+                        denoising_strength=denoising_strength,
+                        resize_mode=resize_mode,
+                        uses_loopback=loopback,
+                        sort_samples=group_by_prompt,
+                        write_info_files=write_info_files,
+                        jpg_sample=save_as_jpg
+                )
 
 	del sampler
 
@@ -1403,43 +1403,43 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 
 	def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
 		samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
-	                                 unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
-					 log_every_t=int(defaults.general.update_preview_frequency))
-		
+                                                 unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
+                                         log_every_t=int(defaults.general.update_preview_frequency))
+
 		return samples_ddim
 
 	#try:
 	output_images, seed, info, stats = process_images(
-	        outpath=outpath,
-	        func_init=init,
-	        func_sample=sample,
-	        prompt=prompt,
-	        seed=seed,
-	        sampler_name=sampler_name,
-	        save_grid=save_grid,
-	        batch_size=batch_size,
-	        n_iter=n_iter,      
-	        steps=ddim_steps,   
-	        cfg_scale=cfg_scale,	
-	        width=width,
-	        height=height,
-	        prompt_matrix=separate_prompts,
-	        use_GFPGAN=use_GFPGAN,
-	        use_RealESRGAN=use_RealESRGAN,
-	        realesrgan_model_name=realesrgan_model_name,
-	        fp=fp,
-	        ddim_eta=ddim_eta,
-	        normalize_prompt_weights=normalize_prompt_weights,
-	        save_individual_images=save_individual_images,
-	        sort_samples=group_by_prompt,
-	        write_info_files=write_info_files,
-	        jpg_sample=save_as_jpg,
-	        variant_amount=variant_amount,
-	        variant_seed=variant_seed,
-	    )
+                outpath=outpath,
+                func_init=init,
+                func_sample=sample,
+                prompt=prompt,
+                seed=seed,
+                sampler_name=sampler_name,
+                save_grid=save_grid,
+                batch_size=batch_size,
+                n_iter=n_iter,      
+                steps=ddim_steps,   
+                cfg_scale=cfg_scale,	
+                width=width,
+                height=height,
+                prompt_matrix=separate_prompts,
+                use_GFPGAN=use_GFPGAN,
+                use_RealESRGAN=use_RealESRGAN,
+                realesrgan_model_name=realesrgan_model_name,
+                fp=fp,
+                ddim_eta=ddim_eta,
+                normalize_prompt_weights=normalize_prompt_weights,
+                save_individual_images=save_individual_images,
+                sort_samples=group_by_prompt,
+                write_info_files=write_info_files,
+                jpg_sample=save_as_jpg,
+                variant_amount=variant_amount,
+                variant_seed=variant_seed,
+        )
 
 	del sampler
-	
+
 	return output_images, seed, info, stats
 
 	#except RuntimeError as e:
@@ -1472,41 +1472,41 @@ def layout():
     button[data-baseweb="tab"] {
       font-size: 25px;
     }
-    
+
     </style>
     """
 
 	st.markdown(css, unsafe_allow_html=True)
-	
+
 	# check if the models exist on their respective folders
 	if os.path.exists(os.path.join(defaults.general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
 		GFPGAN_available = True
 	else:
 		GFPGAN_available = False
-		
+
 	if os.path.exists(os.path.join(defaults.general.RealESRGAN_dir, "experiments","pretrained_models", f"{defaults.general.RealESRGAN_model}.pth")):
 		RealESRGAN_available = True
 	else:
 		RealESRGAN_available = False	
-	
+
 	with st.sidebar:
 		# we should use an expander and group things together when more options are added so the sidebar is not too messy.
 		#with st.expander("Global Settings:"):
 		st.write("Global Settings:")
 		defaults.general.update_preview = st.checkbox("Update Image Preview", value=defaults.general.update_preview,
-							      help="If enabled the image preview will be updated during the generation instead of at the end. You can use the Update Preview \
+                                                              help="If enabled the image preview will be updated during the generation instead of at the end. You can use the Update Preview \
 							      Frequency option bellow to customize how frequent it's updated. By default this is enabled and the frequency is set to 1 step.")
 		defaults.general.update_preview_frequency = st.text_input("Update Image Preview Frequency", value=defaults.general.update_preview_frequency,
-									  help="Frequency in steps at which the the preview image is updated. By default the frequency is set to 1 step.")
-				
-			
-	
+                                                                          help="Frequency in steps at which the the preview image is updated. By default the frequency is set to 1 step.")
+
+
+
 	txt2img_tab, img2img_tab, postprocessing_tab = st.tabs(["Stable Diffusion Text-to-Image Unified", "Stable Diffusion Image-to-Image Unified", "Post-Processing"])
 
 	with txt2img_tab:		
 		with st.form("txt2img-inputs"):
 			st.session_state["generation_mode"] = "txt2img"
-			
+
 			input_col1, generate_col1 = st.columns([10,1])
 			with input_col1:
 				#prompt = st.text_area("Input Text","")
@@ -1527,46 +1527,46 @@ def layout():
 				seed = st.text_input("Seed:", value=defaults.txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
 				#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2img.batch_size, step=1,
-		                       #help="How many images are at once in a batch.\
-                                       #It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                       #Default: 1")
+					#help="How many images are at once in a batch.\
+					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+					#Default: 1")
 
 			with col2:
 				preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
-				
+
 				with preview_tab:
 					#st.write("Image")
 					#Image for testing
 					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw)
 					#new_image = image.resize((175, 240))
 					#preview_image = st.image(image)
-	
+
 					# create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
 					st.session_state["preview_image"] = st.empty()
-					
+
 					st.session_state["loading"] = st.empty()
-					
+
 					st.session_state["progress_bar_text"] = st.empty()
 					st.session_state["progress_bar"] = st.empty()
-					
+
 					message = st.empty()
-					
+
 				with gallery_tab:
 					st.write('Here should be the image gallery, if I could make a grid in streamlit.')
 
 			with col3:
 				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
 				sampler_name = st.selectbox("Sampling method", 
-		                            ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
-		                                            index=0, help="Sampling method to use. Default: k_lms")  
-				
-				
-				
+                                                            ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
+                                            index=0, help="Sampling method to use. Default: k_lms")  
+
+
+
 				#basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
 
 				#with basic_tab:
 					#summit_on_enter = st.radio("Submit on enter?", ("Yes", "No"), horizontal=True,
-		                               #help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
+						#help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
 
 				with st.expander("Advanced"):
 					separate_prompts = st.checkbox("Create Prompt Matrix.", value=False, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
@@ -1574,15 +1574,15 @@ def layout():
 					save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
 					save_grid = st.checkbox("Save grid",value=True, help="Save a grid with all the images generated into a single image.")
 					group_by_prompt = st.checkbox("Group results by prompt", value=True,
-		                                  help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
+                                                                      help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
 					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
 					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
-					
+
 					if GFPGAN_available:
 						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 					else:
 						use_GFPGAN = False
-					
+
 					if RealESRGAN_available:
 						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
 						RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
@@ -1598,26 +1598,26 @@ def layout():
 				#print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
-				
+
 				#try:
 				output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
-				                                           cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-				                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
-				                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-				
+                                                                           cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+                                                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+                                                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+
 				message.success('Done!', icon="✅")
-				
+
 				#except (StopException, KeyError):
 					#print(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
 				#preview_image.image(output_images, width=750)
-	
+
 	with img2img_tab:		
 		with st.form("img2img-inputs"):
 			st.session_state["generation_mode"] = "img2img"
-			
+
 			img2img_input_col, img2img_generate_col = st.columns([10,1])
 			with img2img_input_col:
 				#prompt = st.text_area("Input Text","")
@@ -1635,17 +1635,17 @@ def layout():
 			with col1_img2img_layout:
 				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=250)
 				st.session_state["sampler_name"] = st.selectbox("Sampling method", ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
-							    index=0, help="Sampling method to use. Default: k_lms")  				
-				
+                                                                                index=0, help="Sampling method to use. Default: k_lms")  				
+
 				uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
-								   help="Upload an image which will be used for the image to image generation."
-								   )
-		
+                                                                   help="Upload an image which will be used for the image to image generation."
+                                                                   )
+
 				width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.img2img.width, step=64)
 				height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.img2img.height, step=64)
 				seed = st.text_input("Seed:", value=defaults.img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.img2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
-								
+
 				#			
 				with st.expander("Advanced"):
 					separate_prompts = st.checkbox("Create Prompt Matrix.", value=defaults.img2img.separate_prompts, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
@@ -1655,16 +1655,16 @@ def layout():
 					save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
 					save_grid = st.checkbox("Save grid",value=defaults.img2img.save_grid, help="Save a grid with all the images generated into a single image.")
 					group_by_prompt = st.checkbox("Group results by prompt", value=defaults.img2img.group_by_prompt,
-											      help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
+                                                                      help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
 					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
 					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
-			
+
 					if GFPGAN_available:
 						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.img2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
 						This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 					else:
 						use_GFPGAN = False
-			
+
 					if RealESRGAN_available:
 						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.img2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation.\
 						This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
@@ -1672,52 +1672,52 @@ def layout():
 					else:
 						use_RealESRGAN = False
 						RealESRGAN_model = "RealESRGAN_x4plus"
-			
+
 					variant_amount = st.slider("Variant Amount:", value=defaults.img2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
 					variant_seed = st.text_input("Variant Seed:", value=defaults.img2img.variant_seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
 					cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.img2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
 					batch_size = st.slider("Batch size", min_value=1, max_value=100, value=defaults.img2img.batch_size, step=1,
-										       help="How many images are at once in a batch.\
+                                                               help="How many images are at once in a batch.\
 								       It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 								       Default: 1")
-					
+
 					st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=defaults.img2img.denoising_strength, min_value=0.01, max_value=1.0, step=0.01)
-					
-			
+
+
 			with col2_img2img_layout:
 				editor_tab = st.tabs(["Editor"])
-	
+
 				editor_image = st.empty()
 				st.session_state["editor_image"] = editor_image
-			
+
 				if uploaded_images:
 					image = Image.open(uploaded_images)
 					#img_array = np.array(image) # if you want to pass it to OpenCV
 					new_img = image.resize((width, height))
 					st.image(new_img)
-			
-			
+
+
 				with col3_img2img_layout:
 					result_tab = st.tabs(["Result"])
-					
+
 					# create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
 					preview_image = st.empty()
 					st.session_state["preview_image"] = preview_image
-					
+
 					#st.session_state["loading"] = st.empty()
-				
+
 					st.session_state["progress_bar_text"] = st.empty()
 					st.session_state["progress_bar"] = st.empty()	
-					
-				
+
+
 					message = st.empty()
-			
+
 					#if uploaded_images:
 						#image = Image.open(uploaded_images)
 						##img_array = np.array(image) # if you want to pass it to OpenCV
 						#new_img = image.resize((width, height))
 						#st.image(new_img, use_column_width=True)
-							
+
 
 			if generate_button:
 				#print("Loading models")
@@ -1727,30 +1727,30 @@ def layout():
 					image = Image.open(uploaded_images)
 					new_img = image.resize((width, height))
 					#img_array = np.array(image) # if you want to pass it to OpenCV
-					
+
 					#try:
 						#output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, ddim_steps=sampling_steps, sampler_name=sampler_name, n_iter=batch_count)
 					output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, ddim_steps=st.session_state["sampling_steps"],
-					                                           sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
-					                                           cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
-					                                           seed=seed, width=width, height=height, fp=defaults.general.fp, variant_amount=variant_amount, 
-					                                           ddim_eta=0.0, write_info_files=write_info_files, RealESRGAN_model=RealESRGAN_model,
-					                                           separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
-					                                           save_individual_images=save_individual_images, save_grid=save_grid, 
-					                                           group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
-					                                           use_RealESRGAN=use_RealESRGAN if not loopback else False, loopback=loopback
-					                                           )
-					
+                                                                                   sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
+                                                                                   cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
+                                                                                   seed=seed, width=width, height=height, fp=defaults.general.fp, variant_amount=variant_amount, 
+                                                                                   ddim_eta=0.0, write_info_files=write_info_files, RealESRGAN_model=RealESRGAN_model,
+                                                                                   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
+                                                                                   save_individual_images=save_individual_images, save_grid=save_grid, 
+                                                                                   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
+                                                                                   use_RealESRGAN=use_RealESRGAN if not loopback else False, loopback=loopback
+                                                                                   )
+
 					#show a message when the generation is complete.
 					message.success('Done!', icon="✅")
-						
+
 					#except:
 						#print(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
 				#preview_image.image(output_images, width=750)
-      
+
 
 if __name__ == '__main__':
 	layout()     
