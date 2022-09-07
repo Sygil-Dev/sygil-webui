@@ -34,7 +34,6 @@ fi
 if ! conda env list | grep ".*${ENV_NAME}.*" >/dev/null 2>&1; then
     echo "Could not find conda env: ${ENV_NAME} ... creating ..."
     conda env create -f $ENV_FILE
-    echo "source activate ${ENV_NAME}" > /root/.bashrc
     ENV_UPDATED=1
 elif [[ ! -z $CONDA_FORCE_UPDATE && $CONDA_FORCE_UPDATE == "true" ]] || (( $ENV_MODIFIED > $ENV_MODIFIED_CACHED )); then
     echo "Updating conda env: ${ENV_NAME} ..."
