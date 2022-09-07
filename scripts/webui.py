@@ -417,7 +417,7 @@ def load_SD_model():
 
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
+        model.cdevice = device
         model.eval()
         model.turbo = opt.optimized_turbo
 
@@ -933,7 +933,7 @@ def process_images(
                 # finally, slerp base_x noise to target_x noise for creating a variant
                 x = slerp(device, max(0.0, min(1.0, cur_variant_amount)), base_x, target_x)
 
-            samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
+            samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name, optimized=opt.optimized)
 
             if opt.optimized:
                 modelFS.to(device)
@@ -1132,8 +1132,33 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     def init():
         pass
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
-        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, optimized):
+        if optimized:
+            assert sampler_name in ['DDIM', 'PLMS']
+            samples_ddim = model.sample(
+                S=ddim_steps,
+                conditioning=conditioning,
+                seed=seed,
+                shape=[batch_size] + list(x[0].shape),
+                verbose=False,
+                unconditional_guidance_scale=cfg_scale,
+                unconditional_conditioning=unconditional_conditioning,
+                eta=ddim_eta,
+                x_T=x,
+                sampler = sampler_name.lower()
+            )
+        else:
+            samples_ddim, _ = sampler.sample(
+                S=ddim_steps,
+                conditioning=conditioning,
+                batch_size=int(x.shape[0]),
+                shape=x[0].shape,
+                verbose=False,
+                unconditional_guidance_scale=cfg_scale,
+                unconditional_conditioning=unconditional_conditioning,
+                eta=ddim_eta,
+                x_T=x
+            )
         return samples_ddim
 
     try:
@@ -1978,7 +2003,7 @@ txt2img_defaults = {
     'prompt': '',
     'ddim_steps': 50,
     'toggles': [1, 2, 3],
-    'sampler_name': 'k_lms',
+    'sampler_name': 'k_lms' if not opt.optimized else 'PLMS',
     'ddim_eta': 0.0,
     'n_iter': 1,
     'batch_size': 1,

@@ -12,10 +12,11 @@ import time
 from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import contextmanager, nullcontext
+from einops import rearrange, repeat
 from ldm.util import instantiate_from_config
 from optimUtils import split_weighted_subprompts, logger
 from transformers import logging
-# from samplers import CompVisDenoiser
+import pandas as pd
 logging.set_verbosity_error()
 
 
@@ -33,6 +34,25 @@ def load_model_from_config(ckpt, verbose=False):
     return sd
 
 
+def load_img(path, h0, w0):
+
+    image = Image.open(path).convert("RGB")
+    w, h = image.size
+
+    print(f"loaded input image of size ({w}, {h}) from {path}")
+    if h0 is not None and w0 is not None:
+        h, w = h0, w0
+
+    w, h = map(lambda x: x - x % 64, (w, h))  # resize to integer multiple of 32
+
+    print(f"New image size ({w}, {h})")
+    image = image.resize((w, h), resample=Image.LANCZOS)
+    image = np.array(image).astype(np.float32) / 255.0
+    image = image[None].transpose(0, 3, 1, 2)
+    image = torch.from_numpy(image)
+    return 2.0 * image - 1.0
+
+
 config = "optimizedSD/v1-inference.yaml"
 ckpt = "models/ldm/stable-diffusion-v1/model.ckpt"
 
@@ -41,7 +61,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--prompt", type=str, nargs="?", default="a painting of a virus monster playing guitar", help="the prompt to render"
 )
-parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default="outputs/txt2img-samples")
+parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default="outputs/img2img-samples")
+parser.add_argument("--init-img", type=str, nargs="?", help="path to the input image")
+
 parser.add_argument(
     "--skip_grid",
     action="store_true",
@@ -60,11 +82,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--fixed_code",
-    action="store_true",
-    help="if enabled, uses the same starting code across samples ",
-)
-parser.add_argument(
     "--ddim_eta",
     type=float,
     default=0.0,
@@ -79,26 +96,20 @@ parser.add_argument(
 parser.add_argument(
     "--H",
     type=int,
-    default=512,
+    default=None,
     help="image height, in pixel space",
 )
 parser.add_argument(
     "--W",
     type=int,
-    default=512,
+    default=None,
     help="image width, in pixel space",
 )
 parser.add_argument(
-    "--C",
-    type=int,
-    default=4,
-    help="latent channels",
-)
-parser.add_argument(
-    "--f",
-    type=int,
-    default=8,
-    help="downsampling factor",
+    "--strength",
+    type=float,
+    default=0.75,
+    help="strength for noising/unnoising. 1.0 corresponds to full destruction of information in init image",
 )
 parser.add_argument(
     "--n_samples",
@@ -119,12 +130,6 @@ parser.add_argument(
     help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))",
 )
 parser.add_argument(
-    "--device",
-    type=str,
-    default="cuda",
-    help="specify GPU (cuda/cuda:0/cuda:1/...)",
-)
-parser.add_argument(
     "--from-file",
     type=str,
     help="if specified, load prompts from this file",
@@ -134,6 +139,12 @@ parser.add_argument(
     type=int,
     default=None,
     help="the seed (for reproducible sampling)",
+)
+parser.add_argument(
+    "--device",
+    type=str,
+    default="cuda",
+    help="CPU or GPU (cuda/cuda:0/cuda:1/...)",
 )
 parser.add_argument(
     "--unet_bs",
@@ -147,11 +158,7 @@ parser.add_argument(
     help="Reduces inference time on the expense of 1GB VRAM",
 )
 parser.add_argument(
-    "--precision", 
-    type=str,
-    help="evaluate at this precision",
-    choices=["full", "autocast"],
-    default="autocast"
+    "--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast"
 )
 parser.add_argument(
     "--format",
@@ -164,8 +171,8 @@ parser.add_argument(
     "--sampler",
     type=str,
     help="sampler",
-    choices=["ddim", "plms"],
-    default="plms",
+    choices=["ddim"],
+    default="ddim",
 )
 opt = parser.parse_args()
 
@@ -179,7 +186,7 @@ if opt.seed == None:
 seed_everything(opt.seed)
 
 # Logging
-logger(vars(opt), log_csv = "logs/txt2img_logs.csv")
+logger(vars(opt), log_csv = "logs/img2img_logs.csv")
 
 sd = load_model_from_config(f"{ckpt}")
 li, lo = [], []
@@ -201,11 +208,14 @@ for key in lo:
 
 config = OmegaConf.load(f"{config}")
 
+assert os.path.isfile(opt.init_img)
+init_image = load_img(opt.init_img, opt.H, opt.W).to(opt.device)
+
 model = instantiate_from_config(config.modelUNet)
 _, _ = model.load_state_dict(sd, strict=False)
 model.eval()
-model.unet_bs = opt.unet_bs
 model.cdevice = opt.device
+model.unet_bs = opt.unet_bs
 model.turbo = opt.turbo
 
 modelCS = instantiate_from_config(config.modelCondStage)
@@ -217,15 +227,11 @@ modelFS = instantiate_from_config(config.modelFirstStage)
 _, _ = modelFS.load_state_dict(sd, strict=False)
 modelFS.eval()
 del sd
-
 if opt.device != "cpu" and opt.precision == "autocast":
     model.half()
     modelCS.half()
-
-start_code = None
-if opt.fixed_code:
-    start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=opt.device)
-
+    modelFS.half()
+    init_image = init_image.half()
 
 batch_size = opt.n_samples
 n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
@@ -240,6 +246,22 @@ else:
         data = f.read().splitlines()
         data = batch_size * list(data)
         data = list(chunk(sorted(data), batch_size))
+
+modelFS.to(opt.device)
+
+init_image = repeat(init_image, "1 ... -> b ...", b=batch_size)
+init_latent = modelFS.get_first_stage_encoding(modelFS.encode_first_stage(init_image))  # move to latent space
+
+if opt.device != "cpu":
+    mem = torch.cuda.memory_allocated() / 1e6
+    modelFS.to("cpu")
+    while torch.cuda.memory_allocated() / 1e6 >= mem:
+        time.sleep(1)
+
+
+assert 0.0 <= opt.strength <= 1.0, "can only work with strength in [0.0, 1.0]"
+t_enc = int(opt.strength * opt.ddim_steps)
+print(f"target t_enc is {t_enc} steps")
 
 
 if opt.precision == "autocast" and opt.device != "cpu":
@@ -279,30 +301,31 @@ with torch.no_grad():
                 else:
                     c = modelCS.get_learned_conditioning(prompts)
 
-                shape = [opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f]
-
                 if opt.device != "cpu":
                     mem = torch.cuda.memory_allocated() / 1e6
                     modelCS.to("cpu")
                     while torch.cuda.memory_allocated() / 1e6 >= mem:
                         time.sleep(1)
 
+                # encode (scaled latent)
+                z_enc = model.stochastic_encode(
+                    init_latent,
+                    torch.tensor([t_enc] * batch_size).to(opt.device),
+                    opt.seed,
+                    opt.ddim_eta,
+                    opt.ddim_steps,
+                )
+                # decode it
                 samples_ddim = model.sample(
-                    S=opt.ddim_steps,
-                    conditioning=c,
-                    seed=opt.seed,
-                    shape=shape,
-                    verbose=False,
+                    t_enc,
+                    c,
+                    z_enc,
                     unconditional_guidance_scale=opt.scale,
                     unconditional_conditioning=uc,
-                    eta=opt.ddim_eta,
-                    x_T=start_code,
-                    sampler = opt.sampler,
+                    sampler = opt.sampler
                 )
 
                 modelFS.to(opt.device)
-
-                print(samples_ddim.shape)
                 print("saving images")
                 for i in range(batch_size):
 
@@ -321,6 +344,7 @@ with torch.no_grad():
                     modelFS.to("cpu")
                     while torch.cuda.memory_allocated() / 1e6 >= mem:
                         time.sleep(1)
+
                 del samples_ddim
                 print("memory_final = ", torch.cuda.memory_allocated() / 1e6)
 

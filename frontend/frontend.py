@@ -72,7 +72,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                   value=txt2img_defaults['ddim_steps'])
                         txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
-                                                                'k_euler', 'k_heun', 'k_lms'],
+                                                                'k_euler', 'k_heun', 'k_lms'] if not opt.optimized else [ "DDIM", "PLMS" ],
                                                        value=txt2img_defaults['sampler_name'])
                         with gr.Tabs():
                             with gr.TabItem('Simple'):
