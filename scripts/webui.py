@@ -1227,11 +1227,11 @@ class Flagging(gr.FlaggingCallback):
 def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
             seed: int, height: int, width: int, resize_mode: int, init_info: any = None, init_info_mask: any = None, fp = None, job_info: JobInfo = None):
-    print([prompt, image_editor_mode, init_info, init_info_mask, mask_mode,
-                                  mask_blur_strength, ddim_steps, sampler_name, toggles,
-                                  realesrgan_model_name, n_iter, cfg_scale,
-                                  denoising_strength, seed, height, width, resize_mode,
-                                  fp])
+    # print([prompt, image_editor_mode, init_info, init_info_mask, mask_mode,
+    #                               mask_blur_strength, ddim_steps, sampler_name, toggles,
+    #                               realesrgan_model_name, n_iter, cfg_scale,
+    #                               denoising_strength, seed, height, width, resize_mode,
+    #                               fp])
     outpath = opt.outdir_img2img or opt.outdir or "outputs/img2img-samples"
     err = False
     seed = seed_to_int(seed)

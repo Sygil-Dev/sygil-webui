@@ -158,10 +158,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                 with gr.Row().style(equal_height=False):
                     with gr.Column():
                         gr.Markdown('#### Img2Img Input')
-                        img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=True,
-                                                        type="pil", tool="select", elem_id="img2img_editor", image_mode="RGBA"
-                                                        )
                         img2img_image_mask = gr.Image(value=sample_img2img, source="upload", interactive=True,
+                                                        type="pil", tool="sketch", elem_id="img2img_editor", image_mode="RGBA"
+                                                        )
+                        img2img_image_editor = gr.Image(value=sample_img2img, source="upload", interactive=False,
                                                       type="pil", tool="sketch", visible=False, image_mode="RGBA",
                                                       elem_id="img2img_mask")
 
@@ -169,10 +169,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                             with gr.TabItem("Editor Options"):
                                 with gr.Row():
                                     img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop", "Uncrop"], label="Image Editor Mode",
-                                                             value="Crop", elem_id='edit_mode_select')
+                                                             value="Mask", elem_id='edit_mode_select', visible=False)
                                     img2img_mask = gr.Radio(choices=["Keep masked area", "Regenerate only masked area"],
                                                 label="Mask Mode", type="index",
-                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=False)
+                                                value=img2img_mask_modes[img2img_defaults['mask_mode']], visible=True)
 
                                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
                                                                label="How much blurry should the mask be? (to avoid hard edges)",
@@ -181,7 +181,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                     img2img_resize = gr.Radio(label="Resize mode",
                                                 choices=["Just resize", "Crop and resize", "Resize and fill"],
                                                 type="index",
-                                                value=img2img_resize_modes[img2img_defaults['resize_mode']])
+                                                value=img2img_resize_modes[img2img_defaults['resize_mode']], visible=False)
 
                                 img2img_painterro_btn = gr.Button("Advanced Editor")
                             with gr.TabItem("Hints"):
