@@ -6,14 +6,14 @@
 ### Have an **issue**?
 
 * If the issue involves _a bug_ in **textual-inversion** create the issue
-  on **_[neonscret/stable-diffusion-webui](https://github.com/neonscret/stable-diffusion-webui)_**
+  on **_[neonsecret/stable-diffusion-webui](https://github.com/neonsecret/stable-diffusion-webui)_**
 * If you want to know how to **activate** or **use** textual-inversion
-  see **_[neonscret/sd-enable-textual-inversion](https://github.com/neonscret/sd-enable-textual-inversion)_**. Activation not
-  working? create the issue on **_[neonscret/stable-diffusion-webui](https://github.com/neonscret/stable-diffusion-webui)_**
+  see **_[neonsecret/sd-enable-textual-inversion](https://github.com/neonsecret/sd-enable-textual-inversion)_**. Activation not
+  working? create the issue on **_[neonsecret/stable-diffusion-webui](https://github.com/neonsecret/stable-diffusion-webui)_**
 
 ## More documentation about features, troubleshooting, common issues very soon
 
-### Want to help with documentation? Documented something? Use [Discussions](https://github.com/neonscret/stable-diffusion-webui/discussions)
+### Want to help with documentation? Documented something? Use [Discussions](https://github.com/neonsecret/stable-diffusion-webui/discussions)
 
 ## **Important**
 🔥 NEW! [My fork implemented!](https://github.com/neonsecret/stable-diffusion) This means that now you can generate even bigger-res images, and with low vram mode, up to 1216x1216 on 8 gb vram.
@@ -28,11 +28,11 @@ as you get the new environment.yaml file 🔥
 
 [comment]: <> (--------------)
 
-[comment]: <> (### Questions about **_[Upscalers]&#40;https://github.com/neonscret/stable-diffusion-webui/wiki/Upscalers&#41;_**?)
+[comment]: <> (### Questions about **_[Upscalers]&#40;https://github.com/neonsecret/stable-diffusion-webui/wiki/Upscalers&#41;_**?)
 
-[comment]: <> (### Questions about **_[Optimized mode]&#40;https://github.com/neonscret/stable-diffusion-webui/wiki/Optimized-mode&#41;_**?)
+[comment]: <> (### Questions about **_[Optimized mode]&#40;https://github.com/neonsecret/stable-diffusion-webui/wiki/Optimized-mode&#41;_**?)
 
-[comment]: <> (### Questions about **_[Command line options]&#40;https://github.com/neonscret/stable-diffusion-webui/wiki/Command-line-options&#41;_**?)
+[comment]: <> (### Questions about **_[Command line options]&#40;https://github.com/neonsecret/stable-diffusion-webui/wiki/Command-line-options&#41;_**?)
 
 [comment]: <> (--------------)
 
@@ -41,13 +41,13 @@ Features:
 
 * Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
-* GFPGAN Face Correction 🔥: [Download the model](https://github.com/neonscret/stable-diffusion-webui#gfpgan)Automatically
+* GFPGAN Face Correction 🔥: [Download the model](https://github.com/neonsecret/stable-diffusion-webui#gfpgan)Automatically
   correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second
-* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/neonscret/stable-diffusion-webui#realesrgan) Boosts the
+* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/neonsecret/stable-diffusion-webui#realesrgan) Boosts the
   resolution of images with a built-in RealESRGAN option
 * :computer: esrgan/gfpgan on cpu support :computer:
 * Textual inversion 🔥: [info](https://textual-inversion.github.io/) - requires enabling,
-  see [here](https://github.com/neonscret/sd-enable-textual-inversion), script works as usual without it enabled
+  see [here](https://github.com/neonsecret/sd-enable-textual-inversion), script works as usual without it enabled
 * Advanced img2img editor :art: 🔥 :art:
 * 🔥🔥 Mask and crop 🔥🔥
 * Mask painting (NEW) 🖌️: Powerful tool for re-generating only specific parts of an image you want to change
@@ -71,10 +71,10 @@ A browser interface based on Gradio library for Stable Diffusion.
 
 Original script with Gradio UI was written by a kind anonymous user. This is a modification.
 
-![](https://github.com/neonscret/stable-diffusion-webui/blob/master/images/txt2img.jpg)
-![](https://github.com/neonscret/stable-diffusion-webui/blob/master/images/img2img.jpg)
-![](https://github.com/neonscret/stable-diffusion-webui/blob/master/images/gfpgan.jpg)
-![](https://github.com/neonscret/stable-diffusion-webui/blob/master/images/esrgan.jpg)
+![](https://github.com/neonsecret/stable-diffusion-webui/blob/master/images/txt2img.jpg)
+![](https://github.com/neonsecret/stable-diffusion-webui/blob/master/images/img2img.jpg)
+![](https://github.com/neonsecret/stable-diffusion-webui/blob/master/images/gfpgan.jpg)
+![](https://github.com/neonsecret/stable-diffusion-webui/blob/master/images/esrgan.jpg)
 
 ### GFPGAN
 
@@ -147,7 +147,7 @@ Another example, this time with 5 prompts and 16 variations:
 If you use this feature, batch count will be ignored, because the number of pictures to produce depends on your prompts,
 but batch size will still work (generating multiple pictures at the same time for a small speed boost).
 
-### Flagging (Broken after UI changed to gradio.Blocks() see [Flag button missing from new UI](https://github.com/neonscret/stable-diffusion-webui/issues/50))
+### Flagging (Broken after UI changed to gradio.Blocks() see [Flag button missing from new UI](https://github.com/neonsecret/stable-diffusion-webui/issues/50))
 
 Click the Flag button under the output section, and generated images will be saved to `log/images` directory, and
 generation parameters will be appended to a csv file `log/log.csv` in the `/sd` directory.
