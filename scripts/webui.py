@@ -778,10 +778,9 @@ def replace_wildcard(chunk):
         file_dir = os.path.dirname(os.path.realpath("__file__"))
         replacement_file = os.path.join(file_dir, "scripts/wildcards/" + chunk + ".txt")
         if os.path.exists(replacement_file):
-            lines = open(replacement_file, encoding="utf8").read().splitlines()
-            my_line = random.choice(lines)
-            return(my_line)
-    return(chunk)
+            with open(replacement_file, encoding="utf8") as f:
+                return random.choice(f.read().splitlines())
+    return chunk
 
 def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
