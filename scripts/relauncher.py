@@ -31,7 +31,7 @@ additional_arguments = ""
 
 args_string = ' '.join(sys.argv[1:])
 
-common_arguments = args_string
+common_arguments = ""
 
 if extra_models_cpu == True:
     common_arguments += "--extra-models-cpu "
@@ -51,12 +51,12 @@ n = 0
 while True:
     if n == 0:
         print('Relauncher: Launching...')
-        os.system(f"python scripts/webui.py {common_arguments} {inbrowser_argument} {additional_arguments}")
+        os.system(f"python scripts/webui.py {common_arguments} {inbrowser_argument} {additional_arguments} {args_string}")
         
     else:
         print(f'\tRelaunch count: {n}')
         print('Relauncher: Launching...')
-        os.system(f"python scripts/webui.py {common_arguments} {additional_arguments}")
+        os.system(f"python scripts/webui.py {common_arguments} {additional_arguments} {args_string}")
     
     n += 1
     if n > 100:
