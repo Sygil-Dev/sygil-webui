@@ -299,12 +299,19 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                            )
 
                 img2img_func = img2img
+                img2img_func_no_mask = img2img
                 img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_image_mask, img2img_mask,
                                   img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
                                   img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                                   img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                                   img2img_embeddings]
+                img2img_inputs_no_mask = [img2img_prompt, img2img_image_editor_mode, img2img_image_editor, img2img_image_editor, img2img_mask,
+                                  img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                                  img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
+                                  img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
+                                  img2img_embeddings]
                 img2img_outputs = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
+                img2img_outputs_no_mask = [output_img2img_gallery, output_img2img_seed, output_img2img_params, output_img2img_stats]
 
                 # If a JobManager was passed in then wrap the Generate functions
                 if img2img_job_ui:
@@ -313,6 +320,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                         inputs=img2img_inputs,
                         outputs=img2img_outputs,
                     )
+                    img2img_func_no_mask, img2img_inputs_no_mask, img2img_outputs_no_mask = img2img_job_ui.wrap_func(
+                        func=img2img_func_no_mask,
+                        inputs=img2img_inputs_no_mask,
+                        outputs=img2img_outputs_no_mask,
+                    )
 
                 img2img_btn_mask.click(
                     img2img_func,
@@ -320,9 +332,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     img2img_outputs
                 )
                 def img2img_submit_params():
-                    return (img2img_func,
-                    img2img_inputs,
-                    img2img_outputs)
+                    return (img2img_func_no_mask,
+                    img2img_inputs_no_mask,
+                    img2img_outputs_no_mask)
 
                 img2img_btn_editor.click(*img2img_submit_params())
 
