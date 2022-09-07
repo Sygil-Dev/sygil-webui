@@ -54,6 +54,7 @@ condaenv.*.requirements.txt
 /custom-conda-path.txt
 /src/*
 /outputs/*
+/models/*
 /log/**/*.png
 /log/log.csv
 /flagged/*
