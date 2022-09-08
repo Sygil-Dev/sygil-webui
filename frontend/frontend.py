@@ -98,7 +98,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                                             choices=['RealESRGAN_x4plus',
                                                                                      'RealESRGAN_x4plus_anime_6B'],
                                                                             value='RealESRGAN_x4plus',
-                                                                            visible=False)  # RealESRGAN is not None # invisible until removed)  # TODO: Feels like I shouldnt slot it in here.
+                                                                       visible=False)  # RealESRGAN is not None # invisible until removed)  # TODO: Feels like I shouldnt slot it in here.
+
                                 txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA",
                                                              value=txt2img_defaults['ddim_eta'], visible=False)
                                 txt2img_variant_amount = gr.Slider(minimum=0.0, maximum=1.0, label='Variation Amount',

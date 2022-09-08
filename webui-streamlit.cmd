@@ -1,5 +1,4 @@
 @echo off
-
 set conda_env_name=ldm
 
 :: Put the path to conda directory after "=" sign if it's installed at non-standard path:
@@ -41,14 +40,14 @@ call git pull
 :foundPath
 call "%CONDA_PATH%\Scripts\activate.bat"
 call conda env create -n "%conda_env_name%" -f environment.yaml
-call conda env update -n "%conda_env_name%" --file environment.yaml --prune
+call conda env update --name "%conda_env_name%" -f environment.yaml
 call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
-python "%CD%"\scripts\relauncher.py
+::python "%CD%"\scripts\relauncher.py
 
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python scripts/relauncher.py
+  python -m streamlit run scripts\webui_streamlit.py
 ) ELSE (
   ECHO Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
 )
