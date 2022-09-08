@@ -64,17 +64,19 @@ Original script with Gradio UI was written by a kind anonymous user. This is a m
 ![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/esrgan.jpg)
 
 ### GFPGAN
-
-If you want to use GFPGAN to improve generated faces, you need to install it separately.
-Download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
+1. If you want to use GFPGAN to improve generated faces, you need to install it separately.
+1. Download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
 into the `/stable-diffusion-webui/src/gfpgan/experiments/pretrained_models` directory. 
 
 ### RealESRGAN
-Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
-Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
+1. Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
+1. Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
 
 ### LDSR
-* Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [ model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/
+1. Git clone [devilismyfriend/latent-diffusion](https://github.com/devilismyfriend/latent-diffusion) into your `/stable-diffusion-webui/src/` folder.
+1. Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). 
+1. Rename last.ckpt to model.ckpt and place both under `stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/`.
+1. Refer to [here](https://github.com/sd-webui/stable-diffusion-webui/issues/488) for any issue.
 
 ### Web UI
 
