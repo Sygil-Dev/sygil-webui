@@ -17,7 +17,7 @@ import mimetypes
 import numpy as np
 import pynvml
 import threading, asyncio
-import time
+import time, inspect
 import torch
 from torch import autocast
 from torchvision import transforms
@@ -37,6 +37,13 @@ from ldm.util import instantiate_from_config
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
      extract_into_tensor
 from retry import retry
+
+# these are for testing txt2vid, should be removed and we should use things from our own code. 
+from diffusers import StableDiffusionPipeline
+from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, PNDMScheduler
+
+#will be used for saving and reading a video made by the txt2vid function
+import imageio 
 
 # we use python-slugify to make the filenames safe for windows and linux, its better than doing it manually
 # install it with 'pip install python-slugify'
@@ -87,7 +94,8 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(defaults.general.gpu)
 
 @retry(tries=5)
-def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus"):
+def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
+                CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
 	"""Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
 
 	print ("Loading models.")
@@ -139,13 +147,36 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
 		if "RealESRGAN" in st.session_state:
 			del st.session_state["RealESRGAN"]        
 
+	
 
 	if "model" in st.session_state:
-		print("Model already loaded")
+		if "model" in st.session_state and st.session_state["custom_model"] == custom_model:
+			print("Model already loaded")
+		else:
+			try:
+				del st.session_state["model"]
+			except KeyError:
+				pass
+			
+			config = OmegaConf.load(defaults.general.default_model_config)
+			
+			if custom_model == defaults.general.default_model:
+				model = load_model_from_config(config, defaults.general.default_model_path)			
+			else:
+				model = load_model_from_config(config, os.path.join("models","custom", f"{custom_model}.ckpt")) 
+				
+			st.session_state["custom_model"] = custom_model
+			st.session_state["device"] = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
+			st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(st.session_state["device"] ) 			
 	else:
-		config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
-		model = load_model_from_config(config, defaults.general.ckpt)
+		config = OmegaConf.load(defaults.general.default_model_config)
 
+		if custom_model == defaults.general.default_model:
+			model = load_model_from_config(config, defaults.general.default_model_path)			
+		else:
+			model = load_model_from_config(config, os.path.join("models","custom", f"{custom_model}.ckpt")) 
+		
+		st.session_state["custom_model"] = custom_model		
 		st.session_state["device"] = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
 		st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(st.session_state["device"] )    
 
@@ -489,6 +520,79 @@ def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
 	v2 = torch.from_numpy(v2).to(device)
 
 	return v2
+
+
+# -----------------------------------------------------------------------------
+
+@torch.no_grad()
+def diffuse(
+        pipe,
+        cond_embeddings, # text conditioning, should be (1, 77, 768)
+        cond_latents,    # image conditioning, should be (1, 4, 64, 64)
+        num_inference_steps,
+        guidance_scale,
+        eta,
+        ):
+	
+	torch_device = cond_latents.get_device()
+
+	# classifier guidance: add the unconditional embedding
+	max_length = cond_embeddings.shape[1] # 77
+	uncond_input = pipe.tokenizer([""], padding="max_length", max_length=max_length, return_tensors="pt")
+	uncond_embeddings = pipe.text_encoder(uncond_input.input_ids.to(torch_device))[0]
+	text_embeddings = torch.cat([uncond_embeddings, cond_embeddings])
+
+	# if we use LMSDiscreteScheduler, let's make sure latents are mulitplied by sigmas
+	if isinstance(pipe.scheduler, LMSDiscreteScheduler):
+		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
+
+	# init the scheduler
+	accepts_offset = "offset" in set(inspect.signature(pipe.scheduler.set_timesteps).parameters.keys())
+	extra_set_kwargs = {}
+	if accepts_offset:
+		extra_set_kwargs["offset"] = 1
+	pipe.scheduler.set_timesteps(num_inference_steps, **extra_set_kwargs)
+	# prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
+	# eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
+	# eta corresponds to η in DDIM paper: https://arxiv.org/abs/2010.02502
+	# and should be between [0, 1]
+	accepts_eta = "eta" in set(inspect.signature(pipe.scheduler.step).parameters.keys())
+	extra_step_kwargs = {}
+	if accepts_eta:
+		extra_step_kwargs["eta"] = eta
+
+	# diffuse!
+	for i, t in enumerate(pipe.scheduler.timesteps):
+
+		# expand the latents for classifier free guidance
+		latent_model_input = torch.cat([cond_latents] * 2)
+		if isinstance(pipe.scheduler, LMSDiscreteScheduler):
+			sigma = pipe.scheduler.sigmas[i]
+			latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+		# predict the noise residual
+		noise_pred = pipe.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+		# cfg
+		noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+		noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+		# compute the previous noisy sample x_t -> x_t-1
+		if isinstance(pipe.scheduler, LMSDiscreteScheduler):
+			cond_latents = pipe.scheduler.step(noise_pred, i, cond_latents, **extra_step_kwargs)["prev_sample"]
+		else:
+			cond_latents = pipe.scheduler.step(noise_pred, t, cond_latents, **extra_step_kwargs)["prev_sample"]
+
+	# scale and decode the image latents with vae
+	cond_latents = 1 / 0.18215 * cond_latents
+	image = pipe.vae.decode(cond_latents)
+
+	# generate output numpy image as uint8
+	image = (image / 2 + 0.5).clamp(0, 1)
+	image = image.cpu().permute(0, 2, 3, 1).numpy()
+	image = (image[0] * 255).astype(np.uint8)
+
+	return image
 
 
 def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='RealESRGAN_x4plus'):
@@ -1355,7 +1459,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 
 	return output_images, seed, info, stats
 
-#@retry(RuntimeError, tries=3)
+@retry((RuntimeError, KeyError) , tries=3)
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_name: str,
             n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
@@ -1449,6 +1553,127 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 		#return [], seed, 'err', stats
 
 
+#
+def txt2vid(
+                # --------------------------------------
+                # args you probably want to change
+                prompt:str = "blueberry spaghetti", # prompt to dream about
+                gpu:int = defaults.general.gpu, # id of the gpu to run on
+                #name:str = 'test', # name of this project, for the output directory
+                #rootdir:str = defaults.general.outdir,
+                num_steps:int = 200, # number of steps between each pair of sampled points
+                max_frames:int = 10000, # number of frames to write and then exit the script
+                num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
+                guidance_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
+                seed = None,
+                # --------------------------------------
+                # args you probably don't want to change
+                quality:int = 100, # for jpeg compression of the output images
+                eta:float = 0.0,
+                width:int = 256,
+                height:int = 256,
+                weights_path = "CompVis/stable-diffusion-v1-4",
+                # --------------------------------------
+                ):
+	"""prompt:str = "blueberry spaghetti", # prompt to dream about. \n
+	gpu:int = defaults.general.gpu, # id of the gpu to run on. \n
+	num_steps:int = 200, # number of steps between each pair of sampled points \n
+	max_frames:int = 10000, # number of frames to write and then exit the script \n
+	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images \n
+	guidance_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good \n
+	seed:int = None, # seed to use for generation, if left empty or its Nonea random one will be generated \n
+	
+	quality:int = 100, # for jpeg compression of the output images \n
+	eta:float = 0.0, \n
+	width:int = 256, \n
+	height:int = 256, \n
+	weights_path = "CompVis/stable-diffusion-v1-4", \n
+	"""
+	
+	if not seed or seed == '':
+		seed = random.randint(1, sys.maxsize)
+	else:
+		seed = seed_to_int(seed)
+	
+	#assert torch.cuda.is_available()
+	assert height % 8 == 0 and width % 8 == 0
+	torch.manual_seed(seed)
+	torch_device = f"cuda:{gpu}"
+	
+	# init the output dir
+	sanitized_prompt = slugify(prompt)
+	
+	full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", sanitized_prompt)
+	
+	if len(full_path) > 220:
+		sanitized_prompt = sanitized_prompt[:220-len(full_path)]
+		full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", sanitized_prompt)
+		
+	os.makedirs(full_path, exist_ok=True)
+
+	# init all of the models and move them to a given GPU
+	lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
+	pipe = StableDiffusionPipeline.from_pretrained(
+            weights_path,
+        use_local_file=True,
+        scheduler=lms,
+        use_auth_token=True,
+        torch_dtype=torch.float16,
+        revision="fp16"
+    )
+
+	pipe.unet.to(torch_device)
+	pipe.vae.to(torch_device)
+	pipe.text_encoder.to(torch_device)
+
+	# get the conditional text embeddings based on the prompt
+	text_input = pipe.tokenizer(prompt, padding="max_length", max_length=pipe.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+	cond_embeddings = pipe.text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
+
+	# sample a source
+	init1 = torch.randn((1, pipe.unet.in_channels, height // 8, width // 8), device=torch_device)
+	
+	# iterate the loop
+	frames = []
+	frame_index = 0
+	
+	try:
+		while frame_index < max_frames:
+	
+			# sample the destination
+			init2 = torch.randn((1, pipe.unet.in_channels, height // 8, width // 8), device=torch_device)
+			
+			for i, t in enumerate(np.linspace(0, 1, num_steps)):
+				init = slerp(gpu, float(t), init1, init2)
+				
+				print("dreaming... ", frame_index)
+				with autocast("cuda"):
+					image = diffuse(pipe, cond_embeddings, init, num_inference_steps, guidance_scale, eta)
+					
+				im = Image.fromarray(image)
+				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
+				im.save(outpath, quality=quality)
+				
+				# send the image to the UI to update it
+				st.session_state["preview_image"].image(im) 	
+				
+				#append the frames to the frames list so we can use them later.
+				frames.append(im)
+				
+				#increase frame_index counter.
+				frame_index += 1
+	
+			init1 = init2
+			
+	except StopException:
+		pass
+		
+	# write video to memory
+	#output = io.BytesIO()
+	#writer = imageio.get_writer(output, im, plugin="pillow", extension=".png", fps=30)
+	for frame in frames:
+		writer.append_data(frame)
+	writer.close()	
 
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
@@ -1486,6 +1711,23 @@ def layout():
 		RealESRGAN_available = True
 	else:
 		RealESRGAN_available = False	
+		
+	# Allow for custom models to be used instead of the default one,
+	# an example would be Waifu-Diffusion or any other fine tune of stable diffusion
+	custom_models:sorted = []
+	for root, dirs, files in os.walk(os.path.join("models", "custom")):
+		for file in files:
+			if os.path.splitext(file)[1] == '.ckpt':
+				fullpath = os.path.join(root, file)
+				#print(fullpath)
+				custom_models.append(os.path.splitext(file)[0])
+				#print (os.path.splitext(file)[0])
+	
+	if len(custom_models) > 0:
+		CustomModel_available = True
+		custom_models.append("Stable Diffusion v1.4")
+	else:
+		CustomModel_available = False
 
 	with st.sidebar:
 		# we should use an expander and group things together when more options are added so the sidebar is not too messy.
@@ -1499,13 +1741,14 @@ def layout():
 
 
 
-	txt2img_tab, img2img_tab, txt2video, postprocessing_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", "Text-to-Video","Post-Processing"])
+	txt2img_tab, img2img_tab, txt2vid_tab, postprocessing_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", "Text-to-Video","Post-Processing"])
 
 	with txt2img_tab:		
 		with st.form("txt2img-inputs"):
 			st.session_state["generation_mode"] = "txt2img"
 
 			input_col1, generate_col1 = st.columns([10,1])
+			
 			with input_col1:
 				#prompt = st.text_area("Input Text","")
 				prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
@@ -1553,6 +1796,18 @@ def layout():
 					st.write('Here should be the image gallery, if I could make a grid in streamlit.')
 
 			with col3:
+				# If we have custom models available on the "models/custom" 
+				#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+				if CustomModel_available:
+					custom_model = st.selectbox("Custom Model:", custom_models,
+						    index=custom_models.index(defaults.general.default_model),
+					            help="Select the model you want to use. This option is only available if you have custom models \
+					            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+					            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+					            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+				else:
+					custom_model = "Stable Diffusion v1.4"
+				
 				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
 				
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
@@ -1596,17 +1851,25 @@ def layout():
 			if generate_button:
 				#print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
-				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
+				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, CustomModel_available, custom_model)                
 
 				try:
 					output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
-										   cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-										   save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
-										   variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-	
+					                                           cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+					                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+					                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+				
 					message.success('Done!', icon="✅")
 
-				except (StopException, KeyError):
+				except KeyError:
+					output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
+					                                           cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+					                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+					                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+				
+					message.success('Done!', icon="✅")
+					
+				except (StopException):
 					print(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
@@ -1632,6 +1895,18 @@ def layout():
 			col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([1,2,2], gap="small")    
 
 			with col1_img2img_layout:
+				# If we have custom models available on the "models/custom" 
+				#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+				if CustomModel_available:
+					custom_model = st.selectbox("Custom Model:", custom_models,
+						    index=custom_models.index(defaults.general.default_model),
+					            help="Select the model you want to use. This option is only available if you have custom models \
+					            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+					            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+					            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+				else:
+					custom_model = "Stable Diffusion v1.4"
+					
 				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=250)
 				st.session_state["sampler_name"] = st.selectbox("Sampling method", ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
                                                                                 index=0, help="Sampling method to use. Default: k_lms")  				
@@ -1721,7 +1996,7 @@ def layout():
 			if generate_button:
 				#print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
+				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, CustomModel_available, custom_model)                
 				if uploaded_images:
 					image = Image.open(uploaded_images).convert('RGB')
 					new_img = image.resize((width, height))
@@ -1748,6 +2023,141 @@ def layout():
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
 				#preview_image.image(output_images, width=750)
+				
+	with txt2vid_tab:
+		with st.form("txt2vid-inputs"):
+			st.session_state["generation_mode"] = "txt2vid"
+	
+			input_col1, generate_col1 = st.columns([10,1])
+			with input_col1:
+				#prompt = st.text_area("Input Text","")
+				prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+	
+			# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
+			generate_col1.write("")
+			generate_col1.write("")
+			generate_button = generate_col1.form_submit_button("Generate")
+	
+			# creating the page layout using columns
+			col1, col2, col3 = st.columns([1,2,1], gap="large")    
+	
+			with col1:
+				width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.txt2img.width, step=64)
+				height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.txt2img.height, step=64)
+				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+				seed = st.text_input("Seed:", value=defaults.txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
+				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+				#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2img.batch_size, step=1,
+					#help="How many images are at once in a batch.\
+					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+					#Default: 1")
+					
+				max_frames = st.text_input("Max Frames:", value=defaults.txt2vid.max_frames, help="Specify the max number of frames you want to generate.")
+	
+			with col2:
+				preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
+	
+				with preview_tab:
+					#st.write("Image")
+					#Image for testing
+					#image = Image.open(requests.get("https://icon-library.com/images/image-placeholder-icon/image-placeholder-icon-13.jpg", stream=True).raw).convert('RGB')
+					#new_image = image.resize((175, 240))
+					#preview_image = st.image(image)
+	
+					# create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
+					st.session_state["preview_image"] = st.empty()
+	
+					st.session_state["loading"] = st.empty()
+	
+					st.session_state["progress_bar_text"] = st.empty()
+					st.session_state["progress_bar"] = st.empty()
+	
+					message = st.empty()
+	
+				with gallery_tab:
+					st.write('Here should be the image gallery, if I could make a grid in streamlit.')
+	
+			with col3:
+				# If we have custom models available on the "models/custom" 
+				#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+				if CustomModel_available:
+					custom_model = st.selectbox("Custom Model:", custom_models,
+						    index=custom_models.index(defaults.general.default_model),
+					            help="Select the model you want to use. This option is only available if you have custom models \
+					            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+					            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+					            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+				else:
+					custom_model = "Stable Diffusion v1.4"
+					
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
+	
+				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+				sampler_name = st.selectbox("Sampling method", sampler_name_list,
+		                                            index=sampler_name_list.index(defaults.txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
+	
+	
+	
+				#basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
+	
+				#with basic_tab:
+					#summit_on_enter = st.radio("Submit on enter?", ("Yes", "No"), horizontal=True,
+						#help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
+	
+				with st.expander("Advanced"):
+					separate_prompts = st.checkbox("Create Prompt Matrix.", value=False, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+					normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=True, help="Ensure the sum of all weights add up to 1.0")
+					save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
+					save_grid = st.checkbox("Save grid",value=True, help="Save a grid with all the images generated into a single image.")
+					group_by_prompt = st.checkbox("Group results by prompt", value=True,
+			                                              help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
+					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
+					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
+	
+					if GFPGAN_available:
+						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+					else:
+						use_GFPGAN = False
+	
+					if RealESRGAN_available:
+						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+						RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+					else:
+						use_RealESRGAN = False
+						RealESRGAN_model = "RealESRGAN_x4plus"
+	
+					variant_amount = st.slider("Variant Amount:", value=defaults.txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+					variant_seed = st.text_input("Variant Seed:", value=defaults.txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+	
+	
+			if generate_button:
+				#print("Loading models")
+				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
+				load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)                
+	
+				try:
+					#output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
+			                                                           #cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+			                                                           #save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+			                                                           #variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+					
+					
+					txt2vid(prompt=prompt, gpu=defaults.general.gpu,
+					        num_steps=st.session_state.sampling_steps, max_frames=int(max_frames), num_inference_steps=50, guidance_scale=5.0,
+					        seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
+					        height=height, weights_path="CompVis/stable-diffusion-v1-4")
+					
+					message.success('Done!', icon="✅")
+					#message.warning("The Text to Video tab hasn't been implemented yet!")
+	
+				except (StopException, KeyError):
+					print(f"Received Streamlit StopException")
+	
+				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
+				# use the current col2 first tab to show the preview_img and update it as its generated.
+				#preview_image.image(output_images)		
+
+
 
 
 if __name__ == '__main__':

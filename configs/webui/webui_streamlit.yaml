@@ -3,7 +3,9 @@
 general:
     gpu: 0
     outdir: outputs
-    ckpt: "models/ldm/stable-diffusion-v1/model.ckpt"
+    default_model: "Stable Diffusion v1.4" 
+    default_model_config: "configs/stable-diffusion/v1-inference.yaml"
+    default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
     fp:
         name: 'embeddings/alex/embeddings_gs-11000.pt'
     GFPGAN_dir: "./src/gfpgan"
@@ -32,7 +34,7 @@ txt2img:
     prompt:
     height: 512
     width: 512
-    cfg_scale: 5.0
+    cfg_scale: 7.5
     seed: ""
     batch_count: 1
     batch_size: 1
@@ -49,6 +51,29 @@ txt2img:
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
+    
+txt2vid:
+    prompt:
+    height: 512
+    width: 512
+    cfg_scale: 7.5
+    seed: ""
+    batch_count: 1
+    batch_size: 1
+    sampling_steps: 50
+    default_sampler: "k_lms"
+    separate_prompts: False
+    normalize_prompt_weights: True
+    save_individual_images: True
+    save_grid: False
+    group_by_prompt: True
+    save_as_jpg: False
+    use_GFPGAN: False
+    use_RealESRGAN: True
+    RealESRGAN_model: "RealESRGAN_x4plus"
+    variant_amount: 0.0
+    variant_seed: ""
+    max_frames: 1000
     
 img2img:
   prompt:
@@ -77,7 +102,7 @@ img2img:
   # Leave blank for random seed:
   seed: ""
   ddim_eta: 0.0
-  cfg_scale: 5.0
+  cfg_scale: 7.5
   batch_count: 1
   batch_size: 1
   height: 512
@@ -100,4 +125,3 @@ img2img:
 
 gfpgan:
   strength: 100
-  
