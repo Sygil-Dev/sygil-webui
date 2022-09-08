@@ -1,19 +1,20 @@
-sci-fi
-fantasy
-dark fantasy
-high fantasy
-art deco
-steampunk
-cyberpunk
-dieselpunk
-film noir
-mid-century
 ancient
+anime
+art deco
+cyberpunk
+dark fantasy
+dieselpunk
+fantasy
+film noir
+gothic
+high fantasy
 historic
-victorian
 medieval
+mid-century
 renaissance
+sci-fi
+steampunk
+synthwave
+victorian
 vintage
 weird west
-synthwave
-gothic
