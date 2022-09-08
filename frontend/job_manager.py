@@ -30,6 +30,7 @@ class JobInfo:
     session_key: str
     job_token: Optional[int] = None
     images: List[Image] = field(default_factory=list)
+    current_preview: Optional[Image] = None
     should_stop: Event = field(default_factory=Event)
     job_status: str = field(default_factory=str)
     finished: bool = False
@@ -273,7 +274,11 @@ class JobManager:
         if job_info.finished:
             session_info.finished_jobs.pop(func_key)
 
-        return job_info.images
+        in_progress_images = job_info.images
+        if job_info.current_preview and not job_info.finished:
+            in_progress_images = job_info.images.copy()
+            in_progress_images.append(job_info.current_preview)
+        return in_progress_images
 
     def _wrap_func(
             self, func: Callable, inputs: List[Component], outputs: List[Component],
