@@ -58,3 +58,5 @@ condaenv.*.requirements.txt
 /log/log.csv
 /flagged/*
 /gfpgan/*
+.vscode
+src/
