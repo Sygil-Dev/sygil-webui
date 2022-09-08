@@ -1501,7 +1501,7 @@ def layout():
 
 
 
-	txt2img_tab, img2img_tab, postprocessing_tab = st.tabs(["Stable Diffusion Text-to-Image Unified", "Stable Diffusion Image-to-Image Unified", "Post-Processing"])
+	txt2img_tab, img2img_tab, txt2video, postprocessing_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", "Text-to-Video","Post-Processing"])
 
 	with txt2img_tab:		
 		with st.form("txt2img-inputs"):
@@ -1600,20 +1600,20 @@ def layout():
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
 				load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
 
-				#try:
-				output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
-                                                                           cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
-                                                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+				try:
+					output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
+										   cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+										   save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+										   variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+	
+					message.success('Done!', icon="✅")
 
-				message.success('Done!', icon="✅")
-
-				#except (StopException, KeyError):
-					#print(f"Received Streamlit StopException")
+				except (StopException, KeyError):
+					print(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
-				#preview_image.image(output_images, width=750)
+				#preview_image.image(output_images)
 
 	with img2img_tab:		
 		with st.form("img2img-inputs"):
@@ -1729,24 +1729,23 @@ def layout():
 					new_img = image.resize((width, height))
 					#img_array = np.array(image) # if you want to pass it to OpenCV
 
-					#try:
-						#output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, ddim_steps=sampling_steps, sampler_name=sampler_name, n_iter=batch_count)
-					output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, ddim_steps=st.session_state["sampling_steps"],
-                                                                                   sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
-                                                                                   cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
-                                                                                   seed=seed, width=width, height=height, fp=defaults.general.fp, variant_amount=variant_amount, 
-                                                                                   ddim_eta=0.0, write_info_files=write_info_files, RealESRGAN_model=RealESRGAN_model,
-                                                                                   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
-                                                                                   save_individual_images=save_individual_images, save_grid=save_grid, 
-                                                                                   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
-                                                                                   use_RealESRGAN=use_RealESRGAN if not loopback else False, loopback=loopback
-                                                                                   )
+					try:
+						output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, ddim_steps=st.session_state["sampling_steps"],
+											   sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
+											   cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
+											   seed=seed, width=width, height=height, fp=defaults.general.fp, variant_amount=variant_amount, 
+											   ddim_eta=0.0, write_info_files=write_info_files, RealESRGAN_model=RealESRGAN_model,
+											   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
+											   save_individual_images=save_individual_images, save_grid=save_grid, 
+											   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
+											   use_RealESRGAN=use_RealESRGAN if not loopback else False, loopback=loopback
+											   )
+	
+						#show a message when the generation is complete.
+						message.success('Done!', icon="✅")
 
-					#show a message when the generation is complete.
-					message.success('Done!', icon="✅")
-
-					#except:
-						#print(f"Received Streamlit StopException")
+					except (StopException, KeyError):
+						print(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
