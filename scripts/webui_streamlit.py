@@ -1671,9 +1671,9 @@ def txt2vid(
 	# write video to memory
 	#output = io.BytesIO()
 	#writer = imageio.get_writer(output, im, plugin="pillow", extension=".png", fps=30)
-	for frame in frames:
-		writer.append_data(frame)
-	writer.close()	
+	#for frame in frames:
+	#	writer.append_data(frame)
+	#writer.close()	
 
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
@@ -2042,12 +2042,12 @@ def layout():
 			col1, col2, col3 = st.columns([1,2,1], gap="large")    
 	
 			with col1:
-				width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.txt2img.width, step=64)
-				height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.txt2img.height, step=64)
-				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
-				seed = st.text_input("Seed:", value=defaults.txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
-				#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2img.batch_size, step=1,
+				width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.txt2vid.width, step=64)
+				height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.txt2vid.height, step=64)
+				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2vid.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+				seed = st.text_input("Seed:", value=defaults.txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
+				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2vid.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+				#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2vid.batch_size, step=1,
 					#help="How many images are at once in a batch.\
 					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 					#Default: 1")
@@ -2090,11 +2090,12 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=250)
+				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=250)
 	
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 				sampler_name = st.selectbox("Sampling method", sampler_name_list,
-		                                            index=sampler_name_list.index(defaults.txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
+		                                            index=sampler_name_list.index(defaults.txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")  
 	
 	
 	
@@ -2115,19 +2116,19 @@ def layout():
 					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
 	
 					if GFPGAN_available:
-						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 					else:
 						use_GFPGAN = False
 	
 					if RealESRGAN_available:
-						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2vid.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
 						RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
 					else:
 						use_RealESRGAN = False
 						RealESRGAN_model = "RealESRGAN_x4plus"
 	
-					variant_amount = st.slider("Variant Amount:", value=defaults.txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
-					variant_seed = st.text_input("Variant Seed:", value=defaults.txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+					variant_amount = st.slider("Variant Amount:", value=defaults.txt2vid.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+					variant_seed = st.text_input("Variant Seed:", value=defaults.txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
 	
 	
 			if generate_button:
@@ -2136,14 +2137,15 @@ def layout():
 				load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)                
 	
 				try:
-					#output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
+					#output_images, seed, info, stats = txt2vid(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
 			                                                           #cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
 			                                                           #save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
 			                                                           #variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 					
 					
 					txt2vid(prompt=prompt, gpu=defaults.general.gpu,
-					        num_steps=st.session_state.sampling_steps, max_frames=int(max_frames), num_inference_steps=50, guidance_scale=5.0,
+					        num_steps=st.session_state.sampling_steps, max_frames=int(max_frames), num_inference_steps=st.session_state.num_inference_steps,
+					        guidance_scale=cfg_scale,
 					        seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
 					        height=height, weights_path="CompVis/stable-diffusion-v1-4")
 					

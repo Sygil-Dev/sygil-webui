@@ -61,6 +61,7 @@ txt2vid:
     batch_count: 1
     batch_size: 1
     sampling_steps: 50
+    num_inference_steps: 200
     default_sampler: "k_lms"
     separate_prompts: False
     normalize_prompt_weights: True
