@@ -1,10 +1,10 @@
-from __future__ import annotations
 import argparse, os, sys, glob, re
 
 import cv2
 
 from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
+from frontend.image_metadata import ImageMetadata
 from frontend.ui_functions import resize_image
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
@@ -68,7 +68,6 @@ import torch.nn as nn
 import yaml
 import glob
 import copy
-from dataclasses import dataclass, fields, asdict
 from typing import List, Union, Dict, Callable, Any, Optional
 from pathlib import Path
 from collections import namedtuple
@@ -78,7 +77,6 @@ from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
-from PIL.PngImagePlugin import PngInfo
 from io import BytesIO
 import base64
 import re
@@ -594,58 +592,6 @@ def check_prompt_length(prompt, comments):
     overflowing_text = tokenizer.convert_tokens_to_string(''.join(overflowing_words))
 
     comments.append(f"Warning: too many input tokens; some ({len(overflowing_words)}) have been truncated:\n{overflowing_text}\n")
-
-
-@dataclass
-class ImageMetadata:
-    prompt: str = None
-    seed: str = None
-    width: str = None
-    height: str = None
-    steps: str = None
-    cfg_scale: str = None
-    normalize_prompt_weights: str = None
-    denoising_strength: str = None
-    GFPGAN: str = None
-
-    def as_png_info(self) -> PngInfo:
-        info = PngInfo()
-        for key,value in self.as_dict().items():
-            info.add_text(key, value)
-        return info
-
-    def as_dict(self) -> dict:
-        return { f"SD:{key}": str(value) for key,value in asdict(self).items() if value is not None }
-
-    @classmethod
-    def set_on_image(cls, image: Image, metadata: ImageMetadata ) -> None:
-        ''' Sets metadata on image, in both text form and as an ImageMetadata object '''
-        if metadata:
-            image.info = metadata.as_dict()
-        else:
-            metadata = ImageMetadata()
-        image.info["ImageMetadata"] = copy.copy(metadata)
-
-
-    @classmethod
-    def get_from_image(cls, image: Image ) -> Optional[ImageMetadata]:
-        ''' Gets metadata from an image, first looking for an ImageMetadata,
-            then if not found tries to construct one from the info '''
-        metadata = image.info.get("ImageMetadata", None)
-        if not metadata:
-            found_metadata = False
-            metadata = ImageMetadata()
-            for key,value in image.info.items():
-                if key.lower().startswith("sd:"):
-                    key = key[3:]
-                    if f"{key}" in metadata.__dict__:
-                        metadata.__dict__[key] = value
-                        found_metadata = True
-            if not found_metadata:
-                metadata = None
-        if not metadata:
-            print("Couldn't find metadata on image")
-        return metadata
 
 
 def save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
