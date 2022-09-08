@@ -5,8 +5,7 @@ from io import BytesIO
 import base64
 import re
 
-
-def change_image_editor_mode(choice, cropped_image, masked_image, resize_mode, width, height):
+def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
     if choice == "Mask":
         update_image_result = update_image_mask(cropped_image, resize_mode, width, height)
         return [gr.update(visible=False), update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
@@ -16,7 +15,7 @@ def change_image_editor_mode(choice, cropped_image, masked_image, resize_mode, w
 
 def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
-    return gr.update(value=resized_cropped_image, visible=True)
+    return gr.update(value=resized_cropped_image)
 
 def toggle_options_gfpgan(selection):
     if 0 in selection:
@@ -217,3 +216,18 @@ def load_settings(*values):
         values[cbg_index] = [cbg_choices[i] for i in values[cbg_index]]
 
     return values
+
+def clear_promptlist_filepath(txt2img_promptlist_filepath):
+    return "Upload a text file: each line will be processed once per batch."
+
+def change_promptlist_filepath(txt2img_promptlist_filepath):
+    if (txt2img_promptlist_filepath is None or txt2img_promptlist_filepath.name is None):
+        return gr.TextArea.update(), "Upload a text file: each line will be processed once per batch.", gr.Tabs.update()
+    
+    with open(txt2img_promptlist_filepath.name) as f:
+        prompts = [line.rstrip() for line in f]
+
+    processed_textarea = "\n".join(prompts)
+    processed_markdown = "File parsed, " + str(len(prompts)) + " prompts loaded."
+    tabs_update = gr.Tabs.update(selected='tab_promptlist_textbox')
+    return processed_textarea, processed_markdown, tabs_update

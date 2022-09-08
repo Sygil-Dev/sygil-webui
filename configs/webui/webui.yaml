@@ -10,10 +10,11 @@ txt2img:
   #  3:  Save grid
   #  4:  Sort samples by prompt
   #  5:  Write sample info files
-  #  6:  write sample info to log file
+  #  6:  Write sample info to log file
   #  7:  jpg samples
-  #  8:  Fix faces using GFPGAN
-  #  9:  Upscale images using RealESRGAN
+  #  8:  Iterate seed every line when processing prompt lists
+  #  9:  Fix faces using GFPGAN
+  # 10:  Upscale images using RealESRGAN
   toggles: [1, 2, 3, 4, 5]
   sampler_name: k_lms
   ddim_eta: 0.0  # legacy name, applies to all algorithms.

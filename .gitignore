@@ -24,6 +24,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Visual Studio Garbage
+/.vs
+
 # Distribution / packaging
 .Python
 build/
