@@ -6,8 +6,9 @@ window.SD = (() => {
   class PainterroClass {
     static isOpen = false;
     static async init ({ x, toId }) {
-      const img = x;
-      const originalImage = Array.isArray(img) ? img[0] : img;
+      console.log(x)
+
+      const originalImage = x[2] === 'Mask' ? x[1]?.image : x[0];
 
       if (window.Painterro === undefined) {
         try {
@@ -52,8 +53,8 @@ window.SD = (() => {
 
       return result ? this.success(result) : this.fallback(originalImage);
     }
-    static success (result) { return [result, result]; }
-    static fallback (image) { return [image, image]; }
+    static success (result) { return [result, { image: result, mask: result }] };
+    static fallback (image) { return [image, { image: image, mask: image }] };
     static load () {
       return new Promise((resolve, reject) => {
         const scriptId = '__painterro-script';
@@ -112,6 +113,7 @@ window.SD = (() => {
     el = new ElementCache();
     Painterro = PainterroClass;
     moveImageFromGallery ({ x, fromId, toId }) {
+      x = x[0];
       if (!Array.isArray(x) || x.length === 0) return;
 
       this.clearImageInput(this.el.get(`#${toId}`));
@@ -121,6 +123,7 @@ window.SD = (() => {
       return [x[i].replace('data:;','data:image/png;')];
     }
     async copyImageFromGalleryToClipboard ({ x, fromId }) {
+      x = x[0];
       if (!Array.isArray(x) || x.length === 0) return;
 
       const i = this.#getGallerySelectedIndex(this.el.get(`#${fromId}`));
@@ -147,7 +150,7 @@ window.SD = (() => {
         }
       }
     }
-    async gradioInputToClipboard ({ x }) { return this.copyToClipboard(x); }
+    async gradioInputToClipboard ({ x }) { return this.copyToClipboard(x[0]); }
     async copyToClipboard (value) {
       if (!value || typeof value === 'boolean') return;
       try {
