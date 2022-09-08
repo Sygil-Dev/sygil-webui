@@ -1,63 +1,59 @@
-oil painting
+2d game art
+3D VR painting
+8k resolution
+1950s pulp sci-fi cover
+anime
+artistic photograph
+Baroque painting
+Byzantine mosaic
+Chiaroscuro painting
+depth of field
+digital painting
+dutch golden age
+filmed in IMAX
+fine art
+flat shading
+Flemish Baroque
+Fresco painting
+Gouache Painting
+graffiti
+Grisaille painting
+highly detailed
+hyperrealism
+Impasto painting
+low-poly
+Luminism painting
+Marvel Comics
 matte painting
-unreal engine render
+mixed media
+oil painting
+Panorama
+parallax
+pastel painting
+pencil sketch
+Perspective painting
+Playstation 5 screenshot
+pop art
+raytracing
+rendered in cinema4d
 rendered in maya
 rendered in zbrush
-rendered in cinema4d
-pencil sketch
-watercolor painting
-3D VR painting
-1950s pulp sci-fi cover
-8k resolution
-digital painting
-highly detailed
-vector image
 schematic
-artistic photograph
-surveillance footage
-graffiti
 sculpture
-Veduta painting
-Panorama
-Fresco painting
-Chiaroscuro painting
-Gouache Painting
-Tempera Painting
-Trompe L’oeil
-Impasto painting
 Sfumato painting
-Byzantine mosaic
-digital painting
-pastel painting
-Grisaille painting
-Perspective painting
-Veduta painting
-Sotto In Su
-Ukiyo-e
-Baroque painting
-Luminism painting
-visionary hypermaximalism
-depiction
-low-poly
-anime
-mixed media
-flat shading
-#film
-pop art
-fine art
-RTX on
 shot on 70mm
-filmed in IMAX
-Marvel Comics
-Flemish Baroque
-vray tracing
-Playstation 5 screenshot
-2d game art
-surrealist
-hyperrealism
-tilt shift
-depth of field
-volumetric lighting
+Sotto In Su
 storybook illustration
-parallax
-dutch golden age
+surrealist
+surveillance footage
+Tempera Painting
+tilt shift
+Trompe L’oeil
+Ukiyo-e
+unreal engine render
+vector image
+Veduta painting
+visionary hypermaximalism
+volumetric lighting
+vray tracing
+watercolor painting
