@@ -73,7 +73,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                     _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
-
                         txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
                                                   value=txt2img_defaults['ddim_steps'])
                         txt2img_sampling = gr.Dropdown(label='Sampling method (k_lms is default k-diffusion sampler)',
@@ -100,6 +99,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                                                      'RealESRGAN_x4plus_anime_6B'],
                                                                             value='RealESRGAN_x4plus',
                                                                        visible=False)  # RealESRGAN is not None # invisible until removed)  # TODO: Feels like I shouldnt slot it in here.
+
                                 txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA",
                                                              value=txt2img_defaults['ddim_eta'], visible=False)
                                 txt2img_variant_amount = gr.Slider(minimum=0.0, maximum=1.0, label='Variation Amount',
@@ -147,7 +147,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                     outputs=live_prompt_params,
                     _js=js_parse_prompt
                 )
-
 
             with gr.TabItem("Image-to-Image Unified", id="img2img_tab"):
                 with gr.Row(elem_id="prompt_row"):
@@ -212,7 +211,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                 img2img_painterro_btn = gr.Button("Advanced Editor")
                             with gr.TabItem("Hints"):
                                 img2img_help = gr.Markdown(visible=False, value=uifn.help_text)
-
 
                     with gr.Column():
                         gr.Markdown('#### Img2Img Results')
@@ -357,6 +355,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 )
 
                 def img2img_submit_params():
+                    # print([img2img_prompt, img2img_image_editor_mode, img2img_mask,
+                    #              img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                    #              img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
+                    #              img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
+                    #              img2img_image_editor, img2img_image_mask, img2img_embeddings])
                     return (img2img_func,
                             img2img_inputs,
                             img2img_outputs)
