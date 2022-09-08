@@ -267,12 +267,12 @@ class KDiffusionSampler:
         self.schedule = sampler
     def get_sampler_name(self):
         return self.schedule
-    def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T, callback=None):
+    def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T, img_callback=None):
         sigmas = self.model_wrap.get_sigmas(S)
         x = x_T * sigmas[0]
         model_wrap_cfg = CFGDenoiser(self.model_wrap)
 
-        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False, callback=callback)
+        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False, callback=img_callback)
 
         return samples_ddim, None
 
@@ -786,8 +786,8 @@ def process_images(
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
         variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
-    def sampler_callback(img):
-        if img['i'] % int(opt.update_preview_frequency) == 0 and opt.update_preview:
+    def sampler_callback(img, i=0):
+        if i % int(opt.update_preview_frequency) == 0 and opt.update_preview:
             if isinstance(img, torch.Tensor):
                 x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(img)          
             else:
@@ -1147,7 +1147,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
         pass
 
     def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, callback=None):
-        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, callback=callback)
+        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=callback)
         return samples_ddim
 
     try:
