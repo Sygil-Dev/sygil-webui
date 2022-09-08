@@ -11,7 +11,7 @@ def change_image_editor_mode(choice, cropped_image, masked_image, resize_mode, w
         update_image_result = update_image_mask(cropped_image, resize_mode, width, height)
         return [gr.update(visible=False), update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
 
-    update_image_result = update_image_mask(masked_image["image"], resize_mode, width, height)
+    update_image_result = update_image_mask(masked_image["image"] if masked_image is not None else None, resize_mode, width, height)
     return [update_image_result, gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)]
 
 def update_image_mask(cropped_image, resize_mode, width, height):
