@@ -1451,32 +1451,30 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 
 
 
+# functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
+# TODO, maybe look into async loading the file especially for remote fetching 
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+def remote_css(url):
+    st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
+
+def load_css(isLocal, nameOrURL):
+	if(isLocal):
+		local_css(nameOrURL)
+	else:
+		remote_css(nameOrURL)
+
+
+# main functions to define streamlit layout here
 def layout():
 
 	st.set_page_config(page_title="Stable Diffusion Playground", layout="wide", initial_sidebar_state="collapsed")
 
-	css = """
-    <style>
-    .css-18e3th9 {
-                        padding-top: 2rem;
-                        padding-bottom: 10rem;
-                        padding-left: 5rem;
-                        padding-right: 5rem;
-                    }
-                   .css-1d391kg {
-                        padding-top: 3.5rem;
-                        padding-right: 1rem;
-                        padding-bottom: 3.5rem;
-                        padding-left: 1rem;
-                    }
-    button[data-baseweb="tab"] {
-      font-size: 25px;
-    }
-
-    </style>
-    """
-
-	st.markdown(css, unsafe_allow_html=True)
+	with st.empty():
+		# load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
+		load_css(True, 'frontend/css/streamlit.main.css')
 
 	# check if the models exist on their respective folders
 	if os.path.exists(os.path.join(defaults.general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
