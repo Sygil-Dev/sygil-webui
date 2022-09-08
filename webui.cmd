@@ -1,6 +1,15 @@
 @echo off
 
 set conda_env_name=ldm
+set conda_command=conda
+
+set use_mamba_instead_of_conda=1
+if "%use_mamba_instead_of_conda%"=="1" (
+  where /q mamba
+  if errorlevel 0 echo mamba installed
+  if errorlevel 1 conda install mamba -n base -c conda-forge
+  set conda_command=mamba
+)
 
 :: Put the path to conda directory after "=" sign if it's installed at non-standard path:
 set custom_conda_path=
@@ -37,15 +46,20 @@ IF "%CONDA_PATH%"=="" (
 
 :foundPath
 call "%CONDA_PATH%\Scripts\activate.bat"
-call conda env create -n "%conda_env_name%" -f environment.yaml
-call conda env update -n "%conda_env_name%" --file environment.yaml --prune
+%conda_command% env list | findstr /r /b /c:"%conda_env_name%"
+if errorlevel 0 goto :conda_env_update
+if errorlevel 1 goto :conda_env_create
+goto :eof
+
+:conda_env_create
+call %conda_command% env create --name "%conda_env_name%" --file environment.yaml
+goto :conda_activate
+
+:conda_env_update
+call %conda_command% env update --name "%conda_env_name%" --file environment.yaml --prune
+goto :conda_activate
+
+:conda_activate
 call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
 python "%CD%"\scripts\relauncher.py
-
-:PROMPT
-set SETUPTOOLS_USE_DISTUTILS=stdlib
-IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python scripts/relauncher.py
-) ELSE (
-  ECHO Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
-)
+goto :eof
