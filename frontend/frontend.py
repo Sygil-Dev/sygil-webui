@@ -4,9 +4,9 @@ from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
 import uuid
 
-def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda x: x, txt2img_defaults={}, RealESRGAN=True, GFPGAN=True,LDSR=True,
-                   txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
-                   img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
+def draw_gradio_ui(opt, img2img=lambda x: x, singleprompt2image=lambda x: x,imgproc=lambda x: x, promptlist2img=lambda x: x, txt2img_defaults={},
+                   RealESRGAN=True, GFPGAN=True,LDSR=True, txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False,
+                   img2img_defaults={}, img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
                    img2img_resize_modes=None, imgproc_defaults={},imgproc_mode_toggles={},user_defaults={}, run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
                    job_manager: JobManager = None) -> gr.Blocks:
 
@@ -102,14 +102,35 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                                                                   max_lines=1, value=txt2img_defaults["variant_seed"])
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
+                        with gr.Box():
+                            with gr.Tabs() as txt2img_promptlist_tabs:
+                                with gr.TabItem('From Textbox', id="tab_promptlist_textbox"):
+                                    txt2img_promptlist_txt = gr.TextArea(value="", interactive=True, label="List of Prompts", placeholder="Add one prompt per line to this textbox.")
+                                with gr.TabItem('From Text File', id="tab_promptlist_file"):
+                                    txt2img_promptlist_filepath = gr.File(label='Prompt List Text File', show_label=True)
+                                    txt2img_promptlist_markdown = gr.Markdown("Upload a text file: each line will be processed once per batch.", elem_id="prompt_list_info")
 
-                txt2img_func = txt2img
-                txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
+                            txt2img_promptlist_btn = gr.Button("Generate From Prompt List", elem_id="generateFromList")
+                            txt2img_promptlist_filepath.change( uifn.change_promptlist_filepath, inputs=[txt2img_promptlist_filepath ],
+                                                                outputs=[txt2img_promptlist_txt, txt2img_promptlist_markdown, txt2img_promptlist_tabs] );
+                            txt2img_promptlist_filepath.clear( uifn.clear_promptlist_filepath,
+                                                                inputs=[txt2img_promptlist_filepath ],
+                                                                outputs=[txt2img_promptlist_markdown] );
+
+                txt2img_func = singleprompt2image
+                txt2img_inputs = [ txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
                                   txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
+                                  txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
+                                  txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
+                txt2img_promptlist_func = promptlist2img
+                txt2img_promptlist_inputs = [txt2img_promptlist_txt, txt2img_steps, txt2img_sampling,
+                                  txt2img_toggles, txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
                                   txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
                                   txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
                 txt2img_outputs = [output_txt2img_gallery, output_txt2img_seed,
                                    output_txt2img_params, output_txt2img_stats]
+                txt2img_promptlist_outputs = [output_txt2img_gallery, output_txt2img_seed,
+                                              output_txt2img_params, output_txt2img_stats]
 
                 # If a JobManager was passed in then wrap the Generate functions
                 if txt2img_job_ui:
@@ -128,6 +149,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     txt2img_func,
                     txt2img_inputs,
                     txt2img_outputs
+                )
+                txt2img_promptlist_btn.click(
+                    txt2img_promptlist_func,
+                    txt2img_promptlist_inputs,
+                    txt2img_promptlist_outputs
                 )
 
                 # txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
@@ -332,8 +358,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                     #              img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                     #              img2img_image_editor, img2img_image_mask, img2img_embeddings])
                     return (img2img_func,
-                    img2img_inputs,
-                    img2img_outputs)
+                            img2img_inputs,
+                            img2img_outputs)
 
                 img2img_btn_editor.click(*img2img_submit_params())
 
@@ -351,19 +377,20 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x,imgproc=lambda 
                 img2img_width.change(fn=uifn.update_dimensions_info, inputs=[img2img_width, img2img_height], outputs=img2img_dimensions_info_text_box)
                 img2img_height.change(fn=uifn.update_dimensions_info, inputs=[img2img_width, img2img_height], outputs=img2img_dimensions_info_text_box)
             
+
             with gr.TabItem("Image Lab", id='imgproc_tab'):
-                    gr.Markdown("Post-process results")
-                    with gr.Row():
-                        with gr.Column():
-                            with gr.Tabs():
-                                with gr.TabItem('Single Image'):
-                                    imgproc_source = gr.Image(label="Source", source="upload", interactive=True, type="pil",elem_id="imglab_input")
+                gr.Markdown("Post-process results")
+                with gr.Row():
+                    with gr.Column():
+                        with gr.Tabs():
+                            with gr.TabItem('Single Image'):
+                                   imgproc_source = gr.Image(label="Source", source="upload", interactive=True, type="pil",elem_id="imglab_input")
 
                             #gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
                             #                            value=gfpgan_defaults['strength'])
                             #select folder with images to process
-                                with gr.TabItem('Batch Process'):
-                                    imgproc_folder = gr.File(label="Batch Process", file_count="multiple",source="upload", interactive=True, type="file")
+                            with gr.TabItem('Batch Process'):
+                                imgproc_folder = gr.File(label="Batch Process", file_count="multiple",source="upload", interactive=True, type="file")
                             imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="PngNfo", visible=False, max_lines=5)
                             with gr.Row():
                                 imgproc_btn = gr.Button("Process", variant="primary")
