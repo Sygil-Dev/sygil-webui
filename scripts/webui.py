@@ -2224,24 +2224,6 @@ if 'img2img' in user_defaults:
 img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
 
-def change_image_editor_mode(choice, cropped_image, mask, resize_mode, width, height):
-    if choice == "Mask":
-        return [gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(visible=True)]
-    return [gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)]
-
-def update_image_mask(cropped_image, resize_mode, width, height):
-    resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
-    return gr.update(value=resized_cropped_image)
-
-
-
-def copy_img_to_upscale_esrgan(img):
-    update = gr.update(selected='realesrgan_tab')
-    image_data = re.sub('^data:image/.+;base64,', '', img)
-    processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-    return {'realesrgan_source': processed_image, 'tabs': update}
-
-
 help_text = """
     ## Mask/Crop
     * The masking/cropping is very temperamental.
