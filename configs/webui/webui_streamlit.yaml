@@ -1,5 +1,7 @@
 # UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_streamlit.yaml.
 # Any changes made here will be available automatically on the web app without having to stop it.
+# You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
+# of the properties below.
 general:
     gpu: 0
     outdir: outputs
@@ -51,6 +53,7 @@ txt2img:
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
+    write_info_files: True
     
 txt2vid:
     prompt:
@@ -123,6 +126,7 @@ img2img:
   RealESRGAN_model: "RealESRGAN_x4plus"
   variant_amount: 0.0
   variant_seed: ""
+  write_info_files: True
 
 gfpgan:
   strength: 100

@@ -61,6 +61,9 @@ except:
 warnings.filterwarnings("ignore", category=DeprecationWarning)     
 
 defaults = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+if (os.path.exists("userconfig_streamlit.yaml")):
+	user_defaults = OmegaConf.load("userconfig_streamlit.yaml");
+	defaults = OmegaConf.merge(defaults, user_defaults)
 
 # this is a fix for Windows users. Without it, javascript files will be served with text/html content-type and the bowser will not show any UI
 mimetypes.init()
@@ -1824,13 +1827,13 @@ def layout():
 
 				with st.expander("Advanced"):
 					separate_prompts = st.checkbox("Create Prompt Matrix.", value=False, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-					normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=True, help="Ensure the sum of all weights add up to 1.0")
-					save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
-					save_grid = st.checkbox("Save grid",value=True, help="Save a grid with all the images generated into a single image.")
-					group_by_prompt = st.checkbox("Group results by prompt", value=True,
+					normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=defaults.txt2img.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
+					save_individual_images = st.checkbox("Save individual images.", value=defaults.txt2img.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
+					save_grid = st.checkbox("Save grid",value=defaults.txt2img.save_grid, help="Save a grid with all the images generated into a single image.")
+					group_by_prompt = st.checkbox("Group results by prompt", value=defaults.txt2img.group_by_prompt,
                                                                       help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
-					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
+					write_info_files = st.checkbox("Write Info file", value=defaults.txt2img.write_info_files, help="Save a file next to the image with informartion about the generation.")
+					save_as_jpg = st.checkbox("Save samples as jpg", value=defaults.txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 					if GFPGAN_available:
 						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
@@ -1926,12 +1929,12 @@ def layout():
 					normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=defaults.img2img.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
 					loopback = st.checkbox("Loopback.", value=defaults.img2img.loopback, help="Use images from previous batch when creating next batch.")
 					random_seed_loopback = st.checkbox("Random loopback seed.", value=defaults.img2img.random_seed_loopback, help="Random loopback seed")
-					save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
+					save_individual_images = st.checkbox("Save individual images.", value=defaults.img2img.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
 					save_grid = st.checkbox("Save grid",value=defaults.img2img.save_grid, help="Save a grid with all the images generated into a single image.")
 					group_by_prompt = st.checkbox("Group results by prompt", value=defaults.img2img.group_by_prompt,
                                                                       help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
-					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
+					write_info_files = st.checkbox("Write Info file", value=defaults.img2img.write_info_files, help="Save a file next to the image with informartion about the generation.")
+					save_as_jpg = st.checkbox("Save samples as jpg", value=defaults.img2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 					if GFPGAN_available:
 						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.img2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
