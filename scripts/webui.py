@@ -2,6 +2,7 @@ import argparse, os, sys, glob, re
 
 import cv2
 
+from perlin import perlinNoise
 from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
 from frontend.ui_functions import resize_image
@@ -1225,6 +1226,14 @@ class Flagging(gr.FlaggingCallback):
         print("Logged:", filenames[0])
 
 
+def blurArr(a,r=8):
+    im1=Image.fromarray((a*255).astype(np.int8),"L")
+    im2 = im1.filter(ImageFilter.GaussianBlur(radius = r))
+    out= np.array(im2)/255
+    return out
+
+
+
 def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
             seed: int, height: int, width: int, resize_mode: int, init_info: any = None, init_info_mask: any = None, fp = None, job_info: JobInfo = None):
@@ -1305,16 +1314,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
         image = torch.from_numpy(image)
 
         mask_channel = None
-        if image_editor_mode == "Uncrop":
-            alpha = init_img.convert("RGBA")
-            alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
-            mask_channel = alpha.split()[-1]
-            mask_channel = mask_channel.filter(ImageFilter.GaussianBlur(4))
-            mask_channel = np.array(mask_channel)
-            mask_channel[mask_channel >= 255] = 255
-            mask_channel[mask_channel < 255] = 0
-            mask_channel = Image.fromarray(mask_channel).filter(ImageFilter.GaussianBlur(2))
-        elif image_editor_mode == "Mask":
+        if image_editor_mode == "Mask":
             alpha = init_mask.convert("RGBA")
             alpha = resize_image(resize_mode, alpha, width // 8, height // 8)
             mask_channel = alpha.split()[1]
@@ -1329,7 +1329,58 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
         if opt.optimized:
             modelFS.to(device)
 
-        init_image = 2. * image - 1.
+        #let's try and find where init_image is 0's
+        #shape is probably (3,width,height)?
+
+        if image_editor_mode == "Uncrop":        
+            _image=image.numpy()[0]
+            _mask=np.ones((_image.shape[1],_image.shape[2]))
+
+            #compute bounding box
+            cmax=np.max(_image,axis=0)
+            rowmax=np.max(cmax,axis=0)
+            colmax=np.max(cmax,axis=1)
+            rowwhere=np.where(rowmax>0)[0]
+            colwhere=np.where(colmax>0)[0]
+            rowstart=rowwhere[0]
+            rowend=rowwhere[-1]+1
+            colstart=colwhere[0]
+            colend=colwhere[-1]+1
+            print('bounding box: ',rowstart,rowend,colstart,colend)
+
+            #this is where noise will get added
+            PAD_IMG=16
+            boundingbox=np.zeros(shape=(height,width))
+            boundingbox[colstart+PAD_IMG:colend-PAD_IMG,rowstart+PAD_IMG:rowend-PAD_IMG]=1
+            boundingbox=blurArr(boundingbox,4)
+            
+            #this is the mask for outpainting
+            PAD_MASK=24
+            boundingbox2=np.zeros(shape=(height,width))
+            boundingbox2[colstart+PAD_MASK:colend-PAD_MASK,rowstart+PAD_MASK:rowend-PAD_MASK]=1
+            boundingbox2=blurArr(boundingbox2,4)
+
+            #noise=np.random.randn(*_image.shape)
+            noise=np.array([perlinNoise(height,width,height/64,width/64) for i in range(3)])
+            _mask*=1-boundingbox2
+
+            #convert 0,1 to -1,1
+            _image = 2. * _image - 1.
+
+            #add noise
+            boundingbox=np.tile(boundingbox,(3,1,1))
+            _image=_image*boundingbox+noise*(1-boundingbox)
+
+            #resize mask
+            _mask = np.array(resize_image(resize_mode, Image.fromarray(_mask*255), width // 8, height // 8))/255
+
+            #convert back to torch tensor
+            init_image=torch.from_numpy(np.expand_dims(_image,axis=0).astype(np.float32)).to(device)
+            mask=torch.from_numpy(_mask.astype(np.float32)).to(device)
+
+        else:
+            init_image = 2. * image - 1.
+
         init_image = init_image.to(device)
         init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
         init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
