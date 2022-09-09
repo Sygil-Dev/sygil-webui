@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import numpy as np
+import gc
 from einops import rearrange
 
 from ldm.util import instantiate_from_config
@@ -187,16 +188,43 @@ class AttnBlock(nn.Module):
         q = q.reshape(b,c,h*w)
         q = q.permute(0,2,1)   # b,hw,c
         k = k.reshape(b,c,h*w) # b,c,hw
-        w_ = torch.bmm(q,k)     # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
-        w_ = w_ * (int(c)**(-0.5))
-        w_ = torch.nn.functional.softmax(w_, dim=2)
-
-        # attend to values
         v = v.reshape(b,c,h*w)
-        w_ = w_.permute(0,2,1)   # b,hw,hw (first hw of k, second of q)
-        h_ = torch.bmm(v,w_)     # b, c,hw (hw of q) h_[b,c,j] = sum_i v[b,c,i] w_[b,i,j]
-        h_ = h_.reshape(b,c,h,w)
 
+        h_ = torch.zeros_like(k, device=q.device)
+
+        stats = torch.cuda.memory_stats(q.device)
+        mem_active = stats['active_bytes.all.current']
+        mem_reserved = stats['reserved_bytes.all.current']
+        mem_free_cuda, _ = torch.cuda.mem_get_info(torch.cuda.current_device())
+        mem_free_torch = mem_reserved - mem_active
+        mem_free_total = mem_free_cuda + mem_free_torch
+
+        tensor_size = q.shape[0] * q.shape[1] * k.shape[2] * 4
+        mem_required = tensor_size * 2.5
+        steps = 1
+
+        if mem_required > mem_free_total:
+            steps = 2**(math.ceil(math.log(mem_required / mem_free_total, 2)))
+
+        slice_size = q.shape[1] // steps if (q.shape[1] %
+                                             steps) == 0 else q.shape[1]
+        for i in range(0, q.shape[1], slice_size):
+            end = i + slice_size
+
+            # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
+            w_ = torch.bmm(q[:, i:end], k)
+            w_ = w_ * (int(c)**(-0.5))
+            w_ = torch.nn.functional.softmax(w_, dim=2)
+
+            # attend to values
+            # b,hw,hw (first hw of k, second of q)
+            w_ = w_.permute(0,2,1)
+            # b, c,hw (hw of q) h_[b,c,j] = sum_i v[b,c,i] w_[b,i,j]
+            h_[:, :, i:end] = torch.bmm(v, w_)
+            del w_
+        del v
+
+        h_ = h_.reshape(b, c, h, w)
         h_ = self.proj_out(h_)
 
         return x+h_
@@ -546,6 +574,10 @@ class Decoder(nn.Module):
         h = self.mid.block_1(h, temb)
         h = self.mid.attn_1(h)
         h = self.mid.block_2(h, temb)
+
+        # prepare for up sampling
+        gc.collect()
+        torch.cuda.empty_cache()
 
         # upsampling
         for i_level in reversed(range(self.num_resolutions)):
