@@ -44,6 +44,7 @@ parser.add_argument("--skip-grid", action='store_true', help="do not save a grid
 parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
+parser.add_argument("--tiling", action='store_true', help="Generate tiling images", default=False)
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -85,6 +86,18 @@ from torch import autocast
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.util import instantiate_from_config
+
+# add global options to models
+def patch_conv(**patch):
+    cls = torch.nn.Conv2d
+    init = cls.__init__
+    def __init__(self, *args, **kwargs):
+        return init(self, *args, **kwargs, **patch)
+    cls.__init__ = __init__
+
+if opt.tiling:
+    patch_conv(padding_mode='circular')
+    print("patched for tiling")
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
