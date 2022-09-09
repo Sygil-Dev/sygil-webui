@@ -79,7 +79,6 @@ from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
-from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from io import BytesIO
 import base64
 import re
@@ -1364,10 +1363,12 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
 
     if image_editor_mode == 'Mask':
         init_img = init_info_mask["image"]
+        init_img_transparency = ImageOps.invert(init_img.split()[-1]).convert('L').point(lambda x: 255 if x > 0 else 0, mode='1')
         init_img = init_img.convert("RGB")
         init_img = resize_image(resize_mode, init_img, width, height)
         init_img = init_img.convert("RGB")
         init_mask = init_info_mask["mask"]
+        init_mask = ImageChops.lighter(init_img_transparency, init_mask.convert('L')).convert('RGBA')
         init_mask = init_mask.convert("RGB")
         init_mask = resize_image(resize_mode, init_mask, width, height)
         init_mask = init_mask.convert("RGB")
