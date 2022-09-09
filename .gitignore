@@ -47,11 +47,15 @@ MANIFEST
 .env_updated
 condaenv.*.requirements.txt
 
+# Visual Studio directories
+.vs/
+.vscode/
 
 # =========================================================================== #
 # 	Repo-specific
 # =========================================================================== #
 /custom-conda-path.txt
+/userconfig_streamlit.yaml
 /src/*
 /outputs/*
 /log/**/*.png

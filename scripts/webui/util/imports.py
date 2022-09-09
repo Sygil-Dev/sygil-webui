@@ -53,6 +53,9 @@ except:
 warnings.filterwarnings("ignore", category=DeprecationWarning)     
 
 defaults = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+if (os.path.exists("userconfig_streamlit.yaml")):
+	user_defaults = OmegaConf.load("userconfig_streamlit.yaml");
+	defaults = OmegaConf.merge(defaults, user_defaults)
 
 # this is a fix for Windows users. Without it, javascript files will be served with text/html content-type and the bowser will not show any UI
 mimetypes.init()

@@ -1,5 +1,7 @@
 # UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_streamlit.yaml.
 # Any changes made here will be available automatically on the web app without having to stop it.
+# You may add overrides in a file named "userconfig_streamlit.yaml" in the root directory of this project,
+# which can contain any subset of the properties below.
 general:
     gpu: 0
     outdir: outputs
