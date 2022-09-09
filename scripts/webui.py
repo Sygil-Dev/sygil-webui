@@ -790,7 +790,7 @@ def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
-        keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
+        keep_mask=False, mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
         variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
@@ -1045,6 +1045,26 @@ skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, 
                 if imgProcessorTask == True:
                     output_images.append(image)
 
+                if mask_restore and init_mask:
+                    #init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
+                    init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
+                    init_mask = init_mask.convert('L')
+                    init_img = init_img.convert('RGB')
+                    image = image.convert('RGB')
+
+                    if use_RealESRGAN and RealESRGAN is not None:
+                        if RealESRGAN.model.name != realesrgan_model_name:
+                            try_loading_RealESRGAN(realesrgan_model_name)
+                        output, img_mode = RealESRGAN.enhance(np.array(init_img, dtype=np.uint8))
+                        init_img = Image.fromarray(output)
+                        init_img = init_img.convert('RGB')
+
+                        output, img_mode = RealESRGAN.enhance(np.array(init_mask, dtype=np.uint8))
+                        init_mask = Image.fromarray(output)
+                        init_mask = init_mask.convert('L')
+
+                    image = Image.composite(init_img, image, init_mask)
+                    
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
@@ -1259,7 +1279,7 @@ def blurArr(a,r=8):
 
 
 
-def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_strength: int, ddim_steps: int, sampler_name: str,
+def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_strength: int, mask_restore: bool, ddim_steps: int, sampler_name: str,
             toggles: List[int], realesrgan_model_name: str, n_iter: int,  cfg_scale: float, denoising_strength: float,
             seed: int, height: int, width: int, resize_mode: int, init_info: any = None, init_info_mask: any = None, fp = None, job_info: JobInfo = None):
     # print([prompt, image_editor_mode, init_info, init_info_mask, mask_mode,
@@ -1504,6 +1524,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
                 init_mask=init_mask,
                 keep_mask=keep_mask,
                 mask_blur_strength=mask_blur_strength,
+                mask_restore=mask_restore,
                 denoising_strength=denoising_strength,
                 resize_mode=resize_mode,
                 uses_loopback=loopback,
@@ -1574,6 +1595,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
             keep_mask=keep_mask,
             mask_blur_strength=mask_blur_strength,
             denoising_strength=denoising_strength,
+            mask_restore=mask_restore,
             resize_mode=resize_mode,
             uses_loopback=loopback,
             sort_samples=sort_samples,
@@ -1722,6 +1744,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         init_img = result
         init_mask = None
         keep_mask = False
+        mask_restore = False
         assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
 
         def init():
@@ -1868,6 +1891,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     keep_mask=False,
                     mask_blur_strength=None,
                     denoising_strength=denoising_strength,
+                    mask_restore=mask_restore,
                     resize_mode=resize_mode,
                     uses_loopback=False,
                     sort_samples=True,
@@ -2186,6 +2210,7 @@ img2img_defaults = {
     'cfg_scale': 5.0,
     'denoising_strength': 0.75,
     'mask_mode': 0,
+    'mask_restore': False,
     'resize_mode': 0,
     'seed': '',
     'height': 512,
@@ -2198,24 +2223,6 @@ if 'img2img' in user_defaults:
 
 img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
-
-def change_image_editor_mode(choice, cropped_image, resize_mode, width, height):
-    if choice == "Mask":
-        return [gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
-    return [gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)]
-
-def update_image_mask(cropped_image, resize_mode, width, height):
-    resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
-    return gr.update(value=resized_cropped_image)
-
-
-
-def copy_img_to_upscale_esrgan(img):
-    update = gr.update(selected='realesrgan_tab')
-    image_data = re.sub('^data:image/.+;base64,', '', img)
-    processed_image = Image.open(BytesIO(base64.b64decode(image_data)))
-    return {'realesrgan_source': processed_image, 'tabs': update}
-
 
 help_text = """
     ## Mask/Crop

@@ -200,9 +200,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                             value=img2img_mask_modes[img2img_defaults['mask_mode']],
                                                             visible=True)
 
-                                    img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
+                                    img2img_mask_restore = gr.Checkbox(label="Only modify regenerated parts of image", 
+                                                            value=img2img_defaults['mask_restore'],
+                                                            visible=True)
+
+                                    img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=100, step=1,
                                                                            label="How much blurry should the mask be? (to avoid hard edges)",
-                                                                           value=3, visible=False)
+                                                                           value=3, visible=True)
 
                                     img2img_resize = gr.Radio(label="Resize mode",
                                                               choices=["Just resize", "Crop and resize",
@@ -294,7 +298,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                      img2img_height
                      ],
                     [img2img_image_editor, img2img_image_mask, img2img_btn_editor, img2img_btn_mask,
-                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength]
+                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength, img2img_mask_restore]
                 )
 
                 # img2img_image_editor_mode.change(
@@ -335,8 +339,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                            )
 
                 img2img_func = img2img
-                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_mask,
-                                  img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_mask, img2img_mask_blur_strength,
+                                  img2img_mask_restore, img2img_steps, img2img_sampling, img2img_toggles,
                                   img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                                   img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                                   img2img_image_editor, img2img_image_mask, img2img_embeddings]
