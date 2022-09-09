@@ -9,9 +9,17 @@
 
 ### Want to contribute?
 
+Gradio version (stable)
+
+Open new Pull request on 'main' branch!
+
+for Gradio check out the [docs](https://gradio.app/docs/) to contribute
+
+Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
+
 Open new Pull Requests against `dev` branch!
 
-**If you're thinking about adding a new feature to Web UI focus on the Streamlit version (webui_streamlit.py) which is in active development.**
+**New features can be added to Gradio or Streamlit version**
 
 ## More documentation about features, troubleshooting, common issues very soon
 ### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
