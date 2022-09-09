@@ -1862,7 +1862,7 @@ def layout():
 					                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
 					                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 				
-					message.success('Done!', icon="✅")
+					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
 				except KeyError:
 					output_images, seed, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
@@ -1870,7 +1870,7 @@ def layout():
 					                                           save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
 					                                           variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 				
-					message.success('Done!', icon="✅")
+					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 					
 				except (StopException):
 					print(f"Received Streamlit StopException")
