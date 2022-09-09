@@ -38,8 +38,8 @@ Features:
 
 * Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
-* GFPGAN Face Correction 🔥: [Download the model](https://github.com/sd-webui/stable-diffusion-webui#gfpgan)Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
-* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/sd-webui/stable-diffusion-webui#realesrgan) Boosts the resolution of images with a built-in RealESRGAN option 
+* GFPGAN Face Correction 🔥: [Download the model](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models) Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
+* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models) Boosts the resolution of images with a built-in RealESRGAN option 
 * :computer: esrgan/gfpgan on cpu support :computer:
 * Textual inversion 🔥: [info](https://textual-inversion.github.io/) - requires enabling, see [here](https://github.com/hlky/sd-enable-textual-inversion), script works as usual without it enabled
 * Advanced img2img editor :art: :fire: :art:
@@ -68,20 +68,10 @@ Original script with Gradio UI was written by a kind anonymous user. This is a m
 ![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/gfpgan.jpg)
 ![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/esrgan.jpg)
 
-### GFPGAN
-1. If you want to use GFPGAN to improve generated faces, you need to install it separately.
-1. Download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
-into the `/stable-diffusion-webui/src/gfpgan/experiments/pretrained_models` directory. 
+### Additional Models
 
-### RealESRGAN
-1. Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
-1. Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
-
-### LDSR
-1. Git clone [devilismyfriend/latent-diffusion](https://github.com/devilismyfriend/latent-diffusion) into your `/stable-diffusion-webui/src/` folder.
-1. Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). 
-1. Rename last.ckpt to model.ckpt and place both under `stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/`.
-1. Refer to [here](https://github.com/sd-webui/stable-diffusion-webui/issues/488) for any issue.
+**GFPGAN**, **RealESRGAN** and **LDSR** optional models are supported. Detailed download instructios is available in the wiki [wiki](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models).
+Please ensure that you run `webui.cmd` OR `webui_streamlit.cmd` **first** before downloading and initializing `/stable-diffusion-webui/src` folder.  
 
 ### Web UI
 
