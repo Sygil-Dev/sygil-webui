@@ -2018,7 +2018,7 @@ def layout():
 											   )
 	
 						#show a message when the generation is complete.
-						message.success('Done!', icon="✅")
+						message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
 					except (StopException, KeyError):
 						print(f"Received Streamlit StopException")
