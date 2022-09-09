@@ -32,6 +32,7 @@ parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write 
 parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default=None)
+parser.add_argument("--name_format", type=str, nargs="?", help="filenames format", default=None)
 parser.add_argument("--port", type=int, help="choose the port for the gradio webserver to use", default=7860)
 parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
 parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./src/realesrgan' if os.path.exists('./src/realesrgan') else './RealESRGAN'))
@@ -959,12 +960,23 @@ def process_images(
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
                     os.makedirs(sample_path_i, exist_ok=True)
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seed_used}_{cur_variant_amount:.2f}"
+                    filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]"
                 else:
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
-                    sanitized_prompt = sanitized_prompt
-                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seed_used}_{cur_variant_amount:.2f}_{sanitized_prompt}"[:128] #same as before
+                    filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]_[PROMPT]"
+
+                #Add new filenames tags here
+                filename = f"{base_count:05}-" + filename
+                filename = filename.replace("[STEPS]", str(steps))
+                filename = filename.replace("[CFG]", str(cfg_scale))
+                filename = filename.replace("[PROMPT]", sanitized_prompt[:128])
+                filename = filename.replace("[PROMPT_SPACES]", prompts[i].translate({ord(x): '' for x in invalid_filename_chars})[:128])
+                filename = filename.replace("[WIDTH]", str(width))
+                filename = filename.replace("[HEIGHT]", str(height))
+                filename = filename.replace("[SAMPLER]", sampler_name)
+                filename = filename.replace("[SEED]", seed_used)
+                filename = filename.replace("[VARIANT_AMOUNT]", f"{cur_variant_amount:.2f}")
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
