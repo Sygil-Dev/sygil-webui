@@ -3,6 +3,8 @@ from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2i
 from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
 import uuid
+import torch
+
 
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, txt2img_defaults={},
@@ -632,8 +634,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
         <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
         <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
         If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
+        <p>Device ID {current_device_index}: {current_device_name}<br/>{total_device_count} total devices</p>
     </div>
-    """)
+    """.format(current_device_name=torch.cuda.get_device_name(), current_device_index=torch.cuda.current_device(), total_device_count=torch.cuda.device_count()))
         # Hack: Detect the load event on the frontend
         # Won't be needed in the next version of gradio
         # See the relevant PR: https://github.com/gradio-app/gradio/pull/2108
