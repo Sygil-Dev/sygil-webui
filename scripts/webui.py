@@ -970,6 +970,7 @@ def process_images(
                 filename = filename.replace("[STEPS]", str(steps))
                 filename = filename.replace("[CFG]", str(cfg_scale))
                 filename = filename.replace("[PROMPT]", sanitized_prompt[:128])
+                filename = filename.replace("[PROMPT_SPACES]", prompts[i].translate({ord(x): '' for x in invalid_filename_chars})[:128])
                 filename = filename.replace("[WIDTH]", str(width))
                 filename = filename.replace("[HEIGHT]", str(height))
                 filename = filename.replace("[SAMPLER]", sampler_name)
