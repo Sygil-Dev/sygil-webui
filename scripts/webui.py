@@ -1,5 +1,6 @@
 import argparse, os, sys, glob, re
-
+sys.path.append(os.getcwd())
+sys.path.append(os.getcwd()+"//src")
 import cv2
 
 from frontend.frontend import draw_gradio_ui
