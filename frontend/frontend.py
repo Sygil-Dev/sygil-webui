@@ -294,14 +294,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                      img2img_width,
                      img2img_height
                      ],
-                    [img2img_image_editor, 
-                     img2img_image_mask,
-                     img2img_btn_editor, 
-                     img2img_btn_mask,
-                     img2img_painterro_btn, 
-                     img2img_mask, 
-                     img2img_mask_blur_strength, 
-                     img2img_mask_restore]
+                    [img2img_image_editor, img2img_image_mask, img2img_btn_editor, img2img_btn_mask,
+                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength, img2img_mask_restore]
                 )
 
                 # img2img_image_editor_mode.change(
