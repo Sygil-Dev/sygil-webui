@@ -959,14 +959,13 @@ def process_images(
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
                     os.makedirs(sample_path_i, exist_ok=True)
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = opt.name_format or "[STEPS]-[SAMPLER]-[SEED]"
+                    filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]"
                 else:
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
                     sanitized_prompt = sanitized_prompt
-                    filename = opt.name_format or "[STEPS]-[SAMPLER]-[SEED]-[PROMPT]"
+                    filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]_[PROMPT]"
 
-                #filename = "[WIDTH]_[HEIGHT]_[SAMPLER]_[COUNT]_[STEPS]_[CFG]_[PROMPT]"
                 filename = f"{base_count:05}-" + filename
                 filename = filename.replace("[STEPS]", str(steps))
                 filename = filename.replace("[CFG]", str(cfg_scale))
@@ -974,7 +973,8 @@ def process_images(
                 filename = filename.replace("[WIDTH]", str(width))
                 filename = filename.replace("[HEIGHT]", str(height))
                 filename = filename.replace("[SAMPLER]", sampler_name)
-                filename = filename.replace("[SEED]", str(seeds[i]))
+                filename = filename.replace("[SEED]", seed_used)
+                filename = filename.replace("[VARIANT_AMOUNT]", f"{cur_variant_amount:.2f}")
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
