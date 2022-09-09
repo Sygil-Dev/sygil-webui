@@ -37,7 +37,7 @@ if ! conda env list | grep ".*${ENV_NAME}.*" >/dev/null 2>&1; then
     ENV_UPDATED=1
 elif [[ ! -z $CONDA_FORCE_UPDATE && $CONDA_FORCE_UPDATE == "true" ]] || (( $ENV_MODIFIED > $ENV_MODIFIED_CACHED )); then
     echo "Updating conda env: ${ENV_NAME} ..."
-    conda env update --file $ENV_FILE --prune
+    PIP_EXISTS_ACTION=w conda env update --file $ENV_FILE --prune
     ENV_UPDATED=1
 fi
 
