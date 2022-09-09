@@ -963,7 +963,6 @@ def process_images(
                 else:
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
-                    sanitized_prompt = sanitized_prompt
                     filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]_[PROMPT]"
 
                 filename = f"{base_count:05}-" + filename
