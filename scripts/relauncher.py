@@ -19,6 +19,8 @@ optimized_turbo = False
 # Creates a public xxxxx.gradio.app share link to allow others to use your interface (requires properly forwarded ports to work correctly)
 share = False
 
+# Generate tiling images
+tiling = False
 
 # Enter other `--arguments` you wish to use - Must be entered as a `--argument ` syntax
 additional_arguments = ""
@@ -37,6 +39,8 @@ if optimized_turbo == True:
     common_arguments += "--optimized-turbo "
 if optimized == True:
     common_arguments += "--optimized "
+if tiling == True:
+    common_arguments += "--tiling "
 if share == True:
     common_arguments += "--share "
 
