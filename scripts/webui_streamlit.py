@@ -43,7 +43,7 @@ from diffusers import StableDiffusionPipeline
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, PNDMScheduler
 
 #will be used for saving and reading a video made by the txt2vid function
-import imageio 
+import imageio, io
 
 # we use python-slugify to make the filenames safe for windows and linux, its better than doing it manually
 # install it with 'pip install python-slugify'
@@ -252,10 +252,17 @@ def generation_callback(img, i=0):
 		st.session_state["progress_bar_text"].text(
                         f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
 	else:
-		round_sampling_steps = round(st.session_state.sampling_steps * st.session_state["denoising_strength"])
-		percent = int(100 * float(i+1 if i+1 < round_sampling_steps else round_sampling_steps)/float(round_sampling_steps))
-		st.session_state["progress_bar_text"].text(
-                        f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")
+		if st.session_state["generation_mode"] == "img2img":
+			round_sampling_steps = round(st.session_state.sampling_steps * st.session_state["denoising_strength"])
+			percent = int(100 * float(i+1 if i+1 < round_sampling_steps else round_sampling_steps)/float(round_sampling_steps))
+			st.session_state["progress_bar_text"].text(
+				f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")
+		else:
+			if st.session_state["generation_mode"] == "txt2vid":
+				percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
+				st.session_state["progress_bar_text"].text(
+				        f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps}"
+				        f"{percent if percent < 100 else 100}%")	
 
 	st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
 
@@ -564,6 +571,9 @@ def diffuse(
 	if accepts_eta:
 		extra_step_kwargs["eta"] = eta
 
+	
+	step_counter = 0
+	
 	# diffuse!
 	for i, t in enumerate(pipe.scheduler.timesteps):
 
@@ -585,6 +595,33 @@ def diffuse(
 			cond_latents = pipe.scheduler.step(noise_pred, i, cond_latents, **extra_step_kwargs)["prev_sample"]
 		else:
 			cond_latents = pipe.scheduler.step(noise_pred, t, cond_latents, **extra_step_kwargs)["prev_sample"]
+		
+		
+		#update the preview image if it is enabled and the frequency matches the step_counter
+		#if st.session_state["update_preview"]:
+		#	if st.session_state["update_preview_frequency"] == step_counter:
+		# scale and decode the image latents with vae
+		cond_latents_2 = 1 / 0.18215 * cond_latents
+		image_2 = pipe.vae.decode(cond_latents_2)
+		
+		# generate output numpy image as uint8
+		image_2 = (image_2 / 2 + 0.5).clamp(0, 1)
+		image_2 = image_2.cpu().permute(0, 2, 3, 1).numpy()
+		image_2 = (image_2[0] * 255).astype(np.uint8)		
+		
+		st.session_state["preview_image"].image(image_2)
+		#step_counter = 0
+				
+		percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
+		frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames)/float(st.session_state.max_frames))
+		
+		st.session_state["progress_bar_text"].text(
+	                f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
+	                f"{percent if percent < 100 else 100}% "
+		        f"Frame: {st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames}/{st.session_state.max_frames} "
+		        f"{frames_percent if frames_percent < 100 else 100}% "
+		)
+		st.session_state["progress_bar"].progress(percent if percent < 100 else 100)		
 
 	# scale and decode the image latents with vae
 	cond_latents = 1 / 0.18215 * cond_latents
@@ -1577,6 +1614,7 @@ def txt2vid(
                 height:int = 256,
                 weights_path = "CompVis/stable-diffusion-v1-4",
                 # --------------------------------------
+                sampler_name=defaults.txt2vid.default_sampler
                 ):
 	"""prompt:str = "blueberry spaghetti", # prompt to dream about. \n
 	gpu:int = defaults.general.gpu, # id of the gpu to run on. \n
@@ -1596,9 +1634,9 @@ def txt2vid(
 	if not seed or seed == '':
 		seed = random.randint(1, sys.maxsize)
 	else:
-		seed = seed_to_int(seed)
+		seed = seed_to_int(seed)	
 	
-	#assert torch.cuda.is_available()
+	assert torch.cuda.is_available()
 	assert height % 8 == 0 and width % 8 == 0
 	torch.manual_seed(seed)
 	torch_device = f"cuda:{gpu}"
@@ -1606,35 +1644,55 @@ def txt2vid(
 	# init the output dir
 	sanitized_prompt = slugify(prompt)
 	
-	full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", sanitized_prompt)
+	full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
 	
 	if len(full_path) > 220:
 		sanitized_prompt = sanitized_prompt[:220-len(full_path)]
-		full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", sanitized_prompt)
+		full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
 		
 	os.makedirs(full_path, exist_ok=True)
 
 	# init all of the models and move them to a given GPU
 	lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
-	pipe = StableDiffusionPipeline.from_pretrained(
-            weights_path,
-        use_local_file=True,
-        scheduler=lms,
-        use_auth_token=True,
-        torch_dtype=torch.float16,
-        revision="fp16"
-    )
-
-	pipe.unet.to(torch_device)
-	pipe.vae.to(torch_device)
-	pipe.text_encoder.to(torch_device)
+	
+	try:
+		if not st.session_state["pipe"]:
+			st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+				weights_path,
+				use_local_file=True,
+				scheduler=lms,  
+				use_auth_token=True,
+				torch_dtype=torch.float16,
+				revision="fp16"
+			)    
+		
+			st.session_state["pipe"].unet.to(torch_device)
+			st.session_state["pipe"].vae.to(torch_device)
+			st.session_state["pipe"].text_encoder.to(torch_device)
+			print("Tx2Vid Model Loaded")
+		else:
+			print("Tx2Vid Model already Loaded")
+	except:
+		st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+			                weights_path,
+			                use_local_file=True,
+			                scheduler=lms,  
+			                use_auth_token=True,
+			                torch_dtype=torch.float16,
+			                revision="fp16"
+			        )    
+	
+		st.session_state["pipe"].unet.to(torch_device)
+		st.session_state["pipe"].vae.to(torch_device)
+		st.session_state["pipe"].text_encoder.to(torch_device)
+		print("Tx2Vid Model Loaded")		
 
 	# get the conditional text embeddings based on the prompt
-	text_input = pipe.tokenizer(prompt, padding="max_length", max_length=pipe.tokenizer.model_max_length, truncation=True, return_tensors="pt")
-	cond_embeddings = pipe.text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
+	text_input = st.session_state["pipe"].tokenizer(prompt, padding="max_length", max_length=st.session_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
+	cond_embeddings = st.session_state["pipe"].text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
 
 	# sample a source
-	init1 = torch.randn((1, pipe.unet.in_channels, height // 8, width // 8), device=torch_device)
+	init1 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 	
 	# iterate the loop
 	frames = []
@@ -1642,29 +1700,31 @@ def txt2vid(
 	
 	try:
 		while frame_index < max_frames:
-	
+			st.session_state["current_frame"] = frame_index
+			
 			# sample the destination
-			init2 = torch.randn((1, pipe.unet.in_channels, height // 8, width // 8), device=torch_device)
+			init2 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 			
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				init = slerp(gpu, float(t), init1, init2)
 				
-				print("dreaming... ", frame_index)
+				#print("dreaming... ", frame_index)
 				with autocast("cuda"):
-					image = diffuse(pipe, cond_embeddings, init, num_inference_steps, guidance_scale, eta)
+					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, guidance_scale, eta)
 					
 				im = Image.fromarray(image)
 				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
 				im.save(outpath, quality=quality)
 				
 				# send the image to the UI to update it
-				st.session_state["preview_image"].image(im) 	
+				#st.session_state["preview_image"].image(im) 	
 				
 				#append the frames to the frames list so we can use them later.
-				frames.append(im)
+				frames.append(np.asarray(im))
 				
 				#increase frame_index counter.
 				frame_index += 1
+				st.session_state["current_frame"] = frame_index
 	
 			init1 = init2
 			
@@ -1739,7 +1799,7 @@ def layout():
 		defaults.general.update_preview = st.checkbox("Update Image Preview", value=defaults.general.update_preview,
                                                               help="If enabled the image preview will be updated during the generation instead of at the end. You can use the Update Preview \
 							      Frequency option bellow to customize how frequent it's updated. By default this is enabled and the frequency is set to 1 step.")
-		defaults.general.update_preview_frequency = st.text_input("Update Image Preview Frequency", value=defaults.general.update_preview_frequency,
+		st.session_state.update_preview_frequency = st.text_input("Update Image Preview Frequency", value=defaults.general.update_preview_frequency,
                                                                           help="Frequency in steps at which the the preview image is updated. By default the frequency is set to 1 step.")
 
 
@@ -1787,6 +1847,7 @@ def layout():
 
 					# create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
 					st.session_state["preview_image"] = st.empty()
+					st.session_state["preview_video"] = st.empty()
 
 					st.session_state["loading"] = st.empty()
 
@@ -2055,7 +2116,7 @@ def layout():
 					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 					#Default: 1")
 					
-				max_frames = st.text_input("Max Frames:", value=defaults.txt2vid.max_frames, help="Specify the max number of frames you want to generate.")
+				st.session_state["max_frames"] = int(st.text_input("Max Frames:", value=defaults.txt2vid.max_frames, help="Specify the max number of frames you want to generate."))
 	
 			with col2:
 				preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
@@ -2093,8 +2154,10 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=250)
-				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=250)
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=250,
+				                                            help="Number of steps between each pair of sampled points")
+				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=250,
+				                                                 help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 				sampler_name = st.selectbox("Sampling method", sampler_name_list,
@@ -2147,7 +2210,7 @@ def layout():
 					
 					
 					txt2vid(prompt=prompt, gpu=defaults.general.gpu,
-					        num_steps=st.session_state.sampling_steps, max_frames=int(max_frames), num_inference_steps=st.session_state.num_inference_steps,
+					        num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames), num_inference_steps=st.session_state.num_inference_steps,
 					        guidance_scale=cfg_scale,
 					        seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
 					        height=height, weights_path="CompVis/stable-diffusion-v1-4")
