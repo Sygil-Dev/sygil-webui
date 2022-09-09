@@ -913,7 +913,7 @@ def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp=None, ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
-        keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
+        keep_mask=False, mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
 	"""this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
@@ -1156,7 +1156,29 @@ def process_images(
 
 					if simple_templating:
 						grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
+					   
+					if mask_restore and init_mask:
+						#init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
+						init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
+						init_mask = init_mask.convert('L')
+						init_img = init_img.convert('RGB')
+						image = image.convert('RGB')
 
+						if use_RealESRGAN and st.session_state["RealESRGAN"] is not None:
+							if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
+								#try_loading_RealESRGAN(realesrgan_model_name)
+								load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+							 
+							output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_img, dtype=np.uint8))
+							init_img = Image.fromarray(output)
+							init_img = init_img.convert('RGB')
+ 
+							output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_mask, dtype=np.uint8))
+							init_mask = Image.fromarray(output)
+							init_mask = init_mask.convert('L')
+
+						image = Image.composite(init_img, image, init_mask)
+						
 				if save_individual_images:
 					save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
@@ -1257,7 +1279,7 @@ def resize_image(resize_mode, im, width, height):
 	return res
 
 def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None, mask_mode: int = 0, mask_blur_strength: int = 3, 
-            ddim_steps: int = 50, sampler_name: str = 'DDIM',
+            mask_restore: bool = False, ddim_steps: int = 50, sampler_name: str = 'DDIM',
             n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
             seed: int = -1, height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
             variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
@@ -1426,6 +1448,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
                                 init_mask=init_mask,
                                 keep_mask=keep_mask,
                                 mask_blur_strength=mask_blur_strength,
+                                mask_restore=mask_restore,
                                 denoising_strength=denoising_strength,
                                 resize_mode=resize_mode,
                                 uses_loopback=loopback,
@@ -1486,8 +1509,9 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
                         init_img=init_img,
                         init_mask=init_mask,
                         keep_mask=keep_mask,
-                        mask_blur_strength=2,
+                        mask_blur_strength=mask_blur_strength,
                         denoising_strength=denoising_strength,
+                        mask_restore=mask_restore,
                         resize_mode=resize_mode,
                         uses_loopback=loopback,
                         sort_samples=group_by_prompt,
