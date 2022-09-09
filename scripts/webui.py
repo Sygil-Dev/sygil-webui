@@ -632,7 +632,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             toggles.append(5 + offset)
         if write_sample_info_to_log_file:
             toggles.append(6+offset)
-        if metadata.use_GFPGAN:
+        if metadata.GFPGAN:
             toggles.append(7 + offset)
 
         info_dict = dict(
