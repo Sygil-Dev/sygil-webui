@@ -11,15 +11,14 @@
 
 Gradio version (stable)
 
-Open new Pull request on 'main' branch!
+Open new Pull Requests on `dev` branch!
 
 for Gradio check out the [docs](https://gradio.app/docs/) to contribute
 
 Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
 
-Open new Pull Requests against `dev` branch!
 
-**New features can be added to Gradio or Streamlit version**
+**New features can be added to Gradio or Streamlit versions**
 
 ## More documentation about features, troubleshooting, common issues very soon
 ### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
