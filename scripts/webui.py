@@ -2126,37 +2126,8 @@ img2img_image_mode = 'sketch'
 
 def change_image_editor_mode(choice, cropped_image, mask, resize_mode, width, height):
     if choice == "Mask":
-        update_image_editor       = gr.update(visible=False)
-        update_image_mask         = gr.update(visible=True)
-        update_btn_editor         = gr.update(visible=False)
-        update_btn_mask           = gr.update(visible=True)
-        update_painterro_btn      = gr.update(visible=False)
-        update_mask               = gr.update(visible=False)
-        update_mask_blur_strength = gr.update(visible=True)
-        update_mask_restore       = gr.update(visible=True)   
-        # unknown                    = gr.update(visible=True)   
-    else:
-        update_image_editor       = gr.update(visible=True)
-        update_image_mask         = gr.update(visible=False)
-        update_btn_editor         = gr.update(visible=True)
-        update_btn_mask           = gr.update(visible=False)
-        update_painterro_btn      = gr.update(visible=True)
-        update_mask               = gr.update(visible=True)
-        update_mask_blur_strength = gr.update(visible=False)
-        update_mask_restore       = gr.update(visible=False)  
-        # unknown                    = gr.update(visible=False)  
-
-    return [
-        update_image_editor,
-        update_image_mask,
-        update_btn_editor,
-        update_btn_mask,
-        update_painterro_btn,
-        update_mask,
-        update_mask_blur_strength,
-        update_mask_restore,
-        # unknown,
-    ]
+        return [gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True)]
+    return [gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)]
 
 def update_image_mask(cropped_image, resize_mode, width, height):
     resized_cropped_image = resize_image(resize_mode, cropped_image, width, height) if cropped_image else None
