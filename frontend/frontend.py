@@ -372,7 +372,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                   rowId="prompt_row"))
 
                 img2img_painterro_btn.click(None,
-                                            [img2img_image_editor],
+                                            [img2img_image_editor, img2img_image_mask, img2img_image_editor_mode],
                                             [img2img_image_editor, img2img_image_mask],
                                             _js=call_JS("Painterro.init", toId="img2img_editor")
                                             )
