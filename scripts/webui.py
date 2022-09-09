@@ -79,6 +79,7 @@ from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
+from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, ImageChops
 from io import BytesIO
 import base64
 import re
