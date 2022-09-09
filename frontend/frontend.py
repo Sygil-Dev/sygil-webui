@@ -189,8 +189,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             with gr.TabItem("Editor Options"):
                                 with gr.Row():
                                     # disable Uncrop for now
-                                    # choices=["Mask", "Crop", "Uncrop"]
-                                    img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop"],
+                                    choices=["Mask", "Crop", "Uncrop"]
+                                    #choices=["Mask", "Crop"]
+                                    img2img_image_editor_mode = gr.Radio(choices=choices,
                                                                          label="Image Editor Mode",
                                                                          value="Mask", elem_id='edit_mode_select',
                                                                          visible=True)
