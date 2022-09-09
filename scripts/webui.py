@@ -965,6 +965,7 @@ def process_images(
                     base_count = get_next_sequence_number(sample_path_i)
                     filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]_[PROMPT]"
 
+                #Add new filenames tags here
                 filename = f"{base_count:05}-" + filename
                 filename = filename.replace("[STEPS]", str(steps))
                 filename = filename.replace("[CFG]", str(cfg_scale))
