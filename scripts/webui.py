@@ -967,11 +967,11 @@ def process_images(
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
                     os.makedirs(sample_path_i, exist_ok=True)
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]"
+                    filename = opt.filename_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]"
                 else:
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = opt.name_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]_[PROMPT]"
+                    filename = opt.filename_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]_[PROMPT]"
 
                 #Add new filenames tags here
                 filename = f"{base_count:05}-" + filename
