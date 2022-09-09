@@ -53,6 +53,7 @@ txt2img:
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
+    write_info_files: True
     
 txt2vid:
     prompt:
@@ -125,6 +126,7 @@ img2img:
   RealESRGAN_model: "RealESRGAN_x4plus"
   variant_amount: 0.0
   variant_seed: ""
+  write_info_files: True
 
 gfpgan:
   strength: 100
