@@ -7,6 +7,11 @@
 * If the issue involves _a bug_ in **textual-inversion** create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 * If you want to know how to **activate** or **use** textual-inversion see **_[hlky/sd-enable-textual-inversion](https://github.com/hlky/sd-enable-textual-inversion)_**. Activation not working? create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 
+### Want to contribute?
+
+Open new Pull Requests against `dev` branch!
+
+**If you're thinking about adding a new feature to Web UI focus on the Streamlit version (webui_streamlit.py) which is in active development.**
 
 ## More documentation about features, troubleshooting, common issues very soon
 ### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
