@@ -7,7 +7,7 @@ general:
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
     default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
     fp:
-        name: 'embeddings/alex/embeddings_gs-11000.pt'
+        name: ''
     GFPGAN_dir: "./src/gfpgan"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
