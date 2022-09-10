@@ -2316,6 +2316,8 @@ class ServerLauncher(threading.Thread):
         }
         if not opt.share:
             demo.queue(concurrency_count=opt.max_jobs)
+            if os.environ.get('HTTP_PROXY') is not None: del os.environ['HTTP_PROXY']
+            if os.environ.get('HTTPS_PROXY') is not None: del os.environ['HTTPS_PROXY']
         if opt.share and opt.share_password:
             gradio_params['auth'] = ('webui', opt.share_password)
 
