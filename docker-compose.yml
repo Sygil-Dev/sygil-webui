@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   stable-diffusion:
-    container_name: sd
+    container_name: sd-webui
     build:
       context: .
       dockerfile: Dockerfile
@@ -18,7 +18,7 @@ services:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]
+            - capabilities: [ gpu ]
 
 volumes:
   conda_env:

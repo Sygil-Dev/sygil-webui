@@ -13,6 +13,8 @@ MODEL_FILES=(
     'GFPGANv1.3.pth /sd/src/gfpgan/experiments/pretrained_models https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth c953a88f2727c85c3d9ae72e2bd4846bbaf59fe6972ad94130e23e7017524a70'
     'RealESRGAN_x4plus.pth /sd/src/realesrgan/experiments/pretrained_models https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth 4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1'
     'RealESRGAN_x4plus_anime_6B.pth /sd/src/realesrgan/experiments/pretrained_models https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth f872d837d3c90ed2e05227bed711af5671a6fd1c9f7d7e91c911a61f155e99da'
+    'project.yaml /sd/src/latent-diffusion/experiments/pretrained_models https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1 9d6ad53c5dafeb07200fb712db14b813b527edd262bc80ea136777bdb41be2ba'
+    'model.ckpt /sd/src/latent-diffusion/experiments/pretrained_models https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1 c209caecac2f97b4bb8f4d726b70ac2ac9b35904b7fc99801e1f5e61f9210c13'
 )
 
 # Conda environment installs/updates
@@ -68,37 +70,40 @@ validateDownloadModel() {
 }
 
 # Validate model files
-if [[ -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
-    echo "Validating model files..."
-    for models in "${MODEL_FILES[@]}"; do
-        model=($models)
+echo "Validating model files..."
+for models in "${MODEL_FILES[@]}"; do
+    model=($models)
+    if [[ ! -f ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
         validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
-    done
-fi
+    fi
+done
 
 # Launch web gui
 cd /sd
 
-if [[ -z $WEBUI_ARGS ]]; then
-    launch_message="entrypoint.sh: Launching..."
+if [[ ! -z $WEBUI_SCRIPT && $WEBUI_SCRIPT == "webui_streamlit.py" ]]; then
+    launch_command="streamlit run scripts/${WEBUI_SCRIPT:-webui.py} $WEBUI_ARGS"
 else
-    launch_message="entrypoint.sh: Launching with arguments ${WEBUI_ARGS}"
+    launch_command="python scripts/${WEBUI_SCRIPT:-webui.py} $WEBUI_ARGS"
 fi
 
+launch_message="entrypoint.sh: Run ${launch_command}..."
 if [[ -z $WEBUI_RELAUNCH || $WEBUI_RELAUNCH == "true" ]]; then
     n=0
     while true; do
-
         echo $launch_message
+
         if (( $n > 0 )); then
             echo "Relaunch count: ${n}"
         fi
-        python -u scripts/webui.py $WEBUI_ARGS
+
+        $launch_command
+
         echo "entrypoint.sh: Process is ending. Relaunching in 0.5s..."
         ((n++))
         sleep 0.5
     done
 else
     echo $launch_message
-    python -u scripts/webui.py $WEBUI_ARGS
+    $launch_command
 fi
