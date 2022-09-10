@@ -1677,16 +1677,15 @@ def txt2vid(
 	os.makedirs(full_path, exist_ok=True)
 
 	# init all of the models and move them to a given GPU
-	lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
+	#lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
 	
 	try:
 		if not st.session_state["pipe"]:
 			st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 				weights_path,
 				use_local_file=True,
-				scheduler=lms,  
+				scheduler=sampler_name,  
 				use_auth_token=True,
-				torch_dtype=torch.float16,
 				revision="fp16"
 			)    
 		
@@ -1700,9 +1699,8 @@ def txt2vid(
 		st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 			                weights_path,
 			                use_local_file=True,
-			                scheduler=lms,  
+			                scheduler=sampler_name,  
 			                use_auth_token=True,
-			                torch_dtype=torch.float16,
 			                revision="fp16"
 			        )    
 	
@@ -1828,7 +1826,8 @@ def layout():
 
 
 
-	txt2img_tab, img2img_tab, txt2vid_tab, postprocessing_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", "Text-to-Video","Post-Processing"])
+	txt2img_tab, img2img_tab, txt2vid_tab, postprocessing_tab, model_manager_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", 
+	                                                                                        "Text-to-Video","Post-Processing", "Model Manager"])
 
 	with txt2img_tab:		
 		with st.form("txt2img-inputs"):
@@ -2249,6 +2248,9 @@ def layout():
 				# use the current col2 first tab to show the preview_img and update it as its generated.
 				#preview_image.image(output_images)		
 
+				
+	with model_manager_tab:
+		st.write("Model Manager")
 
 
 
