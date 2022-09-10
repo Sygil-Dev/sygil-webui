@@ -1623,7 +1623,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         elif sampler_name == 'k_dpm_2_a':
             sampler = KDiffusionSampler(model,'dpm_2_ancestral')
         elif sampler_name == 'k_dpm_2':
-            sampler_name = KDiffusionSampler(model,'dpm_2')
+            sampler = KDiffusionSampler(model,'dpm_2')
         elif sampler_name == 'k_euler_a':
             sampler = KDiffusionSampler(model,'euler_ancestral')
         elif sampler_name == 'k_euler':
