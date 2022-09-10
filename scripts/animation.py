@@ -8,30 +8,53 @@ import numpy as np
 def int_log2(x):
     return int(math.log2(x))
         
-def animation_sample(prompt_start, prompt_end, num_animation_frames, steps, maybe_modelCS, func_sample, sampler, x, init_data, sampler_name, batch_size):
+def animation_sample(prompt_start, prompt_end, num_animation_frames, steps, maybe_modelCS, func_sample, sampler, x, init_data, sampler_name, batch_size, animation_steps=None, animation_levels = None, job_info=None):
     uc = maybe_modelCS.get_learned_conditioning([""])
     MIN_SQUARE_DIFF_FACTOR = 0.5 # TODO: want this as a parameter? Increasing this can result in smoother animation.
-    DONT_AVERAGE_LAST_LEVEL = True # TODO: want it as parameter? should prevent some small artifacts. 
+    DONT_AVERAGE_LAST_LEVEL = False # TODO: want it as parameter? probably not, not so helpful as I thought.
+    ANIMATION_START_END_CONSTANT = True 
     batch_uc = torch.cat([uc for i in range(batch_size)])
     
     c_start = maybe_modelCS.get_learned_conditioning(prompt_start)
     c_end = maybe_modelCS.get_learned_conditioning(prompt_end)
     
-    max_tree_height = int_log2(num_animation_frames)
-    if num_animation_frames != (1<<max_tree_height):
-        max_tree_height+=1
-        num_animation_frames = (1<<max_tree_height)
-        print(f"changing num animation frames to a power of 2: {num_animation_frames}")
-        
     current_samples = x
     previous_conditioning_ratios = [0]
-    levels_sizes = [(1 << i) for i in range(max_tree_height + 1)] # TODO: want those as parameters?
+    
+    if animation_levels:
+        levels_sizes = [int(x) for x in animation_levels.split(",")]
+        if levels_sizes[0] != 1:
+            levels_sizes = [1] + levels_sizes
+        if levels_sizes[-1] < num_animation_frames:
+            levels_sizes.append(num_animation_frames)
+        print(f"custom levels: {levels_sizes}")
+    else:
+        max_tree_height = int_log2(num_animation_frames)
+        if num_animation_frames != (1<<max_tree_height):
+            max_tree_height+=1
+            num_animation_frames = (1<<max_tree_height)
+            print(f"changing num animation frames to a power of 2: {num_animation_frames}")
+            
+        levels_sizes = [(1 << i) for i in range(max_tree_height + 1)] # TODO: want those as parameters?
+        
     num_levels = len(levels_sizes)
+    
     if num_levels == 1: # For single picture
         steps_per_level = [0]
+    elif animation_steps:
+        steps_per_level = [int(x) for x in animation_steps.split(",")]
+        sigmas_per_level=[0]
+        s = 0
+        for i in range(len(steps_per_level)):
+            s += steps_per_level[i]
+            sigmas_per_level.append(s)
+        if len(sigmas_per_level) != num_levels:
+            raise Exception("Bad animation_steps", num_levels, animation_steps, sigmas_per_level)
     else:
-        steps_per_level = list(range(0, steps, steps // num_levels))
-    
+        sigmas_per_level = list(range(0, steps, steps // num_levels))
+        steps_per_level = [sigmas_per_level[i] - sigmas_per_level[i-1] for i in range(1, num_levels)]
+        
+    print(f"steps_per_level: {steps_per_level}")
     for current_level in range(num_levels):
         print(f"animation: level {current_level+1}/{num_levels}")
         print(f"current_samples.shape={current_samples.shape}")
@@ -40,14 +63,17 @@ def animation_sample(prompt_start, prompt_end, num_animation_frames, steps, mayb
         new_sample_inputs = []
         new_sample_inputs_indices = []
         new_sample_ratios = []
-        if current_level_size <= 2:
+        if current_level <= 1:
             new_sample_inputs = [current_samples[0]] * current_level_size
             new_sample_inputs_indices = [0] * current_level_size
             new_sample_ratios = [1] * current_level_size
             if current_level_size == 1:
                 conditioning_ratios = [0.5]
             else:
-                conditioning_ratios = [0, 1]
+                if ANIMATION_START_END_CONSTANT:
+                    conditioning_ratios = [i / (current_level_size - 1) for i in range(current_level_size)]
+                else:
+                    conditioning_ratios = [i / (current_level_size + 1) for i in range(1, current_level_size + 1)]
         else:
             squared_diffs = torch.sqrt(
                 torch.sum(
@@ -66,7 +92,10 @@ def animation_sample(prompt_start, prompt_end, num_animation_frames, steps, mayb
             j = 0
             max_j = len(previous_conditioning_ratios) - 1
             for i in range(current_level_size):
-                wanted_ratio = i / (current_level_size - 1)
+                if current_level != num_levels - 1 and not ANIMATION_START_END_CONSTANT:
+                    wanted_ratio = (i + 1) / (current_level_size + 1)
+                else:
+                    wanted_ratio = i / (current_level_size - 1)
                 
                 while j <= max_j and wanted_ratio >= squared_diffs_sums[j]:
                     j+=1
@@ -104,20 +133,25 @@ def animation_sample(prompt_start, prompt_end, num_animation_frames, steps, mayb
         print(f"conditioning_ratios: {conditioning_ratios}")
         print(f"[(i, ratio, parent_sample_index, sample_ratio)] = {list(zip(range(current_level_size), conditioning_ratios, new_sample_inputs_indices, new_sample_ratios))}")
         new_sample_inputs = torch.cat([sample[None] for sample in new_sample_inputs])
-        sigma_start = steps_per_level[current_level]
+        sigma_start = sigmas_per_level[current_level]
         if current_level == num_levels - 1:
             sigma_end = None
         else:
-            sigma_end = steps_per_level[current_level + 1] + 1 # +1 to sigma_end because of a bug where it always skips the last sigma.
+            sigma_end = sigmas_per_level[current_level + 1] + 1 # +1 to sigma_end because of a bug where it always skips the last sigma.
         print(f"animation: level {current_level+1}/{num_levels}, sigma_start={sigma_start}, sigma_end={sigma_end}")
         print(f"new_sample_inputs shape={new_sample_inputs.shape}, current_samples.shape = {current_samples.shape}")
         sampler.set_sigma_start_end_indices(sigma_start, sigma_end)
         for batch_offset in range(0, current_level_size, batch_size):
+            if job_info and job_info.should_stop.is_set():
+                print(f"stopped prematurely")
+                job_info.job_status += "\n Stopped prematurely"
+                return current_samples
             batch_results = func_sample(init_data=init_data, x=new_sample_inputs[batch_offset:batch_offset+batch_size], conditioning=conditioning_tensor[batch_offset:batch_offset+batch_size], unconditional_conditioning=batch_uc[:min(batch_size, current_level_size-batch_offset)], sampler_name=sampler_name)
             if batch_offset == 0:
                 current_samples = batch_results
             else:
                 current_samples = torch.cat((current_samples, batch_results))
+                
         previous_conditioning_ratios = conditioning_ratios
     
     return current_samples

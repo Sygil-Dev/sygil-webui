@@ -108,6 +108,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                                    value=txt2img_defaults['variant_amount'])
                                 txt2img_variant_seed = gr.Textbox(label="Variant Seed (blank to randomize)", lines=1,
                                                                   max_lines=1, value=txt2img_defaults["variant_seed"])
+                                txt2img_animation_steps = gr.Textbox(label="Animation steps (list separated by , as in 1,2,3)", lines=1,
+                                                                  max_lines=1, value=txt2img_defaults["variant_seed"])
+                                txt2img_animation_levels = gr.Textbox(label="Animation levels (list separated by , as in 1,2,3)", lines=1,
+                                                                  max_lines=1, value=txt2img_defaults["variant_seed"])
                         txt2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
 
@@ -115,7 +119,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
                                   txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
                                   txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
-                                  txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
+                                  txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed, txt2img_animation_steps, txt2img_animation_levels]
                 txt2img_outputs = [output_txt2img_gallery, output_txt2img_video, output_txt2img_seed,
                                    output_txt2img_params, output_txt2img_stats]
 

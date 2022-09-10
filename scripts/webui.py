@@ -613,7 +613,7 @@ def check_prompt_length(prompt, comments):
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True):
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=True, animation_steps = None, animation_levels = None):
     filename_i = os.path.join(sample_path_i, filename)
     if not jpg_sample:
         if opt.save_metadata and not skip_metadata:
@@ -672,6 +672,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             #info_dict["init_mask"] = init_mask
             info_dict["denoising_strength"] = denoising_strength
             info_dict["resize_mode"] = resize_mode
+        if animation_levels is not None:
+            info_dict["animation_levels"] = animation_levels
+        if animation_steps is not None:
+            info_dict["animation_steps"] = animation_steps
+            
         if write_info_files:
             with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
                 yaml.dump(info_dict, f, allow_unicode=True, width=10000)
@@ -801,7 +806,8 @@ def process_images(
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
-        variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None, sampler=None, output_video=False):
+        variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None,
+        sampler=None, output_video=False, animation_levels=None, animation_steps=None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
     prompt = prompt or ''
     torch_gc()
@@ -978,7 +984,7 @@ def process_images(
 
             if animation_prompt:
                 maybe_modelCS = (model if not opt.optimized else modelCS)
-                samples_ddim = animation_sample(prompt_start=prompt_start, prompt_end=prompt_end, num_animation_frames=num_animation_frames, steps=steps, func_sample=func_sample, sampler=sampler, init_data=init_data, x=x, sampler_name=sampler_name, batch_size = batch_size, maybe_modelCS=maybe_modelCS)
+                samples_ddim = animation_sample(prompt_start=prompt_start, prompt_end=prompt_end, num_animation_frames=num_animation_frames, steps=steps, func_sample=func_sample, sampler=sampler, init_data=init_data, x=x, sampler_name=sampler_name, batch_size = batch_size, maybe_modelCS=maybe_modelCS, animation_levels=animation_levels, animation_steps=animation_steps, job_info = job_info)
                 # Sometimes more frames are generated:
                 if num_animation_frames != len(samples_ddim):
                     num_animation_frames = len(samples_ddim)
@@ -1089,7 +1095,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
 normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, animation_levels=animation_levels, animation_steps=animation_steps)
                 if add_original_image or not simple_templating:
                     output_images.append(image)
                     if simple_templating:
@@ -1164,7 +1170,7 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
 
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
             ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None, job_info: JobInfo = None):
+            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None, animation_steps = None, animation_levels = None, job_info: JobInfo = None):
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
@@ -1245,6 +1251,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             job_info=job_info,
             sampler=sampler,  # sampler is needed for animation.
             output_video=True, # return video output parameter.
+            animation_levels=animation_levels,
+            animation_steps=animation_steps
         )
 
         del sampler
@@ -2101,6 +2109,8 @@ txt2img_defaults = {
     'variant_amount': 0.0,
     'variant_seed': '',
     'submit_on_enter': 'Yes',
+    'animation_steps' : None,
+    'animation_levels' : None
 }
 
 if 'txt2img' in user_defaults:
