@@ -16,7 +16,7 @@ if [[ $DIRCONFIRM =~ ^[Yy]$ ]]; then
     echo "Remove ./src"
     sudo rm -rf src
     sudo rm -rf gfpgan
-    sudo rm -rf latent_diffusion.egg-info
+    sudo rm -rf sd_webui.egg-info
     sudo rm .env_updated
 else
     echo "Exited without resetting"

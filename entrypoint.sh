@@ -77,7 +77,7 @@ validateDownloadModel() {
             exit 1
         fi
     else
-        if [[ ! -e ${path}/${file} ]]; then
+        if [[ ! -e ${path}/${file} || ! -L ${path}/${file} ]]; then
             mkdir -p ${path}
             ln -sf ${MODEL_DIR}/${file}.${hash} ${path}/${file}
             echo -e "linked valid ${file}\n"
