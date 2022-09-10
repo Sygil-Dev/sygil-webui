@@ -784,6 +784,29 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
+def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_strength, mask_restore, use_RealESRGAN, RealESRGAN):
+    if not mask_restore: 
+        return image
+    else:
+        init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
+        init_mask = init_mask.convert('L')
+        init_img = init_img.convert('RGB')
+        image = image.convert('RGB')
+
+        if use_RealESRGAN and RealESRGAN is not None:
+            output, img_mode = RealESRGAN.enhance(np.array(init_mask, dtype=np.uint8))
+            init_mask = Image.fromarray(output)
+            init_mask = init_mask.convert('L')
+
+            output, img_mode = RealESRGAN.enhance(np.array(init_img, dtype=np.uint8))
+            init_img = Image.fromarray(output)
+            init_img = init_img.convert('RGB')
+
+        image = Image.composite(init_img, image, init_mask)
+
+        return image
+
+
 def perform_color_correction(img_rgb, correction_target_lab, do_color_correction):
     try:
         from skimage import exposure
@@ -1022,6 +1045,11 @@ def process_images(
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_image = perform_color_correction(gfpgan_image, correction_target, do_color_correction)
+                    gfpgan_image = perform_masked_image_restoration(
+                        gfpgan_image, init_img, init_mask, 
+                        mask_blur_strength, mask_restore,
+                        use_RealESRGAN = False, RealESRGAN = None
+                    )                    
                     gfpgan_metadata = copy.copy(metadata)
                     gfpgan_metadata.GFPGAN = True
                     ImageMetadata.set_on_image( gfpgan_image, gfpgan_metadata )
@@ -1040,6 +1068,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
                     esrgan_image = perform_color_correction(esrgan_image, correction_target, do_color_correction)
+                    esrgan_image = perform_masked_image_restoration(
+                        esrgan_image, init_img, init_mask, 
+                        mask_blur_strength, mask_restore,
+                        use_RealESRGAN, RealESRGAN
+                    )
                     ImageMetadata.set_on_image( esrgan_image, metadata )
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
@@ -1057,6 +1090,11 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     gfpgan_esrgan_sample = output[:,:,::-1]
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
                     gfpgan_esrgan_image = perform_color_correction(gfpgan_esrgan_image, correction_target, do_color_correction)
+                    gfpgan_esrgan_image = perform_masked_image_restoration(
+                        gfpgan_esrgan_image, init_img, init_mask, 
+                        mask_blur_strength, mask_restore,
+                        use_RealESRGAN, RealESRGAN
+                    )
                     ImageMetadata.set_on_image(gfpgan_esrgan_image, metadata)
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
 skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
@@ -1068,26 +1106,13 @@ skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, 
                 if imgProcessorTask == True:
                     output_images.append(image)
 
-                if mask_restore and init_mask:
-                    #init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
-                    init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
-                    init_mask = init_mask.convert('L')
-                    init_img = init_img.convert('RGB')
-                    image = image.convert('RGB')
+                image = perform_masked_image_restoration(
+                    image, init_img, init_mask, 
+                    mask_blur_strength, mask_restore,
+                    # RealESRGAN image already processed in if-case above.
+                    use_RealESRGAN = False, RealESRGAN = None
+                )
 
-                    if use_RealESRGAN and RealESRGAN is not None:
-                        if RealESRGAN.model.name != realesrgan_model_name:
-                            try_loading_RealESRGAN(realesrgan_model_name)
-                        output, img_mode = RealESRGAN.enhance(np.array(init_img, dtype=np.uint8))
-                        init_img = Image.fromarray(output)
-                        init_img = init_img.convert('RGB')
-
-                        output, img_mode = RealESRGAN.enhance(np.array(init_mask, dtype=np.uint8))
-                        init_mask = Image.fromarray(output)
-                        init_mask = init_mask.convert('L')
-
-                    image = Image.composite(init_img, image, init_mask)
-                    
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
 skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
