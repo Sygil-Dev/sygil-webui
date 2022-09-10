@@ -3,7 +3,7 @@ import streamlit as st
 from streamlit import StopException, StreamlitAPIException
 
 import base64, cv2
-import argparse, os, sys, glob, re, random, datetime
+import argparse, os, sys, glob, re, random, datetime, timeit
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from PIL.PngImagePlugin import PngInfo
 import requests
@@ -37,6 +37,10 @@ from ldm.util import instantiate_from_config
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
      extract_into_tensor
 from retry import retry
+
+#some Streamlit components to make things look better.
+#from st_on_hover_tabs import on_hover_tabs
+
 
 # these are for testing txt2vid, should be removed and we should use things from our own code. 
 from diffusers import StableDiffusionPipeline
@@ -540,7 +544,7 @@ def diffuse(
         cond_embeddings, # text conditioning, should be (1, 77, 768)
         cond_latents,    # image conditioning, should be (1, 4, 64, 64)
         num_inference_steps,
-        guidance_scale,
+        cfg_scale,
         eta,
         ):
 	
@@ -555,12 +559,15 @@ def diffuse(
 	# if we use LMSDiscreteScheduler, let's make sure latents are mulitplied by sigmas
 	if isinstance(pipe.scheduler, LMSDiscreteScheduler):
 		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
+	else:
+		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
 
 	# init the scheduler
 	accepts_offset = "offset" in set(inspect.signature(pipe.scheduler.set_timesteps).parameters.keys())
 	extra_set_kwargs = {}
 	if accepts_offset:
 		extra_set_kwargs["offset"] = 1
+		
 	pipe.scheduler.set_timesteps(num_inference_steps, **extra_set_kwargs)
 	# prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
 	# eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
@@ -573,9 +580,13 @@ def diffuse(
 
 	
 	step_counter = 0
+	inference_counter = 0
 	
 	# diffuse!
 	for i, t in enumerate(pipe.scheduler.timesteps):
+		start = timeit.default_timer()
+	
+		#status_text.text(f"Running step: {step_counter}{total_number_steps} {percent} | {duration:.2f}{speed}")		
 
 		# expand the latents for classifier free guidance
 		latent_model_input = torch.cat([cond_latents] * 2)
@@ -588,7 +599,7 @@ def diffuse(
 
 		# cfg
 		noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-		noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+		noise_pred = noise_pred_uncond + cfg_scale * (noise_pred_text - noise_pred_uncond)
 
 		# compute the previous noisy sample x_t -> x_t-1
 		if isinstance(pipe.scheduler, LMSDiscreteScheduler):
@@ -611,15 +622,30 @@ def diffuse(
 		
 		st.session_state["preview_image"].image(image_2)
 		#step_counter = 0
+		
+		duration = timeit.default_timer() - start
+	
+		if duration >= 1:
+			speed = "s/it"
+		else:
+			speed = "it/s"
+			duration = 1 / duration	
+			
+		if i > st.session_state.sampling_steps:
+			inference_counter += 1
+			inference_percent = int(100 * float(inference_counter if inference_counter < num_inference_steps else num_inference_steps)/float(num_inference_steps))
+			inference_progress = f"{inference_counter if inference_counter < num_inference_steps else num_inference_steps}/{num_inference_steps} {inference_percent}% "
+		else:
+			inference_progress = ""
 				
 		percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
 		frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames)/float(st.session_state.max_frames))
 		
 		st.session_state["progress_bar_text"].text(
 	                f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
-	                f"{percent if percent < 100 else 100}% "
+	                f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
 		        f"Frame: {st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames}/{st.session_state.max_frames} "
-		        f"{frames_percent if frames_percent < 100 else 100}% "
+		        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
 		)
 		st.session_state["progress_bar"].progress(percent if percent < 100 else 100)		
 
@@ -1628,7 +1654,7 @@ def txt2vid(
                 num_steps:int = 200, # number of steps between each pair of sampled points
                 max_frames:int = 10000, # number of frames to write and then exit the script
                 num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
-                guidance_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
+                cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
                 seed = None,
                 # --------------------------------------
                 # args you probably don't want to change
@@ -1645,7 +1671,7 @@ def txt2vid(
 	num_steps:int = 200, # number of steps between each pair of sampled points \n
 	max_frames:int = 10000, # number of frames to write and then exit the script \n
 	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images \n
-	guidance_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good \n
+	cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good \n
 	seed:int = None, # seed to use for generation, if left empty or its Nonea random one will be generated \n
 	
 	quality:int = 100, # for jpeg compression of the output images \n
@@ -1654,6 +1680,8 @@ def txt2vid(
 	height:int = 256, \n
 	weights_path = "CompVis/stable-diffusion-v1-4", \n
 	"""
+	mem_mon = MemUsageMonitor('MemMon')
+	mem_mon.start()	
 	
 	if not seed or seed == '':
 		seed = random.randint(1, sys.maxsize)
@@ -1686,8 +1714,9 @@ def txt2vid(
 				use_local_file=True,
 				scheduler=lms,  
 				use_auth_token=True,
-				revision="fp16"
-			)    
+				torch_dtype=torch.float16,
+				#revision="fp16"
+			)
 		
 			st.session_state["pipe"].unet.to(torch_device)
 			st.session_state["pipe"].vae.to(torch_device)
@@ -1701,8 +1730,9 @@ def txt2vid(
 			                use_local_file=True,
 			                scheduler=lms,  
 			                use_auth_token=True,
-			                revision="fp16"
-			        )    
+			                torch_dtype=torch.float16,
+			                #revision="fp16"
+			        )
 	
 		st.session_state["pipe"].unet.to(torch_device)
 		st.session_state["pipe"].vae.to(torch_device)
@@ -1720,8 +1750,12 @@ def txt2vid(
 	frames = []
 	frame_index = 0
 	
+	st.session_state["frame_duration"] = 0
+	st.session_state["frame_speed"] = 0	
+	
 	try:
 		while frame_index < max_frames:
+			start = timeit.default_timer()
 			st.session_state["current_frame"] = frame_index
 			
 			# sample the destination
@@ -1732,7 +1766,7 @@ def txt2vid(
 				
 				#print("dreaming... ", frame_index)
 				with autocast("cuda"):
-					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, guidance_scale, eta)
+					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
 					
 				im = Image.fromarray(image)
 				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
@@ -1746,7 +1780,19 @@ def txt2vid(
 				
 				#increase frame_index counter.
 				frame_index += 1
+				
 				st.session_state["current_frame"] = frame_index
+				
+				duration = timeit.default_timer() - start
+			
+				if duration >= 1:
+					speed = "s/it"
+				else:
+					speed = "it/s"
+					duration = 1 / duration	
+					
+				st.session_state["frame_duration"] = duration
+				st.session_state["frame_speed"] = speed
 	
 			init1 = init2
 			
@@ -1759,6 +1805,20 @@ def txt2vid(
 	#for frame in frames:
 	#	writer.append_data(frame)
 	#writer.close()	
+	
+	mem_max_used, mem_total = mem_mon.read_and_stop()
+	time_diff = time.time()- start	
+	
+	info = f"""
+                {prompt}
+                Sampling Steps: {num_steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}, Max Frames: {max_frames}
+	        {', GFPGAN' if use_GFPGAN and st.session_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and st.session_state["RealESRGAN"] is not None else ''}
+	        {', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+	stats = f'''
+                Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
+                Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+
+	return im, seed, info
 
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
@@ -1994,7 +2054,7 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=250)
+				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=500)
 				st.session_state["sampler_name"] = st.selectbox("Sampling method", ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
                                                                                 index=0, help="Sampling method to use. Default: k_lms")  				
 
@@ -2129,8 +2189,8 @@ def layout():
 			col1, col2, col3 = st.columns([1,2,1], gap="large")    
 	
 			with col1:
-				width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.txt2vid.width, step=64)
-				height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.txt2vid.height, step=64)
+				width = st.slider("Width:", min_value=64, max_value=2048, value=defaults.txt2vid.width, step=64)
+				height = st.slider("Height:", min_value=64, max_value=2048, value=defaults.txt2vid.height, step=64)
 				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2vid.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
 				seed = st.text_input("Seed:", value=defaults.txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
 				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2vid.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
@@ -2177,9 +2237,9 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=250,
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=500,
 				                                            help="Number of steps between each pair of sampled points")
-				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=250,
+				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=500,
 				                                                 help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
@@ -2232,14 +2292,14 @@ def layout():
 			                                                           #variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 					
 					
-					txt2vid(prompt=prompt, gpu=defaults.general.gpu,
-					        num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames), num_inference_steps=st.session_state.num_inference_steps,
-					        guidance_scale=cfg_scale,
-					        seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
-					        height=height, weights_path="CompVis/stable-diffusion-v1-4")
+					image, seed, info= txt2vid(prompt=prompt, gpu=defaults.general.gpu,
+					                       num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames), num_inference_steps=st.session_state.num_inference_steps,
+					                       cfg_scale=cfg_scale,
+					                       seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
+					                       height=height, weights_path="CompVis/stable-diffusion-v1-4")
 					
-					message.success('Done!', icon="✅")
-					#message.warning("The Text to Video tab hasn't been implemented yet!")
+					#message.success('Done!', icon="✅")
+					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 	
 				except (StopException, KeyError):
 					print(f"Received Streamlit StopException")
