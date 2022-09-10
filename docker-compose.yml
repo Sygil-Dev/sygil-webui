@@ -10,6 +10,7 @@ services:
     volumes:
       - .:/sd
       - ./outputs:/sd/outputs
+      - ./model_cache:/sd/model_cache
       - conda_env:/opt/conda
       - root_profile:/root
     ports:
