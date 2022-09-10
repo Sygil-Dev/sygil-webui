@@ -9,7 +9,7 @@ general:
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
     default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
     fp:
-        name: 'embeddings/alex/embeddings_gs-11000.pt'
+        name: ''
     GFPGAN_dir: "./src/gfpgan"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
@@ -30,7 +30,7 @@ general:
     optimized: False
     optimized_turbo: False
     update_preview: True
-    update_preview_frequency: 1
+    update_preview_frequency: 5
 
 txt2img:
     prompt:
@@ -48,8 +48,8 @@ txt2img:
     save_grid: True
     group_by_prompt: True
     save_as_jpg: False
-    use_GFPGAN: True
-    use_RealESRGAN: True
+    use_GFPGAN: False
+    use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
@@ -73,7 +73,7 @@ txt2vid:
     group_by_prompt: True
     save_as_jpg: False
     use_GFPGAN: False
-    use_RealESRGAN: True
+    use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
@@ -121,8 +121,8 @@ img2img:
   save_grid: True
   group_by_prompt: True
   save_as_jpg: False
-  use_GFPGAN: True
-  use_RealESRGAN: True
+  use_GFPGAN: False
+  use_RealESRGAN: False
   RealESRGAN_model: "RealESRGAN_x4plus"
   variant_amount: 0.0
   variant_seed: ""
