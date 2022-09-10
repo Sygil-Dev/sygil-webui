@@ -1677,14 +1677,14 @@ def txt2vid(
 	os.makedirs(full_path, exist_ok=True)
 
 	# init all of the models and move them to a given GPU
-	#lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
+	lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
 	
 	try:
 		if not st.session_state["pipe"]:
 			st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 				weights_path,
 				use_local_file=True,
-				scheduler=sampler_name,  
+				scheduler=lms,  
 				use_auth_token=True,
 				revision="fp16"
 			)    
@@ -1699,7 +1699,7 @@ def txt2vid(
 		st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 			                weights_path,
 			                use_local_file=True,
-			                scheduler=sampler_name,  
+			                scheduler=lms,  
 			                use_auth_token=True,
 			                revision="fp16"
 			        )    
