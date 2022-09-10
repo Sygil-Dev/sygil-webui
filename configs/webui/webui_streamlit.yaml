@@ -40,8 +40,8 @@ txt2img:
     seed: ""
     batch_count: 1
     batch_size: 1
-    sampling_steps: 50
-    default_sampler: "k_lms"
+    sampling_steps: 30
+    default_sampler: "k_euler"
     separate_prompts: False
     normalize_prompt_weights: True
     save_individual_images: True
@@ -63,9 +63,9 @@ txt2vid:
     seed: ""
     batch_count: 1
     batch_size: 1
-    sampling_steps: 50
+    sampling_steps: 30
     num_inference_steps: 200
-    default_sampler: "k_lms"
+    default_sampler: "k_euler"
     separate_prompts: False
     normalize_prompt_weights: True
     save_individual_images: True
@@ -81,7 +81,7 @@ txt2vid:
     
 img2img:
   prompt:
-  sampling_steps: 50
+  sampling_steps: 30
   # Adding an int to toggles enables the corresponding feature.
   # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
   # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
@@ -94,7 +94,7 @@ img2img:
   # 8: jpg samples
   # 9: Fix faces using GFPGAN
   # 10: Upscale images using Real-ESRGAN
-  sampler_name: k_lms
+  sampler_name: k_euler
   denoising_strength: 0.45
   # 0: Keep masked area
   # 1: Regenerate only masked area
