@@ -17,6 +17,7 @@ for Gradio check out the [docs](https://gradio.app/docs/) to contribute
 
 Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
 
+Need more support with Gradio? We have a discord channel called `gradio-stable-diffusion` for Q&A with the gradio authors, to join use this link https://discord.gg/Qs8AsnX7Jd, then go to `role-assignment` and click gradio to join the `gradio` channels.
 
 **New features can be added to Gradio or Streamlit versions**
 
