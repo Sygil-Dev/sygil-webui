@@ -58,3 +58,6 @@ condaenv.*.requirements.txt
 /log/log.csv
 /flagged/*
 /gfpgan/*
+
+# Needed for mp4 encoding in windows.
+openh264-1.8.0-win64.dll

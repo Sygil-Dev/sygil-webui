@@ -36,7 +36,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                 value=txt2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=txt2img_defaults["seed"])
-                        txt2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
+                        txt2img_batch_count = gr.Slider(minimum=1, maximum=256, step=1,
                                                         label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
 
@@ -46,19 +46,21 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
                     with gr.Column():
                         with gr.Box():
-                            output_txt2img_gallery = gr.Gallery(label="Images", elem_id="txt2img_gallery_output").style(
-                                grid=[4, 4])
-                            gr.Markdown(
-                                "Select an image from the gallery, then click one of the buttons below to perform an action.")
-                            with gr.Row(elem_id='txt2img_actions_row'):
-                                gr.Button("Copy to clipboard").click(fn=None,
-                                                                     inputs=output_txt2img_gallery,
-                                                                     outputs=[],
-                                                                     # _js=js_copy_to_clipboard( 'txt2img_gallery_output')
-                                                                     )
-                                output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
-                                output_txt2img_to_imglab = gr.Button("Send to Lab", visible=True)
-
+                            with gr.Tabs(elem_id='tabs_gallery') as tabs_gallery:
+                                with gr.TabItem("Images", id='images_tab'):
+                                    output_txt2img_gallery = gr.Gallery(label="Images", elem_id="txt2img_gallery_output").style(grid=[4, 4])
+                                    gr.Markdown("Select an image from the gallery, then click one of the buttons below to perform an action.")
+                                    with gr.Row(elem_id='txt2img_actions_row'):
+                                        gr.Button("Copy to clipboard").click(fn=None,
+                                                inputs=output_txt2img_gallery,
+                                                outputs=[],
+                                                #_js=js_copy_to_clipboard( 'txt2img_gallery_output')
+                                                )
+                                        output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
+                                        output_txt2img_to_imglab = gr.Button("Send to Lab",visible=True)
+                                with gr.TabItem("Videos", id='videos_tab'):
+                                    output_txt2img_video = gr.Video(interactive=False)       
+                                    
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False,
                                                                    elem_id='highlight')
                         with gr.Group():
@@ -114,7 +116,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                   txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
                                   txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
                                   txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
-                txt2img_outputs = [output_txt2img_gallery, output_txt2img_seed,
+                txt2img_outputs = [output_txt2img_gallery, output_txt2img_video, output_txt2img_seed,
                                    output_txt2img_params, output_txt2img_stats]
 
                 # If a JobManager was passed in then wrap the Generate functions
