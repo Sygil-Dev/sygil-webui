@@ -69,7 +69,6 @@ validateDownloadModel() {
         echo "Downloading: ${url} please wait..."
         mkdir -p ${path}
         wget --output-document=${MODEL_DIR}/${file}.${hash} --no-verbose --show-progress --progress=dot:giga ${url}
-        echo "ln -sf ${MODEL_DIR}/${file}.${hash} ${path}/${file}"
         ln -sf ${MODEL_DIR}/${file}.${hash} ${path}/${file}
         if [[ -e "${path}/${file}" ]]; then
             echo "saved ${file}"
