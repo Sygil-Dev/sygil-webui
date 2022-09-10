@@ -38,4 +38,5 @@ dependencies:
     - -e git+https://github.com/TencentARC/GFPGAN#egg=GFPGAN
     - -e git+https://github.com/xinntao/Real-ESRGAN#egg=realesrgan
     - -e git+https://github.com/hlky/k-diffusion-sd#egg=k_diffusion
+    - -e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion
     - -e .
