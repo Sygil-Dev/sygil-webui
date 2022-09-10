@@ -1661,6 +1661,44 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
     return output_images, seed, info, stats
 
 
+def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: JobInfo = None):
+    outpath = opt.outdir_img2img or opt.outdir or "outputs/scn2img-samples"
+    err = False
+    seed = seed_to_int('')
+    prompt = prompt or ''
+
+    comments = []
+    output_images = []
+
+    start_time = time.time()
+
+    mem_mon = MemUsageMonitor('MemMon')
+    mem_mon.start()
+
+    
+
+    mem_max_used, mem_total = mem_mon.read_and_stop()
+    time_diff = time.time()-start_time
+
+
+    args_and_names = {
+        "seed": seed,
+    }
+    full_string = f"{prompt}\n"+ " ".join([f"{k}:" for k,v in args_and_names.items()])
+    info = {
+        'text': full_string,
+        'entities': [{'entity':str(v), 'start': full_string.find(f"{k}:"),'end': full_string.find(f"{k}:") + len(f"{k} ")} for k,v in args_and_names.items()]
+    }
+    num_prompts = 1
+    stats = f'''
+Took { round(time_diff, 2) }s total ({ round(time_diff/(num_prompts),2) }s per image)
+Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+
+    for comment in comments:
+        info['text'] += "\n\n" + comment
+
+    return output_images, seed, info, stats
+
 prompt_parser = re.compile("""
     (?P<prompt>     # capture group for 'prompt'
     (?:\\\:|[^:])+  # match one or more non ':' characters or escaped colons '\:'
@@ -2276,6 +2314,12 @@ if 'img2img' in user_defaults:
 img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
 
+scn2img_toggles = []
+scn2img_defaults = {
+    'prompt': ''
+}
+scn2img_toggle_defaults=[]
+
 help_text = """
     ## Mask/Crop
     * The masking/cropping is very temperamental.
@@ -2304,6 +2348,7 @@ demo = draw_gradio_ui(opt,
                       txt2img=txt2img,
                       img2img=img2img,
                       imgproc=imgproc,
+                      scn2img=scn2img,
                       txt2img_defaults=txt2img_defaults,
                       txt2img_toggles=txt2img_toggles,
                       txt2img_toggle_defaults=txt2img_toggle_defaults,
@@ -2316,6 +2361,9 @@ demo = draw_gradio_ui(opt,
                       sample_img2img=sample_img2img,
                       imgproc_defaults=imgproc_defaults,
                       imgproc_mode_toggles=imgproc_mode_toggles,
+                      scn2img_defaults=scn2img_defaults,
+                      scn2img_toggles=scn2img_toggles,
+                      scn2img_toggle_defaults=scn2img_toggle_defaults,
                       RealESRGAN=RealESRGAN,
                       GFPGAN=GFPGAN,
                       LDSR=LDSR,

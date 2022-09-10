@@ -7,12 +7,13 @@ import torch
 
 
 
-def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, txt2img_defaults={},
+def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, scn2img=lambda x: x, txt2img_defaults={},
                    RealESRGAN=True, GFPGAN=True, LDSR=True,
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
                    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
-                   img2img_resize_modes=None, imgproc_defaults={}, imgproc_mode_toggles={}, user_defaults={},
-                   run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
+                   img2img_resize_modes=None, imgproc_defaults={}, imgproc_mode_toggles={}, 
+                   scn2img_defaults={}, scn2img_toggles={}, scn2img_toggle_defaults={},
+                   user_defaults={}, run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
                    job_manager: JobManager = None) -> gr.Blocks:
     with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
         with gr.Tabs(elem_id='tabss') as tabs:
@@ -586,7 +587,108 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                outputs=[ldsr_group])
                 imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles],
                                                outputs=[gobig_group])
-            
+
+            with gr.TabItem("Scene-to-Image", id='scn2img_tab'):
+                with gr.Row(elem_id="tools_row"):
+                    scn2img_btn = gr.Button("Generate", elem_id="generate", variant="primary")
+
+                with gr.Row().style(equal_height=False):
+                    with gr.Column():
+                        scn2img_prompt = gr.Textbox(label="Prompt Scene",
+                                                    elem_id='scn2_img_input',
+                                                    placeholder="A corgi wearing a top hat as an oil painting.",
+                                                    lines=50,
+                                                    max_lines=50,
+                                                    value=scn2img_defaults['prompt'],
+                                                    show_label=False)
+
+                        scn2img_toggles = gr.CheckboxGroup(label='', choices=scn2img_toggles,
+                                                           value=scn2img_toggle_defaults, type="index")
+
+                        scn2img_embeddings = gr.File(label="Embeddings file for textual inversion",
+                                                     visible=show_embeddings)
+
+                    with gr.Column():
+                        gr.Markdown('#### Scn2Img Results')
+                        output_scn2img_gallery = gr.Gallery(label="Images", elem_id="scn2img_gallery_output").style(
+                            grid=[4, 4, 4])
+                        scn2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
+                        
+                        with gr.Tabs():
+                            with gr.TabItem("Generated image actions", id="scn2img_actions_tab"):
+                                gr.Markdown("Select an image, then press one of the buttons below")
+                                with gr.Row():
+                                    output_scn2img_copy_to_clipboard_btn = gr.Button("Copy to clipboard")
+                                    output_scn2img_copy_to_img2img_input_btn = gr.Button("Push to img2img input")
+                                    output_scn2img_copy_to_img2img_mask_btn = gr.Button("Push to img2img input mask")
+
+                                gr.Markdown("Warning: This will clear your current img2img image and mask settings!")
+
+                            with gr.TabItem("Output info", id="scn2img_output_info_tab"):
+                                output_scn2img_params = gr.Textbox(label="Generation parameters")
+                                with gr.Row():
+                                    output_scn2img_copy_params = gr.Button("Copy full parameters").click(
+                                        inputs=output_scn2img_params, outputs=[],
+                                        _js='(x) => {navigator.clipboard.writeText(x.replace(": ",":"))}', fn=None,
+                                        show_progress=False)
+                                    output_scn2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
+                                    output_scn2img_copy_seed = gr.Button("Copy only seed").click(
+                                        inputs=output_scn2img_seed, outputs=[],
+                                        _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
+                                output_scn2img_stats = gr.HTML(label='Stats')
+
+                output_scn2img_copy_to_img2img_input_btn.click(
+                    uifn.copy_img_to_edit,
+                    [output_scn2img_gallery],
+                    [img2img_image_editor, tabs, img2img_image_editor_mode],
+                    _js=call_JS("moveImageFromGallery",
+                                fromId="scn2img_gallery_output",
+                                toId="img2img_editor")
+                )
+                output_scn2img_copy_to_img2img_mask_btn.click(
+                    uifn.copy_img_to_mask,
+                    [output_scn2img_gallery],
+                    [img2img_image_mask, tabs, img2img_image_editor_mode],
+                    _js=call_JS("moveImageFromGallery",
+                                fromId="scn2img_gallery_output",
+                                toId="img2img_editor")
+                )
+
+                output_scn2img_copy_to_clipboard_btn.click(
+                    fn=None, 
+                    inputs=output_scn2img_gallery, 
+                    outputs=[],
+                    _js=call_JS("copyImageFromGalleryToClipboard",
+                                fromId="scn2img_gallery_output")
+                )
+
+                scn2img_func = scn2img
+                scn2img_inputs = [
+                    scn2img_prompt, 
+                    scn2img_toggles,
+                    scn2img_embeddings
+                ]
+                scn2img_outputs = [
+                    output_scn2img_gallery, 
+                    output_scn2img_seed, 
+                    output_scn2img_params,
+                    output_scn2img_stats
+                ]
+                # If a JobManager was passed in then wrap the Generate functions
+                if scn2img_job_ui:
+                    scn2img_func, scn2img_inputs, scn2img_outputs = scn2img_job_ui.wrap_func(
+                        func=scn2img_func,
+                        inputs=scn2img_inputs,
+                        outputs=scn2img_outputs,
+                    )                
+                
+                scn2img_btn.click(
+                    scn2img_func,
+                    scn2img_inputs,
+                    scn2img_outputs
+                )
+
+
         #     """
         #     if GFPGAN is not None:
         #         gfpgan_defaults = {
