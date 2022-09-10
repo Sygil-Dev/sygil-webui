@@ -786,7 +786,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
 def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_strength, mask_restore, use_RealESRGAN, RealESRGAN):
     if not mask_restore: 
-        return img
+        return image
     else:
         init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
         init_mask = init_mask.convert('L')
