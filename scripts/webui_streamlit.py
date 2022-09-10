@@ -2055,8 +2055,10 @@ def layout():
 					custom_model = "Stable Diffusion v1.4"
 					
 				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=500)
-				st.session_state["sampler_name"] = st.selectbox("Sampling method", ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
-                                                                                index=0, help="Sampling method to use. Default: k_lms")  				
+				st.session_state["sampler_name"] = st.selectbox("Sampling method",
+																["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
+																index=sampler_name_list.index(defaults.img2img.sampler_name),
+																							  help="Sampling method to use.")
 
 				uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
                                                                    help="Upload an image which will be used for the image to image generation."
