@@ -812,7 +812,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
 def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_strength, mask_restore, use_RealESRGAN, RealESRGAN):
-    if not mask_restore: 
+    if not mask_restore:
         return image
     else:
         init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
@@ -840,7 +840,7 @@ def perform_color_correction(img_rgb, correction_target_lab, do_color_correction
     except:
         print("Install scikit-image to perform color correction")
         return img_rgb
-    
+
     if not do_color_correction: return img_rgb
     if correction_target_lab is None: return img_rgb
 
@@ -854,7 +854,7 @@ def perform_color_correction(img_rgb, correction_target_lab, do_color_correction
                 channel_axis=2
             ), cv2.COLOR_LAB2RGB).astype("uint8")
         )
-    )    
+    )
 
 def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
@@ -1027,7 +1027,7 @@ def process_images(
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
                     time.sleep(1)
 
-            cur_variant_amount = variant_amount 
+            cur_variant_amount = variant_amount
             if variant_amount == 0.0:
                 # we manually generate all input noises because each one should have a specific seed
                 x = create_random_tensors(shape, seeds=seeds)
@@ -1114,10 +1114,10 @@ def process_images(
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_image = perform_color_correction(gfpgan_image, correction_target, do_color_correction)
                     gfpgan_image = perform_masked_image_restoration(
-                        gfpgan_image, init_img, init_mask, 
+                        gfpgan_image, init_img, init_mask,
                         mask_blur_strength, mask_restore,
                         use_RealESRGAN = False, RealESRGAN = None
-                    )                    
+                    )
                     gfpgan_metadata = copy.copy(metadata)
                     gfpgan_metadata.GFPGAN = True
                     ImageMetadata.set_on_image( gfpgan_image, gfpgan_metadata )
@@ -1137,7 +1137,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     esrgan_image = Image.fromarray(esrgan_sample)
                     esrgan_image = perform_color_correction(esrgan_image, correction_target, do_color_correction)
                     esrgan_image = perform_masked_image_restoration(
-                        esrgan_image, init_img, init_mask, 
+                        esrgan_image, init_img, init_mask,
                         mask_blur_strength, mask_restore,
                         use_RealESRGAN, RealESRGAN
                     )
@@ -1159,7 +1159,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
                     gfpgan_esrgan_image = perform_color_correction(gfpgan_esrgan_image, correction_target, do_color_correction)
                     gfpgan_esrgan_image = perform_masked_image_restoration(
-                        gfpgan_esrgan_image, init_img, init_mask, 
+                        gfpgan_esrgan_image, init_img, init_mask,
                         mask_blur_strength, mask_restore,
                         use_RealESRGAN, RealESRGAN
                     )
@@ -1175,7 +1175,7 @@ skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, 
                     output_images.append(image)
 
                 image = perform_masked_image_restoration(
-                    image, init_img, init_mask, 
+                    image, init_img, init_mask,
                     mask_blur_strength, mask_restore,
                     # RealESRGAN image already processed in if-case above.
                     use_RealESRGAN = False, RealESRGAN = None
@@ -1505,7 +1505,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
         #let's try and find where init_image is 0's
         #shape is probably (3,width,height)?
 
-        if image_editor_mode == "Uncrop":        
+        if image_editor_mode == "Uncrop":
             _image=image.numpy()[0]
             _mask=np.ones((_image.shape[1],_image.shape[2]))
 
@@ -1526,7 +1526,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
             boundingbox=np.zeros(shape=(height,width))
             boundingbox[colstart+PAD_IMG:colend-PAD_IMG,rowstart+PAD_IMG:rowend-PAD_IMG]=1
             boundingbox=blurArr(boundingbox,4)
-            
+
             #this is the mask for outpainting
             PAD_MASK=24
             boundingbox2=np.zeros(shape=(height,width))
@@ -1557,7 +1557,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
         init_image = init_image.to(device)
         init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
         init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
-        
+
         if opt.optimized:
             mem = torch.cuda.memory_allocated()/1e6
             modelFS.to("cpu")
@@ -1617,7 +1617,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
 
         # turn on color correction for loopback to prevent known issue of color drift
         do_color_correction = True
-        
+
         for i in range(n_iter):
             if do_color_correction and i == 0:
                 correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
@@ -1658,9 +1658,9 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
                 write_info_files=write_info_files,
                 write_sample_info_to_log_file=write_sample_info_to_log_file,
                 jpg_sample=jpg_sample,
-                job_info=job_info,   
+                job_info=job_info,
                 do_color_correction=do_color_correction,
-                correction_target=correction_target             
+                correction_target=correction_target
             )
 
             if initial_seed is None:
@@ -2074,7 +2074,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
                      ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
-                     ModelLoader(['RealESGAN'],True,False,imgproc_realesrgan_model_name) # Load used models 
+                     ModelLoader(['RealESGAN'],True,False,imgproc_realesrgan_model_name) # Load used models
                 elif imgproc_upscale_toggles == 1:
                         ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
                         ModelLoader(['RealESGAN','model'],True,False) # Load used models
@@ -2306,7 +2306,7 @@ img2img_toggles = [
     'Write sample info files',
     'Write sample info to one file',
     'jpg samples',
-    'Color correction (always enabled on loopback mode)'
+    'Color correction (always enabled on loopback mode)',
     'Filter NSFW content',
 ]
 # removed for now becuase of Image Lab implementation
@@ -2412,7 +2412,7 @@ class ServerLauncher(threading.Thread):
             'inbrowser': opt.inbrowser,
             'server_name': '0.0.0.0',
             'server_port': opt.port,
-            'share': opt.share, 
+            'share': opt.share,
             'show_error': True
         }
         if not opt.share:
