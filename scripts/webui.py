@@ -83,8 +83,7 @@ if os.getenv("SD_WEBUI_DEBUG", 'False').lower() in ('true', '1', 'y'):
         gpu_in_use = opt.esrgan_gpu
     elif opt.gfpgan_gpu != opt.gpu:
         gpu_in_use = opt.gfpgan_gpu
-
-print("Starting on GPU {selected_gpu_name}".format(selected_gpu_name=torch.cuda.get_device_name(gpu_in_use)))
+    print("Starting on GPU {selected_gpu_name}".format(selected_gpu_name=torch.cuda.get_device_name(gpu_in_use)))
 
 from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
