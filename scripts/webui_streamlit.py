@@ -29,9 +29,10 @@ from torch import autocast
 from torchvision import transforms
 import torch.nn as nn
 import yaml
-from typing import List, Union
+from typing import List, Union, Optional
 from pathlib import Path
-from tqdm import tqdm
+#from tqdm import tqdm
+from tqdm.auto import tqdm
 from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
@@ -46,7 +47,6 @@ from retry import retry
 
 #some Streamlit components to make things look better.
 #from st_on_hover_tabs import on_hover_tabs
-
 
 # these are for testing txt2vid, should be removed and we should use things from our own code. 
 from diffusers import StableDiffusionPipeline
@@ -584,8 +584,6 @@ def diffuse(
 	# if we use LMSDiscreteScheduler, let's make sure latents are mulitplied by sigmas
 	if isinstance(pipe.scheduler, LMSDiscreteScheduler):
 		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
-	else:
-		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
 
 	# init the scheduler
 	accepts_offset = "offset" in set(inspect.signature(pipe.scheduler.set_timesteps).parameters.keys())
@@ -774,6 +772,17 @@ def seed_to_int(s):
 		return s
 	if s is None or s == '':
 		return random.randint(0, 2**32 - 1)
+	
+	if type(s) is list:
+		seed_list = []
+		for seed in s:
+			if seed is None or seed == '':
+				seed_list.append(random.randint(0, 2**32 - 1))
+			else:
+				seed_list = s
+				
+		return seed_list
+	
 	n = abs(int(s) if s.isdigit() else random.Random(s).randint(0, 2**32 - 1))
 	while n >= 2**32:
 		n = n >> 32
@@ -1690,7 +1699,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 def txt2vid(
                 # --------------------------------------
                 # args you probably want to change
-                prompt:str = "blueberry spaghetti", # prompt to dream about
+                prompts = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
                 gpu:int = defaults.general.gpu, # id of the gpu to run on
                 #name:str = 'test', # name of this project, for the output directory
                 #rootdir:str = defaults.general.outdir,
@@ -1698,46 +1707,57 @@ def txt2vid(
                 max_frames:int = 10000, # number of frames to write and then exit the script
                 num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
                 cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
-                seed = None,
-                # --------------------------------------
-                # args you probably don't want to change
+                do_loop = False,
+                use_lerp_for_text = False,
+                seeds = None,
                 quality:int = 100, # for jpeg compression of the output images
                 eta:float = 0.0,
                 width:int = 256,
                 height:int = 256,
                 weights_path = "CompVis/stable-diffusion-v1-4",
-                # --------------------------------------
-                sampler_name=defaults.txt2vid.default_sampler
-                ):
-	"""prompt:str = "blueberry spaghetti", # prompt to dream about. \n
-	gpu:int = defaults.general.gpu, # id of the gpu to run on. \n
-	num_steps:int = 200, # number of steps between each pair of sampled points \n
-	max_frames:int = 10000, # number of frames to write and then exit the script \n
-	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images \n
-	cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good \n
-	seed:int = None, # seed to use for generation, if left empty or its Nonea random one will be generated \n
-	
-	quality:int = 100, # for jpeg compression of the output images \n
-	eta:float = 0.0, \n
-	width:int = 256, \n
-	height:int = 256, \n
-	weights_path = "CompVis/stable-diffusion-v1-4", \n
+                scheduler="klms",  # choices: default, ddim, klms
+                disable_tqdm = False,
+                #-----------------------------------------------
+                beta_start = 0.0001,
+                beta_end = 0.00012,
+                beta_schedule = "scaled_linear"
+                ):	
+	"""
+	prompt = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
+	gpu:int = defaults.general.gpu, # id of the gpu to run on
+	#name:str = 'test', # name of this project, for the output directory
+	#rootdir:str = defaults.general.outdir,
+	num_steps:int = 200, # number of steps between each pair of sampled points
+	max_frames:int = 10000, # number of frames to write and then exit the script
+	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
+	cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
+	do_loop = False,
+	use_lerp_for_text = False,
+	seed = None,
+	quality:int = 100, # for jpeg compression of the output images
+	eta:float = 0.0,
+	width:int = 256,
+	height:int = 256,
+	weights_path = "CompVis/stable-diffusion-v1-4",
+	scheduler="klms",  # choices: default, ddim, klms
+	disable_tqdm = False,
+	beta_start = 0.0001,
+	beta_end = 0.00012,
+	beta_schedule = "scaled_linear"
 	"""
 	mem_mon = MemUsageMonitor('MemMon')
 	mem_mon.start()	
 	
-	if not seed or seed == '':
-		seed = random.randint(1, sys.maxsize)
-	else:
-		seed = seed_to_int(seed)	
+	
+	seeds = seed_to_int(seeds)	
 	
 	assert torch.cuda.is_available()
 	assert height % 8 == 0 and width % 8 == 0
-	torch.manual_seed(seed)
+	torch.manual_seed(seeds)
 	torch_device = f"cuda:{gpu}"
 	
 	# init the output dir
-	sanitized_prompt = slugify(prompt)
+	sanitized_prompt = slugify(prompts)
 	
 	full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
 	
@@ -1746,16 +1766,77 @@ def txt2vid(
 		full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
 		
 	os.makedirs(full_path, exist_ok=True)
+	
+	# Write prompt info to file in output dir so we can keep track of what we did
+	if st.session_state.write_info_files:
+		with open(os.path.join(full_path , f'{slugify(prompts)}_{slugify(str(seeds))}_config.json' if len(prompts) > 1 else "prompts_config.json"), "w") as outfile:
+			outfile.write(json.dumps(
+				dict(
+				prompts = prompts,
+				gpu = gpu,
+				num_steps = num_steps,
+				max_frames = max_frames,
+				num_inference_steps = num_inference_steps,
+				cfg_scale = cfg_scale,
+				do_loop = do_loop,
+				use_lerp_for_text = use_lerp_for_text,
+				seeds = seeds,
+				quality = quality,
+				eta = eta,
+				width = width,
+				height = height,
+				weights_path = weights_path,
+				scheduler=scheduler,
+				disable_tqdm = disable_tqdm,
+				beta_start = beta_start,
+				beta_end = beta_end,
+				beta_schedule = beta_schedule
+				                ),
+			    indent=2,
+			    sort_keys=False,
+			    ))
 
-	# init all of the models and move them to a given GPU
-	lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
+	#print(scheduler)
+	default_scheduler = PNDMScheduler(
+		beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+	)
+	ddim_scheduler = DDIMScheduler(
+		beta_start=beta_start,
+	    beta_end=beta_end,
+	    beta_schedule=beta_schedule,
+	    clip_sample=False,
+	    set_alpha_to_one=False,
+	)
+	klms_scheduler = LMSDiscreteScheduler(
+		beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+	        #beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear"
+	)
+	
+	#lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
+	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)		
+	
+	#if weights_path == "Stable Diffusion v1.4":
+		#weights_path = "CompVis/stable-diffusion-v1-4"
+	#else:
+		#weights_path = os.path.join("./models", "custom", f"{weights_path}.ckpt")
 	
 	try:
-		if not st.session_state["pipe"]:
+		if "model" in st.session_state:
+			del st.session_state["model"]
+	except:
+		pass
+	
+	#print (st.session_state["weights_path"] != weights_path)
+	
+	try:
+		if not st.session_state["pipe"] or st.session_state["weights_path"] != weights_path:
+			if st.session_state["weights_path"] != weights_path:
+				del st.session_state["weights_path"]
+			
+			st.session_state["weights_path"] = weights_path	
 			st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 				weights_path,
 				use_local_file=True,
-				scheduler=lms,  
 				use_auth_token=True,
 				torch_dtype=torch.float16,
 				#revision="fp16"
@@ -1768,10 +1849,13 @@ def txt2vid(
 		else:
 			print("Tx2Vid Model already Loaded")
 	except:
+		#del st.session_state["weights_path"]
+		#del st.session_state["pipe"]
+		
+		st.session_state["weights_path"] = weights_path
 		st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 			                weights_path,
 			                use_local_file=True,
-			                scheduler=lms,  
 			                use_auth_token=True,
 			                torch_dtype=torch.float16,
 			                #revision="fp16"
@@ -1782,63 +1866,81 @@ def txt2vid(
 		st.session_state["pipe"].text_encoder.to(torch_device)
 		print("Tx2Vid Model Loaded")		
 
+	st.session_state["pipe"].scheduler = SCHEDULERS[scheduler]
+	
 	# get the conditional text embeddings based on the prompt
-	text_input = st.session_state["pipe"].tokenizer(prompt, padding="max_length", max_length=st.session_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
+	text_input = st.session_state["pipe"].tokenizer(prompts, padding="max_length", max_length=st.session_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
 	cond_embeddings = st.session_state["pipe"].text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
 
 	# sample a source
 	init1 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
+
+	if do_loop:
+		prompts = list(prompts)
+		seeds = list(seeds)
+		prompts.append(prompts)
+		seeds.append(first_seed)
+	
 	
 	# iterate the loop
 	frames = []
 	frame_index = 0
 	
-	st.session_state["frame_duration"] = 0
-	st.session_state["frame_speed"] = 0	
+	st.session_state["frame_total_duration"] = 0
+	st.session_state["frame_total_speed"] = 0	
 	
 	try:
 		while frame_index < max_frames:
-			start = timeit.default_timer()
+			st.session_state["frame_duration"] = 0
+			st.session_state["frame_speed"] = 0			
 			st.session_state["current_frame"] = frame_index
-			
+
 			# sample the destination
 			init2 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
-			
+
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
-				init = slerp(gpu, float(t), init1, init2)
+				start = timeit.default_timer()
+				print(f"COUNT: {frame_index+1}/{num_steps}")
+			
+				#if use_lerp_for_text:
+					#init = torch.lerp(init1, init2, float(t))
+				#else:
+					#init = slerp(gpu, float(t), init1, init2)
 				
+				init = slerp(gpu, float(t), init1, init2)
+
 				#print("dreaming... ", frame_index)
 				with autocast("cuda"):
 					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
-					
+
 				im = Image.fromarray(image)
 				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
 				im.save(outpath, quality=quality)
-				
+
 				# send the image to the UI to update it
 				#st.session_state["preview_image"].image(im) 	
-				
+
 				#append the frames to the frames list so we can use them later.
 				frames.append(np.asarray(im))
-				
+
 				#increase frame_index counter.
 				frame_index += 1
-				
+
 				st.session_state["current_frame"] = frame_index
-				
+
 				duration = timeit.default_timer() - start
-			
+
 				if duration >= 1:
 					speed = "s/it"
 				else:
 					speed = "it/s"
 					duration = 1 / duration	
-					
+
 				st.session_state["frame_duration"] = duration
 				st.session_state["frame_speed"] = speed
-	
+
 			init1 = init2
-			
+
 	except StopException:
 		pass
 		
@@ -2272,25 +2374,34 @@ def layout():
 			with col3:
 				# If we have custom models available on the "models/custom" 
 				#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
-				if CustomModel_available:
-					custom_model = st.selectbox("Custom Model:", custom_models,
-						    index=custom_models.index(defaults.general.default_model),
-					            help="Select the model you want to use. This option is only available if you have custom models \
-					            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
-					            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-					            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
-				else:
-					custom_model = "Stable Diffusion v1.4"
+				#if CustomModel_available:
+				custom_model = st.selectbox("Custom Model:", defaults.txt2vid.custom_models_list,
+				                            index=defaults.txt2vid.custom_models_list.index(defaults.txt2vid.default_model),
+				                            help="Select the model you want to use. This option is only available if you have custom models \
+				                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+				                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+				                        will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+					
+				#st.session_state["weights_path"] = custom_model
+				#else:
+					#custom_model = "CompVis/stable-diffusion-v1-4"
+					#st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 					
 				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
-				                                            help="Number of steps between each pair of sampled points")
+					                                    help="Number of steps between each pair of sampled points")
 				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
-				                                                 help="Higher values (e.g. 100, 200 etc) can create better images.")
+					                                         help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
-				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
-				sampler_name = st.selectbox("Sampling method", sampler_name_list,
-		                                            index=sampler_name_list.index(defaults.txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")  
-	
+				#sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+				#sampler_name = st.selectbox("Sampling method", sampler_name_list,
+							    #index=sampler_name_list.index(defaults.txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")  
+				scheduler_name_list = ["klms", "ddim"]
+				scheduler_name = st.selectbox("Scheduler:", scheduler_name_list,
+					                    index=scheduler_name_list.index(defaults.txt2vid.scheduler_name), help="Scheduler to use. Default: klms")  
+				
+				beta_scheduler_type_list = ["scaled_linear", "linear"]
+				beta_scheduler_type = st.selectbox("Beta Schedule Type:", beta_scheduler_type_list,
+					                    index=beta_scheduler_type_list.index(defaults.txt2vid.beta_scheduler_type), help="Schedule Type to use. Default: linear")  			
 	
 	
 				#basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
@@ -2300,54 +2411,65 @@ def layout():
 						#help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
 	
 				with st.expander("Advanced"):
-					separate_prompts = st.checkbox("Create Prompt Matrix.", value=False, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-					normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=True, help="Ensure the sum of all weights add up to 1.0")
-					save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
-					save_grid = st.checkbox("Save grid",value=True, help="Save a grid with all the images generated into a single image.")
-					group_by_prompt = st.checkbox("Group results by prompt", value=True,
-			                                              help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-					write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
-					save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
+					st.session_state["separate_prompts"] = st.checkbox("Create Prompt Matrix.", value=defaults.txt2vid.separate_prompts,
+					                                                   help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+					st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.", 
+					                                                           value=defaults.txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
+					st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
+					                                                         value=defaults.txt2vid.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
+					st.session_state["save_grid"] = st.checkbox("Save grid",value=defaults.txt2vid.save_grid, help="Save a grid with all the images generated into a single image.")
+					st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=defaults.txt2vid.group_by_prompt,
+						                                          help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
+					st.session_state["write_info_files"] = st.checkbox("Write Info file", value=defaults.txt2vid.write_info_files,
+					                                                   help="Save a file next to the image with informartion about the generation.")
+					st.session_state["do_loop"] = st.checkbox("Do Loop", value=defaults.txt2vid.do_loop,
+					                                          help="Do loop")
+					st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=defaults.txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 	
 					if GFPGAN_available:
-						use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+						st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=defaults.txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 					else:
-						use_GFPGAN = False
+						st.session_state["use_GFPGAN"] = False
 	
 					if RealESRGAN_available:
-						use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2vid.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-						RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+						st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=defaults.txt2vid.use_RealESRGAN,
+							                                         help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")	
+						st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
 					else:
-						use_RealESRGAN = False
-						RealESRGAN_model = "RealESRGAN_x4plus"
+						st.session_state["use_RealESRGAN"] = False
+						st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 	
-					variant_amount = st.slider("Variant Amount:", value=defaults.txt2vid.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
-					variant_seed = st.text_input("Variant Seed:", value=defaults.txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-	
+					st.session_state["variant_amount"] = st.slider("Variant Amount:", value=defaults.txt2vid.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+					st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=defaults.txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+					st.session_state["beta_start"] = st.slider("Beta Start:", value=defaults.txt2vid.beta_start, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
+					st.session_state["beta_end"] = st.slider("Beta End:", value=defaults.txt2vid.beta_end, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
 	
 			if generate_button:
 				#print("Loading models")
 				# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
-				load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)                
+				#load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)                
 	
-				try:
-					#output_images, seed, info, stats = txt2vid(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
-			                                                           #cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-			                                                           #save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
-			                                                           #variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-					
-					
-					image, seed, info= txt2vid(prompt=prompt, gpu=defaults.general.gpu,
-					                       num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames), num_inference_steps=st.session_state.num_inference_steps,
-					                       cfg_scale=cfg_scale,
-					                       seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
-					                       height=height, weights_path="CompVis/stable-diffusion-v1-4")
-					
-					#message.success('Done!', icon="✅")
-					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+				#try:
+				#output_images, seed, info, stats = txt2vid(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
+									   #cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+									   #save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+									   #variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+				
+				
+				image, seed, info= txt2vid(prompts=prompt, gpu=defaults.general.gpu,
+				                           num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
+				                           num_inference_steps=st.session_state.num_inference_steps,
+				                           cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
+				                           seeds=seed, quality=100, eta=0.0, width=width,
+				                           height=height, weights_path=custom_model, scheduler=scheduler_name,
+				                           disable_tqdm=False, beta_start=st.session_state["beta_start"], beta_end=st.session_state["beta_end"],
+				                           beta_schedule=beta_scheduler_type)
+				    
+				#message.success('Done!', icon="✅")
+				message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 	
-				except (StopException, KeyError):
-					print(f"Received Streamlit StopException")
+				#except (StopException, KeyError):
+					#print(f"Received Streamlit StopException")
 	
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
