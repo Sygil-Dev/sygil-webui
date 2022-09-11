@@ -1,13 +1,19 @@
+from pprint import pprint
 import warnings
+
+import piexif
+import piexif.helper
+import json
 import streamlit as st
 from streamlit import StopException, StreamlitAPIException
 
 import base64, cv2
-import argparse, os, sys, glob, re, random, datetime
+import argparse, os, sys, glob, re, random, datetime, timeit
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from PIL.PngImagePlugin import PngInfo
 import requests
 from scipy import integrate
+import pandas as pd
 import torch
 from torchdiffeq import odeint
 from tqdm.auto import trange, tqdm
@@ -30,13 +36,17 @@ from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
-from io import BytesIO
+from io import BytesIO, StringIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.util import instantiate_from_config
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
      extract_into_tensor
 from retry import retry
+
+#some Streamlit components to make things look better.
+#from st_on_hover_tabs import on_hover_tabs
+
 
 # these are for testing txt2vid, should be removed and we should use things from our own code. 
 from diffusers import StableDiffusionPipeline
@@ -91,6 +101,25 @@ elif grid_format[0] == 'webp':
 	if grid_quality < 0: # e.g. webp:-100 for lossless mode
 		grid_lossless = True
 		grid_quality = abs(grid_quality)
+
+# should and will be moved to a settings menu in the UI at some point
+save_format = [s.lower() for s in defaults.general.save_format.split(':')]
+save_lossless = False
+save_quality = 100
+if save_format[0] == 'png':
+	save_ext = 'png'
+	save_format = 'png'
+elif save_format[0] in ['jpg', 'jpeg']:
+	save_quality = int(save_format[1]) if len(save_format) > 1 else 100
+	save_ext = 'jpg'
+	save_format = 'jpeg'
+elif save_format[0] == 'webp':
+	save_quality = int(save_format[1]) if len(save_format) > 1 else 100
+	save_ext = 'webp'
+	save_format = 'webp'
+	if save_quality < 0: # e.g. webp:-100 for lossless mode
+		save_lossless = True
+		save_quality = abs(save_quality)
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
@@ -540,7 +569,7 @@ def diffuse(
         cond_embeddings, # text conditioning, should be (1, 77, 768)
         cond_latents,    # image conditioning, should be (1, 4, 64, 64)
         num_inference_steps,
-        guidance_scale,
+        cfg_scale,
         eta,
         ):
 	
@@ -555,12 +584,15 @@ def diffuse(
 	# if we use LMSDiscreteScheduler, let's make sure latents are mulitplied by sigmas
 	if isinstance(pipe.scheduler, LMSDiscreteScheduler):
 		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
+	else:
+		cond_latents = cond_latents * pipe.scheduler.sigmas[0]
 
 	# init the scheduler
 	accepts_offset = "offset" in set(inspect.signature(pipe.scheduler.set_timesteps).parameters.keys())
 	extra_set_kwargs = {}
 	if accepts_offset:
 		extra_set_kwargs["offset"] = 1
+		
 	pipe.scheduler.set_timesteps(num_inference_steps, **extra_set_kwargs)
 	# prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
 	# eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
@@ -573,9 +605,13 @@ def diffuse(
 
 	
 	step_counter = 0
+	inference_counter = 0
 	
 	# diffuse!
 	for i, t in enumerate(pipe.scheduler.timesteps):
+		start = timeit.default_timer()
+	
+		#status_text.text(f"Running step: {step_counter}{total_number_steps} {percent} | {duration:.2f}{speed}")		
 
 		# expand the latents for classifier free guidance
 		latent_model_input = torch.cat([cond_latents] * 2)
@@ -588,7 +624,7 @@ def diffuse(
 
 		# cfg
 		noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-		noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+		noise_pred = noise_pred_uncond + cfg_scale * (noise_pred_text - noise_pred_uncond)
 
 		# compute the previous noisy sample x_t -> x_t-1
 		if isinstance(pipe.scheduler, LMSDiscreteScheduler):
@@ -611,15 +647,30 @@ def diffuse(
 		
 		st.session_state["preview_image"].image(image_2)
 		#step_counter = 0
+		
+		duration = timeit.default_timer() - start
+	
+		if duration >= 1:
+			speed = "s/it"
+		else:
+			speed = "it/s"
+			duration = 1 / duration	
+			
+		if i > st.session_state.sampling_steps:
+			inference_counter += 1
+			inference_percent = int(100 * float(inference_counter if inference_counter < num_inference_steps else num_inference_steps)/float(num_inference_steps))
+			inference_progress = f"{inference_counter if inference_counter < num_inference_steps else num_inference_steps}/{num_inference_steps} {inference_percent}% "
+		else:
+			inference_progress = ""
 				
 		percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
 		frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames)/float(st.session_state.max_frames))
 		
 		st.session_state["progress_bar_text"].text(
 	                f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
-	                f"{percent if percent < 100 else 100}% "
+	                f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
 		        f"Frame: {st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames}/{st.session_state.max_frames} "
-		        f"{frames_percent if frames_percent < 100 else 100}% "
+		        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
 		)
 		st.session_state["progress_bar"].progress(percent if percent < 100 else 100)		
 
@@ -753,26 +804,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 
 	filename_i = os.path.join(sample_path_i, filename)
 
-	if not jpg_sample:
-		if defaults.general.save_metadata:
-			metadata = PngInfo()
-			metadata.add_text("SD:prompt", prompts[i])
-			metadata.add_text("SD:seed", str(seeds[i]))
-			metadata.add_text("SD:width", str(width))
-			metadata.add_text("SD:height", str(height))
-			metadata.add_text("SD:steps", str(steps))
-			metadata.add_text("SD:cfg_scale", str(cfg_scale))
-			metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
-			if init_img is not None:
-				metadata.add_text("SD:denoising_strength", str(denoising_strength))
-			metadata.add_text("SD:GFPGAN", str(use_GFPGAN and st.session_state["GFPGAN"] is not None))
-			image.save(f"{filename_i}.png", pnginfo=metadata)
-		else:
-			image.save(f"{filename_i}.png")
-	else:
-		image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
-
-	if write_info_files:
+	if defaults.general.save_metadata or write_info_files:
 		# toggles differ for txt2img vs. img2img:
 		offset = 0 if init_img is None else 2
 		toggles = []
@@ -795,20 +827,57 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 			toggles.append(5 + offset)
 		if use_GFPGAN:
 			toggles.append(6 + offset)
-		info_dict = dict(
-                        target="txt2img" if init_img is None else "img2img",
-                prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
-                    ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                        seed=seeds[i], width=width, height=height
-                )
+		metadata = \
+			dict(
+				target="txt2img" if init_img is None else "img2img",
+				prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
+				ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
+				seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights)
+		# Not yet any use for these, but they bloat up the files:
+		# info_dict["init_img"] = init_img
+		# info_dict["init_mask"] = init_mask
 		if init_img is not None:
-			# Not yet any use for these, but they bloat up the files:
-			#info_dict["init_img"] = init_img
-			#info_dict["init_mask"] = init_mask
-			info_dict["denoising_strength"] = denoising_strength
-			info_dict["resize_mode"] = resize_mode
+			metadata["denoising_strength"] = str(denoising_strength)
+			metadata["resize_mode"] = resize_mode
+
+	if write_info_files:
 		with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
-			yaml.dump(info_dict, f, allow_unicode=True, width=10000)
+			yaml.dump(metadata, f, allow_unicode=True, width=10000)
+
+	if defaults.general.save_metadata:
+		# metadata = {
+		# 	"SD:prompt": prompts[i],
+		# 	"SD:seed": str(seeds[i]),
+		# 	"SD:width": str(width),
+		# 	"SD:height": str(height),
+		# 	"SD:steps": str(steps),
+		# 	"SD:cfg_scale": str(cfg_scale),
+		# 	"SD:normalize_prompt_weights": str(normalize_prompt_weights),
+		# }
+		metadata = {"SD:" + k:v for (k,v) in metadata.items()}
+
+		if save_ext == "png":
+			mdata = PngInfo()
+			for key in metadata:
+				mdata.add_text(key, metadata[key])
+			image.save(f"{filename_i}.png", pnginfo=mdata)
+		else:
+			if jpg_sample:
+				image.save(f"{filename_i}.jpg", quality=save_quality,
+						   optimize=True)
+			elif save_ext == "webp":
+				image.save(f"{filename_i}.{save_ext}", f"webp", quality=save_quality,
+						   lossless=save_lossless)
+			else:
+				# not sure what file format this is
+				image.save(f"{filename_i}.{save_ext}", f"{save_ext}")
+			try:
+				exif_dict = piexif.load(f"{filename_i}.{save_ext}")
+			except:
+				exif_dict = { "Exif": dict() }
+			exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
+				json.dumps(metadata), encoding="unicode")
+			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{save_ext}")
 
 	# render the image on the frontend
 	st.session_state["preview_image"].image(image)    
@@ -1628,7 +1697,7 @@ def txt2vid(
                 num_steps:int = 200, # number of steps between each pair of sampled points
                 max_frames:int = 10000, # number of frames to write and then exit the script
                 num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
-                guidance_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
+                cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
                 seed = None,
                 # --------------------------------------
                 # args you probably don't want to change
@@ -1645,7 +1714,7 @@ def txt2vid(
 	num_steps:int = 200, # number of steps between each pair of sampled points \n
 	max_frames:int = 10000, # number of frames to write and then exit the script \n
 	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images \n
-	guidance_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good \n
+	cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good \n
 	seed:int = None, # seed to use for generation, if left empty or its Nonea random one will be generated \n
 	
 	quality:int = 100, # for jpeg compression of the output images \n
@@ -1654,6 +1723,8 @@ def txt2vid(
 	height:int = 256, \n
 	weights_path = "CompVis/stable-diffusion-v1-4", \n
 	"""
+	mem_mon = MemUsageMonitor('MemMon')
+	mem_mon.start()	
 	
 	if not seed or seed == '':
 		seed = random.randint(1, sys.maxsize)
@@ -1686,8 +1757,9 @@ def txt2vid(
 				use_local_file=True,
 				scheduler=lms,  
 				use_auth_token=True,
-				revision="fp16"
-			)    
+				torch_dtype=torch.float16,
+				#revision="fp16"
+			)
 		
 			st.session_state["pipe"].unet.to(torch_device)
 			st.session_state["pipe"].vae.to(torch_device)
@@ -1701,8 +1773,9 @@ def txt2vid(
 			                use_local_file=True,
 			                scheduler=lms,  
 			                use_auth_token=True,
-			                revision="fp16"
-			        )    
+			                torch_dtype=torch.float16,
+			                #revision="fp16"
+			        )
 	
 		st.session_state["pipe"].unet.to(torch_device)
 		st.session_state["pipe"].vae.to(torch_device)
@@ -1720,8 +1793,12 @@ def txt2vid(
 	frames = []
 	frame_index = 0
 	
+	st.session_state["frame_duration"] = 0
+	st.session_state["frame_speed"] = 0	
+	
 	try:
 		while frame_index < max_frames:
+			start = timeit.default_timer()
 			st.session_state["current_frame"] = frame_index
 			
 			# sample the destination
@@ -1732,7 +1809,7 @@ def txt2vid(
 				
 				#print("dreaming... ", frame_index)
 				with autocast("cuda"):
-					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, guidance_scale, eta)
+					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
 					
 				im = Image.fromarray(image)
 				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
@@ -1746,7 +1823,19 @@ def txt2vid(
 				
 				#increase frame_index counter.
 				frame_index += 1
+				
 				st.session_state["current_frame"] = frame_index
+				
+				duration = timeit.default_timer() - start
+			
+				if duration >= 1:
+					speed = "s/it"
+				else:
+					speed = "it/s"
+					duration = 1 / duration	
+					
+				st.session_state["frame_duration"] = duration
+				st.session_state["frame_speed"] = speed
 	
 			init1 = init2
 			
@@ -1759,6 +1848,20 @@ def txt2vid(
 	#for frame in frames:
 	#	writer.append_data(frame)
 	#writer.close()	
+	
+	mem_max_used, mem_total = mem_mon.read_and_stop()
+	time_diff = time.time()- start	
+	
+	info = f"""
+                {prompt}
+                Sampling Steps: {num_steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}, Max Frames: {max_frames}
+	        {', GFPGAN' if use_GFPGAN and st.session_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and st.session_state["RealESRGAN"] is not None else ''}
+	        {', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+	stats = f'''
+                Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
+                Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+
+	return im, seed, info
 
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
@@ -1994,9 +2097,11 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=250)
-				st.session_state["sampler_name"] = st.selectbox("Sampling method", ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
-                                                                                index=0, help="Sampling method to use. Default: k_lms")  				
+				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=500)
+				st.session_state["sampler_name"] = st.selectbox("Sampling method",
+																["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
+																index=sampler_name_list.index(defaults.img2img.sampler_name),
+																							  help="Sampling method to use.")
 
 				uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
                                                                    help="Upload an image which will be used for the image to image generation."
@@ -2129,8 +2234,8 @@ def layout():
 			col1, col2, col3 = st.columns([1,2,1], gap="large")    
 	
 			with col1:
-				width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.txt2vid.width, step=64)
-				height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.txt2vid.height, step=64)
+				width = st.slider("Width:", min_value=64, max_value=2048, value=defaults.txt2vid.width, step=64)
+				height = st.slider("Height:", min_value=64, max_value=2048, value=defaults.txt2vid.height, step=64)
 				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2vid.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
 				seed = st.text_input("Seed:", value=defaults.txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
 				batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2vid.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
@@ -2177,9 +2282,9 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=250,
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
 				                                            help="Number of steps between each pair of sampled points")
-				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=250,
+				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
 				                                                 help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
@@ -2232,14 +2337,14 @@ def layout():
 			                                                           #variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 					
 					
-					txt2vid(prompt=prompt, gpu=defaults.general.gpu,
-					        num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames), num_inference_steps=st.session_state.num_inference_steps,
-					        guidance_scale=cfg_scale,
-					        seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
-					        height=height, weights_path="CompVis/stable-diffusion-v1-4")
+					image, seed, info= txt2vid(prompt=prompt, gpu=defaults.general.gpu,
+					                       num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames), num_inference_steps=st.session_state.num_inference_steps,
+					                       cfg_scale=cfg_scale,
+					                       seed=seed if seed else random.randint(1,sys.maxsize), quality=100, eta=0.0, width=width,
+					                       height=height, weights_path="CompVis/stable-diffusion-v1-4")
 					
-					message.success('Done!', icon="✅")
-					#message.warning("The Text to Video tab hasn't been implemented yet!")
+					#message.success('Done!', icon="✅")
+					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 	
 				except (StopException, KeyError):
 					print(f"Received Streamlit StopException")
@@ -2248,10 +2353,36 @@ def layout():
 				# use the current col2 first tab to show the preview_img and update it as its generated.
 				#preview_image.image(output_images)		
 
-				
-	with model_manager_tab:
-		st.write("Model Manager")
+	#			
+	with model_manager_tab:	
+		#search = st.text_input(label="Search", placeholder="Type the name of the model you want to search for.", help="")
 
+		csvString = f"""
+		 ,Stable Diffusion v1.4       , ./models/ldm/stable-diffusion-v1               , https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media                  
+		 ,GFPGAN v1.3                 , ./src/gfpgan/experiments/pretrained_models     , https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth                     
+		 ,RealESRGAN_x4plus           , ./src/realesrgan/experiments/pretrained_models , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth            
+		 ,RealESRGAN_x4plus_anime_6B  , ./src/realesrgan/experiments/pretrained_models , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth 
+		 ,Waifu Diffusion v1.2        , ./models/custom                                , http://wd.links.sd:8880/wd-v1-2-full-ema.ckpt
+		 ,TrinArt Stable Diffusion v2 , ./models/custom                                , https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step115000.ckpt
+		"""
+		colms = st.columns((1, 3, 5, 5))
+		columns = ["№",'Model Name','Save Location','Download Link']
+		
+		# Convert String into StringIO
+		csvStringIO = StringIO(csvString)
+		df = pd.read_csv(csvStringIO, sep=",", header=None, names=columns)		
+		
+		for col, field_name in zip(colms, columns):
+			# table header
+			col.write(field_name)
+		
+		for x, model_name in enumerate(df["Model Name"]):
+			col1, col2, col3, col4 = st.columns((1, 3, 4, 6))
+			col1.write(x)  # index
+			col2.write(df['Model Name'][x])
+			col3.write(df['Save Location'][x])
+			col4.write(df['Download Link'][x])
+				
 
 
 if __name__ == '__main__':
