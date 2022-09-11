@@ -1725,53 +1725,87 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
         parse_arg["str"]         = lambda x: str(x)
         parse_arg["int"]         = int
         parse_arg["float"]       = float
+        parse_arg["bool"]        = bool
         parse_arg["tuple"]       = lambda s: tuple(s.split(",")),
         parse_arg["int_tuple"]   = lambda s: tuple(map(int,s.split(",")))
         parse_arg["float_tuple"] = lambda s: tuple(map(float,s.split(",")))
         parse_arg["degrees"]     = lambda s: float(s) * math.pi / 180
         parse_arg["color"]       = lambda s: try_many([parse_arg["int_tuple"], parse_arg["str"]], s)
         parse_arg["anything"] = lambda s:try_many([
+            parse_arg["int_tuple"],
             parse_arg["float_tuple"],
-            parse_arg["tuple"],
-            parse_arg["float"],
             parse_arg["int"],
+            parse_arg["float"],
+            parse_arg["tuple"],
             parse_arg["color"],
             parse_arg["str"],
         ],s)
         function_args = {
             "img2img": {
-                "prompt"             : "str",
-                "sampler"            : "str",
-                "steps"              : "int",
-                "denoising_strength" : "float",
+                "prompt"               : "str",
+                "image_editor_mode"    : "str",
+                "mask_mode"            : "int",
+                "mask_blur_strength"   : "float",
+                "mask_restore"         : "bool",
+                "ddim_steps"           : "int",
+                "sampler_name"         : "str",
+                "toggles"              : "int_tuple",
+                "realesrgan_model_name": "str",
+                "n_iter"               : "int",
+                "cfg_scale"            : "float",
+                "denoising_strength"   : "float",
+                "seed"                 : "int",
+                "height"               : "int",
+                "width"                : "int",
+                "resize_mode"          : "int",
+                "denoising_strength"   : "float",                
             },
             "txt2img": {
-                "prompt"             : "str",
-                "sampler"            : "str",
-                "steps"              : "int",
-                "denoising_strength" : "float",
+                "prompt"                : "str",
+                "ddim_steps"            : "int",
+                "sampler_name"          : "str",
+                "toggles"               : "int_tuple",
+                "realesrgan_model_name" : "str",
+                "ddim_eta"              : "float",
+                "n_iter"                : "int",
+                "batch_size"            : "int",
+                "cfg_scale"             : "float",
+                "seed"                  : "int",
+                "height"                : "int",
+                "width"                 : "int",
+                "variant_amount"        : "float",
+                "variant_seed"          : "int",
+            },
+            "render_img2img": {
+                "select" : "int"
+            },
+            "render_txt2img": {
+                "select" : "int"
             },
             "image": {
                 "size"     : "int_tuple",
                 "position" : "float_tuple",
-                "resize"   : "float_tuple",
+                "resize"   : "int_tuple",
                 "rotation" : "degrees",
                 "color"    : "color"
             }
         }
-        for key in function_args.keys():
-            if key == "image": continue
-            function_args[key].update(function_args["image"])
-        return parse_arg, function_args
+        function_args_ext = {
+            "image": ["image"],
+            "img2img": ["render_img2img", "img2img", "image"],
+            "txt2img": ["render_img2img", "img2img", "image"],
+        }
+        return parse_arg, function_args, function_args_ext
 
-    parse_arg, function_args = define_args()
+    parse_arg, function_args, function_args_ext = define_args()
     # print("function_args", function_args)
 
     def parse_scene(prompt, log):
 
-        parse_comment = re.compile('^\s*//.+$')
-        parse_attr = re.compile('^\s*([\w_][\d\w_]*)\s*[:=\s]\s*(.+)\s*$')
-        parse_heading = re.compile('^\s*(#+)\s*(.*)$')
+        parse_inline_comment = re.compile(r'(?m)//.+?$') #(?m): $ also matches at before \n
+        parse_multiline_comment = re.compile(r'(?s)/\*.+?\*/') #(?s): . matches \n
+        parse_attr = re.compile(r'^\s*([\w_][\d\w_]*)\s*[:=\s]\s*(.+)\s*$')
+        parse_heading = re.compile(r'^\s*(#+)\s*(.*)$')
 
         class Section:
             def __init__(self, depth=0, title="", content=None, children=None):
@@ -1791,18 +1825,30 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
                     + list(map(str, self.children))
                 )
         
-        def strip_comments(txt):
+        def strip_inline_comments(txt):
             while True:
-                txt,replaced = parse_comment.subn("", txt)
+                txt,replaced = parse_inline_comment.subn("", txt)
                 if replaced == 0:
                     break
             return txt
             
+        def strip_multiline_comments(txt):
+            while True:
+                txt,replaced = parse_multiline_comment.subn("", txt)
+                if replaced == 0:
+                    break
+            return txt
+        
+        def strip_comments(txt):
+            txt = strip_inline_comments(txt)
+            txt = strip_multiline_comments(txt)
+            return txt
+
         def parse_content(lines):
             
             content = collections.OrderedDict()
             for line in lines:
-                line = strip_comments(line)
+                # line = strip_inline_comments(line)
                 m = parse_attr.match(line)
                 if m is None:
                     attr = None
@@ -1913,9 +1959,15 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
                 )
             
         def parse_scene_args(scene):
-            func_args = function_args[scene.func] if scene.func in function_args else {}
+            image_func_args = function_args["image"]
+            scene_func_args = function_args[scene.func] if scene.func in function_args else {}
+            extends = function_args_ext[scene.func] if scene.func in function_args_ext else []
             for arg in scene.args.keys():
-                arg_type = func_args[arg] if arg in func_args else "anything"
+                arg_type = "anything"
+                for ext in extends:
+                    if arg in function_args[ext]:
+                        arg_type = function_args[ext][arg]
+                        break
                 try:
                     scene.args[arg] = parse_arg[arg_type](scene.args[arg])
                 except Exception as e:
@@ -1926,6 +1978,7 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
                 parse_scene_args(child)
             return scene
         
+        prompt = strip_comments(prompt)
         lines = prompt.split("\n")
         sections = parse_sections(lines)
         sections = list(sections)
@@ -2071,8 +2124,8 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
                     raise e
             return dst
             
-        def render_image(obj, input=None):
-            img = create_image(obj["size"], obj["color"]) or input
+        def render_image(obj):
+            img = create_image(obj["size"], obj["color"])
             if img is None: print(f"img is None after create_image in render_image({obj})")
             img = blend_objects(
                 img,
@@ -2084,12 +2137,97 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
             return img
 
         def render_img2img(obj):
-            image = None
-            return render_image(obj, image)
+            img = create_image(obj["size"], obj["color"])
+            img = blend_objects(
+                img,
+                obj.children
+            )
+            img2img_kwargs = {}
+            # img2img_kwargs.update(img2img_defaults)
+            func_args = function_args["img2img"]
+            for k,v in img2img_defaults.items():
+                if k in func_args:
+                    img2img_kwargs[k] = v
+
+            if "mask_mode" in img2img_kwargs:
+                img2img_kwargs["mask_mode"] = 1 - img2img_kwargs["mask_mode"]
+
+            if "size" in obj:
+                img2img_kwargs["width"] = obj["size"][0]
+                img2img_kwargs["height"] = obj["size"][1]
+
+            for k,v in func_args.items():
+                if k in obj:
+                    img2img_kwargs[k] = obj[k]
+
+            if "toggles" in img2img_kwargs:
+                img2img_kwargs["toggles"] = list(img2img_kwargs["toggles"])
+            # img2img_kwargs["job_info"] = job_info
+            img2img_kwargs["job_info"] = None
+            img2img_kwargs["fp"] = fp
+            img2img_kwargs["init_info"] = img
+            if img2img_kwargs["image_editor_mode"] == "Mask":
+                img2img_kwargs["init_info_mask"] = {
+                    "image": img.convert("RGB"),
+                    "mask": img.getchannel("A")
+                }
+            print("img2img_kwargs")
+            print(img2img_kwargs)
+
+            outputs, seed, info, stats = img2img(
+                **img2img_kwargs
+            )
+
+            print("outputs", outputs)
+
+            if len(outputs) > 0:
+                select = obj["select"] or 0
+                img = outputs[select]
+                img = img.convert("RGBA")
+
+            img = resize_image(img, obj["resize"], obj["crop"])
+            if img is None: print(f"result of render_img2img({obj}) is None")
+            return img
 
         def render_txt2img(obj):
-            image = None
-            return render_image(obj, image)
+            txt2img_kwargs = {}
+            # txt2img_kwargs.update(txt2img_defaults)
+            func_args = function_args["txt2img"]
+            for k,v in txt2img_defaults.items():
+                if k in func_args:
+                    txt2img_kwargs[k] = v
+
+            if "size" in obj:
+                txt2img_kwargs["width"] = obj["size"][0]
+                txt2img_kwargs["height"] = obj["size"][1]
+
+            for k,v in func_args.items():
+                if k in obj:
+                    txt2img_kwargs[k] = obj[k]
+
+            if "toggles" in txt2img_kwargs:
+                txt2img_kwargs["toggles"] = list(txt2img_kwargs["toggles"])
+            # txt2img_kwargs["job_info"] = job_info
+            txt2img_kwargs["job_info"] = None
+            txt2img_kwargs["fp"] = fp
+
+            print("txt2img_kwargs")
+            print(txt2img_kwargs)
+
+            outputs, seed, info, stats = txt2img(
+                **txt2img_kwargs
+            )
+
+            print("outputs", outputs)
+
+            if len(outputs) > 0:
+                select = obj["select"] or 0
+                img = outputs[select]
+                img = img.convert("RGBA")
+
+            img = resize_image(img, obj["resize"], obj["crop"])
+            if img is None: print(f"result of render_txt2img({obj}) is None")
+            return img
 
         def render_object(obj):
             # print("")
@@ -2701,6 +2839,7 @@ txt2img_defaults = {
     'variant_amount': 0.0,
     'variant_seed': '',
     'submit_on_enter': 'Yes',
+    'realesrgan_model_name': 'RealESRGAN_x4plus',
 }
 
 if 'txt2img' in user_defaults:
@@ -2774,6 +2913,9 @@ img2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
+    'mask_blur_strength': 1,
+    'realesrgan_model_name': 'RealESRGAN_x4plus',
+    'image_editor_mode': 'Mask'
 }
 
 if 'img2img' in user_defaults:
