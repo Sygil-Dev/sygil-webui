@@ -76,12 +76,13 @@ from pathlib import Path
 from collections import namedtuple
 
 # tell the user which GPU the code is actually using
-gpu_in_use = opt.gpu
-# prioritize --esrgan-gpu and --gfpgan-gpu over --gpu, as stated in the option info
-if opt.esrgan_gpu != opt.gpu:
-    gpu_in_use = opt.esrgan_gpu
-elif opt.gfpgan_gpu != opt.gpu:
-    gpu_in_use = opt.gfpgan_gpu
+if os.getenv("SD_WEBUI_DEBUG", 'False').lower() in ('true', '1', 'y'):
+    gpu_in_use = opt.gpu
+    # prioritize --esrgan-gpu and --gfpgan-gpu over --gpu, as stated in the option info
+    if opt.esrgan_gpu != opt.gpu:
+        gpu_in_use = opt.esrgan_gpu
+    elif opt.gfpgan_gpu != opt.gpu:
+        gpu_in_use = opt.gfpgan_gpu
 
 print("Starting on GPU {selected_gpu_name}".format(selected_gpu_name=torch.cuda.get_device_name(gpu_in_use)))
 
@@ -243,8 +244,9 @@ class MemUsageMonitor(threading.Thread):
             isinstance(int(os.environ["CUDA_VISIBLE_DEVICES"]), int)
             handle = pynvml.nvmlDeviceGetHandleByIndex(int(os.environ["CUDA_VISIBLE_DEVICES"]))
         except (KeyError, ValueError) as pynvmlHandleError:
-            print("[MemMon][WARNING]", pynvmlHandleError)
-            print("[MemMon][INFO]", "defaulting to monitoring memory on the default gpu (set via --gpu flag)")
+            if os.getenv("SD_WEBUI_DEBUG", 'False').lower() in ('true', '1', 'y'):
+                print("[MemMon][WARNING]", pynvmlHandleError)
+                print("[MemMon][INFO]", "defaulting to monitoring memory on the default gpu (set via --gpu flag)")
             handle = pynvml.nvmlDeviceGetHandleByIndex(opt.gpu)
         self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
         while not self.stop_flag:
