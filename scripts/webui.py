@@ -788,7 +788,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
 def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_strength, mask_restore, use_RealESRGAN, RealESRGAN):
     if not mask_restore: 
-        return img
+        return image
     else:
         init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
         init_mask = init_mask.convert('L')
@@ -1663,11 +1663,17 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
     return output_images, seed, info, stats
 
 
-def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: JobInfo = None):
+def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None):
+
     outpath = opt.outdir_img2img or opt.outdir or "outputs/scn2img-samples"
     err = False
     seed = seed_to_int('')
     prompt = prompt or ''
+
+    if job_info:
+        output_images = job_info.images
+    else:
+        output_images = []
 
     comments = []
 
@@ -1723,7 +1729,7 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
         parse_arg["int_tuple"]   = lambda s: tuple(map(int,s.split(",")))
         parse_arg["float_tuple"] = lambda s: tuple(map(float,s.split(",")))
         parse_arg["degrees"]     = lambda s: float(s) * math.pi / 180
-        parse_arg["color"]       = lambda s: try_many([parse_arg["float_tuple"], parse_arg["str"]], s)
+        parse_arg["color"]       = lambda s: try_many([parse_arg["int_tuple"], parse_arg["str"]], s)
         parse_arg["anything"] = lambda s:try_many([
             parse_arg["float_tuple"],
             parse_arg["tuple"],
@@ -1886,10 +1892,12 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
             else:
                 assert(type(trees) == Section)
                 section = trees
-                has_childs = len(section.children) > 0
                 has_prompt = "prompt" in section.content
+                has_color = "color" in section.content
+                has_childs = len(section.children) > 0
+                has_input_img = has_childs or has_color
                 func = (
-                    "img2img" if (has_childs and has_prompt) else
+                    "img2img" if (has_input_img and has_prompt) else
                     "txt2img" if (has_prompt) else
                     "image"
                 )            
@@ -1927,27 +1935,23 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
         
         return scene
 
-    def render_scene(prompt, comments):
+    def render_scene(output_images, prompt, comments):
         def pose(pos, rotation, center):
             cs, sn = math.cos(rotation), math.sin(rotation)
             return x, y, cs, sn, cy, c
 
-        def pose_mat3(pos=(), rotation=0, center=(0,0)):
+        def pose_mat3(pos=(0,0), rotation=0, center=(0,0)):
             x, y = pos or (0,0)
             cs, sn = math.cos(rotation), math.sin(rotation)
             cx, cy = center or (0,0)
             return (
                 np.array([ # coordinates in parent coordinates
-                    [1,0,cx+x],
-                    [0,1,cy+y],
+                    [1,0,x],
+                    [0,1,y],
                     [0,0,1],
                 ]) @ np.array([ # rotated coordinates with center in origin
-                    [cs,-sn,0],
-                    [+sn,cs,0],
-                    [0,0,1],
-                ]) @ np.array([ # coordinates with center in origin
-                    [1,0,-cx],
-                    [0,1,-cy],
+                    [cs,-sn,-cx],
+                    [+sn,cs,-cy],
                     [0,0,1],
                 ]) # coordinates in pose
             )
@@ -1964,14 +1968,18 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
         def transform_points(mat3, pts):
             rot = mat3[:2,:2]
             pos = mat3[:2,2]
-            return rot @ pts + pos
+            # return rot @ pts.T + pos
+            return pts @ rot.T + pos
 
         def create_image(size, color=None):
-            print("Creating image. Size: ", size, type(size), " color: ", color)
+            # print("")
+            # print("Creating image. Size: ", size, type(size), " color: ", color)
+            # print("")
             if size is None: return None
             return Image.new("RGBA", size, color) 
 
-        def resize_image(img, size, crop):
+        def resize_image(img, size, crop=None):
+            if img is None: return None
             if size is None: 
                 return img if (crop is None) else img.crop(box=crop)
             # resize_is_upscaling = (size[0] > img.size[0]) or (size[1] > img.size[1])
@@ -1979,38 +1987,100 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
             return img.resize(size, box=crop)
         
         def blend_image_at(dst, img, pos, rotation, center):
-            img = img.rotate(
-                angle = rotation * (180 / math.pi),
-                expand = True,
-                center = center,
-                # todo: to improve performance dont use translate here, instead use dest arg in alpha_composite
-                translate = pos
-            )
-            if dst is None:
+            if img is None: 
+                return dst
+            # print(f"blend_image_at({dst}, {img}, {pos}, {rotation}, {center})")
+            center = center or (img.size[0]*0.5, img.size[1]*0.5)
+            pos = pos or ((dst.size[0]*0.5, dst.size[1]*0.5) if dst is not None else None)
+
+            tf = pose_mat3((0,0), rotation)
+            rect_points = get_rect(img) - center
+            rect_points = transform_points(tf, rect_points)
+            min_x = min([p[0] for p in rect_points])
+            min_y = min([p[1] for p in rect_points])
+            max_x = max([p[0] for p in rect_points])
+            max_y = max([p[1] for p in rect_points])
+            new_w = max_x - min_x
+            new_h = max_y - min_y
+            new_size = (int(new_w), int(new_h))
+
+            # default values for pos
+            if pos is None and dst is not None:
+                # center img in dst
+                pos = (
+                    dst.size[0]*0.5,
+                    dst.size[0]*0.5
+                )
+            elif pos is None and dst is None:
+                # dst is None, choose pos so that it shows whole img
+                pos = (-min_x, -min_y)
+            
+            min_x += pos[0]
+            min_y += pos[1]
+            max_x += pos[0]
+            max_y += pos[1]
+
+            if rotation != 0:
+                img = img.rotate(
+                    angle = -rotation * (180 / math.pi),
+                    expand = True,
+                    fillcolor = (0,0,0,0)
+                )
+
+            if (dst is None) and (img.size == new_size):
                 dst = img
+                return dst
+
             else:
-                dst = dst.alpha_composite(img)
+                if (dst is None):
+                    dst = create_image(new_size, color=(0,0,0,0))
+                dx = int(min_x)
+                dy = int(min_y)
+                sx = -dx if (dx < 0) else 0
+                sy = -dy if (dy < 0) else 0
+                dx = max(0, dx)
+                dy = max(0, dy)
+                # print(f"dest=({dx},{dy}), source=({sx},{sy})")
+                dst.alpha_composite(img, dest=(dx,dy), source=(sx,sy))
             return dst
 
         def blend_objects(dst, objects):
+            # print("")
+            # print(f"blend_objects({dst}, {objects})")
+            # print("")
             for obj in reversed(objects):
                 img = render_object(obj)
-                dst = blend_image_at(
-                    dst = dst, 
-                    img = img, 
-                    pos = obj["pos"] or obj["position"] or None, 
-                    rotation = obj["rotation"] or obj["angle"] or 0, 
-                    center = obj["center"] or None
-                )
+                # if img is None:
+                    # print("")
+                    # print(f"img is None after render_object in blend_objects({dst}, {objects})")
+                    # print("")
+                try:
+                    dst = blend_image_at(
+                        dst = dst, 
+                        img = img, 
+                        pos = obj["pos"] or obj["position"] or None, 
+                        rotation = obj["rotation"] or obj["rotate"] or obj["angle"] or 0, 
+                        center = obj["center"] or None
+                    )
+                except Exception as e:
+                    # print("")
+                    # print(f"Exception! blend_objects({dst}, {objects})")
+                    # print("obj", obj)
+                    # print("img", img)
+                    # print("")
+                    raise e
             return dst
             
-        def render_image(obj, img = None):
-            img = create_image(obj["size"], obj["color"])
+        def render_image(obj, input=None):
+            img = create_image(obj["size"], obj["color"]) or input
+            if img is None: print(f"img is None after create_image in render_image({obj})")
             img = blend_objects(
                 img,
                 obj.children
             )
+            if img is None: print(f"img is None after create_image in render_image({obj})")
             img = resize_image(img, obj["resize"], obj["crop"])
+            if img is None: print(f"result of render_image({obj}) is None")
             return img
 
         def render_img2img(obj):
@@ -2022,6 +2092,9 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
             return render_image(obj, image)
 
         def render_object(obj):
+            # print("")
+            # print(f"render_object({str(obj)})")
+            # print("")
             if obj.func == "scene" or obj.func == "image":
                 return render_image(obj)
             elif obj.func == "img2img":
@@ -2044,7 +2117,12 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
                     render_object(obj)
                 ]
 
-        return render_scn2img(scene)
+        for img in render_scn2img(scene):
+            if img is None: 
+                continue
+            output_images.append(img)
+        
+        return output_images
 
 
     start_time = time.time()
@@ -2058,7 +2136,8 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
     print("")
     print("comments", comments)
     print("")
-    output_images = render_scene(scene, comments)
+    render_scene(output_images, scene, comments)
+    print("")
     print("output_images", output_images)
     print("")
     print("comments", comments)

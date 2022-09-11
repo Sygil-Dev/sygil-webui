@@ -7,8 +7,8 @@ import torch
 
 
 
-def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, scn2img=lambda x: x, txt2img_defaults={},
-                   RealESRGAN=True, GFPGAN=True, LDSR=True,
+def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, scn2img=lambda x: x, 
+                   txt2img_defaults={}, RealESRGAN=True, GFPGAN=True, LDSR=True,
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
                    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
                    img2img_resize_modes=None, imgproc_defaults={}, imgproc_mode_toggles={}, 
@@ -596,7 +596,21 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                     with gr.Column():
                         scn2img_prompt = gr.Textbox(label="Prompt Scene",
                                                     elem_id='scn2_img_input',
-                                                    placeholder="A corgi wearing a top hat as an oil painting.",
+                                                    placeholder="\n".join([
+                                                        "size: 512,512               ",
+                                                        "color: 0,0,0                ",
+                                                        "                            ",
+                                                        "# a red box                 ",
+                                                        "size: 256,256               ",
+                                                        "color: 255,0,0              ",
+                                                        "rotate: 5                   ",
+                                                        "                            ",
+                                                        "## a transparent yellow box ",
+                                                        "size: 128,128               ",
+                                                        "color: 255,255,0,128        ",
+                                                        "rotation: 5                 ",
+                                                        "center: 0,0                 ",
+                                                    ]),
                                                     lines=50,
                                                     max_lines=50,
                                                     value=scn2img_defaults['prompt'],
@@ -610,8 +624,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                     with gr.Column():
                         gr.Markdown('#### Scn2Img Results')
-                        output_scn2img_gallery = gr.Gallery(label="Images", elem_id="scn2img_gallery_output").style(
-                            grid=[4, 4, 4])
+                        output_scn2img_gallery = gr.Gallery(
+                            label="Images", 
+                            elem_id="scn2img_gallery_output"
+                        ).style(grid=[4, 4, 4])
                         scn2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
                         
                         with gr.Tabs():
@@ -680,7 +696,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         func=scn2img_func,
                         inputs=scn2img_inputs,
                         outputs=scn2img_outputs,
-                    )                
+                    )
                 
                 scn2img_btn.click(
                     scn2img_func,
