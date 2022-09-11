@@ -219,7 +219,15 @@ class MemUsageMonitor(threading.Thread):
             print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
         print(f"[{self.name}] Recording max memory usage...\n")
-        handle = pynvml.nvmlDeviceGetHandleByIndex(opt.gpu)
+        # check if we're using a scoped-down GPU environment (pynvml does not listen to CUDA_VISIBLE_DEVICES)
+        # so that we can measure memory on the correct GPU
+        try:
+            isinstance(int(os.environ["CUDA_VISIBLE_DEVICES"]), int)
+            handle = pynvml.nvmlDeviceGetHandleByIndex(int(os.environ["CUDA_VISIBLE_DEVICES"]))
+        except (KeyError, ValueError) as pynvmlHandleError:
+            print("[MemMon][WARNING]", pynvmlHandleError)
+            print("[MemMon][INFO]", "defaulting to monitoring memory on the default gpu (set via --gpu flag)")
+            handle = pynvml.nvmlDeviceGetHandleByIndex(opt.gpu)
         self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
         while not self.stop_flag:
             m = pynvml.nvmlDeviceGetMemoryInfo(handle)
