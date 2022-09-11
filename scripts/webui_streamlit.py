@@ -101,6 +101,25 @@ elif grid_format[0] == 'webp':
 		grid_lossless = True
 		grid_quality = abs(grid_quality)
 
+# should and will be moved to a settings menu in the UI at some point
+save_format = [s.lower() for s in defaults.general.save_format.split(':')]
+save_lossless = False
+save_quality = 100
+if save_format[0] == 'png':
+	save_ext = 'png'
+	save_format = 'png'
+elif save_format[0] in ['jpg', 'jpeg']:
+	save_quality = int(save_format[1]) if len(save_format) > 1 else 100
+	save_ext = 'jpg'
+	save_format = 'jpeg'
+elif save_format[0] == 'webp':
+	save_quality = int(save_format[1]) if len(save_format) > 1 else 100
+	save_ext = 'webp'
+	save_format = 'webp'
+	if save_quality < 0: # e.g. webp:-100 for lossless mode
+		save_lossless = True
+		save_quality = abs(save_quality)
+
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(defaults.general.gpu)
@@ -835,24 +854,29 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 		# 	"SD:normalize_prompt_weights": str(normalize_prompt_weights),
 		# }
 		metadata = {"SD:" + k:v for (k,v) in metadata.items()}
-		if grid_ext == "png":
+
+		if save_ext == "png":
 			mdata = PngInfo()
 			for key in metadata:
 				mdata.add_text(key, metadata[key])
 			image.save(f"{filename_i}.png", pnginfo=mdata)
 		else:
 			if jpg_sample:
-				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,
+				image.save(f"{filename_i}.jpg", quality=save_quality,
 						   optimize=True)
+			elif save_ext == "webp":
+				image.save(f"{filename_i}.{save_ext}", f"webp", quality=save_quality,
+						   lossless=save_lossless)
 			else:
-				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,)
+				# not sure what file format this is
+				image.save(f"{filename_i}.{save_ext}", f"{save_ext}")
 			try:
-				exif_dict = piexif.load(f"{filename_i}.{grid_ext}")
+				exif_dict = piexif.load(f"{filename_i}.{save_ext}")
 			except:
 				exif_dict = { "Exif": dict() }
 			exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
 				json.dumps(metadata), encoding="unicode")
-			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{grid_ext}")
+			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{save_ext}")
 
 	# render the image on the frontend
 	st.session_state["preview_image"].image(image)    
