@@ -989,7 +989,6 @@ def process_images(
                 print("Early exit requested")
                 break
 
-            print(f"Prompt: {prompts[n]}")
             print(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
             captions = prompt_matrix_parts[n * batch_size:(n + 1) * batch_size]
@@ -1000,6 +999,7 @@ def process_images(
                 job_info.job_status = f"Processing Iteration {n+1}/{n_iter}. Batch size {batch_size}"
                 for idx,(p,s) in enumerate(zip(prompts,seeds)):
                     job_info.job_status += f"\nItem {idx}: Seed {s}\nPrompt: {p}"
+                    print(f"Current prompt: {p}")
 
             if opt.optimized:
                 modelCS.to(device)
