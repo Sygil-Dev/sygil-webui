@@ -44,7 +44,7 @@ from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, mak
 from retry import retry
 
 #some Streamlit components to make things look better.
-#from st_on_hover_tabs import on_hover_tabs
+from st_on_hover_tabs import on_hover_tabs
 
 
 # these are for testing txt2vid, should be removed and we should use things from our own code. 
@@ -2256,9 +2256,9 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=500,
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
 				                                            help="Number of steps between each pair of sampled points")
-				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=500,
+				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
 				                                                 help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
