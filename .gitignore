@@ -57,7 +57,8 @@ condaenv.*.requirements.txt
 /configs/webui/userconfig_streamlit.yaml
 /custom-conda-path.txt
 /src/*
-/outputs/*
+/outputs
+/model_cache
 /log/**/*.png
 /log/log.csv
 /flagged/*
