@@ -41,9 +41,10 @@ img2img:
   # 6: Sort samples by prompt
   # 7: Write sample info files
   # 8: jpg samples
-  # 9: Filter NSFW content
-  # 10: Fix faces using GFPGAN
-  # 11: Upscale images using Real-ESRGAN
+  # 9: Color correction
+  # 10: Filter NSFW content
+  # 11: Fix faces using GFPGAN
+  # 12: Upscale images using Real-ESRGAN
   toggles: [1, 4, 5, 6, 7]
   sampler_name: k_lms
   ddim_eta: 0.0
