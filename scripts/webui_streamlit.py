@@ -784,38 +784,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 
 	filename_i = os.path.join(sample_path_i, filename)
 
-	if defaults.general.save_metadata:
-		metadata = {
-			"SD:prompt": prompts[i],
-			"SD:seed": str(seeds[i]),
-			"SD:width": str(width),
-			"SD:height": str(height),
-			"SD:steps": str(steps),
-			"SD:cfg_scale": str(cfg_scale),
-			"SD:normalize_prompt_weights": str(normalize_prompt_weights),
-		}
-		if init_img is not None:
-			metadata["SD:denoising_strength"] = str(denoising_strength)
-		if grid_ext == "png":
-			mdata = PngInfo()
-			for key in metadata:
-				mdata.add_text(key, metadata[key])
-			image.save(f"{filename_i}.png", pnginfo=mdata)
-		else:
-			if jpg_sample:
-				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,
-						   optimize=True)
-			else:
-				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,)
-			try:
-				exif_dict = piexif.load(f"{filename_i}.{grid_ext}")
-			except:
-				exif_dict = { "Exif": dict() }
-			exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
-				json.dumps(metadata), encoding="unicode")
-			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{grid_ext}")
-
-	if write_info_files:
+	if defaults.general.save_metadata or write_info_files:
 		# toggles differ for txt2img vs. img2img:
 		offset = 0 if init_img is None else 2
 		toggles = []
@@ -838,20 +807,52 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 			toggles.append(5 + offset)
 		if use_GFPGAN:
 			toggles.append(6 + offset)
-		info_dict = dict(
-                        target="txt2img" if init_img is None else "img2img",
-                prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
-                    ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                        seed=seeds[i], width=width, height=height
-                )
+		metadata = \
+			dict(
+				target="txt2img" if init_img is None else "img2img",
+				prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
+				ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
+				seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights)
+		# Not yet any use for these, but they bloat up the files:
+		# info_dict["init_img"] = init_img
+		# info_dict["init_mask"] = init_mask
 		if init_img is not None:
-			# Not yet any use for these, but they bloat up the files:
-			#info_dict["init_img"] = init_img
-			#info_dict["init_mask"] = init_mask
-			info_dict["denoising_strength"] = denoising_strength
-			info_dict["resize_mode"] = resize_mode
+			metadata["denoising_strength"] = str(denoising_strength)
+			metadata["resize_mode"] = resize_mode
+
+	if write_info_files:
 		with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
-			yaml.dump(info_dict, f, allow_unicode=True, width=10000)
+			yaml.dump(metadata, f, allow_unicode=True, width=10000)
+
+	if defaults.general.save_metadata:
+		# metadata = {
+		# 	"SD:prompt": prompts[i],
+		# 	"SD:seed": str(seeds[i]),
+		# 	"SD:width": str(width),
+		# 	"SD:height": str(height),
+		# 	"SD:steps": str(steps),
+		# 	"SD:cfg_scale": str(cfg_scale),
+		# 	"SD:normalize_prompt_weights": str(normalize_prompt_weights),
+		# }
+		metadata = {"SD:" + k:v for (k,v) in metadata.items()}
+		if grid_ext == "png":
+			mdata = PngInfo()
+			for key in metadata:
+				mdata.add_text(key, metadata[key])
+			image.save(f"{filename_i}.png", pnginfo=mdata)
+		else:
+			if jpg_sample:
+				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,
+						   optimize=True)
+			else:
+				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,)
+			try:
+				exif_dict = piexif.load(f"{filename_i}.{grid_ext}")
+			except:
+				exif_dict = { "Exif": dict() }
+			exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
+				json.dumps(metadata), encoding="unicode")
+			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{grid_ext}")
 
 	# render the image on the frontend
 	st.session_state["preview_image"].image(image)    
