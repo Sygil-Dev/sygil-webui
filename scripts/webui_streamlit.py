@@ -44,7 +44,7 @@ from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, mak
 from retry import retry
 
 #some Streamlit components to make things look better.
-from st_on_hover_tabs import on_hover_tabs
+#from st_on_hover_tabs import on_hover_tabs
 
 
 # these are for testing txt2vid, should be removed and we should use things from our own code. 
