@@ -108,6 +108,14 @@ try:
 except:
     pass
 
+from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
+from transformers import AutoFeatureExtractor
+
+# load safety model
+safety_model_id = "CompVis/stable-diffusion-safety-checker"
+safety_feature_extractor = None
+safety_checker = None
+
 # this is a fix for Windows users. Without it, javascript files will be served with text/html content-type and the bowser will not show any UI
 mimetypes.init()
 mimetypes.add_type('application/javascript', '.js')
@@ -839,12 +847,48 @@ def perform_color_correction(img_rgb, correction_target_lab, do_color_correction
 
 def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
-        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
+        n_iter, steps, cfg_scale, width, height, prompt_matrix, filter_nsfw, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp, ddim_eta=0.0, do_not_save_grid=False, normalize_prompt_weights=True, init_img=None, init_mask=None,
         keep_mask=False, mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, write_sample_info_to_log_file=False, jpg_sample=False,
         variant_amount=0.0, variant_seed=None,imgProcessorTask=False, job_info: JobInfo = None, do_color_correction=False, correction_target=None):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
+
+    def numpy_to_pil(images):
+        """
+        Convert a numpy image or a batch of images to a PIL image.
+        """
+        if images.ndim == 3:
+            images = images[None, ...]
+        images = (images * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+
+        return pil_images
+
+    # load replacement of nsfw content
+    def load_replacement(x):
+        try:
+            hwc = x.shape
+            y = Image.open("images/nsfw.jpeg").convert("RGB").resize((hwc[1], hwc[0]))
+            y = (np.array(y)/255.0).astype(x.dtype)
+            assert y.shape == x.shape
+            return y
+        except Exception:
+            return x
+
+    # check and replace nsfw content
+    def check_safety(x_image):
+        global safety_feature_extractor, safety_checker
+        if safety_feature_extractor is None:
+            safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id)
+            safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id)
+        safety_checker_input = safety_feature_extractor(numpy_to_pil(x_image), return_tensors="pt")
+        x_checked_image, has_nsfw_concept = safety_checker(images=x_image, clip_input=safety_checker_input.pixel_values)
+        for i in range(len(has_nsfw_concept)):
+            if has_nsfw_concept[i]:
+                x_checked_image[i] = load_replacement(x_checked_image[i])
+        return x_checked_image, has_nsfw_concept
+
     prompt = prompt or ''
     torch_gc()
     # start time after garbage collection (or before?)
@@ -1003,6 +1047,11 @@ def process_images(
             for i in range(len(samples_ddim)):
                 x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim[i].unsqueeze(0))
                 x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+
+                if filter_nsfw:
+                    x_samples_ddim_numpy = x_sample.cpu().permute(0, 2, 3, 1).numpy()
+                    x_checked_image, has_nsfw_concept = check_safety(x_samples_ddim_numpy)
+                    x_sample = torch.from_numpy(x_checked_image).permute(0, 3, 1, 2)
 
                 sanitized_prompt = prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})
                 if variant_seed != None and variant_seed != '':
@@ -1203,8 +1252,9 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     write_info_files = 5 in toggles
     write_to_one_file = 6 in toggles
     jpg_sample = 7 in toggles
-    use_GFPGAN = 8 in toggles
-    use_RealESRGAN = 9 in toggles
+    filter_nsfw = 8 in toggles
+    use_GFPGAN = 9 in toggles
+    use_RealESRGAN = 10 in toggles
 
     do_color_correction = False
     correction_target = None
@@ -1261,6 +1311,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
             width=width,
             height=height,
             prompt_matrix=prompt_matrix,
+            filter_nsfw=filter_nsfw,
             use_GFPGAN=use_GFPGAN,
             use_RealESRGAN=use_RealESRGAN,
             realesrgan_model_name=realesrgan_model_name,
@@ -1366,8 +1417,9 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
     write_sample_info_to_log_file = 8 in toggles
     jpg_sample = 9 in toggles
     do_color_correction = 10 in toggles
-    use_GFPGAN = 11 in toggles
-    use_RealESRGAN = 12 in toggles
+    filter_nsfw = 11 in toggles
+    use_GFPGAN = 12 in toggles
+    use_RealESRGAN = 13 in toggles
     ModelLoader(['model'],True,False)
     if use_GFPGAN and not use_RealESRGAN:
         ModelLoader(['GFPGAN'],True,False)
@@ -1575,6 +1627,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
                 width=width,
                 height=height,
                 prompt_matrix=prompt_matrix,
+                filter_nsfw=filter_nsfw,
                 use_GFPGAN=use_GFPGAN,
                 use_RealESRGAN=False, # Forcefully disable upscaling when using loopback
                 realesrgan_model_name=realesrgan_model_name,
@@ -1641,6 +1694,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
             width=width,
             height=height,
             prompt_matrix=prompt_matrix,
+            filter_nsfw=filter_nsfw,
             use_GFPGAN=use_GFPGAN,
             use_RealESRGAN=use_RealESRGAN,
             realesrgan_model_name=realesrgan_model_name,
@@ -1939,6 +1993,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     width=width,
                     height=height,
                     prompt_matrix=None,
+                    filter_nsfw=False,
                     use_GFPGAN=None,
                     use_RealESRGAN=None,
                     realesrgan_model_name=None,
@@ -2179,6 +2234,7 @@ txt2img_toggles = [
     'Write sample info files',
     'write sample info to log file',
     'jpg samples',
+    'Filter NSFW content',
 ]
 
 if GFPGAN is not None:
@@ -2240,6 +2296,7 @@ img2img_toggles = [
     'Write sample info to one file',
     'jpg samples',
     'Color correction (always enabled on loopback mode)'
+    'Filter NSFW content',
 ]
 # removed for now becuase of Image Lab implementation
 if GFPGAN is not None:
