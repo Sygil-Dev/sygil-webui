@@ -989,6 +989,7 @@ def process_images(
                 print("Early exit requested")
                 break
 
+            print(f"Prompt: {prompts[n]}")
             print(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
             captions = prompt_matrix_parts[n * batch_size:(n + 1) * batch_size]
