@@ -1,4 +1,4 @@
-import argparse, os, sys, glob, re, subprocess
+import argparse, os, sys, glob, re
 
 import cv2
 
