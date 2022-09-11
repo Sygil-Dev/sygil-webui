@@ -1,9 +1,4 @@
-from pprint import pprint
 import warnings
-
-import piexif
-import piexif.helper
-import json
 import streamlit as st
 from streamlit import StopException, StreamlitAPIException
 
@@ -784,36 +779,24 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 
 	filename_i = os.path.join(sample_path_i, filename)
 
-	if defaults.general.save_metadata:
-		metadata = {
-			"SD:prompt": prompts[i],
-			"SD:seed": str(seeds[i]),
-			"SD:width": str(width),
-			"SD:height": str(height),
-			"SD:steps": str(steps),
-			"SD:cfg_scale": str(cfg_scale),
-			"SD:normalize_prompt_weights": str(normalize_prompt_weights),
-		}
-		if init_img is not None:
-			metadata["SD:denoising_strength"] = str(denoising_strength)
-		if grid_ext == "png":
-			mdata = PngInfo()
-			for key in metadata:
-				mdata.add_text(key, metadata[key])
-			image.save(f"{filename_i}.png", pnginfo=mdata)
+	if not jpg_sample:
+		if defaults.general.save_metadata:
+			metadata = PngInfo()
+			metadata.add_text("SD:prompt", prompts[i])
+			metadata.add_text("SD:seed", str(seeds[i]))
+			metadata.add_text("SD:width", str(width))
+			metadata.add_text("SD:height", str(height))
+			metadata.add_text("SD:steps", str(steps))
+			metadata.add_text("SD:cfg_scale", str(cfg_scale))
+			metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
+			if init_img is not None:
+				metadata.add_text("SD:denoising_strength", str(denoising_strength))
+			metadata.add_text("SD:GFPGAN", str(use_GFPGAN and st.session_state["GFPGAN"] is not None))
+			image.save(f"{filename_i}.png", pnginfo=metadata)
 		else:
-			if jpg_sample:
-				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,
-						   optimize=True)
-			else:
-				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,)
-			try:
-				exif_dict = piexif.load(f"{filename_i}.{grid_ext}")
-			except:
-				exif_dict = { "Exif": dict() }
-			exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
-				json.dumps(metadata), encoding="unicode")
-			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{grid_ext}")
+			image.save(f"{filename_i}.png")
+	else:
+		image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
 
 	if write_info_files:
 		# toggles differ for txt2img vs. img2img:
