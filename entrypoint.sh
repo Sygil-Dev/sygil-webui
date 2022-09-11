@@ -93,7 +93,7 @@ validateDownloadModel() {
 echo "Validating model files..."
 for models in "${MODEL_FILES[@]}"; do
     model=($models)
-    if [[ ! -e ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
+    if [[ ! -e ${model[1]}/${model[0]} || ! -L ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
         validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
     fi
 done
