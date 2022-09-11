@@ -79,7 +79,7 @@ from collections import namedtuple
 try:
     isinstance(int(os.environ["CUDA_VISIBLE_DEVICES"]), int)
     gpu_in_use = int(os.environ["CUDA_VISIBLE_DEVICES"])
-except (KeyError, ValueError) as pynvmlHandleError:
+except (KeyError, ValueError) as getGpuError:
     gpu_in_use = opt.gpu
     # prioritize --esrgan-gpu and --gfpgan-gpu over --gpu, as stated in the option info
     if opt.esrgan_gpu != opt.gpu:
