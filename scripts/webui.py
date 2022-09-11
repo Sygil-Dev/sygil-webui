@@ -15,7 +15,7 @@ parser.add_argument("--defaults", type=str, help="path to configuration file pro
 parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
 parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (overrides --gpu)", default=0)
 parser.add_argument("--extra-models-cpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
-parser.add_argument("--extra-models-gpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
+parser.add_argument("--extra-models-gpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on gpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
 parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=('./src/gfpgan' if os.path.exists('./src/gfpgan') else './GFPGAN')) # i disagree with where you're putting it but since all guidefags are doing it this way, there you go
 parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
@@ -74,6 +74,20 @@ import copy
 from typing import List, Union, Dict, Callable, Any, Optional
 from pathlib import Path
 from collections import namedtuple
+
+# tell the user which GPU the code is actually using
+try:
+    isinstance(int(os.environ["CUDA_VISIBLE_DEVICES"]), int)
+    gpu_in_use = int(os.environ["CUDA_VISIBLE_DEVICES"])
+except (KeyError, ValueError) as pynvmlHandleError:
+    gpu_in_use = opt.gpu
+    # prioritize --esrgan-gpu and --gfpgan-gpu over --gpu, as stated in the option info
+    if opt.esrgan_gpu != opt.gpu:
+        gpu_in_use = opt.esrgan_gpu
+    elif opt.gfpgan_gpu != opt.gpu:
+        gpu_in_use = opt.gfpgan_gpu
+
+print("Starting on GPU {selected_gpu_name}".format(selected_gpu_name=torch.cuda.get_device_name(gpu_in_use)))
 
 from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
