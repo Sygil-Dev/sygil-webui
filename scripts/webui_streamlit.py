@@ -1,4 +1,9 @@
+from pprint import pprint
 import warnings
+
+import piexif
+import piexif.helper
+import json
 import streamlit as st
 from streamlit import StopException, StreamlitAPIException
 
@@ -779,24 +784,36 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 
 	filename_i = os.path.join(sample_path_i, filename)
 
-	if not jpg_sample:
-		if defaults.general.save_metadata:
-			metadata = PngInfo()
-			metadata.add_text("SD:prompt", prompts[i])
-			metadata.add_text("SD:seed", str(seeds[i]))
-			metadata.add_text("SD:width", str(width))
-			metadata.add_text("SD:height", str(height))
-			metadata.add_text("SD:steps", str(steps))
-			metadata.add_text("SD:cfg_scale", str(cfg_scale))
-			metadata.add_text("SD:normalize_prompt_weights", str(normalize_prompt_weights))
-			if init_img is not None:
-				metadata.add_text("SD:denoising_strength", str(denoising_strength))
-			metadata.add_text("SD:GFPGAN", str(use_GFPGAN and st.session_state["GFPGAN"] is not None))
-			image.save(f"{filename_i}.png", pnginfo=metadata)
+	if defaults.general.save_metadata:
+		metadata = {
+			"SD:prompt": prompts[i],
+			"SD:seed": str(seeds[i]),
+			"SD:width": str(width),
+			"SD:height": str(height),
+			"SD:steps": str(steps),
+			"SD:cfg_scale": str(cfg_scale),
+			"SD:normalize_prompt_weights": str(normalize_prompt_weights),
+		}
+		if init_img is not None:
+			metadata["SD:denoising_strength"] = str(denoising_strength)
+		if grid_ext == "png":
+			mdata = PngInfo()
+			for key in metadata:
+				mdata.add_text(key, metadata[key])
+			image.save(f"{filename_i}.png", pnginfo=mdata)
 		else:
-			image.save(f"{filename_i}.png")
-	else:
-		image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
+			if jpg_sample:
+				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,
+						   optimize=True)
+			else:
+				image.save(f"{filename_i}.{grid_ext}", f"{grid_ext}", quality=grid_quality,)
+			try:
+				exif_dict = piexif.load(f"{filename_i}.{grid_ext}")
+			except:
+				exif_dict = { "Exif": dict() }
+			exif_dict["Exif"][piexif.ExifIFD.UserComment] = piexif.helper.UserComment.dump(
+				json.dumps(metadata), encoding="unicode")
+			piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{grid_ext}")
 
 	if write_info_files:
 		# toggles differ for txt2img vs. img2img:
@@ -2055,8 +2072,10 @@ def layout():
 					custom_model = "Stable Diffusion v1.4"
 					
 				st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=defaults.img2img.sampling_steps, min_value=1, max_value=500)
-				st.session_state["sampler_name"] = st.selectbox("Sampling method", ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
-                                                                                index=0, help="Sampling method to use. Default: k_lms")  				
+				st.session_state["sampler_name"] = st.selectbox("Sampling method",
+																["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"],
+																index=sampler_name_list.index(defaults.img2img.sampler_name),
+																							  help="Sampling method to use.")
 
 				uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
                                                                    help="Upload an image which will be used for the image to image generation."
@@ -2237,9 +2256,9 @@ def layout():
 				else:
 					custom_model = "Stable Diffusion v1.4"
 					
-				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=1, max_value=500,
+				st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
 				                                            help="Number of steps between each pair of sampled points")
-				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=1, max_value=500,
+				st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
 				                                                 help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
 				sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
