@@ -20,6 +20,7 @@ general:
     extra_models_cpu: False
     extra_models_gpu: False
     save_metadata: True
+    save_format: "png"
     skip_grid: False
     skip_save: False
     grid_format: "jpg:95"
