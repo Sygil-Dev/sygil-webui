@@ -76,18 +76,12 @@ from pathlib import Path
 from collections import namedtuple
 
 # tell the user which GPU the code is actually using
-try:
-    isinstance(int(os.environ["CUDA_VISIBLE_DEVICES"]), int)
-    gpu_in_use = int(os.environ["CUDA_VISIBLE_DEVICES"])
-except (KeyError, ValueError) as getGpuError:
-    print("[GPU selection][WARNING]", getGpuError)
-    print("[GPU selection][INFO]", "going to use default GPU (specify with --gpu flag)")
-    gpu_in_use = opt.gpu
-    # prioritize --esrgan-gpu and --gfpgan-gpu over --gpu, as stated in the option info
-    if opt.esrgan_gpu != opt.gpu:
-        gpu_in_use = opt.esrgan_gpu
-    elif opt.gfpgan_gpu != opt.gpu:
-        gpu_in_use = opt.gfpgan_gpu
+gpu_in_use = opt.gpu
+# prioritize --esrgan-gpu and --gfpgan-gpu over --gpu, as stated in the option info
+if opt.esrgan_gpu != opt.gpu:
+    gpu_in_use = opt.esrgan_gpu
+elif opt.gfpgan_gpu != opt.gpu:
+    gpu_in_use = opt.gfpgan_gpu
 
 print("Starting on GPU {selected_gpu_name}".format(selected_gpu_name=torch.cuda.get_device_name(gpu_in_use)))
 
