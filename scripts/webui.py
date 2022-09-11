@@ -1890,7 +1890,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         parse_inline_comment = re.compile(r'(?m)//.+?$') #(?m): $ also matches at before \n
         parse_multiline_comment = re.compile(r'(?s)/\*.+?\*/') #(?s): . matches \n
         parse_attr = re.compile(r'^\s*([\w_][\d\w_]*)\s*[:=\s]\s*(.+)\s*$')
-        parse_heading = re.compile(r'^\s*(#+)\s*(.*)$')
+        parse_heading = re.compile(r'^\s*(#+)([>]?)\s*(.*)$') # 
 
         class Section:
             def __init__(self, depth=0, title="", content=None, children=None):
@@ -1958,6 +1958,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             sections = []
             current_section = Section()
             stack = []
+            bump_depth = 0
             for line in lines:
                 m = parse_heading.match(line)
                 if m is None:
@@ -1966,9 +1967,13 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     current_section.content = parse_content(current_section.lines)
                     yield current_section
                     current_section = Section(
-                        depth = len(m.group(1)), 
-                        title = m.group(2)
+                        depth = len(m.group(1)) + bump_depth, 
+                        title = m.group(3)
                     )
+                    # sections after this will have their depth bumped by number matched '>'.
+                    # this allows deep trees while avoiding growing number of '#' by
+                    # just using '#> example title' headings
+                    bump_depth += len(m.group(2))
 
             current_section.content = parse_content(current_section.lines)
             yield current_section
