@@ -402,8 +402,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             #                            value=gfpgan_defaults['strength'])
                             # select folder with images to process
                             with gr.TabItem('Batch Process'):
-                                imgproc_folder = gr.File(label="Batch Process", file_count="multiple", source="upload",
-                                                         interactive=True, type="file")
+                                imgproc_folder = gr.File(label="Batch Process", file_count="multiple", interactive=True, type="file")
                         imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="PngNfo", visible=False,
                                                     max_lines=5)
                         with gr.Row():
