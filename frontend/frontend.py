@@ -593,33 +593,30 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                 with gr.Row().style(equal_height=False):
                     with gr.Column():
-                        scn2img_prompt = gr.Textbox(label="Prompt Scene",
-                                                    elem_id='scn2_img_input',
-                                                    placeholder="\n".join([
-                                                        "size: 512,512               ",
-                                                        "color: 0,0,0                ",
-                                                        "                            ",
-                                                        "# a red box                 ",
-                                                        "size: 256,256               ",
-                                                        "color: 255,0,0              ",
-                                                        "rotate: 5                   ",
-                                                        "                            ",
-                                                        "## a transparent yellow box ",
-                                                        "size: 128,128               ",
-                                                        "color: 255,255,0,128        ",
-                                                        "rotation: 5                 ",
-                                                        "center: 0,0                 ",
-                                                    ]),
-                                                    lines=50,
-                                                    max_lines=50,
-                                                    value=scn2img_defaults['prompt'],
-                                                    show_label=False)
-
-                        scn2img_toggles = gr.CheckboxGroup(label='', choices=scn2img_toggles,
-                                                           value=scn2img_toggle_defaults, type="index")
-
-                        scn2img_embeddings = gr.File(label="Embeddings file for textual inversion",
-                                                     visible=show_embeddings)
+                        scn2img_prompt = gr.Textbox(
+                            label="Prompt Scene",
+                            elem_id='scn2_img_input',
+                            placeholder="\n".join([
+                                "prompt: intricate details   ",
+                                "size: 512,512               ",
+                                "color: 0,0,0                ",
+                                "                            ",
+                                "# a red box                 ",
+                                "size: 256,256               ",
+                                "color: 255,0,0              ",
+                                "rotate: 5                   ",
+                                "                            ",
+                                "## a transparent yellow box ",
+                                "size: 128,128               ",
+                                "color: 255,255,0,128        ",
+                                "rotation: 5                 ",
+                                "center: 0,0                 ",
+                            ]),
+                            lines=50,
+                            max_lines=50,
+                            value=scn2img_defaults['prompt'],
+                            show_label=False
+                        )
 
                     with gr.Column():
                         gr.Markdown('#### Scn2Img Results')
@@ -652,6 +649,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                         _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                 output_scn2img_stats = gr.HTML(label='Stats')
 
+                        scn2img_seed = gr.Textbox(
+                            label="Seed (blank to randomize)", lines=1, max_lines=1,
+                            value=scn2img_defaults["seed"]
+                        )
+
+                        scn2img_toggles = gr.CheckboxGroup(label='', choices=scn2img_toggles,
+                                                           value=scn2img_toggle_defaults, type="index")
+
+                        scn2img_embeddings = gr.File(label="Embeddings file for textual inversion",
+                                                     visible=show_embeddings)
                 output_scn2img_copy_to_img2img_input_btn.click(
                     uifn.copy_img_to_edit,
                     [output_scn2img_gallery],
@@ -681,6 +688,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 scn2img_inputs = [
                     scn2img_prompt, 
                     scn2img_toggles,
+                    scn2img_seed,
                     scn2img_embeddings
                 ]
                 scn2img_outputs = [

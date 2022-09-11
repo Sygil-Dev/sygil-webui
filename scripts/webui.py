@@ -552,6 +552,11 @@ def seed_to_int(s):
         n = n >> 32
     return n
 
+def next_seed(s):
+    s = seed_to_int(s)
+    return random.Random(s).randint(0, 2**32 - 1)
+
+
 def draw_prompt_matrix(im, width, height, all_prompts):
     def wrap(text, d, font, line_length):
         lines = ['']
@@ -1735,12 +1740,20 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
     return output_images, seed, info, stats
 
 
-def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None):
+def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = None, job_info: JobInfo = None):
 
     outpath = opt.outdir_img2img or opt.outdir or "outputs/scn2img-samples"
     err = False
-    seed = seed_to_int('')
+    seed = seed_to_int(seed)
+    
+    def gen_seeds(seed):
+        while True:
+            yield seed
+            seed = next_seed(seed)
+
     prompt = prompt or ''
+
+    output_intermediates = 0 in toggles
 
     if job_info:
         output_images = job_info.images
@@ -2060,7 +2073,7 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
         
         return scene
 
-    def render_scene(output_images, prompt, comments):
+    def render_scene(output_images, scene, seeds, comments):
         def pose(pos, rotation, center):
             cs, sn = math.cos(rotation), math.sin(rotation)
             return x, y, cs, sn, cy, c
@@ -2232,6 +2245,12 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
 
             if "toggles" in img2img_kwargs:
                 img2img_kwargs["toggles"] = list(img2img_kwargs["toggles"])
+
+            if "seed" in img2img_kwargs:
+                s = img2img_kwargs["seed"]
+                if (s == "") or (s is None) or not s.isdigit():
+                    img2img_kwargs["seed"] = next(seeds)
+                
             # img2img_kwargs["job_info"] = job_info
             img2img_kwargs["job_info"] = None
             img2img_kwargs["fp"] = fp
@@ -2277,6 +2296,12 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
 
             if "toggles" in txt2img_kwargs:
                 txt2img_kwargs["toggles"] = list(txt2img_kwargs["toggles"])
+
+            if "seed" in txt2img_kwargs:
+                s = txt2img_kwargs["seed"]
+                if (s == "") or (s is None) or not s.isdigit():
+                    txt2img_kwargs["seed"] = next(seeds)
+
             # txt2img_kwargs["job_info"] = job_info
             txt2img_kwargs["job_info"] = None
             txt2img_kwargs["fp"] = fp
@@ -2299,16 +2324,24 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
             if img is None: print(f"result of render_txt2img({obj}) is None")
             return img
 
+        output_image_set = set()
         def render_object(obj):
             # print("")
             # print(f"render_object({str(obj)})")
             # print("")
+            def result(img):
+                if output_intermediates:
+                    img_id = id(img)
+                    if img_id not in output_image_set:
+                        output_images.append(img)
+                        output_image_set.add(img_id)
+                return img
             if obj.func == "scene" or obj.func == "image":
-                return render_image(obj)
+                return result(render_image(obj))
             elif obj.func == "img2img":
-                return render_img2img(obj)
+                return result(render_img2img(obj))
             elif obj.func == "txt2img":
-                return render_txt2img(obj)
+                return result(render_txt2img(obj))
             else:
                 msg = f"Got unexpected SceneObject type {obj.func}"
                 comments.append(msg)
@@ -2328,7 +2361,11 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
         for img in render_scn2img(scene):
             if img is None: 
                 continue
-            output_images.append(img)
+            img_id = id(img)
+            if img_id not in output_image_set:
+                output_images.append(img)
+                output_image_set.add(img_id)
+
         
         return output_images
 
@@ -2344,7 +2381,7 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
     print("")
     print("comments", comments)
     print("")
-    render_scene(output_images, scene, comments)
+    render_scene(output_images, scene, gen_seeds(seed), comments)
     print("")
     print("output_images", output_images)
     print("")
@@ -2997,11 +3034,15 @@ if 'img2img' in user_defaults:
 img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
 
-scn2img_toggles = []
+scn2img_toggles = [
+    "Output intermediate images"
+]
 scn2img_defaults = {
-    'prompt': ''
+    'prompt': '',
+    'seed': '',
+    'toggles': [0]
 }
-scn2img_toggle_defaults=[]
+scn2img_toggle_defaults = [scn2img_toggles[i] for i in scn2img_defaults['toggles']]
 
 help_text = """
     ## Mask/Crop
