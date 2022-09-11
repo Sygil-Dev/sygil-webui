@@ -2198,14 +2198,12 @@ def scn2img(prompt: str, toggles: List[int], fp = None, job_info: JobInfo = None
             
         def render_image(obj):
             img = create_image(obj["size"], obj["color"])
-            if img is None: print(f"img is None after create_image in render_image({obj})")
             img = blend_objects(
                 img,
                 obj.children
             )
-            if img is None: print(f"img is None after create_image in render_image({obj})")
             img = resize_image(img, obj["resize"], obj["crop"])
-            if img is None: print(f"result of render_image({obj}) is None")
+            # if img is None: print(f"result of render_image({obj}) is None")
             return img
 
         def render_img2img(obj):
