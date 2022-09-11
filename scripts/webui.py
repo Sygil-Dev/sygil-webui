@@ -88,6 +88,8 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.util import instantiate_from_config
 
+import collections
+
 # add global options to models
 def patch_conv(**patch):
     cls = torch.nn.Conv2d
@@ -1668,15 +1670,401 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
     prompt = prompt or ''
 
     comments = []
-    output_images = []
+
+    class SceneObject:
+        def __init__(self, func, title, args, depth, children):
+            self.func = func
+            self.title = title
+            self.args = args or collections.OrderedDict()
+            self.depth = depth
+            self.children = children or []
+        def __len__(self):
+            return len(self.children)
+        def __iter__(self):
+            return iter(self.children)
+        def __getitem__(self, key):
+            if type(key) == int:
+                return self.children[key]
+            elif str(key) in self.args:
+                return self.args[str(key)]
+            else:
+                return None
+        def __contains__(self, key):
+            if type(key) == int:
+                return key < len(self.children)
+            else:
+                return str(key) in self.args
+        def __repr__(self):
+            return str(self)
+        def __str__(self):
+            args = collections.OrderedDict()
+            args["title"] = self.title
+            args.update(self.args)
+            args["children"] = self.children
+            args = ", ".join(map(lambda x: " = ".join(map(str,x)), args.items()))
+            return f"{self.func}({args})"
+
+
+
+    def try_many(fs, *args, **kwargs):
+        for f in fs:
+            try:
+                return f(*args, **kwargs)
+            except:
+                pass
+        raise Exception("")
+
+    def define_args():
+        parse_arg = {}
+        parse_arg["str"]         = lambda x: str(x)
+        parse_arg["int"]         = int
+        parse_arg["float"]       = float
+        parse_arg["tuple"]       = lambda s: tuple(s.split(",")),
+        parse_arg["int_tuple"]   = lambda s: tuple(map(int,s.split(",")))
+        parse_arg["float_tuple"] = lambda s: tuple(map(float,s.split(",")))
+        parse_arg["degrees"]     = lambda s: float(s) * math.pi / 180
+        parse_arg["color"]       = lambda s: try_many([parse_arg["float_tuple"], parse_arg["str"]], s)
+        parse_arg["anything"] = lambda s:try_many([
+            parse_arg["float_tuple"],
+            parse_arg["tuple"],
+            parse_arg["float"],
+            parse_arg["int"],
+            parse_arg["color"],
+            parse_arg["str"],
+        ],s)
+        function_args = {
+            "img2img": {
+                "prompt"             : "str",
+                "sampler"            : "str",
+                "steps"              : "int",
+                "denoising_strength" : "float",
+            },
+            "txt2img": {
+                "prompt"             : "str",
+                "sampler"            : "str",
+                "steps"              : "int",
+                "denoising_strength" : "float",
+            },
+            "image": {
+                "size"     : "int_tuple",
+                "position" : "float_tuple",
+                "resize"   : "float_tuple",
+                "rotation" : "degrees",
+                "color"    : "color"
+            }
+        }
+        for key in function_args.keys():
+            if key == "image": continue
+            function_args[key].update(function_args["image"])
+        return parse_arg, function_args
+
+    parse_arg, function_args = define_args()
+    # print("function_args", function_args)
+
+    def parse_scene(prompt, log):
+
+        parse_comment = re.compile('^\s*//.+$')
+        parse_attr = re.compile('^\s*([\w_][\d\w_]*)\s*[:=\s]\s*(.+)\s*$')
+        parse_heading = re.compile('^\s*(#+)\s*(.*)$')
+
+        class Section:
+            def __init__(self, depth=0, title="", content=None, children=None):
+                self.depth = depth
+                self.title = title
+                self.lines = []
+                self.content = content or collections.OrderedDict()
+                self.children = children or []
+                self.func = None
+            def __repr__(self):
+                return str(self)
+            def __str__(self):
+                return "\n".join(
+                    [("#"*self.depth) + " " + self.title]
+                    + [f"func={self.func}"]
+                    + [f"{k}={v}" for k,v in self.content.items()]
+                    + list(map(str, self.children))
+                )
+        
+        def strip_comments(txt):
+            while True:
+                txt,replaced = parse_comment.subn("", txt)
+                if replaced == 0:
+                    break
+            return txt
+            
+        def parse_content(lines):
+            
+            content = collections.OrderedDict()
+            for line in lines:
+                line = strip_comments(line)
+                m = parse_attr.match(line)
+                if m is None:
+                    attr = None
+                    value = line
+                else:
+                    attr = m.group(1)
+                    value = m.group(2)
+                
+                is_multi_value = (attr is None)
+                if is_multi_value and attr in content:
+                    content[attr].append(value)
+                elif is_multi_value and attr not in content:
+                    content[attr] = [value]
+                elif attr not in content:
+                    content[attr] = value
+                else:
+                    log.append(f"Warn: value for attr {attr} already exists. ignoring {line}.")
+            
+            return content
+                
+        def parse_sections(lines):
+            sections = []
+            current_section = Section()
+            stack = []
+            for line in lines:
+                m = parse_heading.match(line)
+                if m is None:
+                    current_section.lines.append(line)
+                else:
+                    current_section.content = parse_content(current_section.lines)
+                    yield current_section
+                    current_section = Section(
+                        depth = len(m.group(1)), 
+                        title = m.group(2)
+                    )
+
+            current_section.content = parse_content(current_section.lines)
+            yield current_section
+        
+        def to_trees(sections):
+            stack = []
+            roots = []
+            def insert_section(section):
+                assert(len(stack) == section.depth)
+                if section.depth == 0:
+                    roots.append(section)
+                if len(stack) > 0: 
+                    parent = stack[len(stack)-1]
+                    parent.children.append(section)
+                stack.append(section)
+
+            for section in sections:
+                last_depth = len(stack)-1
+                
+                is_child = section.depth > last_depth
+                is_sibling = section.depth == last_depth
+                is_parental_sibling = section.depth < last_depth
+                if is_child:
+                    for d in range(last_depth+1, section.depth, 1):
+                        intermediate = Section(depth = d)
+                        insert_section(intermediate)
+                    
+                elif is_sibling or is_parental_sibling:
+                    stack = stack[:section.depth]
+                
+                insert_section(section)
+            return roots
+        
+        def to_scene(trees, depth=0):
+            if depth == 0:
+                return SceneObject(
+                    func="scn2img",
+                    title="",
+                    args=None,
+                    depth=depth,
+                    children=[
+                        SceneObject(
+                            func="scene",
+                            title="",
+                            args=None,
+                            depth=depth+1,
+                            children=[to_scene(tree, depth+2)]
+                        )
+                        for tree in trees
+                    ]
+                )
+            else:
+                assert(type(trees) == Section)
+                section = trees
+                has_childs = len(section.children) > 0
+                has_prompt = "prompt" in section.content
+                func = (
+                    "img2img" if (has_childs and has_prompt) else
+                    "txt2img" if (has_prompt) else
+                    "image"
+                )            
+                return SceneObject(
+                    func=func,
+                    title=section.title,
+                    args=section.content,
+                    depth=depth,
+                    children=[
+                        to_scene(child, depth+1)
+                        for child in section.children
+                    ]
+                )
+            
+        def parse_scene_args(scene):
+            func_args = function_args[scene.func] if scene.func in function_args else {}
+            for arg in scene.args.keys():
+                arg_type = func_args[arg] if arg in func_args else "anything"
+                try:
+                    scene.args[arg] = parse_arg[arg_type](scene.args[arg])
+                except Exception as e:
+                    value = scene.args[arg]
+                    msg = f"Attribute parsing failed. Expected {arg_type}, got '{value}'."
+                    log.append(f"{msg}. Exception: '{str(e)}'")
+            for child in scene.children:
+                parse_scene_args(child)
+            return scene
+        
+        lines = prompt.split("\n")
+        sections = parse_sections(lines)
+        sections = list(sections)
+        trees = to_trees(sections)
+        scene = to_scene(trees)
+        parse_scene_args(scene)
+        
+        return scene
+
+    def render_scene(prompt, comments):
+        def pose(pos, rotation, center):
+            cs, sn = math.cos(rotation), math.sin(rotation)
+            return x, y, cs, sn, cy, c
+
+        def pose_mat3(pos=(), rotation=0, center=(0,0)):
+            x, y = pos or (0,0)
+            cs, sn = math.cos(rotation), math.sin(rotation)
+            cx, cy = center or (0,0)
+            return (
+                np.array([ # coordinates in parent coordinates
+                    [1,0,cx+x],
+                    [0,1,cy+y],
+                    [0,0,1],
+                ]) @ np.array([ # rotated coordinates with center in origin
+                    [cs,-sn,0],
+                    [+sn,cs,0],
+                    [0,0,1],
+                ]) @ np.array([ # coordinates with center in origin
+                    [1,0,-cx],
+                    [0,1,-cy],
+                    [0,0,1],
+                ]) # coordinates in pose
+            )
+
+        def get_rect(img):
+            w, h = img.size
+            return np.array([
+                [0, 0], # TL
+                [0, h], # BL
+                [w, h], # BR
+                [w, 0], # TR
+            ])
+
+        def transform_points(mat3, pts):
+            rot = mat3[:2,:2]
+            pos = mat3[:2,2]
+            return rot @ pts + pos
+
+        def create_image(size, color=None):
+            print("Creating image. Size: ", size, type(size), " color: ", color)
+            if size is None: return None
+            return Image.new("RGBA", size, color) 
+
+        def resize_image(img, size, crop):
+            if size is None: 
+                return img if (crop is None) else img.crop(box=crop)
+            # resize_is_upscaling = (size[0] > img.size[0]) or (size[1] > img.size[1])
+            # todo: upscale with realesrgan
+            return img.resize(size, box=crop)
+        
+        def blend_image_at(dst, img, pos, rotation, center):
+            img = img.rotate(
+                angle = rotation * (180 / math.pi),
+                expand = True,
+                center = center,
+                # todo: to improve performance dont use translate here, instead use dest arg in alpha_composite
+                translate = pos
+            )
+            if dst is None:
+                dst = img
+            else:
+                dst = dst.alpha_composite(img)
+            return dst
+
+        def blend_objects(dst, objects):
+            for obj in reversed(objects):
+                img = render_object(obj)
+                dst = blend_image_at(
+                    dst = dst, 
+                    img = img, 
+                    pos = obj["pos"] or obj["position"] or None, 
+                    rotation = obj["rotation"] or obj["angle"] or 0, 
+                    center = obj["center"] or None
+                )
+            return dst
+            
+        def render_image(obj, img = None):
+            img = create_image(obj["size"], obj["color"])
+            img = blend_objects(
+                img,
+                obj.children
+            )
+            img = resize_image(img, obj["resize"], obj["crop"])
+            return img
+
+        def render_img2img(obj):
+            image = None
+            return render_image(obj, image)
+
+        def render_txt2img(obj):
+            image = None
+            return render_image(obj, image)
+
+        def render_object(obj):
+            if obj.func == "scene" or obj.func == "image":
+                return render_image(obj)
+            elif obj.func == "img2img":
+                return render_img2img(obj)
+            elif obj.func == "txt2img":
+                return render_txt2img(obj)
+            else:
+                msg = f"Got unexpected SceneObject type {obj.func}"
+                comments.append(msg)
+                return None
+
+        def render_scn2img(obj):
+            if obj.func == "scn2img":
+                return [
+                    render_object(child)
+                    for child in obj.children
+                ]
+            else:
+                return [
+                    render_object(obj)
+                ]
+
+        return render_scn2img(scene)
+
 
     start_time = time.time()
 
     mem_mon = MemUsageMonitor('MemMon')
     mem_mon.start()
 
-    
+    scene = parse_scene(prompt, comments)
+    print("")
+    print("scene", scene)
+    print("")
+    print("comments", comments)
+    print("")
+    output_images = render_scene(scene, comments)
+    print("output_images", output_images)
+    print("")
+    print("comments", comments)
+    print("")
 
+    comments.append(str(scene))
     mem_max_used, mem_total = mem_mon.read_and_stop()
     time_diff = time.time()-start_time
 
@@ -1690,9 +2078,10 @@ def scn2img(prompt: str, toggles: List[int], fp_embeddings = None, job_info: Job
         'entities': [{'entity':str(v), 'start': full_string.find(f"{k}:"),'end': full_string.find(f"{k}:") + len(f"{k} ")} for k,v in args_and_names.items()]
     }
     num_prompts = 1
-    stats = f'''
-Took { round(time_diff, 2) }s total ({ round(time_diff/(num_prompts),2) }s per image)
-Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+    stats = " ".join([
+        f"Took { round(time_diff, 2) }s total ({ round(time_diff/(num_prompts),2) }s per image)",
+        f"Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'",
+    ])
 
     for comment in comments:
         info['text'] += "\n\n" + comment
