@@ -568,11 +568,11 @@ def optimize_update_preview_frequency(current_chunk_speed, previous_chunk_speed,
 	"""Find the optimal update_preview_frequency value maximizing 
 	performance while minimizing the time between updates."""
 	if current_chunk_speed >= previous_chunk_speed:
-		print(f"{current_chunk_speed} >= {previous_chunk_speed}")
+		#print(f"{current_chunk_speed} >= {previous_chunk_speed}")
 		update_preview_frequency +=1
 		previous_chunk_speed = current_chunk_speed
 	else:
-		print(f"{current_chunk_speed} <= {previous_chunk_speed}")
+		#print(f"{current_chunk_speed} <= {previous_chunk_speed}")
 		update_preview_frequency -=1
 		previous_chunk_speed = current_chunk_speed
 		
