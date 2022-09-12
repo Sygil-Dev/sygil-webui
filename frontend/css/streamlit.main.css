@@ -59,8 +59,8 @@ button[kind="header"] {
   /* The navigation menu specs and size */
   section[data-testid="stSidebar"] > div {
     height: 100%;
-    width: 95px !important;
-    min-width: 95px !important;
+    width: 4% !important;
+    min-width: 100% !important;
     position: relative;
     z-index: 1;
     top: 0;
@@ -79,8 +79,8 @@ button[kind="header"] {
 
   /* added to avoid main sectors (all element to the right of sidebar from) moving */
   section[data-testid="stSidebar"] {
-    width: 95px !important;
-    min-width: 95px !important;
+    width: 4% !important;
+    min-width: 4% !important;
   }
 }
 
