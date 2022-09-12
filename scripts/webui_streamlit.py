@@ -869,7 +869,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 		if save_ext == "png":
 			mdata = PngInfo()
 			for key in metadata:
-				mdata.add_text(key, metadata[key])
+				mdata.add_text(key, str(metadata[key]))
 			image.save(f"{filename_i}.png", pnginfo=mdata)
 		else:
 			if jpg_sample:
@@ -1956,8 +1956,8 @@ def txt2vid(
 	time_diff = time.time()- start	
 	
 	info = f"""
-                {prompt}
-                Sampling Steps: {num_steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}, Max Frames: {max_frames}
+                {prompts}
+                Sampling Steps: {num_steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Frames: {max_frames}
 	        {', GFPGAN' if use_GFPGAN and st.session_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and st.session_state["RealESRGAN"] is not None else ''}
 	        {', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
 	stats = f'''
@@ -2509,6 +2509,8 @@ def layout():
 			col4.write(df['Download Link'][x])
 				
 
+	elif tabs == 'Settings':
+		st.write("Settings")
 
 if __name__ == '__main__':
 	layout()     
