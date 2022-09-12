@@ -55,11 +55,17 @@ button[kind="header"] {
     /* display: none;*/ /*suggested behavior by streamlit hover components*/
     pointer-events: auto; /* enable interaction of the button even if parents intereaction disabled */
   }
+  
+  /* added to avoid main sectors (all element to the right of sidebar from) moving */
+  section[data-testid="stSidebar"] {
+    width: 3% !important;
+    min-width: 3% !important;
+  }
 
   /* The navigation menu specs and size */
   section[data-testid="stSidebar"] > div {
     height: 100%;
-    width: 4% !important;
+    width: 2% !important;
     min-width: 100% !important;
     position: relative;
     z-index: 1;
@@ -67,7 +73,7 @@ button[kind="header"] {
     left: 0;
     background-color: #111;
     overflow-x: hidden;
-    transition: 0.5s ease;
+    transition: 0.5s ease-in-out;
     padding-top: 0px;
     white-space: nowrap;
   }
@@ -75,12 +81,6 @@ button[kind="header"] {
   /* The navigation menu open and close on hover and size */
   section[data-testid="stSidebar"] > div:hover {
     width: 300px !important;
-  }
-
-  /* added to avoid main sectors (all element to the right of sidebar from) moving */
-  section[data-testid="stSidebar"] {
-    width: 4% !important;
-    min-width: 4% !important;
   }
 }
 
