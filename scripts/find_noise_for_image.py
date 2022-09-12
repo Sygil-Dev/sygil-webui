@@ -1,3 +1,6 @@
+# Credit to trygvebw for this implementation
+# Original here: https://gist.github.com/trygvebw/c71334dd127d537a15e9d59790f7f5e1
+
 import numpy as np
 import torch
 import k_diffusion as K
