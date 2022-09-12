@@ -919,6 +919,12 @@ def process_images(
     if not ("|" in prompt) and prompt.startswith("@"):
         prompt = prompt[1:]
 
+    negprompt = ''
+    if '###' in prompt:
+        prompt, negprompt = prompt.split('###', 1)
+        prompt = prompt.strip()
+        negprompt = negprompt.strip()
+
     comments = []
 
     prompt_matrix_parts = []
@@ -1003,7 +1009,7 @@ def process_images(
 
             if opt.optimized:
                 modelCS.to(device)
-            uc = (model if not opt.optimized else modelCS).get_learned_conditioning(len(prompts) * [""])
+            uc = (model if not opt.optimized else modelCS).get_learned_conditioning(len(prompts) * [negprompt])
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
 
