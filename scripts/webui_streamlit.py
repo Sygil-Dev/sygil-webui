@@ -133,6 +133,8 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
 
 	print ("Loading models.")
 
+	st.session_state["progress_bar_text"].text("Loading models...")
+
 	# Generate random run ID
 	# Used to link runs linked w/ continue_prev_run which is not yet implemented
 	# Use URL and filesystem safe version just in case.
@@ -869,7 +871,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 		if save_ext == "png":
 			mdata = PngInfo()
 			for key in metadata:
-				mdata.add_text(key, metadata[key])
+				mdata.add_text(key, str(metadata[key]))
 			image.save(f"{filename_i}.png", pnginfo=mdata)
 		else:
 			if jpg_sample:
@@ -988,11 +990,15 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 	return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
 
+import find_noise_for_image
+import matched_noise
+
+
 def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
         fp=None, ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
-        keep_mask=False, mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, resize_mode=None, uses_loopback=False,
+        mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
 	"""this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
@@ -1118,11 +1124,18 @@ def process_images(
 				while(torch.cuda.memory_allocated()/1e6 >= mem):
 					time.sleep(1)
 
-			if variant_amount == 0.0:
+			if noise_mode == 1:
+				# TODO params for find_noise_to_image
+				x = torch.cat(batch_size * [find_noise_for_image.find_noise_for_image(
+					st.session_state["model"], st.session_state["device"],
+					init_img.convert('RGB'), '', find_noise_steps, 0.0, normalize=True,
+					generation_callback=generation_callback,
+				)], dim=0)
+			else:
 				# we manually generate all input noises because each one should have a specific seed
 				x = create_random_tensors(shape, seeds=seeds)
 
-			else: # we are making variants
+			if variant_amount > 0.0: # we are making variants
 				# using variant_seed as sneaky toggle, 
 				# when not None or '' use the variant_seed
 				# otherwise use seeds
@@ -1130,9 +1143,8 @@ def process_images(
 					specified_variant_seed = seed_to_int(variant_seed)
 					torch.manual_seed(specified_variant_seed)
 					seeds = [specified_variant_seed]
-				target_x = create_random_tensors(shape, seeds=seeds)
 				# finally, slerp base_x noise to target_x noise for creating a variant
-				x = slerp(defaults.general.gpu, max(0.0, min(1.0, variant_amount)), base_x, target_x)
+				x = slerp(defaults.general.gpu, max(0.0, min(1.0, variant_amount)), base_x, x)
 
 			samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
@@ -1357,10 +1369,12 @@ def resize_image(resize_mode, im, width, height):
 
 	return res
 
+import skimage
+
 def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None, mask_mode: int = 0, mask_blur_strength: int = 3, 
             mask_restore: bool = False, ddim_steps: int = 50, sampler_name: str = 'DDIM',
             n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
-            seed: int = -1, height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
+            seed: int = -1, noise_mode: int = 0, find_noise_steps: str = "", height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
             variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
             write_info_files:bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
             separate_prompts:bool = False, normalize_prompt_weights:bool = True,
@@ -1411,19 +1425,76 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 
 	init_img = init_info
 	init_mask = None
-	keep_mask = False
+	if mask_mode == 0:
+		if init_info_mask:
+			init_mask = init_info_mask
+	elif mask_mode == 1:
+		if init_info_mask:
+			init_mask = init_info_mask
+			init_mask = ImageOps.invert(init_mask)
+	elif mask_mode == 2:
+		init_img_transparency = init_img.split()[-1].convert('L')#.point(lambda x: 255 if x > 0 else 0, mode='1')
+		init_mask = init_img_transparency
+		init_mask = init_mask.convert("RGB")
+		init_mask = resize_image(resize_mode, init_mask, width, height)
+		init_mask = init_mask.convert("RGB")
 
 	assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
 	t_enc = int(denoising_strength * ddim_steps)
 
 	def init():
+		init_image = init_img
+		if init_mask is not None and noise_mode == 2 and init_image is not None:
+			noise_q = 0.99
+			color_variation = 0.0
+			mask_blend_factor = 1.0
 
-		image = init_img
+			np_init = (np.asarray(init_image.convert("RGB"))/255.0).astype(np.float64) # annoyingly complex mask fixing
+			np_mask_rgb = 1. - (np.asarray(init_mask.convert("RGB"))/255.0).astype(np.float64)
+			np_mask_rgb -= np.min(np_mask_rgb)
+			np_mask_rgb /= np.max(np_mask_rgb)
+			#np_mask_rgb = 1. - np_mask_rgb
+			np_mask_rgb_hardened = 1. - (np_mask_rgb < 0.99).astype(np.float64)
+			blurred = skimage.filters.gaussian(np_mask_rgb_hardened[:], sigma=16., channel_axis=2, truncate=32.)
+			blurred2 = skimage.filters.gaussian(np_mask_rgb_hardened[:], sigma=16., channel_axis=2, truncate=32.)
+			#np_mask_rgb_dilated = np_mask_rgb + blurred  # fixup mask todo: derive magic constants
+			#np_mask_rgb = np_mask_rgb + blurred
+			np_mask_rgb_dilated = np.clip((np_mask_rgb + blurred2) * 0.7071, 0., 1.)
+			np_mask_rgb = np.clip((np_mask_rgb + blurred) * 0.7071, 0., 1.)
+
+			noise_rgb = matched_noise.get_matched_noise(np_init, np_mask_rgb, noise_q, color_variation)
+			blend_mask_rgb = np.clip(np_mask_rgb_dilated,0.,1.) ** (mask_blend_factor)
+			noised = noise_rgb[:]
+			blend_mask_rgb **= (2.)
+			noised = np_init[:] * (1. - blend_mask_rgb) + noised * blend_mask_rgb
+			
+			np_mask_grey = np.sum(np_mask_rgb, axis=2)/3.
+			ref_mask =  np_mask_grey < 1e-3
+			
+			all_mask = np.ones((width, height), dtype=bool)
+			noised[all_mask,:] = skimage.exposure.match_histograms(noised[all_mask,:]**1., noised[ref_mask,:], channel_axis=1)
+			
+			init_image = Image.fromarray(np.clip(noised * 255., 0., 255.).astype(np.uint8), mode="RGB")
+			st.session_state["editor_image"].image(init_image)
+
+		image = init_image.convert('RGB')
 		image = np.array(image).astype(np.float32) / 255.0
 		image = image[None].transpose(0, 3, 1, 2)
 		image = torch.from_numpy(image)
 
+		mask_channel = None
+		if init_mask:
+			alpha = resize_image(resize_mode, init_mask, width // 8, height // 8)
+			mask_channel = alpha.split()[1]
+
 		mask = None
+		if mask_channel is not None:
+			mask = np.array(mask_channel).astype(np.float32) / 255.0
+			mask = (1 - mask)
+			mask = np.tile(mask, (4, 1, 1))
+			mask = mask[None].transpose(0, 1, 2, 3)
+			mask = torch.from_numpy(mask).to(st.session_state["device"])
+		
 		if defaults.general.optimized:
 			modelFS.to(st.session_state["device"] )
 
@@ -1525,10 +1596,11 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
                                 save_individual_images=save_individual_images,
                                 init_img=init_img,
                                 init_mask=init_mask,
-                                keep_mask=keep_mask,
                                 mask_blur_strength=mask_blur_strength,
                                 mask_restore=mask_restore,
                                 denoising_strength=denoising_strength,
+                                noise_mode=noise_mode,
+                                find_noise_steps=find_noise_steps,
                                 resize_mode=resize_mode,
                                 uses_loopback=loopback,
                                 uses_random_seed_loopback=random_seed_loopback,
@@ -1587,9 +1659,10 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
                         save_individual_images=save_individual_images,
                         init_img=init_img,
                         init_mask=init_mask,
-                        keep_mask=keep_mask,
                         mask_blur_strength=mask_blur_strength,
                         denoising_strength=denoising_strength,
+                        noise_mode=noise_mode,
+                        find_noise_steps=find_noise_steps,
                         mask_restore=mask_restore,
                         resize_mode=resize_mode,
                         uses_loopback=loopback,
@@ -2208,13 +2281,26 @@ def layout():
 						                                                                                        index=sampler_name_list.index(defaults.img2img.sampler_name),
 						                                                                                                                                                  help="Sampling method to use.")
 	
-					uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
-						                           help="Upload an image which will be used for the image to image generation."
-						                           )
-	
+					mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
+					mask_mode = st.selectbox(
+						"Mask Mode", mask_mode_list,
+						help="Select how you want your image to be masked.\n\
+						\"Mask\" modifies the image where the mask is white.\n\
+						\"Inverted mask\" modifies the image where the mask is black.\n\
+						\"Image alpha\" modifies the image where the image is transparent."
+					)
+					mask_mode = mask_mode_list.index(mask_mode)
+
 					width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.img2img.width, step=64)
 					height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.img2img.height, step=64)
 					seed = st.text_input("Seed:", value=defaults.img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
+					noise_mode_list = ["Seed", "Find Noise", "Matched Noise"]
+					noise_mode = st.selectbox(
+						"Noise Mode", noise_mode_list,
+						help=""
+					)
+					noise_mode = noise_mode_list.index(noise_mode)
+					find_noise_steps = st.slider("Find Noise Steps", value=100, min_value=1, max_value=500)
 					batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.img2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
 	
 					#			
@@ -2261,11 +2347,49 @@ def layout():
 					editor_image = st.empty()
 					st.session_state["editor_image"] = editor_image
 	
+					refresh_button = st.form_submit_button("Refresh")
+
+					masked_image_holder = st.empty()
+					image_holder = st.empty()
+
+					uploaded_images = st.file_uploader(
+						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
+						help="Upload an image which will be used for the image to image generation.",
+					)
 					if uploaded_images:
-						image = Image.open(uploaded_images).convert('RGB')
-						#img_array = np.array(image) # if you want to pass it to OpenCV
+						image = Image.open(uploaded_images).convert('RGBA')
 						new_img = image.resize((width, height))
-						st.image(new_img)
+						image_holder.image(new_img)
+					
+					mask_holder = st.empty()
+
+					uploaded_masks = st.file_uploader(
+						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
+						help="Upload an mask image which will be used for masking the image to image generation.",
+					)
+					if uploaded_masks:
+						image = Image.open(uploaded_masks).convert('RGB')
+						new_mask = image.resize((width, height))
+						mask_holder.image(new_mask)
+
+					if uploaded_images and uploaded_masks:
+						if mask_mode != 2:
+							final_img = new_img.copy()
+							alpha_layer = new_mask.split()[-1].copy().convert('L')
+							strength = st.session_state["denoising_strength"]
+							if mask_mode == 0:
+								alpha_layer = ImageOps.invert(alpha_layer)
+								alpha_layer = alpha_layer.point(lambda a: a * strength)
+								alpha_layer = ImageOps.invert(alpha_layer)
+							elif mask_mode == 1:
+								alpha_layer = alpha_layer.point(lambda a: a * strength)
+								alpha_layer = ImageOps.invert(alpha_layer)
+								
+							final_img.putalpha(alpha_layer)
+							
+							with masked_image_holder.container():
+								st.text("Masked Image Preview")
+								st.image(final_img)
 	
 	
 					with col3_img2img_layout:
@@ -2295,15 +2419,19 @@ def layout():
 					# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 					load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, CustomModel_available, custom_model)                
 					if uploaded_images:
-						image = Image.open(uploaded_images).convert('RGB')
+						image = Image.open(uploaded_images).convert('RGBA')
 						new_img = image.resize((width, height))
 						#img_array = np.array(image) # if you want to pass it to OpenCV
+						new_mask = None
+						if uploaded_masks:
+							mask = Image.open(uploaded_masks).convert('RGB')
+							new_mask = mask.resize((width, height))
 	
 						try:
-							output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, ddim_steps=st.session_state["sampling_steps"],
+							output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, init_info_mask=new_mask, mask_mode=mask_mode, ddim_steps=st.session_state["sampling_steps"],
 								                                   sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
 								                                   cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
-								                                   seed=seed, width=width, height=height, fp=defaults.general.fp, variant_amount=variant_amount, 
+								                                   seed=seed, noise_mode=noise_mode, find_noise_steps=find_noise_steps, width=width, height=height, fp=defaults.general.fp, variant_amount=variant_amount, 
 								                                   ddim_eta=0.0, write_info_files=write_info_files, RealESRGAN_model=RealESRGAN_model,
 								                                   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
 								                                   save_individual_images=save_individual_images, save_grid=save_grid, 
