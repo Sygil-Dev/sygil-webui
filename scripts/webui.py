@@ -1988,13 +1988,16 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 "mask_depth"        : "bool",
                 "mask_depth_min"    : "float",
                 "mask_depth_max"    : "float",
-                "mask_depth_invert" : "bool"
+                "mask_depth_invert" : "bool",
+            },
+            "object": {
+                "initial_seed": "int",
             }
         }
         function_args_ext = {
-            "image": ["image"],
-            "img2img": ["render_img2img", "img2img", "image"],
-            "txt2img": ["render_txt2img", "txt2img", "image"],
+            "image": ["image", "object"],
+            "img2img": ["render_img2img", "img2img", "image", "object"],
+            "txt2img": ["render_txt2img", "txt2img", "image", "object"],
         }
         return parse_arg, function_args, function_args_ext
 
@@ -2305,12 +2308,12 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 dst.alpha_composite(img, dest=(dx,dy), source=(sx,sy))
             return dst
 
-        def blend_objects(dst, objects):
+        def blend_objects(seeds, dst, objects):
             # print("")
             # print(f"blend_objects({dst}, {objects})")
             # print("")
             for obj in reversed(objects):
-                img = render_object(obj)
+                img = render_object(seeds, obj)
                 # if img is None:
                     # print("")
                     # print(f"img is None after render_object in blend_objects({dst}, {objects})")
@@ -2334,9 +2337,10 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             dst = dst.copy()
             return dst
             
-        def render_image(obj):
+        def render_image(seeds, obj):
             img = create_image(obj["size"], obj["color"])
             img = blend_objects(
+                seeds,
                 img,
                 obj.children
             )
@@ -2354,7 +2358,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             # if img is None: print(f"result of render_image({obj}) is None")
             return img
 
-        def prepare_img2img_kwargs(obj, img):
+        def prepare_img2img_kwargs(seeds, obj, img):
             print(f"prepare_txt2img_kwargs({obj}, {img})")
             img2img_kwargs = {}
             # img2img_kwargs.update(img2img_defaults)
@@ -2410,7 +2414,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             return img2img_kwargs
 
-        def prepare_txt2img_kwargs(obj):
+        def prepare_txt2img_kwargs(seeds, obj):
             print(f"prepare_txt2img_kwargs({obj})")
             txt2img_kwargs = {}
             # txt2img_kwargs.update(txt2img_defaults)
@@ -2458,16 +2462,17 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             return txt2img_kwargs
             
-        def render_img2img(obj):
+        def render_img2img(seeds, obj):
             if obj["size"] is None:
                 obj["size"] = (img2img_defaults["width"], img2img_defaults["height"])
             img = create_image(obj["size"], obj["color"])
             img = blend_objects(
+                seeds,
                 img,
                 obj.children
             )
 
-            img2img_kwargs = prepare_img2img_kwargs(obj, img)
+            img2img_kwargs = prepare_img2img_kwargs(seeds, obj, img)
 
             # obj_hash = hash(str((img2img_kwargs["seed"],obj)))
             obj_hash = obj.cache_hash(
@@ -2493,9 +2498,9 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             if img is None: print(f"result of render_img2img({obj}) is None")
             return img
 
-        def render_txt2img(obj):
+        def render_txt2img(seeds, obj):
 
-            txt2img_kwargs = prepare_txt2img_kwargs(obj)
+            txt2img_kwargs = prepare_txt2img_kwargs(seeds, obj)
 
             # obj_hash = hash(str((txt2img_kwargs["seed"],obj)))
             obj_hash = obj.cache_hash(
@@ -2522,7 +2527,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             return img
 
         output_image_set = set()
-        def render_object(obj):
+        def render_object(seeds, obj):
             # print("")
             # print(f"render_object({str(obj)})")
             # print("")
@@ -2533,29 +2538,44 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                         output_images.append(img)
                         output_image_set.add(img_id)
                 return img
+
+            if "initial_seed" in obj:
+                seeds = gen_seeds(obj["initial_seed"])
+
             if obj.func == "scene" or obj.func == "image":
-                return result(render_image(obj))
+                return result(render_image(seeds, obj))
             elif obj.func == "img2img":
-                return result(render_img2img(obj))
+                return result(render_img2img(seeds, obj))
             elif obj.func == "txt2img":
-                return result(render_txt2img(obj))
+                return result(render_txt2img(seeds, obj))
             else:
                 msg = f"Got unexpected SceneObject type {obj.func}"
                 comments.append(msg)
                 return None
 
-        def render_scn2img(obj):
-            if obj.func == "scn2img":
-                return [
-                    render_object(child)
-                    for child in obj.children
-                ]
-            else:
-                return [
-                    render_object(obj)
-                ]
+        def render_scn2img(seeds, obj):
+            result = []
 
-        for img in render_scn2img(scene):
+            if "initial_seed" in obj:
+                seeds = gen_seeds(obj["initial_seed"])
+
+            if obj.func == "scn2img":
+                # Note on seed generation and for-loops instead of
+                # list-comprehensions:
+                #
+                # For instead of list-comprehension to ensure order as
+                # list-comprehension order is not guaranteed. Seed generator must be
+                # used by children in deterministic order.
+                #
+                # This also applies elsewhere.
+                for child in obj.children: 
+                    result.append(render_object(seeds, child))
+            else:
+                result.append(render_object(seeds, obj))
+            return result
+
+
+        for img in render_scn2img(seeds, scene):
             if img is None: 
                 continue
             img_id = id(img)
