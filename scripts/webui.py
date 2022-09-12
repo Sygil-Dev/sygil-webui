@@ -1740,20 +1740,40 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
     return output_images, seed, info, stats
 
 
+scn2img_cache = {
+    "seed": None,
+    "cache": {}
+}
+
 def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = None, job_info: JobInfo = None):
 
     outpath = opt.outdir_img2img or opt.outdir or "outputs/scn2img-samples"
     err = False
     seed = seed_to_int(seed)
-    
+
+    prompt = prompt or ''
+    output_intermediates = 0 in toggles
+    clear_cache = 1 in toggles
+
+    if clear_cache or scn2img_cache["seed"] != seed:
+        scn2img_cache["seed"] = seed
+        scn2img_cache["cache"] = {}
+    # cache = scn2img_cache["cache"]
+    print("scn2img_cache")
+    print(list(scn2img_cache["cache"].keys()))
+
     def gen_seeds(seed):
         while True:
             yield seed
             seed = next_seed(seed)
 
-    prompt = prompt or ''
-
-    output_intermediates = 0 in toggles
+    def is_seed_invalid(s):
+        return (
+            (s == "")
+         or (s is None)
+         or not str(s).isdigit()
+         or (type(s) != int) 
+        )
 
     if job_info:
         output_images = job_info.images
@@ -1867,10 +1887,12 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 "variant_seed"          : "int",
             },
             "render_img2img": {
-                "select" : "int"
+                "select" : "int",
+                "variation": "int",
             },
             "render_txt2img": {
-                "select" : "int"
+                "select" : "int",
+                "variation": "int",
             },
             "image": {
                 "size"     : "int_tuple",
@@ -2260,8 +2282,15 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             if "seed" in img2img_kwargs:
                 s = img2img_kwargs["seed"]
-                if (s == "") or (s is None) or not s.isdigit():
+                if is_seed_invalid(s):
                     img2img_kwargs["seed"] = next(seeds)
+                else:
+                    img2img_kwargs["seed"] = int(s)
+
+            if "variation" in img2img_kwargs:
+                v = img2img_kwargs["variation"]
+                if not is_seed_invalid(v):
+                    img2img_kwargs["seed"] = next_seed(img2img_kwargs["seed"] + int(v))
                 
             # img2img_kwargs["job_info"] = job_info
             img2img_kwargs["job_info"] = None
@@ -2275,9 +2304,14 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             print("img2img_kwargs")
             print(img2img_kwargs)
 
-            outputs, seed, info, stats = img2img(
-                **img2img_kwargs
-            )
+            obj_hash = hash(str((img2img_kwargs["seed"],obj)))
+            if obj_hash not in scn2img_cache["cache"]:
+                outputs, seed, info, stats = img2img(
+                    **img2img_kwargs
+                )
+                scn2img_cache["cache"][obj_hash] = outputs, seed, info, stats
+            
+            outputs, seed, info, stats = scn2img_cache["cache"][obj_hash]
 
             print("outputs", outputs)
 
@@ -2311,8 +2345,15 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             if "seed" in txt2img_kwargs:
                 s = txt2img_kwargs["seed"]
-                if (s == "") or (s is None) or not s.isdigit():
+                if is_seed_invalid(v):
                     txt2img_kwargs["seed"] = next(seeds)
+                else:
+                    txt2img_kwargs["seed"] = int(s)
+
+            if "variation" in txt2img_kwargs:
+                v = txt2img_kwargs["variation"]
+                if not is_seed_invalid(v):
+                    txt2img_kwargs["seed"] = next_seed(txt2img_kwargs["seed"] + int(v))
 
             # txt2img_kwargs["job_info"] = job_info
             txt2img_kwargs["job_info"] = None
@@ -2321,9 +2362,14 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             print("txt2img_kwargs")
             print(txt2img_kwargs)
 
-            outputs, seed, info, stats = txt2img(
-                **txt2img_kwargs
-            )
+            obj_hash = hash(str((txt2img_kwargs["seed"],obj)))
+            if obj_hash not in scn2img_cache["cache"]:
+                outputs, seed, info, stats = txt2img(
+                    **txt2img_kwargs
+                )
+                scn2img_cache["cache"][obj_hash] = outputs, seed, info, stats
+            
+            outputs, seed, info, stats = scn2img_cache["cache"][obj_hash]
 
             print("outputs", outputs)
 
@@ -2342,7 +2388,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             # print(f"render_object({str(obj)})")
             # print("")
             def result(img):
-                if output_intermediates:
+                if output_intermediates and img is not None:
                     img_id = id(img)
                     if img_id not in output_image_set:
                         output_images.append(img)
@@ -3047,7 +3093,8 @@ img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles
 img2img_image_mode = 'sketch'
 
 scn2img_toggles = [
-    "Output intermediate images"
+    "Output intermediate images",
+    "Clear Cache"
 ]
 scn2img_defaults = {
     'prompt': '',
