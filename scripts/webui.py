@@ -1803,6 +1803,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
     if clear_cache or scn2img_cache["seed"] != seed:
         scn2img_cache["seed"] = seed
         scn2img_cache["cache"] = {}
+
+
     # cache = scn2img_cache["cache"]
     print("scn2img_cache")
     print(list(scn2img_cache["cache"].keys()))
@@ -1813,12 +1815,25 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             seed = next_seed(seed)
 
     def is_seed_invalid(s):
-        return (
-            (s == "")
+        result = (
+            (type(s) != int) 
+         or (s == "")
          or (s is None)
-         or not str(s).isdigit()
-         or (type(s) != int) 
         )
+        return result
+    
+    def is_seed_valid(s):
+        result =  not is_seed_invalid(s)
+        print(f"is_seed_valid({s}) = {result}")
+        return result
+
+    def vary_seed(s, v):
+        s = int(s)
+        v = int(v)
+        if v == 0: 
+            return s
+        else:
+            return next_seed(s+v)
 
     if job_info:
         output_images = job_info.images
@@ -1864,7 +1879,30 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             args["children"] = self.children
             args = ", ".join(map(lambda x: " = ".join(map(str,x)), args.items()))
             return f"{self.func}({args})"
-
+        def cache_hash(self, seed=None, exclude_args=None, exclude_child_args=None, extra=None, child_extra=None):
+            exclude_args = exclude_args or set()
+            exclude_args = set(exclude_args)
+            exclude_child_args = exclude_child_args or set()
+            exclude_child_args = set(exclude_child_args)
+            return hash((
+                hash(seed),
+                hash(extra),
+                hash(self.func),
+                hash(tuple([
+                    (k,v) for k,v in self.args.items() 
+                    if k not in exclude_args
+                ])),
+                hash(tuple([
+                    c.cache_hash(
+                        seed = seed,
+                        exclude_args = exclude_child_args, 
+                        exclude_child_args = exclude_child_args,
+                        extra = child_extra,
+                        child_extra = child_extra
+                    ) 
+                    for c in self.children
+                ]))
+            ))
 
 
     def try_many(fs, *args, **kwargs):
@@ -2290,6 +2328,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     # print("img", img)
                     # print("")
                     raise e
+
+            dst = dst.copy()
             return dst
             
         def render_image(obj):
@@ -2312,21 +2352,15 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             # if img is None: print(f"result of render_image({obj}) is None")
             return img
 
-        def render_img2img(obj):
-            if obj["size"] is None:
-                obj["size"] = (img2img_defaults["width"], img2img_defaults["height"])
-            img = create_image(obj["size"], obj["color"])
-            img = blend_objects(
-                img,
-                obj.children
-            )
+        def prepare_img2img_kwargs(obj, img):
+            print(f"prepare_txt2img_kwargs({obj}, {img})")
             img2img_kwargs = {}
             # img2img_kwargs.update(img2img_defaults)
             func_args = function_args["img2img"]
             for k,v in img2img_defaults.items():
                 if k in func_args:
                     img2img_kwargs[k] = v
-
+            
             if "mask_mode" in img2img_kwargs:
                 img2img_kwargs["mask_mode"] = 1 - img2img_kwargs["mask_mode"]
 
@@ -2341,17 +2375,24 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             if "toggles" in img2img_kwargs:
                 img2img_kwargs["toggles"] = list(img2img_kwargs["toggles"])
 
+            assert("seed" in img2img_kwargs)
             if "seed" in img2img_kwargs:
                 s = img2img_kwargs["seed"]
-                if is_seed_invalid(s):
-                    img2img_kwargs["seed"] = next(seeds)
-                else:
+                if is_seed_valid(s):
                     img2img_kwargs["seed"] = int(s)
+                else:
+                    img2img_kwargs["seed"] = next(seeds)
 
-            if "variation" in img2img_kwargs:
-                v = img2img_kwargs["variation"]
-                if not is_seed_invalid(v):
-                    img2img_kwargs["seed"] = next_seed(img2img_kwargs["seed"] + int(v))
+            print('img2img_kwargs["seed"]', img2img_kwargs["seed"])
+
+            if "variation" in obj:
+                v = obj["variation"]
+                if is_seed_valid(v):
+                    s = int(img2img_kwargs["seed"])
+                    v = int(v)
+                    ns = vary_seed(s, v)
+                    print(f"Using seed variation {v}: {ns}")
+                    img2img_kwargs["seed"] = ns
                 
             # img2img_kwargs["job_info"] = job_info
             img2img_kwargs["job_info"] = None
@@ -2365,7 +2406,72 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             print("img2img_kwargs")
             print(img2img_kwargs)
 
-            obj_hash = hash(str((img2img_kwargs["seed"],obj)))
+            return img2img_kwargs
+
+        def prepare_txt2img_kwargs(obj):
+            print(f"prepare_txt2img_kwargs({obj})")
+            txt2img_kwargs = {}
+            # txt2img_kwargs.update(txt2img_defaults)
+            func_args = function_args["txt2img"]
+            for k,v in txt2img_defaults.items():
+                if k in func_args:
+                    txt2img_kwargs[k] = v
+
+            if "size" in obj:
+                txt2img_kwargs["width"] = obj["size"][0]
+                txt2img_kwargs["height"] = obj["size"][1]
+
+            for k,v in func_args.items():
+                if k in obj:
+                    txt2img_kwargs[k] = obj[k]
+
+            if "toggles" in txt2img_kwargs:
+                txt2img_kwargs["toggles"] = list(txt2img_kwargs["toggles"])
+
+            assert("seed" in txt2img_kwargs)
+            if "seed" in txt2img_kwargs:
+                s = txt2img_kwargs["seed"]
+                if is_seed_valid(s):
+                    txt2img_kwargs["seed"] = int(s)
+                else:
+                    txt2img_kwargs["seed"] = next(seeds)
+
+            print('txt2img_kwargs["seed"]', txt2img_kwargs["seed"])
+
+            if "variation" in obj:
+                v = obj["variation"]
+                if is_seed_valid(v):
+                    s = int(txt2img_kwargs["seed"])
+                    v = int(v)
+                    ns = vary_seed(s, v)
+                    print(f"Using seed variation {v}: {ns}")
+                    txt2img_kwargs["seed"] = ns
+
+            # txt2img_kwargs["job_info"] = job_info
+            txt2img_kwargs["job_info"] = None
+            txt2img_kwargs["fp"] = fp
+
+            print("txt2img_kwargs")
+            print(txt2img_kwargs)
+
+            return txt2img_kwargs
+            
+        def render_img2img(obj):
+            if obj["size"] is None:
+                obj["size"] = (img2img_defaults["width"], img2img_defaults["height"])
+            img = create_image(obj["size"], obj["color"])
+            img = blend_objects(
+                img,
+                obj.children
+            )
+
+            img2img_kwargs = prepare_img2img_kwargs(obj, img)
+
+            # obj_hash = hash(str((img2img_kwargs["seed"],obj)))
+            obj_hash = obj.cache_hash(
+                seed = img2img_kwargs["seed"],
+                exclude_args = {"select", "pos", "rotation"}
+            )
             if obj_hash not in scn2img_cache["cache"]:
                 outputs, seed, info, stats = img2img(
                     **img2img_kwargs
@@ -2386,44 +2492,14 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             return img
 
         def render_txt2img(obj):
-            txt2img_kwargs = {}
-            # txt2img_kwargs.update(txt2img_defaults)
-            func_args = function_args["txt2img"]
-            for k,v in txt2img_defaults.items():
-                if k in func_args:
-                    txt2img_kwargs[k] = v
 
-            if "size" in obj:
-                txt2img_kwargs["width"] = obj["size"][0]
-                txt2img_kwargs["height"] = obj["size"][1]
+            txt2img_kwargs = prepare_txt2img_kwargs(obj)
 
-            for k,v in func_args.items():
-                if k in obj:
-                    txt2img_kwargs[k] = obj[k]
-
-            if "toggles" in txt2img_kwargs:
-                txt2img_kwargs["toggles"] = list(txt2img_kwargs["toggles"])
-
-            if "seed" in txt2img_kwargs:
-                s = txt2img_kwargs["seed"]
-                if is_seed_invalid(v):
-                    txt2img_kwargs["seed"] = next(seeds)
-                else:
-                    txt2img_kwargs["seed"] = int(s)
-
-            if "variation" in txt2img_kwargs:
-                v = txt2img_kwargs["variation"]
-                if not is_seed_invalid(v):
-                    txt2img_kwargs["seed"] = next_seed(txt2img_kwargs["seed"] + int(v))
-
-            # txt2img_kwargs["job_info"] = job_info
-            txt2img_kwargs["job_info"] = None
-            txt2img_kwargs["fp"] = fp
-
-            print("txt2img_kwargs")
-            print(txt2img_kwargs)
-
-            obj_hash = hash(str((txt2img_kwargs["seed"],obj)))
+            # obj_hash = hash(str((txt2img_kwargs["seed"],obj)))
+            obj_hash = obj.cache_hash(
+                seed = txt2img_kwargs["seed"],
+                exclude_args = {"select", "pos", "rotation"}
+            )
             if obj_hash not in scn2img_cache["cache"]:
                 outputs, seed, info, stats = txt2img(
                     **txt2img_kwargs
