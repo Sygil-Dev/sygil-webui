@@ -130,7 +130,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 txt2img_btn.click(
                     txt2img_func,
                     txt2img_inputs,
-                    txt2img_outputs
+                    txt2img_outputs,
+                    api_name='txt2img'
                 )
                 txt2img_prompt.submit(
                     txt2img_func,
@@ -358,7 +359,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 img2img_btn_mask.click(
                     img2img_func,
                     img2img_inputs,
-                    img2img_outputs
+                    img2img_outputs,
+                    api_name="img2img"
+
                 )
 
                 def img2img_submit_params():
@@ -544,7 +547,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                              imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,
                                              imgproc_gfpgan_strength, imgproc_ldsr_steps, imgproc_ldsr_pre_downSample,
                                              imgproc_ldsr_post_downSample],
-                                            [imgproc_output])
+                                            [imgproc_output], api_name="imgproc")
 
                                         imgproc_source.change(
                                             uifn.get_png_nfo,
