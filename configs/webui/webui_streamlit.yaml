@@ -44,6 +44,8 @@ txt2img:
     sampling_steps: 30
     default_sampler: "k_euler"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
@@ -71,9 +73,12 @@ txt2vid:
     default_sampler: "k_euler"
     scheduler_name: "klms"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
+    dynamic_preview_frequency: True
     normalize_prompt_weights: True
     save_individual_images: True
-    save_grid: False
+    save_video: True
     group_by_prompt: True
     write_info_files: True
     do_loop: False
@@ -85,7 +90,7 @@ txt2vid:
     variant_seed: ""
     beta_start: 0.00085
     beta_end: 0.012
-    beta_scheduler_type: "scaled_linear"
+    beta_scheduler_type: "linear"
     max_frames: 1000
     
 img2img:
@@ -125,6 +130,8 @@ img2img:
   loopback: True
   random_seed_loopback: True
   separate_prompts: False
+  update_preview: True
+  update_preview_frequency: 5
   normalize_prompt_weights: True
   save_individual_images: True
   save_grid: True
