@@ -1893,7 +1893,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
     def parse_scene(prompt, log):
 
         parse_inline_comment = re.compile(r'(?m)//.+?$') #(?m): $ also matches at before \n
-        parse_multiline_comment = re.compile(r'(?s)/\*.+?\*/') #(?s): . matches \n
+        parse_multiline_comment = re.compile(r'(?s)(^|[^/])/\*.+?\*/') #(?s): . matches \n
         parse_attr = re.compile(r'^\s*([\w_][\d\w_]*)\s*[:=\s]\s*(.+)\s*$')
         parse_heading = re.compile(r'^\s*(#+)([>]?)\s*(.*)$') # 
 
@@ -1924,14 +1924,14 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             
         def strip_multiline_comments(txt):
             while True:
-                txt,replaced = parse_multiline_comment.subn("", txt)
+                txt,replaced = parse_multiline_comment.subn("\1", txt)
                 if replaced == 0:
                     break
             return txt
         
         def strip_comments(txt):
-            txt = strip_inline_comments(txt)
             txt = strip_multiline_comments(txt)
+            txt = strip_inline_comments(txt)
             return txt
 
         def parse_content(lines):
