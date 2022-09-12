@@ -1884,6 +1884,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             exclude_args = set(exclude_args)
             exclude_child_args = exclude_child_args or set()
             exclude_child_args = set(exclude_child_args)
+            if None not in exclude_args:
+                exclude_args.add(None)
             return hash((
                 hash(seed),
                 hash(extra),
