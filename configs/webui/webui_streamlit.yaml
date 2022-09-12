@@ -73,7 +73,7 @@ txt2vid:
     separate_prompts: False
     normalize_prompt_weights: True
     save_individual_images: True
-    save_grid: False
+    save_video: True
     group_by_prompt: True
     write_info_files: True
     do_loop: False
