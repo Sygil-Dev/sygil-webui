@@ -1780,6 +1780,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 return self.args[str(key)]
             else:
                 return None
+        def __setitem__(self, key, value):
+            if type(key) == int:
+                self.children[key] = value
+            else:
+                self.args[str(key)] = value
         def __contains__(self, key):
             if type(key) == int:
                 return key < len(self.children)
@@ -2225,6 +2230,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             return img
 
         def render_img2img(obj):
+            if obj["size"] is None:
+                obj["size"] = (img2img_defaults["width"], img2img_defaults["height"])
             img = create_image(obj["size"], obj["color"])
             img = blend_objects(
                 img,
