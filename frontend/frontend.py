@@ -547,7 +547,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                              imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,
                                              imgproc_gfpgan_strength, imgproc_ldsr_steps, imgproc_ldsr_pre_downSample,
                                              imgproc_ldsr_post_downSample],
-                                            [imgproc_output], api_name="imgproc") )
+                                            [imgproc_output], api_name="imgproc")
 
                                         imgproc_source.change(
                                             uifn.get_png_nfo,
