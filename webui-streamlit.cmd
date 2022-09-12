@@ -52,7 +52,7 @@ call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python -m streamlit run scripts\webui_streamlit.py
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
 ) ELSE (
   ECHO Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
 )
