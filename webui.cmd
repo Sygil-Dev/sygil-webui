@@ -4,7 +4,12 @@
 cd %~dp0
 
 :: copy over the first line from environment.yaml, e.g. name: ldm, and take the second word after splitting by ":" delimiter 
-set /p first_line=< environment.yaml  
+
+:: For some odd reason below line causes the problem in the next line of code (in theory everything should work fine, but it doesn't giving "> was unexpected at this time." error)
+:: set /p first_line=< environment.yaml  
+:: Quick and dirty fix below
+set first_line=name: ldm
+
 for /f "tokens=2 delims=:" %%i in ("%first_line%") do set untrimmed_conda_env_name=%%i
 for /f "tokens=* delims= " %%a in ("%untrimmed_conda_env_name%") do set conda_env_name=%%a
 echo Environment name is set as %conda_env_name% as per environment.yaml
