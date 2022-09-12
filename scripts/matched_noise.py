@@ -1,3 +1,6 @@
+# CREDIT TO parlance-zz for discovering and implementing this method
+# This code is from https://github.com/parlance-zz/g-diffuser-bot
+
 import numpy as np
 import skimage
 
@@ -76,7 +79,7 @@ def _get_masked_window_rgb(np_mask_grey, hardness=1.):
  noise_q controls the exponent in the fall-off of the distribution can be any positive number, lower values means higher detail (range > 0, default 1.)
  color_variation controls how much freedom is allowed for the colors/palette of the out-painted area (range 0..1, default 0.01)
  This code is provided as is under the Unlicense (https://unlicense.org/)
- Although you have no obligation to do so, if you found this code helpful please find it in your heart to credit me.
+ Although you have no obligation to do so, if you found this code helpful please find it in your heart to credit me [parlance-zz].
  
  Questions or comments can be sent to parlance@fifth-harmonic.com (https://github.com/parlance-zz/)
  This code is part of a new branch of a discord bot I am working on integrating with diffusers (https://github.com/parlance-zz/g-diffuser-bot)
