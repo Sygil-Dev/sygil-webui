@@ -439,6 +439,51 @@ def try_loading_LDSR(model_name: str,checking=False):
         print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
 try_loading_LDSR('model',checking=True)
 
+import tensorflow as tf
+import tensorflow.keras
+from huggingface_hub import from_pretrained_keras
+# https://stackoverflow.com/a/63631510/798588
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  # Restrict TensorFlow to only allocate 1GB of memory on the first GPU
+    try:
+        tf.config.experimental.set_virtual_device_configuration(
+            gpus[0],
+            [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
+        )
+    except Exception:
+        import traceback
+        print("Exception during tf.config.experimental.set_virtual_device_configuration:", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
+
+monocular_depth_estimation = None
+monocular_depth_estimation_dir = "./src/monocular-depth-estimation/"
+def try_loading_monocular_depth_estimation():
+    global monocular_depth_estimation
+    if os.path.exists(monocular_depth_estimation_dir):
+        try:
+            monocular_depth_estimation = tf.keras.models.load_model(
+                monocular_depth_estimation_dir,
+                compile=False
+            )
+            # custom_objects = {'BilinearUpSampling2D': BilinearUpSampling2D, 'depth_loss_function': None}
+            # custom_objects = {'depth_loss_function': None}
+            # monocular_depth_estimation = from_pretrained_keras(
+                # "keras-io/monocular-depth-estimation", 
+                # custom_objects=custom_objects, compile=False
+            # )
+            # monocular_depth_estimation = from_pretrained_keras("keras-io/monocular-depth-estimation")
+            print('monocular_depth_estimation loaded')
+        except Exception:
+                    import traceback
+                    print("Error loading monocular_depth_estimation:", file=sys.stderr)
+                    print(traceback.format_exc(), file=sys.stderr)        
+    else:
+        print(f"monocular_depth_estimation not found at path, please make sure you have cloned the LDSR repo to {Monocular_Depth_Filter_dir}")
+try_loading_monocular_depth_estimation()
+
+print('Successfully loaded model...')
+
 def load_SD_model():
     if opt.optimized:
         sd = load_sd_from_config(opt.ckpt)
@@ -1835,7 +1880,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         parse_arg["str"]         = lambda x: str(x)
         parse_arg["int"]         = int
         parse_arg["float"]       = float
-        parse_arg["bool"]        = bool
+        parse_arg["bool"]        = lambda s: (s.strip()==str(bool(s)))
         parse_arg["tuple"]       = lambda s: tuple(s.split(",")),
         parse_arg["int_tuple"]   = lambda s: tuple(map(int,s.split(",")))
         parse_arg["float_tuple"] = lambda s: tuple(map(float,s.split(",")))
@@ -1899,7 +1944,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 "position" : "float_tuple",
                 "resize"   : "int_tuple",
                 "rotation" : "degrees",
-                "color"    : "color"
+                "color"    : "color",
+                "mask_depth"        : "bool",
+                "mask_depth_min"    : "float",
+                "mask_depth_max"    : "float",
+                "mask_depth_invert" : "bool"
             }
         }
         function_args_ext = {
@@ -2198,7 +2247,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 )
 
             if (dst is None) and (img.size == new_size):
-                dst = img
+                dst = img.copy()
                 return dst
 
             else:
@@ -2247,6 +2296,16 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img,
                 obj.children
             )
+
+            if obj["mask_depth"]:
+                mask_depth_min = obj["mask_depth_min"] or 0.2
+                mask_depth_max = obj["mask_depth_max"] or 0.8
+                mask_depth_invert = bool(obj["mask_depth_invert"]) or False
+                mask = run_Monocular_Depth_Filter([img], mask_depth_min, mask_depth_max, mask_depth_invert)
+                mask = mask[0]
+                mask = mask.resize(img.size)
+                img.putalpha(mask)
+
             img = resize_image(img, obj["resize"], obj["crop"])
             # if img is None: print(f"result of render_image({obj}) is None")
             return img
@@ -2959,6 +3018,67 @@ def run_RealESRGAN(image, model_name: str):
     ImageMetadata.set_on_image(res, metadata)
 
     return res
+
+def run_monocular_depth_estimation(images, minDepth=10, maxDepth=1000, batch_size=2):
+    # https://huggingface.co/keras-io/monocular-depth-estimation
+    # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
+
+    if type(images) == Image:
+        images = [images]
+    loaded_images = []
+    for image in images:
+        # print("image", image)
+        # print("type(image)", type(image))
+        #if type(image) is Image:
+            # image = np.asarray(image.convert("RGB"))
+        try:
+            image = image.convert("RGB")
+            image = image.resize((640, 480))
+        except:
+            pass
+        image = np.asarray(image)
+        x = np.clip(image.reshape(480, 640, 3) / 255, 0, 1)
+        loaded_images.append(x)
+    loaded_images = np.stack(loaded_images, axis=0)
+    images = loaded_images
+
+    # Support multiple RGB(A)s, one RGB(A) image, even grayscale
+    if len(images.shape) < 3: images = np.stack((images, images, images), axis=2)
+    if len(images.shape) < 4: images = images.reshape((1, images.shape[0], images.shape[1], images.shape[2]))
+    if images.shape[3] > 3:   images = images[:,:,:,:3]
+
+    # Compute predictions
+    predictions = monocular_depth_estimation.predict(images, batch_size=batch_size)
+
+    def depth_norm(x, maxDepth):
+        return maxDepth / x
+
+    # Put in expected range
+    # print("Max Depth:", np.amax(predictions), maxDepth)
+    # print("Min Depth:", np.amin(predictions), minDepth)
+    depths = np.clip(depth_norm(predictions, maxDepth=maxDepth), minDepth, maxDepth) / maxDepth
+    return depths
+
+def run_Monocular_Depth_Filter(images, filter_min_depth=0.2, filter_max_depth=0.8, invert=False, **kwargs):
+    # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
+    depths = run_monocular_depth_estimation(images, **kwargs)
+    n,h,w,c = depths.shape
+    # print("run_Monocular_Depth_Filter n,h,w,c", n,h,w,c)
+    outputs = []
+    for k in range(n):
+        rescaled = depths[k][:,:,0]
+        rescaled = rescaled - np.min(rescaled)
+        rescaled = rescaled / np.max(rescaled)
+        filt_base = rescaled
+        # filt_base = repeat(filt_base, "h w -> (h 2) (w 2)")
+        filt_arr_min = (filt_base > filter_min_depth)
+        filt_arr_max = (filt_base < filter_max_depth)
+        mask = np.logical_and(filt_arr_min, filt_arr_max).astype(np.uint8) * 255
+        if invert:
+            mask = 255-mask
+        mask = Image.fromarray(mask,"L")
+        outputs.append(mask)
+    return outputs
 
 
 if opt.defaults is not None and os.path.isfile(opt.defaults):
