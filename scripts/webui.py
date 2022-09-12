@@ -475,9 +475,9 @@ def try_loading_monocular_depth_estimation():
             # monocular_depth_estimation = from_pretrained_keras("keras-io/monocular-depth-estimation")
             print('monocular_depth_estimation loaded')
         except Exception:
-                    import traceback
-                    print("Error loading monocular_depth_estimation:", file=sys.stderr)
-                    print(traceback.format_exc(), file=sys.stderr)        
+            import traceback
+            print("Error loading monocular_depth_estimation:", file=sys.stderr)
+            print(traceback.format_exc(), file=sys.stderr)        
     else:
         print(f"monocular_depth_estimation not found at path, please make sure you have cloned the LDSR repo to {Monocular_Depth_Filter_dir}")
 try_loading_monocular_depth_estimation()
@@ -1804,10 +1804,29 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         scn2img_cache["seed"] = seed
         scn2img_cache["cache"] = {}
 
+    comments = []
+    def log(*args, **kwargs):
+        comments.append(" ".join(map(str, args)))
+        for k,v in kwargs.items():
+            comments.append(f"{k} = {v}")
+    def log_trace(*args, **kwargs):
+        log("[TRACE]", *args, **kwargs)
+    def log_debug(*args, **kwargs):
+        log("[DEBUG]", *args, **kwargs)
+    def log_info(*args, **kwargs):
+        log("[INFO]", *args, **kwargs)
+    def log_warn(*args, **kwargs):
+        log("[WARN]", *args, **kwargs)
+    def log_err(*args, **kwargs):
+        log("[ERROR]", *args, **kwargs)
+    def log_exception(*args, **kwargs):
+        log("[EXCEPTION]", *args, **kwargs)
+        import traceback
+        log(traceback.format_exc())
 
     # cache = scn2img_cache["cache"]
-    print("scn2img_cache")
-    print(list(scn2img_cache["cache"].keys()))
+    log_info("scn2img_cache")
+    log_info(list(scn2img_cache["cache"].keys()))
 
     def gen_seeds(seed):
         while True:
@@ -1824,7 +1843,6 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
     
     def is_seed_valid(s):
         result =  not is_seed_invalid(s)
-        print(f"is_seed_valid({s}) = {result}")
         return result
 
     def vary_seed(s, v):
@@ -1839,8 +1857,6 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         output_images = job_info.images
     else:
         output_images = []
-
-    comments = []
 
     class SceneObject:
         def __init__(self, func, title, args, depth, children):
@@ -2002,7 +2018,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         return parse_arg, function_args, function_args_ext
 
     parse_arg, function_args, function_args_ext = define_args()
-    # print("function_args", function_args)
+    # log_debug("function_args", function_args)
 
     def parse_scene(prompt, log):
 
@@ -2198,7 +2214,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         
         return scene
 
-    def render_scene(output_images, scene, seeds, comments):
+    def render_scene(output_images, scene, seeds):
         def pose(pos, rotation, center):
             cs, sn = math.cos(rotation), math.sin(rotation)
             return x, y, cs, sn, cy, c
@@ -2235,9 +2251,9 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             return pts @ rot.T + pos
 
         def create_image(size, color=None):
-            # print("")
-            # print("Creating image. Size: ", size, type(size), " color: ", color)
-            # print("")
+            # log_debug("")
+            # log_debug("Creating image...", size = type(size), color = color)
+            # log_debug("")
             if size is None: return None
             return Image.new("RGBA", size, color) 
 
@@ -2252,7 +2268,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         def blend_image_at(dst, img, pos, rotation, center):
             if img is None: 
                 return dst
-            # print(f"blend_image_at({dst}, {img}, {pos}, {rotation}, {center})")
+            # log_debug(f"blend_image_at({dst}, {img}, {pos}, {rotation}, {center})")
             center = center or (img.size[0]*0.5, img.size[1]*0.5)
             pos = pos or ((dst.size[0]*0.5, dst.size[1]*0.5) if dst is not None else None)
 
@@ -2304,20 +2320,20 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 sy = -dy if (dy < 0) else 0
                 dx = max(0, dx)
                 dy = max(0, dy)
-                # print(f"dest=({dx},{dy}), source=({sx},{sy})")
+                # log_debug(f"dest=({dx},{dy}), source=({sx},{sy})")
                 dst.alpha_composite(img, dest=(dx,dy), source=(sx,sy))
             return dst
 
         def blend_objects(seeds, dst, objects):
-            # print("")
-            # print(f"blend_objects({dst}, {objects})")
-            # print("")
+            # log_debug("")
+            # log_debug(f"blend_objects({dst}, {objects})")
+            # log_debug("")
             for obj in reversed(objects):
                 img = render_object(seeds, obj)
                 # if img is None:
-                    # print("")
-                    # print(f"img is None after render_object in blend_objects({dst}, {objects})")
-                    # print("")
+                    # log_debug("")
+                    # log_debug(f"img is None after render_object in blend_objects({dst}, {objects})")
+                    # log_debug("")
                 try:
                     dst = blend_image_at(
                         dst = dst, 
@@ -2327,11 +2343,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                         center = obj["center"] or None
                     )
                 except Exception as e:
-                    # print("")
-                    # print(f"Exception! blend_objects({dst}, {objects})")
-                    # print("obj", obj)
-                    # print("img", img)
-                    # print("")
+                    # log_debug("")
+                    log_exception(f"Exception! blend_objects({dst}, {objects})")
+                    log_err("obj", obj)
+                    log_err("img", img)
+                    log_err("")
                     raise e
 
             dst = dst.copy()
@@ -2355,11 +2371,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img.putalpha(mask)
 
             img = resize_image(img, obj["resize"], obj["crop"])
-            # if img is None: print(f"result of render_image({obj}) is None")
+            # if img is None: log_warn(f"result of render_image({obj}) is None")
             return img
 
         def prepare_img2img_kwargs(seeds, obj, img):
-            print(f"prepare_txt2img_kwargs({obj}, {img})")
+            log_trace(f"prepare_txt2img_kwargs({obj}, {img})")
             img2img_kwargs = {}
             # img2img_kwargs.update(img2img_defaults)
             func_args = function_args["img2img"]
@@ -2389,7 +2405,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 else:
                     img2img_kwargs["seed"] = next(seeds)
 
-            print('img2img_kwargs["seed"]', img2img_kwargs["seed"])
+            log_info('img2img_kwargs["seed"]', img2img_kwargs["seed"])
 
             if "variation" in obj:
                 v = obj["variation"]
@@ -2397,7 +2413,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     s = int(img2img_kwargs["seed"])
                     v = int(v)
                     ns = vary_seed(s, v)
-                    print(f"Using seed variation {v}: {ns}")
+                    log_info(f"Using seed variation {v}: {ns}")
                     img2img_kwargs["seed"] = ns
                 
             # img2img_kwargs["job_info"] = job_info
@@ -2409,13 +2425,13 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     "image": img.convert("RGB"),
                     "mask": img.getchannel("A")
                 }
-            print("img2img_kwargs")
-            print(img2img_kwargs)
+            log_info("img2img_kwargs")
+            log_info(img2img_kwargs)
 
             return img2img_kwargs
 
         def prepare_txt2img_kwargs(seeds, obj):
-            print(f"prepare_txt2img_kwargs({obj})")
+            log_trace(f"prepare_txt2img_kwargs({obj})")
             txt2img_kwargs = {}
             # txt2img_kwargs.update(txt2img_defaults)
             func_args = function_args["txt2img"]
@@ -2442,7 +2458,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 else:
                     txt2img_kwargs["seed"] = next(seeds)
 
-            print('txt2img_kwargs["seed"]', txt2img_kwargs["seed"])
+            log_info('txt2img_kwargs["seed"]', txt2img_kwargs["seed"])
 
             if "variation" in obj:
                 v = obj["variation"]
@@ -2450,15 +2466,15 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     s = int(txt2img_kwargs["seed"])
                     v = int(v)
                     ns = vary_seed(s, v)
-                    print(f"Using seed variation {v}: {ns}")
+                    log_info(f"Using seed variation {v}: {ns}")
                     txt2img_kwargs["seed"] = ns
 
             # txt2img_kwargs["job_info"] = job_info
             txt2img_kwargs["job_info"] = None
             txt2img_kwargs["fp"] = fp
 
-            print("txt2img_kwargs")
-            print(txt2img_kwargs)
+            log_info("txt2img_kwargs")
+            log_info(txt2img_kwargs)
 
             return txt2img_kwargs
             
@@ -2487,7 +2503,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             
             outputs, seed, info, stats = scn2img_cache["cache"][obj_hash]
 
-            print("outputs", outputs)
+            log_info("outputs", outputs)
 
             if len(outputs) > 0:
                 select = obj["select"] or 0
@@ -2495,7 +2511,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img = img.convert("RGBA")
 
             img = resize_image(img, obj["resize"], obj["crop"])
-            if img is None: print(f"result of render_img2img({obj}) is None")
+            if img is None: log_warn(f"result of render_img2img({obj}) is None")
             return img
 
         def render_txt2img(seeds, obj):
@@ -2515,7 +2531,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             
             outputs, seed, info, stats = scn2img_cache["cache"][obj_hash]
 
-            print("outputs", outputs)
+            log_info("outputs", outputs)
 
             if len(outputs) > 0:
                 select = obj["select"] or 0
@@ -2523,14 +2539,12 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img = img.convert("RGBA")
 
             img = resize_image(img, obj["resize"], obj["crop"])
-            if img is None: print(f"result of render_txt2img({obj}) is None")
+            if img is None: log_warn(f"result of render_txt2img({obj}) is None")
             return img
 
         output_image_set = set()
         def render_object(seeds, obj):
-            # print("")
-            # print(f"render_object({str(obj)})")
-            # print("")
+            # log_trace(f"render_object({str(obj)})")
             def result(img):
                 if output_intermediates and img is not None:
                     img_id = id(img)
@@ -2593,19 +2607,15 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
     mem_mon.start()
 
     scene = parse_scene(prompt, comments)
-    print("")
-    print("scene", scene)
-    print("")
-    print("comments", comments)
-    print("")
-    render_scene(output_images, scene, gen_seeds(seed), comments)
-    print("")
-    print("output_images", output_images)
-    print("")
-    print("comments", comments)
-    print("")
+    log_info("scene")
+    log_info(scene)
+    # log_info("comments", comments)
 
-    comments.append(str(scene))
+    render_scene(output_images, scene, gen_seeds(seed))
+    log_info("output_images", output_images)
+    # log_info("comments", comments)
+
+    # comments.append(str(scene))
     mem_max_used, mem_total = mem_mon.read_and_stop()
     time_diff = time.time()-start_time
 
