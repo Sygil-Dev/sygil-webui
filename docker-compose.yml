@@ -16,6 +16,7 @@ services:
       - root_profile:/root
     ports:
       - '7860:7860'
+      - '8501:8501'
     deploy:
       resources:
         reservations:
