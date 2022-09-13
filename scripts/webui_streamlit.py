@@ -617,7 +617,7 @@ def diffuse(
 	extra_step_kwargs = {}
 	if accepts_eta:
 		extra_step_kwargs["eta"] = eta
-
+	transform = transforms.ToPILImage()
 	
 	step_counter = 0
 	inference_counter = 0
@@ -664,11 +664,11 @@ def diffuse(
 				image_2 = pipe.vae.decode(cond_latents_2)
 				
 				# generate output numpy image as uint8
-				# image_2 = (image_2 / 2 + 0.5).clamp(0, 1)
-				# image_2 = image_2.cpu().permute(0, 2, 3, 1).numpy()
-				# image_2 = (image_2[0] * 255).astype(np.uint8)		
+				image_2 = (image_2["sample"][0] / 2 + 0.5).clamp(0, 1)
+				image_2 = image_2.cpu().numpy()
+				image_2 = (image_2[0] * 255).astype(np.uint8)		
 				
-				st.session_state["preview_image"].image(image_2["sample"][0])
+				st.session_state["preview_image"].image(image_2)
 				
 				step_counter = 0
 		
@@ -703,10 +703,10 @@ def diffuse(
 	# scale and decode the image latents with vae
 	cond_latents = 1 / 0.18215 * cond_latents
 	image = pipe.vae.decode(cond_latents)
-
+	# image = transform(image["sample"][0])
 	# generate output numpy image as uint8
-	image = (image / 2 + 0.5).clamp(0, 1)
-	image = image.cpu().permute(0, 2, 3, 1).numpy()
+	image = (image["sample"][0] / 2 + 0.5).clamp(0, 1)
+	image = image.cpu().numpy()
 	image = (image[0] * 255).astype(np.uint8)
 
 	return image
