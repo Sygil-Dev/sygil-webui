@@ -1594,7 +1594,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		except:
 			print("Install scikit-image to perform color correction on loopback")		
 
-		for i in range(1):
+		for i in range(n_iter):
 			if do_color_correction and i == 0:
 				correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
 
@@ -1607,7 +1607,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
                                 sampler_name=sampler_name,
                                 save_grid=save_grid,
                                 batch_size=1,
-                                n_iter=n_iter,
+                                n_iter=1,
                                 steps=ddim_steps,
                                 cfg_scale=cfg_scale,
                                 width=width,
