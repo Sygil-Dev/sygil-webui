@@ -662,15 +662,11 @@ def diffuse(
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
 				image_2 = pipe.vae.decode(cond_latents_2)
-				
-				# generate output numpy image as uint8
-				image_2 = (image_2["sample"][0] / 2 + 0.5).clamp(0, 1)
-				image_2 = image_2.cpu().numpy()
-				image_2 = (image_2[0] * 255).astype(np.uint8)		
-				
+				image_2 = torch.clamp((image_2["sample"] + 1.0) / 2.0, min=0.0, max=1.0)  
+				image_2 = transforms.ToPILImage()(image_2.squeeze_(0)) 
 				st.session_state["preview_image"].image(image_2)
-				
-				step_counter = 0
+
+				#step_counter = 0
 		
 		duration = timeit.default_timer() - start
 		
@@ -703,11 +699,9 @@ def diffuse(
 	# scale and decode the image latents with vae
 	cond_latents = 1 / 0.18215 * cond_latents
 	image = pipe.vae.decode(cond_latents)
-	# image = transform(image["sample"][0])
-	# generate output numpy image as uint8
-	image = (image["sample"][0] / 2 + 0.5).clamp(0, 1)
-	image = image.cpu().numpy()
-	image = (image[0] * 255).astype(np.uint8)
+	image = torch.clamp((image["sample"] + 1.0) / 2.0, min=0.0, max=1.0)
+	image = transforms.ToPILImage()(image.squeeze_(0)) 
+	st.session_state["preview_image"].image(image)
 
 	return image
 
@@ -2027,15 +2021,15 @@ def txt2vid(
 				with autocast("cuda"):
 					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
 
-				im = Image.fromarray(image)
+				#im = Image.fromarray(image)
 				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
-				im.save(outpath, quality=quality)
+				image.save(outpath, quality=quality)
 
 				# send the image to the UI to update it
 				#st.session_state["preview_image"].image(im) 	
 
 				#append the frames to the frames list so we can use them later.
-				frames.append(np.asarray(im))
+				frames.append(image)
 
 				#increase frame_index counter.
 				frame_index += 1
