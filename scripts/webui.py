@@ -1805,24 +1805,34 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         scn2img_cache["cache"] = {}
 
     comments = []
-    def log(*args, **kwargs):
-        comments.append(" ".join(map(str, args)))
+    print_log_lvl = 2
+    def gen_log_lines(*args, **kwargs):
+        yield (" ".join(map(str, args)))
         for k,v in kwargs.items():
-            comments.append(f"{k} = {v}")
+            yield (f"{k} = {v}")
+    def log(*args, **kwargs):
+        lines = gen_log_lines(*args, **kwargs)
+        for line in lines:
+            comments.append(line)
+    def log_lvl(lvl, *args, **kwargs):
+        if (lvl <= print_log_lvl):
+            lines = gen_log_lines(*args, **kwargs)
+            print("\n".join(lines))
+        log(*args, **kwargs)
     def log_trace(*args, **kwargs):
-        log("[TRACE]", *args, **kwargs)
+        log_lvl(5,"[TRACE]", *args, **kwargs)
     def log_debug(*args, **kwargs):
-        log("[DEBUG]", *args, **kwargs)
+        log_lvl(4,"[DEBUG]", *args, **kwargs)
     def log_info(*args, **kwargs):
-        log("[INFO]", *args, **kwargs)
+        log_lvl(3,"[INFO]", *args, **kwargs)
     def log_warn(*args, **kwargs):
-        log("[WARN]", *args, **kwargs)
+        log_lvl(2,"[WARN]", *args, **kwargs)
     def log_err(*args, **kwargs):
-        log("[ERROR]", *args, **kwargs)
+        log_lvl(1,"[ERROR]", *args, **kwargs)
     def log_exception(*args, **kwargs):
-        log("[EXCEPTION]", *args, **kwargs)
+        log_lvl(0,"[EXCEPTION]", *args, **kwargs)
         import traceback
-        log(traceback.format_exc())
+        log_lvl(0,traceback.format_exc())
 
     # cache = scn2img_cache["cache"]
     log_info("scn2img_cache")
