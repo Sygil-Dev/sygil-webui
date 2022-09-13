@@ -90,7 +90,7 @@ that are not in original script.
 
 ### GFPGAN
 Lets you improve faces in pictures using the GFPGAN model. There is a checkbox in every tab to use GFPGAN at 100%, and
-also a separate tab that just allows you to use GFPGAN on any picture, with a slider that controls how strongthe effect is.
+also a separate tab that just allows you to use GFPGAN on any picture, with a slider that controls how strong the effect is.
 
 ![](images/GFPGAN.png)
 
