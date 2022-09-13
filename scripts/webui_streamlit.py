@@ -608,7 +608,7 @@ def diffuse(
 	if accepts_offset:
 		extra_set_kwargs["offset"] = 1
 		
-	pipe.scheduler.set_timesteps(num_inference_steps, **extra_set_kwargs)
+	pipe.scheduler.set_timesteps(num_inference_steps + st.session_state.sampling_steps, **extra_set_kwargs)
 	# prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
 	# eta (η) is only used with the DDIMScheduler, it will be ignored for other schedulers.
 	# eta corresponds to η in DDIM paper: https://arxiv.org/abs/2010.02502
