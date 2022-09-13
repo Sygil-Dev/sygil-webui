@@ -664,11 +664,11 @@ def diffuse(
 				image_2 = pipe.vae.decode(cond_latents_2)
 				
 				# generate output numpy image as uint8
-				image_2 = (image_2 / 2 + 0.5).clamp(0, 1)
-				image_2 = image_2.cpu().permute(0, 2, 3, 1).numpy()
-				image_2 = (image_2[0] * 255).astype(np.uint8)		
+				# image_2 = (image_2 / 2 + 0.5).clamp(0, 1)
+				# image_2 = image_2.cpu().permute(0, 2, 3, 1).numpy()
+				# image_2 = (image_2[0] * 255).astype(np.uint8)		
 				
-				st.session_state["preview_image"].image(image_2)
+				st.session_state["preview_image"].image(image_2["sample"][0])
 				
 				step_counter = 0
 		
