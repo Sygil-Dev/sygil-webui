@@ -151,13 +151,14 @@ class SpatialSelfAttention(nn.Module):
 
 
 class CrossAttention(nn.Module):
-    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0.):
+    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0., att_step=1):
         super().__init__()
         inner_dim = dim_head * heads
         context_dim = default(context_dim, query_dim)
 
         self.scale = dim_head ** -0.5
         self.heads = heads
+        self.att_step = att_step
 
         self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
         self.to_k = nn.Linear(context_dim, inner_dim, bias=False)
@@ -173,12 +174,15 @@ class CrossAttention(nn.Module):
 
         q_in = self.to_q(x)
         context = default(context, x)
+
         k_in = self.to_k(context)
         v_in = self.to_v(context)
+
         del context, x
 
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> (b h) n d', h=h), (q_in, k_in, v_in))
         del q_in, k_in, v_in
+
 
         r1 = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device)
 

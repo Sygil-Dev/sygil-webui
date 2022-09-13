@@ -24,19 +24,6 @@ def js(opt):
     return data
 
 
-
-def js_painterro_launch(to_id):
-    return w(f"Painterro.init('{to_id}')")
-
-def js_move_image(from_id, to_id):
-    return w(f"moveImageFromGallery('{from_id}', '{to_id}')")
-
-def js_copy_to_clipboard(from_id):
-    return w(f"copyImageFromGalleryToClipboard('{from_id}')")
-
-def js_img2img_submit(prompt_row_id):
-    return w(f"clickFirstVisibleButton('{prompt_row_id}')")
-
 # TODO : @altryne fix this to the new JS format
 js_copy_txt2img_output = "(x) => {navigator.clipboard.writeText(document.querySelector('gradio-app').shadowRoot.querySelector('#highlight .textfield').textContent.replace(/\s+/g,' ').replace(/: /g,':'))}"
 
@@ -93,12 +80,13 @@ return [txt2img_prompt, parseInt(txt2img_width), parseInt(txt2img_height), parse
 """
 
 
-# @altryne this came up as conflict, still needed or no?
 # Wrap the typical SD method call into async closure for ease of use
 # Supplies the js function with a params object
 # That includes all the passed arguments and input from Gradio: x
+# ATTENTION: x is an array of values of all components passed to your
+# python event handler
 # Example call in Gradio component's event handler (pass the result to _js arg):
 # _js=call_JS("myJsMethod", arg1="string", arg2=100, arg3=[])
 def call_JS(sd_method, **kwargs):
     param_str = json.dumps(kwargs)
-    return f"async (x) => {{ return await SD.{sd_method}({{ x, ...{param_str} }}) ?? []; }}"
+    return f"async (...x) => {{ return await SD.{sd_method}({{ x, ...{param_str} }}) ?? []; }}"

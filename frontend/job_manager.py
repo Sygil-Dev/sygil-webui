@@ -213,7 +213,7 @@ class JobManager:
 
         # If we didn't already get a token then queue up for one
         if job_info.job_token is None:
-            job_info.token = self._get_job_token(block=True)
+            job_info.job_token = self._get_job_token(block=True)
 
         # Buttons don't seem to update unless value is set on them as well...
         return {output_dummy_obj: triggerChangeEvent(),
