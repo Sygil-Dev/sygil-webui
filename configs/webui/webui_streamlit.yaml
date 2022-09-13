@@ -113,6 +113,7 @@ img2img:
   # 0: Keep masked area
   # 1: Regenerate only masked area
   mask_mode: 0
+  mask_restore: False
   # 0: Just resize
   # 1: Crop and resize
   # 2: Resize and fill
