@@ -45,7 +45,6 @@ from .. import sd_utils as SDutils
 # we use python-slugify to make the filenames safe for windows and linux, its better than doing it manually
 # install it with 'pip install python-slugify'
 from slugify import slugify
-from bs4 import BeautifulSoup
 from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
 from streamlit.elements import image as STImage
 try:
