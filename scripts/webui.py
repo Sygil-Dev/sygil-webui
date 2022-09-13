@@ -1094,9 +1094,23 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
     return output_images, seed, info, stats
 
 
-def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
-            ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None, job_info: JobInfo = None):
+def txt2img(
+        prompt: str, 
+        ddim_steps: int = 50, 
+        sampler_name: str = 'k_lms', 
+        toggles: List[int] = [1, 2, 4, 5], 
+        realesrgan_model_name: str = '',
+        ddim_eta: float = 0.0, 
+        n_iter: int = 1, 
+        batch_size: int = 1, 
+        cfg_scale: float = 5.0, 
+        seed: Union[int, str, None] = None,
+        height: int = 512, 
+        width: int = 512, 
+        fp = None, 
+        variant_amount: float = 0.0, 
+        variant_seed: int = None, 
+        job_info: JobInfo = None):
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
@@ -2281,23 +2295,16 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames):
                 continue
             current_id = pop['id']
             current_payload = pop['payload']
-        if requested_softprompt != current_softprompt:
-            req = requests.put(kai_url + '/api/latest/config/soft_prompt/', json = {"value": requested_softprompt})
-            time.sleep(1) # Wait a second to unload the softprompt
-        gen_req = requests.post(kai_url + '/api/latest/generate/', json = current_payload)
-        if type(gen_req.json()) is not dict:
-            logger.error(f'KAI instance {kai_url} API unexpected response on generate: {gen_req}. Sleeping 10 seconds...')
-            time.sleep(9)
-            continue
-        if gen_req.status_code == 503:
-            logger.debug(f'KAI instance {kai_url} Busy (attempt {loop_retry}). Will try again...')
-            continue
-        current_generation = gen_req.json()["results"][0]["text"]
+        images, seed, info, stats = txt2img(**current_payload)
         submit_dict = {
             "id": current_id,
-            "generation": current_generation,
+            "generation": seed,
             "api_key": api_key,
         }
+        logger.debug(seed)
+        logger.debug(info)
+        logger.debug(stats)
+        current_generation = seed
         while current_id and current_generation:
             try:
                 submit_req = requests.post(horde_url + '/api/v1/generate/submit', json = submit_dict)
