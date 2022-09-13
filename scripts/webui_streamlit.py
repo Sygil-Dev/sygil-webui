@@ -2015,7 +2015,7 @@ def txt2vid(
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				print(f"COUNT: {frame_index+1}/{num_steps}")
+				print(f"FRAME: {frame_index+1}/{max_frames}")
 			
 				#if use_lerp_for_text:
 					#init = torch.lerp(init1, init2, float(t))
