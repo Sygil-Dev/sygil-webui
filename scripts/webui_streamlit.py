@@ -1986,7 +1986,7 @@ def txt2vid(
 			                weights_path,
 			                use_local_file=True,
 			                use_auth_token=True,
-			                torch_dtype=torch.float16,
+			                #torch_dtype=torch.float16,
 			                #revision="fp16"
 			        )
 	
