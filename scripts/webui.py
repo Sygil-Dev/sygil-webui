@@ -89,7 +89,7 @@ from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
-from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, ImageChops
+from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, ImageChops, ImageColor
 from io import BytesIO
 import base64
 import re
@@ -2011,19 +2011,26 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 "resize"   : "int_tuple",
                 "rotation" : "degrees",
                 "color"    : "color",
+            },
+            "render_mask": {
+                "mask_invert"       : "bool",
                 "mask_depth"        : "bool",
+                "mask_value"        : "int",
                 "mask_depth_min"    : "float",
                 "mask_depth_max"    : "float",
                 "mask_depth_invert" : "bool",
+                "mask_by_color"           : "color",
+                "mask_by_color_space"     : "str",
+                "mask_by_color_threshold" : "int",
             },
             "object": {
                 "initial_seed": "int",
             }
         }
         function_args_ext = {
-            "image": ["image", "object"],
-            "img2img": ["render_img2img", "img2img", "image", "object"],
-            "txt2img": ["render_txt2img", "txt2img", "image", "object"],
+            "image": ["image", "render_mask", "object"],
+            "img2img": ["render_img2img", "img2img", "image", "render_mask", "object"],
+            "txt2img": ["render_txt2img", "txt2img", "image", "render_mask", "object"],
         }
         return parse_arg, function_args, function_args_ext
 
@@ -2265,6 +2272,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             # log_debug("Creating image...", size = type(size), color = color)
             # log_debug("")
             if size is None: return None
+            if color is None: color = (0,0,0,0)
             return Image.new("RGBA", size, color) 
 
         def resize_image(img, size, crop=None):
@@ -2323,7 +2331,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             else:
                 if (dst is None):
-                    dst = create_image(new_size, color=(0,0,0,0))
+                    dst = create_image(new_size)
                 dx = int(min_x)
                 dy = int(min_y)
                 sx = -dx if (dx < 0) else 0
@@ -2362,14 +2370,53 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             dst = dst.copy()
             return dst
-            
-        def render_image(seeds, obj):
-            img = create_image(obj["size"], obj["color"])
-            img = blend_objects(
-                seeds,
-                img,
-                obj.children
+
+        def render_mask(seeds, obj, img, input_mask = None):
+            if img is None and input_mask is None: return img
+
+            mask = (
+                img.getchannel("A")
+                if img is not None
+                and input_mask is None 
+                else input_mask
             )
+
+            def combine_masks(old_mask, new_mask, mode):
+                return new_mask
+
+            combine_mode = 1
+
+            if "mask_value" in obj:
+                new_value = obj["mask_value"]
+                mask.paste( new_value, mask.getbbox() )
+
+            if "mask_by_color" in obj and img is not None:
+                color = obj["mask_by_color"]
+                colorspace = obj["mask_by_color_space"] or "LAB"
+                threshold = obj["mask_by_color_threshold"] or 15
+                colorspace = colorspace.upper()
+                reference_color = "RGB"
+                img_arr = np.asarray(img.convert("RGB"))
+                if colorspace != "RGB":
+                    cvts = {
+                        "LAB": cv2.COLOR_RGB2Lab,
+                        "LUV": cv2.COLOR_RGB2Luv,
+                        "HSV": cv2.COLOR_RGB2HSV,
+                        "HLS": cv2.COLOR_RGB2HLS,
+                        "YUV": cv2.COLOR_RGB2YUV,
+                        "GRAY": cv2.COLOR_RGB2GRAY,
+                        "XYZ": cv2.COLOR_RGB2XYZ,
+                        "YCrCb": cv2.COLOR_RGB2YCrCb,
+                    }
+                    rgb = Image.new("RGB", size=(1,1), color=color)
+                    rgb_arr = np.asarray(rgb)
+                    cvt_arr = cv2.cvtColor(rgb_arr, cvts[colorspace])
+                    img_arr = cv2.cvtColor(img_arr, cvts[colorspace])
+                    reference_color = cvt_arr[0,0]
+                img_arr = img_arr.astype(np.float32)
+                dist = np.max(np.abs(img_arr - reference_color),axis=2)
+                mask_arr = (dist < threshold).astype(np.uint8) * 255
+                mask = Image.fromarray(mask_arr)
 
             if obj["mask_depth"]:
                 mask_depth_min = obj["mask_depth_min"] or 0.2
@@ -2378,8 +2425,26 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 mask = run_Monocular_Depth_Filter([img], mask_depth_min, mask_depth_max, mask_depth_invert)
                 mask = mask[0]
                 mask = mask.resize(img.size)
-                img.putalpha(mask)
 
+            if obj["mask_invert"]:
+                mask = ImageChops.invert(mask)
+
+            if img is not None and mask is not None:
+                img.putalpha(mask)
+            
+            if img is not None:
+                return img
+            else:
+                return mask
+
+        def render_image(seeds, obj):
+            img = create_image(obj["size"], obj["color"])
+            img = blend_objects(
+                seeds,
+                img,
+                obj.children
+            )
+            img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             # if img is None: log_warn(f"result of render_image({obj}) is None")
             return img
@@ -2520,6 +2585,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img = outputs[select]
                 img = img.convert("RGBA")
 
+            img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             if img is None: log_warn(f"result of render_img2img({obj}) is None")
             return img
@@ -2548,6 +2614,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img = outputs[select]
                 img = img.convert("RGBA")
 
+            img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             if img is None: log_warn(f"result of render_txt2img({obj}) is None")
             return img
