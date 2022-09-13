@@ -1962,7 +1962,7 @@ def txt2vid(
 				weights_path,
 				use_local_file=True,
 				use_auth_token=True,
-				torch_dtype=torch.float16 if not defaults.general.no_half else None,
+				#torch_dtype=torch.float16 if not defaults.general.no_half else None,
 				revision="fp16" if not defaults.general.no_half else None
 			)
 		
@@ -1982,7 +1982,7 @@ def txt2vid(
 			                weights_path,
 			                use_local_file=True,
 			                use_auth_token=True,
-			                torch_dtype=torch.float16 if not defaults.general.no_half else None,
+			                #torch_dtype=torch.float16 if not defaults.general.no_half else None,
 			                revision="fp16" if not defaults.general.no_half else None
 			        )
 	
