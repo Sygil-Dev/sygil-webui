@@ -53,8 +53,5 @@ def find_noise_for_image(model, device, init_image, prompt, steps=200, cond_scal
 		dt = sigmas[i] - sigmas[i - 1]
 		x = x + d * dt
 	
-	if normalize:
-		# multiplying sigmas seems to break things pretty bad...
-		return (x / x.std())# * sigmas[-1]
-	else:
-		return x
+	return x / sigmas[-1]
+	

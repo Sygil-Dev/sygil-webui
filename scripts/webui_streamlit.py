@@ -1149,7 +1149,7 @@ def process_images(
 				while(torch.cuda.memory_allocated()/1e6 >= mem):
 					time.sleep(1)
 
-			if noise_mode == 1:
+			if noise_mode == 1 or noise_mode == 3:
 				# TODO params for find_noise_to_image
 				x = torch.cat(batch_size * [find_noise_for_image.find_noise_for_image(
 					st.session_state["model"], st.session_state["device"],
@@ -1273,27 +1273,27 @@ def process_images(
 					if simple_templating:
 						grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 					   
-					if mask_restore and init_mask:
-						#init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
-						init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
-						init_mask = init_mask.convert('L')
+				if mask_restore and init_mask:
+					#init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
+					init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
+					init_mask = init_mask.convert('L')
+					init_img = init_img.convert('RGB')
+					image = image.convert('RGB')
+
+					if use_RealESRGAN and st.session_state["RealESRGAN"] is not None:
+						if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
+							#try_loading_RealESRGAN(realesrgan_model_name)
+							load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+
+						output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_img, dtype=np.uint8))
+						init_img = Image.fromarray(output)
 						init_img = init_img.convert('RGB')
-						image = image.convert('RGB')
 
-						if use_RealESRGAN and st.session_state["RealESRGAN"] is not None:
-							if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
-								#try_loading_RealESRGAN(realesrgan_model_name)
-								load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
-							 
-							output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_img, dtype=np.uint8))
-							init_img = Image.fromarray(output)
-							init_img = init_img.convert('RGB')
- 
-							output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_mask, dtype=np.uint8))
-							init_mask = Image.fromarray(output)
-							init_mask = init_mask.convert('L')
+						output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_mask, dtype=np.uint8))
+						init_mask = Image.fromarray(output)
+						init_mask = init_mask.convert('L')
 
-						image = Image.composite(init_img, image, init_mask)
+					image = Image.composite(init_img, image, init_mask)
 						
 				if save_individual_images:
 					save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
@@ -1448,14 +1448,22 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	else:
 		raise Exception("Unknown sampler: " + sampler_name)
 
+	def process_init_mask(init_mask: Image):
+		if init_mask.mode == "RGBA":
+			init_mask = init_mask.convert('RGBA')
+			background = Image.new('RGBA', init_mask.size, (0, 0, 0))
+			init_mask = Image.alpha_composite(background, init_mask)
+			init_mask = init_mask.convert('RGB')
+		return init_mask
+
 	init_img = init_info
 	init_mask = None
 	if mask_mode == 0:
 		if init_info_mask:
-			init_mask = init_info_mask
+			init_mask = process_init_mask(init_info_mask)
 	elif mask_mode == 1:
 		if init_info_mask:
-			init_mask = init_info_mask
+			init_mask = process_init_mask(init_info_mask)
 			init_mask = ImageOps.invert(init_mask)
 	elif mask_mode == 2:
 		init_img_transparency = init_img.split()[-1].convert('L')#.point(lambda x: 255 if x > 0 else 0, mode='1')
@@ -1467,42 +1475,41 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	assert 0. <= denoising_strength <= 1., 'can only work with strength in [0.0, 1.0]'
 	t_enc = int(denoising_strength * ddim_steps)
 
+	if init_mask is not None and (noise_mode == 2 or noise_mode == 3) and init_img is not None:
+		noise_q = 0.99
+		color_variation = 0.0
+		mask_blend_factor = 1.0
+
+		np_init = (np.asarray(init_img.convert("RGB"))/255.0).astype(np.float64) # annoyingly complex mask fixing
+		np_mask_rgb = 1. - (np.asarray(ImageOps.invert(init_mask).convert("RGB"))/255.0).astype(np.float64)
+		np_mask_rgb -= np.min(np_mask_rgb)
+		np_mask_rgb /= np.max(np_mask_rgb)
+		np_mask_rgb = 1. - np_mask_rgb
+		np_mask_rgb_hardened = 1. - (np_mask_rgb < 0.99).astype(np.float64)
+		blurred = skimage.filters.gaussian(np_mask_rgb_hardened[:], sigma=16., channel_axis=2, truncate=32.)
+		blurred2 = skimage.filters.gaussian(np_mask_rgb_hardened[:], sigma=16., channel_axis=2, truncate=32.)
+		#np_mask_rgb_dilated = np_mask_rgb + blurred  # fixup mask todo: derive magic constants
+		#np_mask_rgb = np_mask_rgb + blurred
+		np_mask_rgb_dilated = np.clip((np_mask_rgb + blurred2) * 0.7071, 0., 1.)
+		np_mask_rgb = np.clip((np_mask_rgb + blurred) * 0.7071, 0., 1.)
+
+		noise_rgb = matched_noise.get_matched_noise(np_init, np_mask_rgb, noise_q, color_variation)
+		blend_mask_rgb = np.clip(np_mask_rgb_dilated,0.,1.) ** (mask_blend_factor)
+		noised = noise_rgb[:]
+		blend_mask_rgb **= (2.)
+		noised = np_init[:] * (1. - blend_mask_rgb) + noised * blend_mask_rgb
+
+		np_mask_grey = np.sum(np_mask_rgb, axis=2)/3.
+		ref_mask = np_mask_grey < 1e-3
+		
+		all_mask = np.ones((height, width), dtype=bool)
+		noised[all_mask,:] = skimage.exposure.match_histograms(noised[all_mask,:]**1., noised[ref_mask,:], channel_axis=1)
+		
+		init_img = Image.fromarray(np.clip(noised * 255., 0., 255.).astype(np.uint8), mode="RGB")
+		st.session_state["editor_image"].image(init_img) # debug
+
 	def init():
-		init_image = init_img
-		if init_mask is not None and noise_mode == 2 and init_image is not None:
-			noise_q = 0.99
-			color_variation = 0.0
-			mask_blend_factor = 1.0
-
-			np_init = (np.asarray(init_image.convert("RGB"))/255.0).astype(np.float64) # annoyingly complex mask fixing
-			np_mask_rgb = 1. - (np.asarray(init_mask.convert("RGB"))/255.0).astype(np.float64)
-			np_mask_rgb -= np.min(np_mask_rgb)
-			np_mask_rgb /= np.max(np_mask_rgb)
-			#np_mask_rgb = 1. - np_mask_rgb
-			np_mask_rgb_hardened = 1. - (np_mask_rgb < 0.99).astype(np.float64)
-			blurred = skimage.filters.gaussian(np_mask_rgb_hardened[:], sigma=16., channel_axis=2, truncate=32.)
-			blurred2 = skimage.filters.gaussian(np_mask_rgb_hardened[:], sigma=16., channel_axis=2, truncate=32.)
-			#np_mask_rgb_dilated = np_mask_rgb + blurred  # fixup mask todo: derive magic constants
-			#np_mask_rgb = np_mask_rgb + blurred
-			np_mask_rgb_dilated = np.clip((np_mask_rgb + blurred2) * 0.7071, 0., 1.)
-			np_mask_rgb = np.clip((np_mask_rgb + blurred) * 0.7071, 0., 1.)
-
-			noise_rgb = matched_noise.get_matched_noise(np_init, np_mask_rgb, noise_q, color_variation)
-			blend_mask_rgb = np.clip(np_mask_rgb_dilated,0.,1.) ** (mask_blend_factor)
-			noised = noise_rgb[:]
-			blend_mask_rgb **= (2.)
-			noised = np_init[:] * (1. - blend_mask_rgb) + noised * blend_mask_rgb
-			
-			np_mask_grey = np.sum(np_mask_rgb, axis=2)/3.
-			ref_mask =  np_mask_grey < 1e-3
-			
-			all_mask = np.ones((width, height), dtype=bool)
-			noised[all_mask,:] = skimage.exposure.match_histograms(noised[all_mask,:]**1., noised[ref_mask,:], channel_axis=1)
-			
-			init_image = Image.fromarray(np.clip(noised * 255., 0., 255.).astype(np.uint8), mode="RGB")
-			st.session_state["editor_image"].image(init_image)
-
-		image = init_image.convert('RGB')
+		image = init_img.convert('RGB')
 		image = np.array(image).astype(np.float32) / 255.0
 		image = image[None].transpose(0, 3, 1, 2)
 		image = torch.from_numpy(image)
@@ -1510,7 +1517,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		mask_channel = None
 		if init_mask:
 			alpha = resize_image(resize_mode, init_mask, width // 8, height // 8)
-			mask_channel = alpha.split()[1]
+			mask_channel = alpha.split()[-1]
 
 		mask = None
 		if mask_channel is not None:
@@ -1594,7 +1601,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		except:
 			print("Install scikit-image to perform color correction on loopback")		
 
-		for i in range(1):
+		for i in range(n_iter):
 			if do_color_correction and i == 0:
 				correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
 
@@ -1607,7 +1614,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
                                 sampler_name=sampler_name,
                                 save_grid=save_grid,
                                 batch_size=1,
-                                n_iter=n_iter,
+                                n_iter=1,
                                 steps=ddim_steps,
                                 cfg_scale=cfg_scale,
                                 width=width,
@@ -2367,7 +2374,7 @@ def layout():
 					width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.img2img.width, step=64)
 					height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.img2img.height, step=64)
 					seed = st.text_input("Seed:", value=defaults.img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-					noise_mode_list = ["Seed", "Find Noise", "Matched Noise"]
+					noise_mode_list = ["Seed", "Find Noise", "Matched Noise", "Find+Matched Noise"]
 					noise_mode = st.selectbox(
 						"Noise Mode", noise_mode_list,
 						help=""
@@ -2461,14 +2468,18 @@ def layout():
 						help="Upload an mask image which will be used for masking the image to image generation.",
 					)
 					if uploaded_masks:
-						image = Image.open(uploaded_masks).convert('RGB')
-						new_mask = image.resize((width, height))
-						mask_holder.image(new_mask)
+						mask = Image.open(uploaded_masks)
+						if mask.mode == "RGBA":
+							mask = mask.convert('RGBA')
+							background = Image.new('RGBA', mask.size, (0, 0, 0))
+							mask = Image.alpha_composite(background, mask)
+						mask = mask.resize((width, height))
+						mask_holder.image(mask)
 
 					if uploaded_images and uploaded_masks:
 						if mask_mode != 2:
 							final_img = new_img.copy()
-							alpha_layer = new_mask.split()[-1].copy().convert('L')
+							alpha_layer = mask.convert('L')
 							strength = st.session_state["denoising_strength"]
 							if mask_mode == 0:
 								alpha_layer = ImageOps.invert(alpha_layer)
@@ -2517,7 +2528,7 @@ def layout():
 						#img_array = np.array(image) # if you want to pass it to OpenCV
 						new_mask = None
 						if uploaded_masks:
-							mask = Image.open(uploaded_masks).convert('RGB')
+							mask = Image.open(uploaded_masks).convert('RGBA')
 							new_mask = mask.resize((width, height))
 	
 						try:
