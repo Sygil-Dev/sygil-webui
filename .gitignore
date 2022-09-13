@@ -58,3 +58,4 @@ condaenv.*.requirements.txt
 /log/log.csv
 /flagged/*
 /gfpgan/*
+frontend/frontend_streamlit.py
