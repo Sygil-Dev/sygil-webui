@@ -130,7 +130,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 txt2img_btn.click(
                     txt2img_func,
                     txt2img_inputs,
-                    txt2img_outputs
+                    txt2img_outputs,
+                    api_name='txt2img'
                 )
                 txt2img_prompt.submit(
                     txt2img_func,
@@ -141,14 +142,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
                 txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
 
-                live_prompt_params = [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed,
-                                      txt2img_batch_count, txt2img_cfg]
-                txt2img_prompt.change(
-                    fn=None,
-                    inputs=live_prompt_params,
-                    outputs=live_prompt_params,
-                    _js=js_parse_prompt
-                )
+                # Temporarily disable prompt parsing until memory issues could be solved
+                # See #676
+                # live_prompt_params = [txt2img_prompt, txt2img_width, txt2img_height, txt2img_steps, txt2img_seed,
+                #                       txt2img_batch_count, txt2img_cfg]
+                # txt2img_prompt.change(
+                #     fn=None,
+                #     inputs=live_prompt_params,
+                #     outputs=live_prompt_params,
+                #     _js=js_parse_prompt
+                # )
 
             with gr.TabItem("Image-to-Image Unified", id="img2img_tab"):
                 with gr.Row(elem_id="prompt_row"):
@@ -358,7 +361,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 img2img_btn_mask.click(
                     img2img_func,
                     img2img_inputs,
-                    img2img_outputs
+                    img2img_outputs,
+                    api_name="img2img"
+
                 )
 
                 def img2img_submit_params():
@@ -544,7 +549,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                              imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,
                                              imgproc_gfpgan_strength, imgproc_ldsr_steps, imgproc_ldsr_pre_downSample,
                                              imgproc_ldsr_post_downSample],
-                                            [imgproc_output])
+                                            [imgproc_output], api_name="imgproc")
 
                                         imgproc_source.change(
                                             uifn.get_png_nfo,

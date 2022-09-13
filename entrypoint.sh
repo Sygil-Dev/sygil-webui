@@ -7,6 +7,7 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $SCRIPT_DIR
+export PYTHONPATH=$SCRIPT_DIR
 
 MODEL_DIR="${SCRIPT_DIR}/model_cache"
 # Array of model files to pre-download
@@ -31,6 +32,7 @@ ENV_UPDATED=0
 ENV_MODIFIED=$(date -r $ENV_FILE "+%s")
 ENV_MODIFED_FILE="${SCRIPT_DIR}/.env_updated"
 if [[ -f $ENV_MODIFED_FILE ]]; then ENV_MODIFIED_CACHED=$(<${ENV_MODIFED_FILE}); else ENV_MODIFIED_CACHED=0; fi
+export PIP_EXISTS_ACTION=w
 
 # Create/update conda env if needed
 if ! conda env list | grep ".*${ENV_NAME}.*" >/dev/null 2>&1; then
@@ -91,7 +93,7 @@ validateDownloadModel() {
 echo "Validating model files..."
 for models in "${MODEL_FILES[@]}"; do
     model=($models)
-    if [[ ! -e ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
+    if [[ ! -e ${model[1]}/${model[0]} || ! -L ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
         validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
     fi
 done

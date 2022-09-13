@@ -1,5 +1,8 @@
 @echo off
 
+:: Run all commands using this script's directory as the working directory
+cd %~dp0
+
 :: copy over the first line from environment.yaml, e.g. name: ldm, and take the second word after splitting by ":" delimiter 
 set /p first_line=< environment.yaml  
 for /f "tokens=2 delims=:" %%i in ("%first_line%") do set untrimmed_conda_env_name=%%i
@@ -26,7 +29,7 @@ for %%a in (%paths%) do (
  )
 )
 
-for %%a in (%paths%) do ( 
+for %%a in (%paths%) do (
  if EXIST "%%a\Scripts\activate.bat" (
     SET CONDA_PATH=%%a
     echo anaconda3/miniconda3 detected in %%a
@@ -52,7 +55,7 @@ call "%CONDA_PATH%\Scripts\activate.bat" "%conda_env_name%"
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python -m streamlit run scripts\webui_streamlit.py
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
 ) ELSE (
   ECHO Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
 )

@@ -44,6 +44,8 @@ txt2img:
     sampling_steps: 30
     default_sampler: "k_euler"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
@@ -57,6 +59,8 @@ txt2img:
     write_info_files: True
     
 txt2vid:
+    default_model: "CompVis/stable-diffusion-v1-4"
+    custom_models_list: ["CompVis/stable-diffusion-v1-4", "naclbit/trinart_stable_diffusion_v2", "hakurei/waifu-diffusion", "osanseviero/BigGAN-deep-128"]
     prompt:
     height: 512
     width: 512
@@ -67,17 +71,26 @@ txt2vid:
     sampling_steps: 30
     num_inference_steps: 200
     default_sampler: "k_euler"
+    scheduler_name: "klms"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
+    dynamic_preview_frequency: True
     normalize_prompt_weights: True
     save_individual_images: True
-    save_grid: False
+    save_video: True
     group_by_prompt: True
+    write_info_files: True
+    do_loop: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
+    beta_start: 0.00085
+    beta_end: 0.012
+    beta_scheduler_type: "linear"
     max_frames: 1000
     
 img2img:
@@ -117,6 +130,8 @@ img2img:
   loopback: True
   random_seed_loopback: True
   separate_prompts: False
+  update_preview: True
+  update_preview_frequency: 5
   normalize_prompt_weights: True
   save_individual_images: True
   save_grid: True
