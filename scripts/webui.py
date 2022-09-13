@@ -856,6 +856,32 @@ def perform_color_correction(img_rgb, correction_target_lab, do_color_correction
         )
     )
 
+
+# This generates all combinations of strings separated by bars inside of curly braces, for example the prompt:
+#		A {big|small, funny looking|} {red|blue} dog
+#
+# ...would generate these 6 variations (note the "empty" entry at the end of the first set of curly braces):
+#		A big red dog
+#		A big blue dog
+#		A small, funny looking red dog
+#		A small, funny looking blue dog
+#		A red dog
+# 		A blue dog
+#
+def generate_split_variations(str):
+    leftpos = str.find('{')
+    rightpos = str.find('}')
+    if leftpos < 0 or rightpos < leftpos:
+        return [str]
+    result = []
+    for option in str[leftpos + 1:rightpos].split('|'):
+        prefix = str[:leftpos]
+        for suffix in generate_split_variations(str[rightpos + 1:]):
+            prompt = prefix + option.strip() + suffix
+            result.append(prompt.replace('  ', ' ').replace(' .', '.').replace(' ,', ','))
+    return result
+
+
 def process_images(
         outpath, func_init, func_sample, prompt, seed, sampler_name, skip_grid, skip_save, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, filter_nsfw, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
@@ -927,6 +953,9 @@ def process_images(
 
     comments = []
 
+    # TODO - this should be its own toggle so the user can disable it if they want to preserve curly braces for some reason
+    prompt_split_variations = not prompt_matrix
+
     prompt_matrix_parts = []
     simple_templating = False
     add_original_image = True
@@ -936,34 +965,44 @@ def process_images(
             add_original_image = not (use_RealESRGAN or use_GFPGAN)
             all_seeds, n_iter, prompt_matrix_parts, all_prompts, frows = oxlamon_matrix(prompt, seed, n_iter, batch_size)
         else:
-            all_prompts = []
-            prompt_matrix_parts = prompt.split("|")
-            combination_count = 2 ** (len(prompt_matrix_parts) - 1)
-            for combination_num in range(combination_count):
-                current = prompt_matrix_parts[0]
+            if prompt_split_variations:
+                all_prompts = generate_split_variations(prompt)
+            else:
+                all_prompts = []
+                prompt_matrix_parts = prompt.split("|")
+                combination_count = 2 ** (len(prompt_matrix_parts) - 1)
+                for combination_num in range(combination_count):
+                    current = prompt_matrix_parts[0]
 
-                for n, text in enumerate(prompt_matrix_parts[1:]):
-                    if combination_num & (2 ** n) > 0:
-                        current += ("" if text.strip().startswith(",") else ", ") + text
+                    for n, text in enumerate(prompt_matrix_parts[1:]):
+                        if combination_num & (2 ** n) > 0:
+                            current += ("" if text.strip().startswith(",") else ", ") + text
 
-                all_prompts.append(current)
+                    all_prompts.append(current)
 
             n_iter = math.ceil(len(all_prompts) / batch_size)
             all_seeds = len(all_prompts) * [seed]
 
         print(f"Prompt matrix will create {len(all_prompts)} images using a total of {n_iter} batches.")
     else:
+        if prompt_split_variations:
+            all_prompts = generate_split_variations(prompt)
+        else:
+            all_prompts = [prompt]
 
-        if not opt.no_verify_input:
+        all_prompts = batch_size * n_iter * all_prompts
+        n_iter = math.ceil(len(all_prompts) / batch_size)
+        all_seeds = [seed + x for x in range(len(all_prompts))]
+
+    if not opt.no_verify_input:
+        for check_prompt in all_prompts:
             try:
-                check_prompt_length(prompt, comments)
+                check_prompt_length(check_prompt, comments)
             except:
                 import traceback
                 print("Error verifying input:", file=sys.stderr)
                 print(traceback.format_exc(), file=sys.stderr)
 
-        all_prompts = batch_size * n_iter * [prompt]
-        all_seeds = [seed + x for x in range(len(all_prompts))]
     original_seeds = all_seeds.copy()
 
     precision_scope = autocast if opt.precision == "autocast" else nullcontext
