@@ -1,0 +1,17 @@
+---
+
+target: txt2img
+prompt: a derelict spaceship drifting after a battle
+ddim_steps: 30
+sampler_name: k_lms
+toggles: [1, 2, 4, 5]
+realesrgan_model_name: ''
+ddim_eta: 0.0
+n_iter: 1
+batch_size: 1 
+cfg_scale: 5.0
+seed: ''
+height: 512
+width: 512
+fp: None
+variant_amount: 0.0

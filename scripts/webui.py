@@ -1,4 +1,5 @@
-import argparse, os, sys, glob, re
+import argparse, os, sys, glob, re, requests, json, time
+from logger import logger, set_logger_verbosity, quiesce_logger, test_logger
 
 import cv2
 
@@ -8,6 +9,7 @@ from frontend.ui_functions import resize_image
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
+parser.add_argument("--bridge", action='store_true', help="don't launch web server, but make this instance into a Horde bridge.", default=False)
 parser.add_argument("--config", type=str, default="configs/stable-diffusion/v1-inference.yaml", help="path to config which constructs model",)
 parser.add_argument("--defaults", type=str, help="path to configuration file providing UI defaults, uses same format as cli parameter", default='configs/webui/webui.yaml')
 parser.add_argument("--esrgan-cpu", action='store_true', help="run ESRGAN on cpu", default=False)
@@ -42,6 +44,13 @@ parser.add_argument("--skip-grid", action='store_true', help="do not save a grid
 parser.add_argument("--skip-save", action='store_true', help="do not save indiviual samples. For speed measurements.", default=False)
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
+parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+parser.add_argument('-q', '--quiet', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+parser.add_argument('--horde_api_key', action="store", required=False, type=str, help="The API key corresponding to the owner of this Horde instance")
+parser.add_argument('--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
+parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
+parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
+
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -61,7 +70,6 @@ import numpy as np
 import pynvml
 import random
 import threading, asyncio
-import time
 import torch
 import torch.nn as nn
 import yaml
@@ -78,7 +86,6 @@ from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps
 from PIL.PngImagePlugin import PngInfo
 from io import BytesIO
 import base64
-import re
 from torch import autocast
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
@@ -2225,14 +2232,128 @@ def run_headless():
     prompts = prompts if type(prompts) is list else [prompts]
     for i, prompt_i in enumerate(prompts):
         print(f"===== Prompt {i+1}/{len(prompts)}: {prompt_i} =====")
+        print(enumerate(prompts))
         output_images, seed, info, stats = target_func(prompt=prompt_i, **kwargs)
         print(f'Seed: {seed}')
         print(info)
         print(stats)
-        print()
+        print([type(img) for img in output_images])
+
+
+
+@logger.catch
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames):
+    current_id = None
+    current_payload = None
+    loop_retry = 0
+    while True:
+        gen_dict = {
+            "api_key": api_key,
+            "name": horde_name,
+            "max_pixels": 262144, # To be calculated with an arg later
+            "priority_usernames": priority_usernames,
+        }
+        if current_id:
+            loop_retry += 1
+        else:
+            try:
+                pop_req = requests.post(horde_url + '/api/v1/generate/pop', json = gen_dict)
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            except requests.exceptions.JSONDecodeError():
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            if not pop_req.ok:
+                logger.warning(f"During gen pop, server {horde_url} responded: {pop_req.text}. Waiting for 10 seconds...")
+                time.sleep(10)
+                continue
+            pop = pop_req.json()
+            if not pop:
+                logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if not pop["id"]:
+                logger.debug(f"Server {horde_url} has no valid generations to do for us. Skipped Info: {pop['skipped']}.")
+                time.sleep(interval)
+                continue
+            current_id = pop['id']
+            current_payload = pop['payload']
+        if requested_softprompt != current_softprompt:
+            req = requests.put(kai_url + '/api/latest/config/soft_prompt/', json = {"value": requested_softprompt})
+            time.sleep(1) # Wait a second to unload the softprompt
+        gen_req = requests.post(kai_url + '/api/latest/generate/', json = current_payload)
+        if type(gen_req.json()) is not dict:
+            logger.error(f'KAI instance {kai_url} API unexpected response on generate: {gen_req}. Sleeping 10 seconds...')
+            time.sleep(9)
+            continue
+        if gen_req.status_code == 503:
+            logger.debug(f'KAI instance {kai_url} Busy (attempt {loop_retry}). Will try again...')
+            continue
+        current_generation = gen_req.json()["results"][0]["text"]
+        submit_dict = {
+            "id": current_id,
+            "generation": current_generation,
+            "api_key": api_key,
+        }
+        while current_id and current_generation:
+            try:
+                submit_req = requests.post(horde_url + '/api/v1/generate/submit', json = submit_dict)
+                if submit_req.status_code == 404:
+                    logger.warning(f"The generation we were working on got stale. Aborting!")
+                elif not submit_req.ok:
+                    if "already submitted" in submit_req.text:
+                        logger.warning(f'Server think this gen already submitted. Continuing')
+                    else:
+                        logger.error(submit_req.status_code)
+                        logger.warning(f"During gen submit, server {horde_url} responded: {submit_req.text}. Waiting for 10 seconds...")
+                        time.sleep(10)
+                        continue
+                else:
+                    logger.info(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
+                current_id = None
+                current_payload = None
+                current_generation = None
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+        time.sleep(interval)
+
 
 if __name__ == '__main__':
-    if opt.cli is None:
-        launch_server()
-    else:
+    set_logger_verbosity(opt.verbosity)
+    quiesce_logger(opt.quiet)
+    if opt.cli:
         run_headless()
+    if opt.bridge:
+        try:
+            import bridgeData as cd
+        except:
+            class temp(object):
+                def __init__(self):
+                    random.seed()
+                    self.horde_url = "http://localhost:7001"
+                    # Give a cool name to your instance
+                    self.horde_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                    # The api_key identifies a unique user in the horde
+                    self.horde_api_key = "0000000000"
+                    # Put other users whose prompts you want to prioritize.
+                    # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
+                    self.horde_priority_usernames = []
+            cd = temp()
+        horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
+        horde_name = opt.horde_name if opt.horde_name else cd.horde_name
+        horde_url = opt.horde_url if opt.horde_url else cd.horde_url
+        horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
+        try:
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames)
+        except KeyboardInterrupt:
+            logger.info(f"Keyboard Interrupt Received. Ending Bridge")
+    else:
+        launch_server()
+        
+
+

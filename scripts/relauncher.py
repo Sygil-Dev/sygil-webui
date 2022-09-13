@@ -21,7 +21,7 @@ share = False
 
 
 # Enter other `--arguments` you wish to use - Must be entered as a `--argument ` syntax
-additional_arguments = ""
+additional_arguments = "--bridge -vvv"
 
 
 
