@@ -38,8 +38,6 @@ from ldm.util import instantiate_from_config
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
      extract_into_tensor
 from retry import retry
-import txt2img
-import img2img
 # we use python-slugify to make the filenames safe for windows and linux, its better than doing it manually
 # install it with 'pip install python-slugify'
 from slugify import slugify
