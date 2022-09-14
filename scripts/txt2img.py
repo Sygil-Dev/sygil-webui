@@ -1,8 +1,11 @@
+# base webui import and utils.
 from webui_streamlit import st
 from sd_utils import *
 
+# streamlit imports
 from streamlit import StopException
 
+#other imports
 import os
 from typing import Union
 from io import BytesIO
@@ -11,6 +14,13 @@ from ldm.models.diffusion.plms import PLMSSampler
 
 from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
 from streamlit.elements import image as STImage
+# Temp imports 
+
+
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
+
+
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
 	from transformers import logging

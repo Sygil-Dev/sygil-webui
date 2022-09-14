@@ -1,8 +1,12 @@
+# base webui import and utils.
 from webui_streamlit import st
 from sd_utils import *
 
+# streamlit imports
 from streamlit import StopException
 
+#other imports
+import cv2
 from PIL import Image, ImageOps
 import torch
 import k_diffusion as K
@@ -12,6 +16,12 @@ import torch
 import skimage
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
+# Temp imports 
+
+
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
+
 
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -118,7 +128,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		np_mask_rgb_dilated = np.clip((np_mask_rgb + blurred2) * 0.7071, 0., 1.)
 		np_mask_rgb = np.clip((np_mask_rgb + blurred) * 0.7071, 0., 1.)
 
-		noise_rgb = matched_noise.get_matched_noise(np_init, np_mask_rgb, noise_q, color_variation)
+		noise_rgb = get_matched_noise(np_init, np_mask_rgb, noise_q, color_variation)
 		blend_mask_rgb = np.clip(np_mask_rgb_dilated,0.,1.) ** (mask_blend_factor)
 		noised = noise_rgb[:]
 		blend_mask_rgb **= (2.)

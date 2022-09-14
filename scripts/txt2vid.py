@@ -17,6 +17,7 @@ import time, inspect, timeit
 import torch
 from torch import autocast
 from io import BytesIO
+import imageio
 from slugify import slugify
 
 # Temp imports 
