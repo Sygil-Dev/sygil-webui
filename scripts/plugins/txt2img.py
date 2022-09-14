@@ -34,7 +34,6 @@ from contextlib import contextmanager, nullcontext
 from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
-from io import BytesIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.util import instantiate_from_config
@@ -46,8 +45,6 @@ from .. import sd_utils as SDutils
 # install it with 'pip install python-slugify'
 from slugify import slugify
 import tempfile
-from base64 import b64encode
-import io
 from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
 from streamlit.elements import image as STImage
 try:
