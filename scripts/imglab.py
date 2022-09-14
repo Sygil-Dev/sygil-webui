@@ -1,3 +1,4 @@
+# base webui import and utils.
 from webui_streamlit import st, defaults
 from sd_utils import *
 
@@ -7,6 +8,13 @@ from PIL import Image
 #from bs4 import BeautifulSoup
 from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
 from streamlit.elements import image as STImage
+
+# Temp imports 
+
+
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
+
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
 	from transformers import logging
