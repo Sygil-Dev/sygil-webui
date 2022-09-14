@@ -246,7 +246,7 @@ def layout():
 			try:
 				output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
 										cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-										save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
+										save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=st.session_state["defaults"].general.fp,
 										variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
 				message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")

@@ -49,7 +49,7 @@ if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, 
 else:
 	GFPGAN_available = False
 
-if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].txt2vid.RealESRGAN_model}.pth")):
 	RealESRGAN_available = True
 else:
 	RealESRGAN_available = False	
@@ -98,8 +98,18 @@ def diffuse(
 	
 	step_counter = 0
 	inference_counter = 0
-	current_chunk_speed = 0
-	previous_chunk_speed = 0
+	
+	if "current_chunk_speed" not in st.session_state:
+		st.session_state["current_chunk_speed"] = 0
+		
+	if "previous_chunk_speed_list" not in st.session_state:
+		st.session_state["previous_chunk_speed_list"] = [0]
+		st.session_state["previous_chunk_speed_list"].append(st.session_state["current_chunk_speed"])
+		
+	if "update_preview_frequency_list" not in st.session_state:
+		st.session_state["update_preview_frequency_list"] = [0]
+		st.session_state["update_preview_frequency_list"].append(st.session_state['defaults'].txt2vid.update_preview_frequency)
+	
 	
 	# diffuse!
 	for i, t in enumerate(pipe.scheduler.timesteps):
@@ -128,14 +138,16 @@ def diffuse(
 		
 		#print (st.session_state["update_preview_frequency"])
 		#update the preview image if it is enabled and the frequency matches the step_counter
-		if st.session_state['defaults'].general.update_preview:
+		if st.session_state['defaults'].txt2vid.update_preview:
 			step_counter += 1
 			
-			if st.session_state.dynamic_preview_frequency:
-				current_chunk_speed, previous_chunk_speed, st.session_state['defaults'].general.update_preview_frequency = optimize_update_preview_frequency(
-				        current_chunk_speed, previous_chunk_speed, st.session_state['defaults'].general.update_preview_frequency)   
-			
-			if st.session_state['defaults'].general.update_preview_frequency == step_counter or step_counter == st.session_state.sampling_steps:
+			if st.session_state['defaults'].txt2vid.update_preview_frequency == step_counter or step_counter == st.session_state.sampling_steps:
+				if st.session_state.dynamic_preview_frequency:
+					st.session_state["current_chunk_speed"], st.session_state["previous_chunk_speed_list"],
+					st.session_state['defaults'].txt2vid.update_preview_frequency, st.session_state["avg_update_preview_frequency"] = optimize_update_preview_frequency(
+					        st.session_state["current_chunk_speed"], st.session_state["previous_chunk_speed_list"], 
+					        st.session_state['defaults'].txt2vid.update_preview_frequency, st.session_state["update_preview_frequency_list"])   
+								
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
 				image_2 = pipe.vae.decode(cond_latents_2)
@@ -388,8 +400,8 @@ def txt2vid(
 	frames = []
 	frame_index = 0
 	
-	st.session_state["frame_total_duration"] = 0
-	st.session_state["frame_total_speed"] = 0	
+	st.session_state["total_frames_avg_duration"] = []
+	st.session_state["total_frames_avg_speed"] = []	
 	
 	try:
 		while frame_index < max_frames:
@@ -402,7 +414,7 @@ def txt2vid(
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				print(f"COUNT: {frame_index+1}/{num_steps}")
+				print(f"COUNT: {frame_index+1}/{max_frames}")
 			
 				#if use_lerp_for_text:
 					#init = torch.lerp(init1, init2, float(t))
@@ -513,7 +525,7 @@ def layout():
 				
 				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2vid.update_preview_frequency,
 					                                                  help="Frequency in steps at which the the preview image is updated. By default the frequency \
-					                                                  is set to 1 step.")						
+					                                                  is set to 1 step.")
 		with col2:
 			preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
 	
