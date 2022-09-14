@@ -2297,16 +2297,13 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             current_id = pop['id']
             current_payload = pop['payload']
         images, seed, info, stats = txt2img(**current_payload)
+        buffer = BytesIO()
+        images[0].save(buffer, format="WebP", quality=90)
         submit_dict = {
             "id": current_id,
-            "generation": base64.b64encode(images[0].tobytes()).decode("utf8"),
+            "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
             "api_key": api_key,
         }
-        logger.debug(seed)
-        logger.debug(info)
-        logger.debug(stats)
-        logger.debug(images[0])
-        logger.debug(type(images[0]))
         current_generation = seed
         while current_id and current_generation:
             try:
