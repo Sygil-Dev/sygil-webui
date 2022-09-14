@@ -9,6 +9,7 @@ from functools import partial
 from PIL.Image import Image
 import uuid
 import traceback
+import time
 
 
 @dataclass(eq=True, frozen=True)
@@ -43,6 +44,8 @@ class JobInfo:
     active_iteration_cnt: int = field(default_factory=int)
     job_status: str = field(default_factory=str)
     finished: bool = False
+    started: bool = False
+    timestamp: float = None
     removed_output_idxs: List[int] = field(default_factory=list)
 
 
@@ -105,6 +108,8 @@ class JobManagerUi:
 
 
 class JobManager:
+    JOB_MAX_START_TIME = 5.0  # How long can a job be stuck 'starting' before assuming it isn't running
+
     def __init__(self, max_jobs: int):
         self._max_jobs: int = max_jobs
         self._avail_job_tokens: List[Any] = list(range(max_jobs))
@@ -287,23 +292,25 @@ class JobManager:
         if session_info is None or job_info is None:
             return []
 
+        job_info.started = True
         try:
+            if job_info.should_stop.is_set():
+                raise Exception(f"Job {job_info} requested a stop before execution began")
             outputs = job_info.func(*job_info.inputs, job_info=job_info)
         except Exception as e:
             job_info.job_status = f"Error: {e}"
             print(f"Exception processing job {job_info}: {e}\n{traceback.format_exc()}")
             raise
+        finally:
+            job_info.finished = True
+            session_info.finished_jobs[func_key] = session_info.jobs.pop(func_key)
+            self._release_job_token(job_info.job_token)
 
         # Filter the function output for any removed outputs
         filtered_output = []
         for idx, output in enumerate(outputs):
             if idx not in job_info.removed_output_idxs:
                 filtered_output.append(output)
-
-        job_info.finished = True
-        session_info.finished_jobs[func_key] = session_info.jobs.pop(func_key)
-
-        self._release_job_token(job_info.job_token)
 
         # The wrapper added a dummy JSON output. Append a random text string
         # to fire the dummy objects 'change' event to notify that the job is done
@@ -481,6 +488,13 @@ class JobManager:
 
             # Is this session already running this job?
             if func_key in session_info.jobs:
+                job_info = session_info.jobs[func_key]
+                # If the job seems stuck in 'starting' then go ahead and toss it
+                if not job_info.started and time.time() > job_info.timestamp + JobManager.JOB_MAX_START_TIME:
+                    job_info.should_stop.set()
+                    job_info.stop_cur_iter.set()
+                    session_info.jobs.pop(func_key)
+                    return {job_ui._status_text: "Canceled possibly hung job. Try again"}
                 return {job_ui._status_text: "This session is already running that function!"}
 
             # Is this a new run of a previously finished job? Clear old info
@@ -491,7 +505,7 @@ class JobManager:
             job = JobInfo(
                 inputs=job_inputs, func=func, removed_output_idxs=removed_idxs, session_key=session_key,
                 job_token=job_token, rec_steps_enabled=record_steps_enabled, rec_steps_intrvl=rec_steps_interval,
-                rec_steps_to_gallery=save_rec_steps_grid, rec_steps_to_file=save_rec_steps_file)
+                rec_steps_to_gallery=save_rec_steps_grid, rec_steps_to_file=save_rec_steps_file, timestamp=time.time())
             session_info.jobs[func_key] = job
 
             ret = {pre_call_dummyobj: triggerChangeEvent()}
