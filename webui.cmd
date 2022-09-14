@@ -38,6 +38,7 @@ for %%a in (%v_paths%) do (
 
 IF "%v_conda_path%"=="" (
   echo anaconda3/miniconda3 not found. Install from here https://docs.conda.io/en/latest/miniconda.html
+  pause
   exit /b 1
 )
 
@@ -45,6 +46,7 @@ IF "%v_conda_path%"=="" (
 
 if not exist "z_version_env.tmp" (
   :: first time running, we need to update
+  set AUTO=1
   call "update_to_latest.cmd"
 )
 
