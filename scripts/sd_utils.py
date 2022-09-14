@@ -161,16 +161,18 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
 
     else:
         if "RealESRGAN" in st.session_state:
-            del st.session_state["RealESRGAN"]        
-
-
+            del st.session_state["RealESRGAN"]       
 
     if "model" in st.session_state:
         if "model" in st.session_state and st.session_state["custom_model"] == custom_model:
+            # TODO: check if the optimized mode was changed?
             print("Model already loaded")
+            
         else:
             try:
-                del st.session_state["model"]
+                del st.session_state.model
+                del st.session_state.modelCS
+                del st.session_state.modelFS                
             except KeyError:
                 pass
 
@@ -241,19 +243,21 @@ class MemUsageMonitor(threading.Thread):
     def run(self):
         try:
             pynvml.nvmlInit()
+            print(f"[{self.name}] Recording max memory usage...\n")
+            handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
+            self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
+            while not self.stop_flag:
+                m = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                self.max_usage = max(self.max_usage, m.used)
+                # print(self.max_usage)
+                time.sleep(0.1)
+            print(f"[{self.name}] Stopped recording.\n")
+            pynvml.nvmlShutdown()
+            
         except:
             print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
-        print(f"[{self.name}] Recording max memory usage...\n")
-        handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
-        self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
-        while not self.stop_flag:
-            m = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            self.max_usage = max(self.max_usage, m.used)
-            # print(self.max_usage)
-            time.sleep(0.1)
-        print(f"[{self.name}] Stopped recording.\n")
-        pynvml.nvmlShutdown()
+        
 
     def read(self):
         return self.max_usage, self.total
