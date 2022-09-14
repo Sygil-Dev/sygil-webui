@@ -93,7 +93,7 @@ def layout():
 		txt2img_tab, img2img_tab, txt2vid_tab, postprocessing_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", 
 	                                                                                                "Text-to-Video","Post-Processing"])				
 		with txt2img_tab:
-			from txt2img import layout
+			from txt2img_inputs import layout
 			layout()
 		
 		with img2img_tab:
