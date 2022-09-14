@@ -2342,7 +2342,7 @@ if __name__ == '__main__':
             class temp(object):
                 def __init__(self):
                     random.seed()
-                    self.horde_url = "http://localhost:7001"
+                    self.horde_url = "https://stablehorde.net"
                     # Give a cool name to your instance
                     self.horde_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
                     # The api_key identifies a unique user in the horde
