@@ -1,21 +1,32 @@
+# base webui import and utils.
 from webui_streamlit import st
 from sd_utils import *
 
+# streamlit imports
 from streamlit import StopException
+from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
+from streamlit.elements import image as STImage
+
+#other imports
 
 import os
 from PIL import Image
 import torch
 import numpy as np
-import time
+import time, inspect, timeit
 import torch
 from torch import autocast
 from io import BytesIO
-# we use python-slugify to make the filenames safe for windows and linux, its better than doing it manually
-# install it with 'pip install python-slugify'
 from slugify import slugify
-from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
-from streamlit.elements import image as STImage
+
+# Temp imports 
+
+# these are for testing txt2vid, should be removed and we should use things from our own code. 
+from diffusers import StableDiffusionPipeline
+from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, PNDMScheduler
+
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
 
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
