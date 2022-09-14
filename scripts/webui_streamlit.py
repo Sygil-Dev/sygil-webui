@@ -108,6 +108,7 @@ def layout():
 	#
 	elif tabs == 'Model Manager':
 		from ModelManager import layout
+		layout()
 	
 if __name__ == '__main__':
 	layout()     
