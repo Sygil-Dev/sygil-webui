@@ -27,6 +27,7 @@ for %%a in (%v_paths%) do (
 
 IF "%v_conda_path%"=="" (
   echo anaconda3/miniconda3 not found. Install from here https://docs.conda.io/en/latest/miniconda.html
+  pause
   exit /b 1
 )
 
@@ -48,10 +49,12 @@ echo Previous environment.yaml hash: %v_last_hash%
 if "%v_last_hash%" == "%v_cur_hash%" (
   echo environment.yaml unchanged. dependencies should be up to date.
   echo if you still have unresolved dependencies, delete "z_version_env.tmp"
+  if not defined AUTO pause
 ) else (
   echo environment.yaml changed. updating dependencies
   call conda env create --name "%v_conda_env_name%" -f environment.yaml
   call conda env update --name "%v_conda_env_name%" -f environment.yaml
+  if not defined AUTO pause
 )
 
 ::cmd /k
