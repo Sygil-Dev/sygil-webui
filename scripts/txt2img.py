@@ -239,7 +239,8 @@ def layout():
 										save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=defaults.general.fp,
 										variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
-				message.success('Done!', icon="✅")
+				message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+				
 				history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
 
 				if 'latestImages' in st.session_state:
