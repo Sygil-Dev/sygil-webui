@@ -162,10 +162,20 @@ def layout():
 			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
 			seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 			batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
-			#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2img.batch_size, step=1,
-				#help="How many images are at once in a batch.\
-				#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-				#Default: 1")
+
+			bs_slider_max_value = 5
+			if st.session_state.defaults.general.optimized:
+				bs_slider_max_value = 100
+
+			batch_size = st.slider(
+				"Batch size",
+				min_value=1,
+				max_value=bs_slider_max_value,
+				value=st.session_state.defaults.txt2img.batch_size,
+				step=1,
+				help="How many images are at once in a batch.\
+				It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+				Default: 1")
 				
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
@@ -244,9 +254,9 @@ def layout():
 			load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
 
 			try:
-				output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, 1, 
+				output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, batch_size,
 										cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-										save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=st.session_state["defaults"].general.fp,
+										save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=st.session_state.defaults.general.fp,
 										variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
 				message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")

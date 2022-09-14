@@ -163,12 +163,12 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			mask = torch.from_numpy(mask).to(st.session_state["device"])
 
 		if st.session_state['defaults'].general.optimized:
-			modelFS.to(st.session_state["device"] )
+			st.session_state.modelFS.to(st.session_state["device"] )
 
 		init_image = 2. * image - 1.
 		init_image = init_image.to(st.session_state["device"])
-		init_latent = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).get_first_stage_encoding((st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image)) # move to latent space
-		
+		init_latent = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).get_first_stage_encoding((st.session_state["model"]  if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
+
 		if st.session_state['defaults'].general.optimized:
 			mem = torch.cuda.memory_allocated()/1e6
 			st.session_state.modelFS.to("cpu")

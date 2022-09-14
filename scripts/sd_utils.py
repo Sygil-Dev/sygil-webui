@@ -161,44 +161,35 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
 
     else:
         if "RealESRGAN" in st.session_state:
-            del st.session_state["RealESRGAN"]       
+            del st.session_state["RealESRGAN"]        
 
     if "model" in st.session_state:
         if "model" in st.session_state and st.session_state["custom_model"] == custom_model:
             # TODO: check if the optimized mode was changed?
             print("Model already loaded")
-            
+
+            return
         else:
             try:
                 del st.session_state.model
                 del st.session_state.modelCS
-                del st.session_state.modelFS                
+                del st.session_state.modelFS
             except KeyError:
                 pass
 
-            config = OmegaConf.load(st.session_state["defaults"].general.default_model_config)
+    # At this point the model is either
+    # is not loaded yet or have been evicted:
+    # load new model into memory
+    st.session_state.custom_model = custom_model
 
-            if custom_model == st.session_state["defaults"].general.default_model:
-                model = load_model_from_config(config, st.session_state["defaults"].general.default_model_path)			
-            else:
-                model = load_model_from_config(config, os.path.join("models","custom", f"{custom_model}.ckpt")) 
+    config, device, model, modelCS, modelFS = load_sd_model(custom_model)
 
-            st.session_state["custom_model"] = custom_model
-            st.session_state["device"] = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-            st.session_state["model"] = (model if st.session_state["defaults"].general.no_half else model.half()).to(st.session_state["device"] ) 			
-    else:
-        config = OmegaConf.load(st.session_state["defaults"].general.default_model_config)
+    st.session_state.device = device
+    st.session_state.model = model
+    st.session_state.modelCS = modelCS
+    st.session_state.modelFS = modelFS
 
-        if custom_model == st.session_state["defaults"].general.default_model:
-            model = load_model_from_config(config, st.session_state["defaults"].general.default_model_path)			
-        else:
-            model = load_model_from_config(config, os.path.join("models","custom", f"{custom_model}.ckpt")) 
-
-        st.session_state["custom_model"] = custom_model		
-        st.session_state["device"] = torch.device(f"cuda:{st.session_state['defaults'].general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        st.session_state["model"] = (model if st.session_state['defaults'].general.no_half else model.half()).to(st.session_state["device"] )    
-
-        print("Model loaded.")
+    print("Model loaded.")
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -222,6 +213,7 @@ def load_model_from_config(config, ckpt, verbose=False):
     model.eval()
     return model
 
+
 def load_sd_from_config(ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
@@ -243,21 +235,21 @@ class MemUsageMonitor(threading.Thread):
     def run(self):
         try:
             pynvml.nvmlInit()
-            print(f"[{self.name}] Recording max memory usage...\n")
-            handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
-            self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
-            while not self.stop_flag:
-                m = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                self.max_usage = max(self.max_usage, m.used)
-                # print(self.max_usage)
-                time.sleep(0.1)
-            print(f"[{self.name}] Stopped recording.\n")
-            pynvml.nvmlShutdown()
-            
         except:
             print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
-        
+        print(f"[{self.name}] Recording max memory usage...\n")
+        # Missing context
+        #handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
+        while not self.stop_flag:
+            m = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            self.max_usage = max(self.max_usage, m.used)
+            # print(self.max_usage)
+            time.sleep(0.1)
+        print(f"[{self.name}] Stopped recording.\n")
+        pynvml.nvmlShutdown()
 
     def read(self):
         return self.max_usage, self.total
@@ -685,18 +677,26 @@ def try_loading_LDSR(model_name: str,checking=False):
 
 #try_loading_LDSR('model',checking=True)
 
-def load_SD_model():
-    if st.session_state['defaults'].general.optimized:
-        sd = load_sd_from_config(st.session_state['defaults'].general.default_model_path)
+
+# Loads Stable Diffusion model by name
+def load_sd_model(model_name: str) -> [any, any, any, any, any]:
+    ckpt_path = st.session_state.defaults.general.default_model_path
+    if model_name != st.session_state.defaults.general.default_model:
+        ckpt_path = os.path.join("models", "custom", f"{model_name}.ckpt")
+
+    if st.session_state.defaults.general.optimized:
+        config = OmegaConf.load(st.session_state.defaults.general.optimized_config)
+
+        sd = load_sd_from_config(ckpt_path)
         li, lo = [], []
         for key, v_ in sd.items():
             sp = key.split('.')
-            if(sp[0]) == 'model':
-                if('input_blocks' in sp):
+            if (sp[0]) == 'model':
+                if 'input_blocks' in sp:
                     li.append(key)
-                elif('middle_block' in sp):
+                elif 'middle_block' in sp:
                     li.append(key)
-                elif('time_embed' in sp):
+                elif 'time_embed' in sp:
                     li.append(key)
                 else:
                     lo.append(key)
@@ -705,14 +705,14 @@ def load_SD_model():
         for key in lo:
             sd['model2.' + key[6:]] = sd.pop(key)
 
-        config = OmegaConf.load("optimizedSD/v1-inference.yaml")
-        device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
+        device = torch.device(f"cuda:{st.session_state.defaults.general.gpu}") \
+            if torch.cuda.is_available() else torch.device("cpu")
 
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
         model.cuda()
         model.eval()
-        model.turbo = st.session_state['defaults'].general.optimized_turbo
+        model.turbo = st.session_state.defaults.general.optimized_turbo
 
         modelCS = instantiate_from_config(config.modelCondStage)
         _, _ = modelCS.load_state_dict(sd, strict=False)
@@ -725,22 +725,25 @@ def load_SD_model():
 
         del sd
 
-        if not st.session_state['defaults'].general.no_half:
+        if not st.session_state.defaults.general.no_half:
             model = model.half()
             modelCS = modelCS.half()
             modelFS = modelFS.half()
-        return model,modelCS,modelFS,device, config
+
+        return config, device, model, modelCS, modelFS
     else:
-        config = OmegaConf.load(st.session_state['defaults'].general.default_model_config)
-        model = load_model_from_config(config, st.session_state['defaults'].general.default_model_path)
+        config = OmegaConf.load(st.session_state.defaults.general.default_model_config)
+        model = load_model_from_config(config, ckpt_path)
 
-        device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        model = (model if st.session_state['defaults'].general.no_half else model.half()).to(device)
-    return model, device,config
+        device = torch.device(f"cuda:{st.session_state.defaults.general.gpu}") \
+            if torch.cuda.is_available() else torch.device("cpu")
+        model = (model if st.session_state.defaults.general.no_half
+                 else model.half()).to(device)
 
-#
+        return config, device, model, None, None
 
-#
+
+# @codedealer: No usages
 def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='RealESRGAN_x4plus'):
     #get global variables
     global_vars = globals()
@@ -754,8 +757,8 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
                     if m == 'model':
                         del global_vars[m+'FS']
                         del global_vars[m+'CS']
-                if m =='model':
-                    m='Stable Diffusion'
+                if m == 'model':
+                    m = 'Stable Diffusion'
                 print('Unloaded ' + m)
     if load:
         for m in models:
@@ -796,11 +799,11 @@ def generation_callback(img, i=0):
         # It can probably be done in a better way for someone who knows what they're doing. I don't.		
         #print (img,isinstance(img, torch.Tensor))
         if isinstance(img, torch.Tensor):
-            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).decode_first_stage(img)          
+            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(img)
         else:
             # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
             # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}			
-            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).decode_first_stage(img["denoised"])
+            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(img["denoised"])
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
 
@@ -1034,10 +1037,10 @@ def draw_prompt_matrix(im, width, height, all_prompts):
 def check_prompt_length(prompt, comments):
     """this function tests if prompt is too long, and if so, adds a message to comments"""
 
-    tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).cond_stage_model.tokenizer
-    max_length = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).cond_stage_model.max_length
+    tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer
+    max_length = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.max_length
 
-    info = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
+    info = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
                                                                                                                      return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
     ovf = info['overflowing_tokens'][0]
     overflowing_count = ovf.shape[0]
@@ -1331,9 +1334,9 @@ def process_images(
             print(prompt)
 
             if st.session_state['defaults'].general.optimized:
-                modelCS.to(st.session_state['defaults'].general.gpu)
+                st.session_state.modelCS.to(st.session_state['defaults'].general.gpu)
 
-            uc = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).get_learned_conditioning(len(prompts) * [""])
+            uc = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(len(prompts) * [""])
 
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
@@ -1347,16 +1350,16 @@ def process_images(
                 c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
                 for i in range(0, len(weighted_subprompts)):
                     # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                    c = torch.add(c, (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
             else: # just behave like usual
-                c = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).get_learned_conditioning(prompts)
+                c = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(prompts)
 
 
             shape = [opt_C, height // opt_f, width // opt_f]
 
             if st.session_state['defaults'].general.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
-                modelCS.to("cpu")
+                st.session_state.modelCS.to("cpu")
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
                     time.sleep(1)
 
@@ -1385,9 +1388,9 @@ def process_images(
             samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
             if st.session_state['defaults'].general.optimized:
-                modelFS.to(st.session_state['defaults'].general.gpu)
+                st.session_state.modelFS.to(st.session_state['defaults'].general.gpu)
 
-            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).decode_first_stage(samples_ddim)
+            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
             for i, x_sample in enumerate(x_samples_ddim):				
@@ -1521,7 +1524,7 @@ def process_images(
 
                 if st.session_state['defaults'].general.optimized:
                     mem = torch.cuda.memory_allocated()/1e6
-                    modelFS.to("cpu")
+                    st.session_state.modelFS.to("cpu")
                     while(torch.cuda.memory_allocated()/1e6 >= mem):
                         time.sleep(1)
 
