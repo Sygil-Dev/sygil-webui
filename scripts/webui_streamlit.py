@@ -97,7 +97,7 @@ def layout():
 			layout()
 		
 		with img2img_tab:
-			from img2img import layout
+			from img2img_inputs import layout
 			layout()
 		
 		with txt2vid_tab:
