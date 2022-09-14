@@ -4,7 +4,7 @@ horde_url = "https://stablehorde.net"
 horde_name = "My Awesome Instance"
 # The api_key identifies a unique user in the horde
 # Visit https://koboldai.net/register to create one before you can join
-horde_api_key = "bbwBuopIUrkIsuvn5O8lyw"
+horde_api_key = "0000000000"
 # Put other users whose prompts you want to prioritize.
 # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
 horde_priority_usernames = []
