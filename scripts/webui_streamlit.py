@@ -101,7 +101,7 @@ def layout():
 			layout()
 		
 		with txt2vid_tab:
-			from txt2vid import layout
+			from txt2vid_inputs import layout
 			layout()
 		
 		
