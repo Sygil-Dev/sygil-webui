@@ -50,6 +50,7 @@ parser.add_argument('--horde_api_key', action="store", required=False, type=str,
 parser.add_argument('--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
 parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
 parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
+parser.add_argument('--horde_max_power',type=int, default=8, required=False, help="How much power this instance has to generate pictures. Min: 2")
 
 opt = parser.parse_args()
 
@@ -490,7 +491,7 @@ def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
 
     cols = math.ceil(len(imgs) / rows)
 
-    w, h = imgs[0].size
+    w, h =  [0].size
     grid = Image.new('RGB', size=(cols * w, rows * h), color='black')
 
     fnt = get_font(30)
@@ -2256,7 +2257,7 @@ def run_headless():
 
 
 @logger.catch
-def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames):
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels):
     current_id = None
     current_payload = None
     loop_retry = 0
@@ -2264,7 +2265,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames):
         gen_dict = {
             "api_key": api_key,
             "name": horde_name,
-            "max_pixels": 262144, # To be calculated with an arg later
+            "max_pixels": horde_max_pixels,
             "priority_usernames": priority_usernames,
         }
         if current_id:
@@ -2298,12 +2299,14 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames):
         images, seed, info, stats = txt2img(**current_payload)
         submit_dict = {
             "id": current_id,
-            "generation": seed,
+            "generation": base64.b64encode(images[0].tobytes()).decode("utf8"),
             "api_key": api_key,
         }
         logger.debug(seed)
         logger.debug(info)
         logger.debug(stats)
+        logger.debug(images[0])
+        logger.debug(type(images[0]))
         current_generation = seed
         while current_id and current_generation:
             try:
@@ -2339,6 +2342,7 @@ if __name__ == '__main__':
         try:
             import bridgeData as cd
         except:
+            logger.warning("No bridgeData found, use default where no CLI args are set")
             class temp(object):
                 def __init__(self):
                     random.seed()
@@ -2350,13 +2354,19 @@ if __name__ == '__main__':
                     # Put other users whose prompts you want to prioritize.
                     # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
                     self.horde_priority_usernames = []
+                    self.horde_max_power = 8
             cd = temp()
         horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
         horde_name = opt.horde_name if opt.horde_name else cd.horde_name
         horde_url = opt.horde_url if opt.horde_url else cd.horde_url
         horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
+        horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
+        if horde_max_power < 2:
+            horde_max_power = 2
+        horde_max_pixels = 64*64*8*horde_max_power
+        logger.debug(f"Max Pixels set to {horde_max_pixels}")
         try:
-            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames)
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels)
         except KeyboardInterrupt:
             logger.info(f"Keyboard Interrupt Received. Ending Bridge")
     else:
