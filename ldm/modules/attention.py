@@ -1,3 +1,4 @@
+import gc
 from inspect import isfunction
 import math
 import torch
@@ -171,52 +172,59 @@ class CrossAttention(nn.Module):
     def forward(self, x, context=None, mask=None):
         h = self.heads
 
-        q = self.to_q(x)
+        q_in = self.to_q(x)
         context = default(context, x)
-        k = self.to_k(context)
-        v = self.to_v(context)
+
+        k_in = self.to_k(context)
+        v_in = self.to_v(context)
+
         del context, x
 
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> (b h) n d', h=h), (q, k, v))
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> (b h) n d', h=h), (q_in, k_in, v_in))
+        del q_in, k_in, v_in
 
 
-        limit = k.shape[0]
-        att_step = self.att_step
-        q_chunks = list(torch.tensor_split(q, limit//att_step, dim=0))
-        k_chunks = list(torch.tensor_split(k, limit//att_step, dim=0))
-        v_chunks = list(torch.tensor_split(v, limit//att_step, dim=0))
+        r1 = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device)
 
-        q_chunks.reverse()
-        k_chunks.reverse()
-        v_chunks.reverse()
-        sim = torch.zeros(q.shape[0], q.shape[1], v.shape[2], device=q.device)
-        del k, q, v
-        for i in range (0, limit, att_step):
+        stats = torch.cuda.memory_stats(q.device)
+        mem_active = stats['active_bytes.all.current']
+        mem_reserved = stats['reserved_bytes.all.current']
+        mem_free_cuda, _ = torch.cuda.mem_get_info(torch.cuda.current_device())
+        mem_free_torch = mem_reserved - mem_active
+        mem_free_total = mem_free_cuda + mem_free_torch
 
-            q_buffer = q_chunks.pop()
-            k_buffer = k_chunks.pop()
-            v_buffer = v_chunks.pop()
-            sim_buffer = einsum('b i d, b j d -> b i j', q_buffer, k_buffer) * self.scale
+        gb = 1024 ** 3
+        tensor_size = q.shape[0] * q.shape[1] * k.shape[1] * 4
+        mem_required = tensor_size * 2.5
+        steps = 1
 
-            del k_buffer, q_buffer
-            '''
-            if exists(mask):
-                mask_buffer = rearrange(mask[i:i+att_step,:,:,:], 'b ... -> b (...)')
-                max_neg_value = -torch.finfo(sim_buffer.dtype).max
-                mask_buffer = repeat(mask_buffer, 'b j -> (b h) () j', h=h)
-                sim_buffer.masked_fill_(~mask_buffer, max_neg_value)
-            '''
-        # attention, what we cannot get enough of, by chunks
+        if mem_required > mem_free_total:
+            steps = 2**(math.ceil(math.log(mem_required / mem_free_total, 2)))
+            # print(f"Expected tensor size:{tensor_size/gb:0.1f}GB, cuda free:{mem_free_cuda/gb:0.1f}GB "
+            #       f"torch free:{mem_free_torch/gb:0.1f} total:{mem_free_total/gb:0.1f} steps:{steps}")
 
-            sim_buffer = sim_buffer.softmax(dim=-1)
+        if steps > 64:
+            max_res = math.floor(math.sqrt(math.sqrt(mem_free_total / 2.5)) / 8) * 64
+            raise RuntimeError(f'Not enough memory, use lower resolution (max approx. {max_res}x{max_res}). '
+                               f'Need: {mem_required/64/gb:0.1f}GB free, Have:{mem_free_total/gb:0.1f}GB free')
 
-            sim_buffer = einsum('b i j, b j d -> b i d', sim_buffer, v_buffer)
-            del v_buffer
-            sim[i:i+att_step,:,:] = sim_buffer
+        slice_size = q.shape[1] // steps if (q.shape[1] % steps) == 0 else q.shape[1]
+        for i in range(0, q.shape[1], slice_size):
+            end = i + slice_size
+            s1 = einsum('b i d, b j d -> b i j', q[:, i:end], k) * self.scale
 
-            del sim_buffer
-        sim = rearrange(sim, '(b h) n d -> b n (h d)', h=h)
-        return self.to_out(sim)
+            s2 = s1.softmax(dim=-1)
+            del s1
+
+            r1[:, i:end] = einsum('b i j, b j d -> b i d', s2, v)
+            del s2
+
+        del q, k, v
+
+        r2 = rearrange(r1, '(b h) n d -> b n (h d)', h=h)
+        del r1
+
+        return self.to_out(r2)
 
 
 class BasicTransformerBlock(nn.Module):

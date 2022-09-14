@@ -126,17 +126,22 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         inputs=txt2img_inputs,
                         outputs=txt2img_outputs
                     )
+                    use_queue = False
+                else:
+                    use_queue = True
 
                 txt2img_btn.click(
                     txt2img_func,
                     txt2img_inputs,
                     txt2img_outputs,
-                    api_name='txt2img'
+                    api_name='txt2img',
+                    queue=use_queue
                 )
                 txt2img_prompt.submit(
                     txt2img_func,
                     txt2img_inputs,
-                    txt2img_outputs
+                    txt2img_outputs,
+                    queue=use_queue
                 )
 
                 txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
@@ -357,13 +362,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         inputs=img2img_inputs,
                         outputs=img2img_outputs,
                     )
+                    use_queue = False
+                else:
+                    use_queue = True
 
                 img2img_btn_mask.click(
                     img2img_func,
                     img2img_inputs,
                     img2img_outputs,
-                    api_name="img2img"
-
+                    api_name="img2img",
+                    queue=use_queue
                 )
 
                 def img2img_submit_params():
