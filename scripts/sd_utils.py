@@ -1,5 +1,5 @@
 # base webui import and utils.
-from webui_streamlit import st, defaults
+from webui_streamlit import st
 
 
 # streamlit imports
@@ -66,7 +66,7 @@ opt_C = 4
 opt_f = 8
 
 # should and will be moved to a settings menu in the UI at some point
-grid_format = [s.lower() for s in defaults.general.grid_format.split(':')]
+grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
 grid_lossless = False
 grid_quality = 100
 if grid_format[0] == 'png':
@@ -85,7 +85,7 @@ elif grid_format[0] == 'webp':
         grid_quality = abs(grid_quality)
 
 # should and will be moved to a settings menu in the UI at some point
-save_format = [s.lower() for s in defaults.general.save_format.split(':')]
+save_format = [s.lower() for s in st.session_state["defaults"].general.save_format.split(':')]
 save_lossless = False
 save_quality = 100
 if save_format[0] == 'png':
@@ -105,7 +105,7 @@ elif save_format[0] == 'webp':
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = str(defaults.general.gpu)
+os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
 @retry(tries=5)
 def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
@@ -130,7 +130,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             print("GFPGAN already loaded")
         else:
             # Load GFPGAN
-            if os.path.exists(defaults.general.GFPGAN_dir):
+            if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
                 try:
                     st.session_state["GFPGAN"] = load_GFPGAN()
                     print("Loaded GFPGAN")
@@ -154,7 +154,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             except KeyError:
                 pass
 
-            if os.path.exists(defaults.general.RealESRGAN_dir):
+            if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
                 # st.session_state is used for keeping the models in memory across multiple pages or runs.
                 st.session_state["RealESRGAN"] = load_RealESRGAN(RealESRGAN_model)
                 print("Loaded RealESRGAN with model "+ st.session_state["RealESRGAN"].model.name)
@@ -174,27 +174,27 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             except KeyError:
                 pass
 
-            config = OmegaConf.load(defaults.general.default_model_config)
+            config = OmegaConf.load(st.session_state["defaults"].general.default_model_config)
 
-            if custom_model == defaults.general.default_model:
-                model = load_model_from_config(config, defaults.general.default_model_path)			
+            if custom_model == st.session_state["defaults"].general.default_model:
+                model = load_model_from_config(config, st.session_state["defaults"].general.default_model_path)			
             else:
                 model = load_model_from_config(config, os.path.join("models","custom", f"{custom_model}.ckpt")) 
 
             st.session_state["custom_model"] = custom_model
             st.session_state["device"] = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-            st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(st.session_state["device"] ) 			
+            st.session_state["model"] = (model if st.session_state["defaults"].general.no_half else model.half()).to(st.session_state["device"] ) 			
     else:
-        config = OmegaConf.load(defaults.general.default_model_config)
+        config = OmegaConf.load(st.session_state["defaults"].general.default_model_config)
 
-        if custom_model == defaults.general.default_model:
-            model = load_model_from_config(config, defaults.general.default_model_path)			
+        if custom_model == st.session_state["defaults"].general.default_model:
+            model = load_model_from_config(config, st.session_state["defaults"].general.default_model_path)			
         else:
             model = load_model_from_config(config, os.path.join("models","custom", f"{custom_model}.ckpt")) 
 
         st.session_state["custom_model"] = custom_model		
-        st.session_state["device"] = torch.device(f"cuda:{defaults.general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        st.session_state["model"] = (model if defaults.general.no_half else model.half()).to(st.session_state["device"] )    
+        st.session_state["device"] = torch.device(f"cuda:{st.session_state['defaults'].general.gpu}") if torch.cuda.is_available() else torch.device("cpu")
+        st.session_state["model"] = (model if st.session_state['defaults'].general.no_half else model.half()).to(st.session_state["device"] )    
 
         print("Model loaded.")
 
@@ -245,7 +245,7 @@ class MemUsageMonitor(threading.Thread):
             print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
         print(f"[{self.name}] Recording max memory usage...\n")
-        handle = pynvml.nvmlDeviceGetHandleByIndex(defaults.general.gpu)
+        handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
         self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
         while not self.stop_flag:
             m = pynvml.nvmlDeviceGetMemoryInfo(handle)
@@ -592,7 +592,7 @@ def create_random_tensors(shape, seeds):
         # the way I see it, it's better to do this on CPU, so that everyone gets same result;
         # but the original script had it like this so i do not dare change it for now because
         # it will break everyone's seeds.
-        xs.append(torch.randn(shape, device=defaults.general.gpu))
+        xs.append(torch.randn(shape, device=st.session_state['defaults'].general.gpu))
     x = torch.stack(xs)
     return x
 
@@ -602,19 +602,19 @@ def torch_gc():
 
 def load_GFPGAN():
     model_name = 'GFPGANv1.3'
-    model_path = os.path.join(defaults.general.GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
     if not os.path.isfile(model_path):
         raise Exception("GFPGAN model not found at path "+model_path)
 
-    sys.path.append(os.path.abspath(defaults.general.GFPGAN_dir))
+    sys.path.append(os.path.abspath(st.session_state['defaults'].general.GFPGAN_dir))
     from gfpgan import GFPGANer
 
-    if defaults.general.gfpgan_cpu or defaults.general.extra_models_cpu:
+    if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
         instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
-    elif defaults.general.extra_models_gpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f'cuda:{defaults.general.gfpgan_gpu}'))
+    elif st.session_state['defaults'].general.extra_models_gpu:
+        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
     else:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f'cuda:{defaults.general.gpu}'))
+        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
     return instance
 
 def load_RealESRGAN(model_name: str):
@@ -624,21 +624,21 @@ def load_RealESRGAN(model_name: str):
                 'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
         }
 
-    model_path = os.path.join(defaults.general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.exists(os.path.join(defaults.general.RealESRGAN_dir, "experiments","pretrained_models", f"{model_name}.pth")):
+    model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    if not os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{model_name}.pth")):
         raise Exception(model_name+".pth not found at path "+model_path)
 
-    sys.path.append(os.path.abspath(defaults.general.RealESRGAN_dir))
+    sys.path.append(os.path.abspath(st.session_state['defaults'].general.RealESRGAN_dir))
     from realesrgan import RealESRGANer
 
-    if defaults.general.esrgan_cpu or defaults.general.extra_models_cpu:
+    if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
         instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
         instance.device = torch.device('cpu')
         instance.model.to('cpu')
-    elif defaults.general.extra_models_gpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not defaults.general.no_half, device=torch.device(f'cuda:{defaults.general.esrgan_gpu}'))
+    elif st.session_state['defaults'].general.extra_models_gpu:
+        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
     else:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not defaults.general.no_half, device=torch.device(f'cuda:{defaults.general.gpu}'))
+        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
     instance.model.name = model_name
 
     return instance
@@ -647,8 +647,8 @@ def load_RealESRGAN(model_name: str):
 def load_LDSR(checking=False):
     model_name = 'model'
     yaml_name = 'project'
-    model_path = os.path.join(defaults.general.LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
-    yaml_path = os.path.join(defaults.general.LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
+    model_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
+    yaml_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
     if not os.path.isfile(model_path):
         raise Exception("LDSR model not found at path "+model_path)
     if not os.path.isfile(yaml_path):
@@ -656,7 +656,7 @@ def load_LDSR(checking=False):
     if checking == True:
         return True
 
-    sys.path.append(os.path.abspath(defaults.general.LDSR_dir))
+    sys.path.append(os.path.abspath(st.session_state['defaults'].general.LDSR_dir))
     from LDSR import LDSR
     LDSRObject = LDSR(model_path, yaml_path)
     return LDSRObject
@@ -665,7 +665,7 @@ def load_LDSR(checking=False):
 LDSR = None
 def try_loading_LDSR(model_name: str,checking=False):
     global LDSR
-    if os.path.exists(defaults.general.LDSR_dir):
+    if os.path.exists(st.session_state['defaults'].general.LDSR_dir):
         try:
             LDSR = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
             if checking == True:
@@ -682,8 +682,8 @@ def try_loading_LDSR(model_name: str,checking=False):
 #try_loading_LDSR('model',checking=True)
 
 def load_SD_model():
-    if defaults.general.optimized:
-        sd = load_sd_from_config(defaults.general.default_model_path)
+    if st.session_state['defaults'].general.optimized:
+        sd = load_sd_from_config(st.session_state['defaults'].general.default_model_path)
         li, lo = [], []
         for key, v_ in sd.items():
             sp = key.split('.')
@@ -708,7 +708,7 @@ def load_SD_model():
         _, _ = model.load_state_dict(sd, strict=False)
         model.cuda()
         model.eval()
-        model.turbo = defaults.general.optimized_turbo
+        model.turbo = st.session_state['defaults'].general.optimized_turbo
 
         modelCS = instantiate_from_config(config.modelCondStage)
         _, _ = modelCS.load_state_dict(sd, strict=False)
@@ -721,17 +721,17 @@ def load_SD_model():
 
         del sd
 
-        if not defaults.general.no_half:
+        if not st.session_state['defaults'].general.no_half:
             model = model.half()
             modelCS = modelCS.half()
             modelFS = modelFS.half()
         return model,modelCS,modelFS,device, config
     else:
-        config = OmegaConf.load(defaults.general.default_model_config)
-        model = load_model_from_config(config, defaults.general.default_model_path)
+        config = OmegaConf.load(st.session_state['defaults'].general.default_model_config)
+        model = load_model_from_config(config, st.session_state['defaults'].general.default_model_path)
 
         device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        model = (model if defaults.general.no_half else model.half()).to(device)
+        model = (model if st.session_state['defaults'].general.no_half else model.half()).to(device)
     return model, device,config
 
 #
@@ -746,7 +746,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
             if m in global_vars:
                 #if it is, delete it
                 del global_vars[m]
-                if defaults.general.optimized:
+                if st.session_state['defaults'].general.optimized:
                     if m == 'model':
                         del global_vars[m+'FS']
                         del global_vars[m+'CS']
@@ -762,7 +762,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
                 elif m == 'model':
                     sdLoader = load_sd_from_config()
                     global_vars[m] = sdLoader[0]
-                    if defaults.general.optimized:
+                    if st.session_state['defaults'].general.optimized:
                         global_vars[m+'CS'] = sdLoader[1]
                         global_vars[m+'FS'] = sdLoader[2]
                 elif m == 'RealESRGAN':
@@ -785,18 +785,18 @@ def generation_callback(img, i=0):
     except TypeError:
         pass
 
-    if i % int(defaults.general.update_preview_frequency) == 0 and defaults.general.update_preview:
+    if i % int(st.session_state['defaults'].general.update_preview_frequency) == 0 and st.session_state['defaults'].general.update_preview:
         #print (img)
         #print (type(img))
         # The following lines will convert the tensor we got on img to an actual image we can render on the UI.
         # It can probably be done in a better way for someone who knows what they're doing. I don't.		
         #print (img,isinstance(img, torch.Tensor))
         if isinstance(img, torch.Tensor):
-            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(img)          
+            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).decode_first_stage(img)          
         else:
             # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
             # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}			
-            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(img["denoised"])
+            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).decode_first_stage(img["denoised"])
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
 
@@ -912,9 +912,9 @@ def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     #print (len(imgs))
     if force_n_rows is not None:
         rows = force_n_rows
-    elif defaults.general.n_rows > 0:
-        rows = defaults.general.n_rows
-    elif defaults.general.n_rows == 0:
+    elif st.session_state['defaults'].general.n_rows > 0:
+        rows = st.session_state['defaults'].general.n_rows
+    elif st.session_state['defaults'].general.n_rows == 0:
         rows = batch_size
     else:
         rows = math.sqrt(len(imgs))
@@ -1025,10 +1025,10 @@ def draw_prompt_matrix(im, width, height, all_prompts):
 def check_prompt_length(prompt, comments):
     """this function tests if prompt is too long, and if so, adds a message to comments"""
 
-    tokenizer = (st.session_state["model"] if not defaults.general.optimized else modelCS).cond_stage_model.tokenizer
-    max_length = (st.session_state["model"] if not defaults.general.optimized else modelCS).cond_stage_model.max_length
+    tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).cond_stage_model.tokenizer
+    max_length = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).cond_stage_model.max_length
 
-    info = (st.session_state["model"] if not defaults.general.optimized else modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
+    info = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
                                                                                                                      return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
     ovf = info['overflowing_tokens'][0]
     overflowing_count = ovf.shape[0]
@@ -1047,7 +1047,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 
     filename_i = os.path.join(sample_path_i, filename)
 
-    if defaults.general.save_metadata or write_info_files:
+    if st.session_state['defaults'].general.save_metadata or write_info_files:
         # toggles differ for txt2img vs. img2img:
         offset = 0 if init_img is None else 2
         toggles = []
@@ -1087,7 +1087,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
         with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
             yaml.dump(metadata, f, allow_unicode=True, width=10000)
 
-    if defaults.general.save_metadata:
+    if st.session_state['defaults'].general.save_metadata:
         # metadata = {
         # 	"SD:prompt": prompts[i],
         # 	"SD:seed": str(seeds[i]),
@@ -1281,7 +1281,7 @@ def process_images(
         print(f"Prompt matrix will create {len(all_prompts)} images using a total of {n_iter} batches.")
     else:
 
-        if not defaults.general.no_verify_input:
+        if not st.session_state['defaults'].general.no_verify_input:
             try:
                 check_prompt_length(prompt, comments)
             except:
@@ -1292,11 +1292,11 @@ def process_images(
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
 
-    precision_scope = autocast if defaults.general.precision == "autocast" else nullcontext
+    precision_scope = autocast if st.session_state['defaults'].general.precision == "autocast" else nullcontext
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (st.session_state["model"].ema_scope() if not defaults.general.optimized else nullcontext()):
+    with torch.no_grad(), precision_scope("cuda"), (st.session_state["model"].ema_scope() if not st.session_state['defaults'].general.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
 
@@ -1321,10 +1321,10 @@ def process_images(
 
             print(prompt)
 
-            if defaults.general.optimized:
-                modelCS.to(defaults.general.gpu)
+            if st.session_state['defaults'].general.optimized:
+                modelCS.to(st.session_state['defaults'].general.gpu)
 
-            uc = (st.session_state["model"] if not defaults.general.optimized else modelCS).get_learned_conditioning(len(prompts) * [""])
+            uc = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).get_learned_conditioning(len(prompts) * [""])
 
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
@@ -1338,14 +1338,14 @@ def process_images(
                 c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
                 for i in range(0, len(weighted_subprompts)):
                     # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (st.session_state["model"] if not defaults.general.optimized else modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                    c = torch.add(c, (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
             else: # just behave like usual
-                c = (st.session_state["model"] if not defaults.general.optimized else modelCS).get_learned_conditioning(prompts)
+                c = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelCS).get_learned_conditioning(prompts)
 
 
             shape = [opt_C, height // opt_f, width // opt_f]
 
-            if defaults.general.optimized:
+            if st.session_state['defaults'].general.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
                 modelCS.to("cpu")
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
@@ -1371,14 +1371,14 @@ def process_images(
                     torch.manual_seed(specified_variant_seed)
                     seeds = [specified_variant_seed]
                 # finally, slerp base_x noise to target_x noise for creating a variant
-                x = slerp(defaults.general.gpu, max(0.0, min(1.0, variant_amount)), base_x, x)
+                x = slerp(st.session_state['defaults'].general.gpu, max(0.0, min(1.0, variant_amount)), base_x, x)
 
             samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
-            if defaults.general.optimized:
-                modelFS.to(defaults.general.gpu)
+            if st.session_state['defaults'].general.optimized:
+                modelFS.to(st.session_state['defaults'].general.gpu)
 
-            x_samples_ddim = (st.session_state["model"] if not defaults.general.optimized else modelFS).decode_first_stage(samples_ddim)
+            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else modelFS).decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
             for i, x_sample in enumerate(x_samples_ddim):				
@@ -1510,7 +1510,7 @@ def process_images(
                         #if simple_templating:
                             #grid_captions.append( captions[i] )
 
-                if defaults.general.optimized:
+                if st.session_state['defaults'].general.optimized:
                     mem = torch.cuda.memory_allocated()/1e6
                     modelFS.to("cpu")
                     while(torch.cuda.memory_allocated()/1e6 >= mem):

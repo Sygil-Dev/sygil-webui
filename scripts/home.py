@@ -1,4 +1,4 @@
-from webui_streamlit import st
+from webui_streamlit import st, defaults
 from sd_utils import *
 import os
 from PIL import Image

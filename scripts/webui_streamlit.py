@@ -22,20 +22,14 @@ except:
 # remove some annoying deprecation warnings that show every now and then.
 warnings.filterwarnings("ignore", category=DeprecationWarning)     
 
-
-
-
-st.session_state["defaults"] = OmegaConf.load(os.path.join("configs","webui", "webui_streamlit.yaml"))
-
-if (os.path.exists(os.path.join("configs","webui", "userconfig_streamlit.yaml"))):
-	user_defaults = OmegaConf.load(os.path.join("configs","webui", "userconfig_streamlit.yaml"));
+st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
+	user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml");
 	st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
-
-defaults = st.session_state["defaults"]
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = str(defaults.general.gpu)
+os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
 # TODO, maybe look into async loading the file especially for remote fetching 
@@ -61,12 +55,12 @@ def layout():
 		load_css(True, 'frontend/css/streamlit.main.css')
 		
 	# check if the models exist on their respective folders
-	if os.path.exists(os.path.join(defaults.general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+	if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
 		st.session_state["GFPGAN_available"] = True
 	else:
 		st.session_state["GFPGAN_available"] = False
 
-	if os.path.exists(os.path.join(defaults.general.RealESRGAN_dir, "experiments","pretrained_models", f"{defaults.general.RealESRGAN_model}.pth")):
+	if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
 		st.session_state["RealESRGAN_available"] = True
 	else:
 		st.session_state["RealESRGAN_available"] = False	
