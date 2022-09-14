@@ -28,6 +28,7 @@ general:
     n_rows: -1
     no_verify_input: False
     no_half: False
+    use_float16: False
     precision: "autocast"
     optimized: False
     optimized_turbo: False

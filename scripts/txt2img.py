@@ -179,9 +179,9 @@ def layout():
 				
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
-				 help="If enabled the image preview will be updated during the generation instead of at the end. \
-				 You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-				 By default this is enabled and the frequency is set to 1 step.")
+			                                                         help="If enabled the image preview will be updated during the generation instead of at the end. \
+			                                                         You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
+			                                                         By default this is enabled and the frequency is set to 1 step.")
 				
 				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
 			                                                                  help="Frequency in steps at which the the preview image is updated. By default the frequency \
