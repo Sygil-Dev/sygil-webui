@@ -1,6 +1,21 @@
 [comment]: <> ([![Open In Colab]&#40;https://colab.research.google.com/assets/colab-badge.svg&#41;]&#40;https://colab.research.google.com/github/altryne/sd-webui-colab/blob/main/Stable_Diffusion_WebUi_Altryne.ipynb&#41;)
 # neonsecret's stable diffusion webui (based on [hlky's webui](https://github.com/sd-webui/stable-diffusion-webui)) out now!
 
+<br><br><br><br><br><br>
+# DEPRECATED IN FAVOR OF [Peacasso](https://github.com/neonsecret/neonpeacasso)
+<br><br><br><br><br><br>
+
+
+
+
+
+
+
+
+
+
+
+Still, if you wanna use the old version..
 # [Installation](https://web.archive.org/web/20220904230208/https://github.com/hlky/stable-diffusion/wiki/Installation)
 
 ### Have an **issue**?
