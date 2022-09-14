@@ -213,7 +213,7 @@ class JobManager:
 
         # If we didn't already get a token then queue up for one
         if job_info.job_token is None:
-            job_info.token = self._get_job_token(block=True)
+            job_info.job_token = self._get_job_token(block=True)
 
         # Buttons don't seem to update unless value is set on them as well...
         return {output_dummy_obj: triggerChangeEvent(),
@@ -310,7 +310,8 @@ class JobManager:
         update_gallery_obj.change(
             partial(self._update_gallery_event, func_key),
             [self._session_key],
-            [gallery_comp]
+            [gallery_comp],
+            queue=False
         )
 
         if refresh_btn:
@@ -318,7 +319,8 @@ class JobManager:
             refresh_btn.click(
                 partial(self._refresh_func, func_key),
                 [self._session_key],
-                [update_gallery_obj, status_text]
+                [update_gallery_obj, status_text],
+                queue=False
             )
 
         if stop_btn:
@@ -326,7 +328,8 @@ class JobManager:
             stop_btn.click(
                 partial(self._stop_wrapped_func, func_key),
                 [self._session_key],
-                [status_text]
+                [status_text],
+                queue=False
             )
 
         # (ab)use gr.JSON to forward events.
@@ -352,21 +355,24 @@ class JobManager:
         post_call_dummyobj.change(
             partial(self._post_call_func, func_key, update_gallery_obj, *job_ui_params),
             [self._session_key],
-            [update_gallery_obj] + job_ui_outputs
+            [update_gallery_obj] + job_ui_outputs,
+            queue=False
         )
 
         call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_runCall")
         call_dummyobj.change(
             partial(self._call_func, func_key),
             [self._session_key],
-            outputs + [post_call_dummyobj]
+            outputs + [post_call_dummyobj],
+            queue=False
         )
 
         pre_call_dummyobj = gr.JSON(visible=False, elem_id="JobManagerDummyObject_preCall")
         pre_call_dummyobj.change(
             partial(self._pre_call_func, func_key, call_dummyobj, *job_ui_params),
             [self._session_key],
-            [call_dummyobj] + job_ui_outputs
+            [call_dummyobj] + job_ui_outputs,
+            queue=False
         )
 
         # Now replace the original function with one that creates a JobInfo and triggers the dummy obj

@@ -23,7 +23,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Install font for prompt matrix
 COPY /data/DejaVuSans.ttf /usr/share/fonts/truetype/
 
-EXPOSE 7860
+EXPOSE 7860 8501
 
 COPY ./entrypoint.sh /sd/
 ENTRYPOINT /sd/entrypoint.sh

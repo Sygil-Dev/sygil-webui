@@ -58,8 +58,8 @@ button[kind="header"] {
   
   /* added to avoid main sectors (all element to the right of sidebar from) moving */
   section[data-testid="stSidebar"] {
-    width: 3% !important;
-    min-width: 3% !important;
+    width: 3.5% !important;
+    min-width: 3.5% !important;
   }
 
   /* The navigation menu specs and size */
