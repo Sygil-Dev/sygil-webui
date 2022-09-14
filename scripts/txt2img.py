@@ -208,6 +208,16 @@ def layout():
 				message = st.empty()
 				
 		with col3:
+			# If we have custom models available on the "models/custom" 
+			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+			#if CustomModel_available:
+			custom_model = st.selectbox("Custom Model:", st.session_state['defaults'].txt2vid.custom_models_list,
+				                    index=st.session_state['defaults'].txt2vid.custom_models_list.index(st.session_state['defaults'].txt2vid.default_model),
+				                    help="Select the model you want to use. This option is only available if you have custom models \
+				                    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+				                    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+				                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+			
 			st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=1, max_value=250)
 			
 			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]

@@ -598,13 +598,15 @@ def layout():
 		with col3:
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
-			#if CustomModel_available:
-			custom_model = st.selectbox("Custom Model:", st.session_state['defaults'].txt2vid.custom_models_list,
-				                    index=st.session_state['defaults'].txt2vid.custom_models_list.index(st.session_state['defaults'].txt2vid.default_model),
-				                    help="Select the model you want to use. This option is only available if you have custom models \
-				                    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
-				                    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-				                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+			if st.session_state["CustomModel_available"]:
+				custom_model = st.selectbox("Custom Model:", st.session_state["custom_models"],
+		                            index=st.session_state["custom_models"].index(st.session_state["defaults"].general.default_model),
+		                            help="Select the model you want to use. This option is only available if you have custom models \
+		                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+		                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+		                            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+			else:
+				custom_model = "Stable Diffusion v1.4"	
 				
 			#st.session_state["weights_path"] = custom_model
 			#else:
@@ -674,7 +676,7 @@ def layout():
 		if generate_button:
 			#print("Loading models")
 			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
-			#load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)						
+			load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)						
 			
 			# run video generation
 			image, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state['defaults'].general.gpu,
