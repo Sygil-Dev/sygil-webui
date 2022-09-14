@@ -164,7 +164,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             del st.session_state["RealESRGAN"]        
 
     if "model" in st.session_state:
-        if "model" in st.session_state and st.session_state["custom_model"] == custom_model:
+        if "model" in st.session_state and st.session_state["loaded_model"] == custom_model:
             # TODO: check if the optimized mode was changed?
             print("Model already loaded")
 
@@ -188,6 +188,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
     st.session_state.model = model
     st.session_state.modelCS = modelCS
     st.session_state.modelFS = modelFS
+    st.session_state.loaded_model = custom_model
 
     print("Model loaded.")
 
@@ -882,26 +883,21 @@ def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
     return v2
 
 #
-def optimize_update_preview_frequency(current_chunk_speed, previous_chunk_speed_list, update_preview_frequency, update_preview_frequency_list):
+def optimize_update_preview_frequency(current_chunk_speed, previous_chunk_speed, update_preview_frequency):
     """Find the optimal update_preview_frequency value maximizing 
     performance while minimizing the time between updates."""
-    from statistics import mean
-       
-    previous_chunk_avg_speed = mean(previous_chunk_speed_list)
-    
-    previous_chunk_speed_list.append(current_chunk_speed)
-    current_chunk_avg_speed = mean(previous_chunk_speed_list)
-    
-    if current_chunk_avg_speed >= previous_chunk_avg_speed:
+    if current_chunk_speed >= previous_chunk_speed:
         #print(f"{current_chunk_speed} >= {previous_chunk_speed}")
-        update_preview_frequency_list.append(update_preview_frequency + 1)
+        update_preview_frequency +=1
+        previous_chunk_speed = current_chunk_speed
     else:
         #print(f"{current_chunk_speed} <= {previous_chunk_speed}")
-        update_preview_frequency_list.append(update_preview_frequency - 1)
-        
-    update_preview_frequency = round(mean(update_preview_frequency_list))
+        update_preview_frequency -=1
+        previous_chunk_speed = current_chunk_speed
 
-    return current_chunk_speed, previous_chunk_speed_list, update_preview_frequency, update_preview_frequency_list
+    return current_chunk_speed, previous_chunk_speed, update_preview_frequency
+
+
 
 
 def get_font(fontsize):

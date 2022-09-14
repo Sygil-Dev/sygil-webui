@@ -30,11 +30,11 @@ except:
 	pass
 
 class plugin_info():
-        plugname = "txt2img"
-        description = "Text to Image"
-        isTab = True
-        displayPriority = 1
-        
+		plugname = "txt2img"
+		description = "Text to Image"
+		isTab = True
+		displayPriority = 1
+		
 
 if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
 	GFPGAN_available = True
@@ -48,12 +48,12 @@ else:
 
 #
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_name: str,
-            n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
-            save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-            save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True, 
-            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None, 
-            variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
+			n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
+			height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
+			save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
+			save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True, 
+			RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None, 
+			variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
 	outpath = st.session_state['defaults'].general.outdir_txt2img or st.session_state['defaults'].general.outdir or "outputs/txt2img-samples"
 
@@ -93,40 +93,40 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 
 	def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
 		samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
-                                                 unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
-                                         log_every_t=int(st.session_state['defaults'].general.update_preview_frequency))
+												 unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
+										 log_every_t=int(st.session_state['defaults'].general.update_preview_frequency))
 
 		return samples_ddim
 
 	#try:
 	output_images, seed, info, stats = process_images(
-                outpath=outpath,
-                func_init=init,
-                func_sample=sample,
-                prompt=prompt,
-                seed=seed,
-                sampler_name=sampler_name,
-                save_grid=save_grid,
-                batch_size=batch_size,
-                n_iter=n_iter,      
-                steps=ddim_steps,   
-                cfg_scale=cfg_scale,	
-                width=width,
-                height=height,
-                prompt_matrix=separate_prompts,
-                use_GFPGAN=use_GFPGAN,
-                use_RealESRGAN=use_RealESRGAN,
-                realesrgan_model_name=realesrgan_model_name,
-                fp=fp,
-                ddim_eta=ddim_eta,
-                normalize_prompt_weights=normalize_prompt_weights,
-                save_individual_images=save_individual_images,
-                sort_samples=group_by_prompt,
-                write_info_files=write_info_files,
-                jpg_sample=save_as_jpg,
-                variant_amount=variant_amount,
-                variant_seed=variant_seed,
-        )
+				outpath=outpath,
+				func_init=init,
+				func_sample=sample,
+				prompt=prompt,
+				seed=seed,
+				sampler_name=sampler_name,
+				save_grid=save_grid,
+				batch_size=batch_size,
+				n_iter=n_iter,      
+				steps=ddim_steps,   
+				cfg_scale=cfg_scale,	
+				width=width,
+				height=height,
+				prompt_matrix=separate_prompts,
+				use_GFPGAN=st.session_state["use_GFPGAN"],
+				use_RealESRGAN=st.session_state["use_RealESRGAN"],
+				realesrgan_model_name=realesrgan_model_name,
+				fp=fp,
+				ddim_eta=ddim_eta,
+				normalize_prompt_weights=normalize_prompt_weights,
+				save_individual_images=save_individual_images,
+				sort_samples=group_by_prompt,
+				write_info_files=write_info_files,
+				jpg_sample=save_as_jpg,
+				variant_amount=variant_amount,
+				variant_seed=variant_seed,
+		)
 
 	del sampler
 
@@ -176,16 +176,16 @@ def layout():
 				help="How many images are at once in a batch.\
 				It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 				Default: 1")
-				
+
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
-			                                                         help="If enabled the image preview will be updated during the generation instead of at the end. \
-			                                                         You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-			                                                         By default this is enabled and the frequency is set to 1 step.")
+				 help="If enabled the image preview will be updated during the generation instead of at the end. \
+				 You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
+				 By default this is enabled and the frequency is set to 1 step.")
 				
 				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
-			                                                                  help="Frequency in steps at which the the preview image is updated. By default the frequency \
-			                                                                  is set to 1 step.")
+																			  help="Frequency in steps at which the the preview image is updated. By default the frequency \
+																			  is set to 1 step.")
 
 		with col2:
 			preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
@@ -210,13 +210,13 @@ def layout():
 		with col3:
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
-			#if CustomModel_available:
-			custom_model = st.selectbox("Custom Model:", st.session_state['defaults'].txt2vid.custom_models_list,
-				                    index=st.session_state['defaults'].txt2vid.custom_models_list.index(st.session_state['defaults'].txt2vid.default_model),
-				                    help="Select the model you want to use. This option is only available if you have custom models \
-				                    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
-				                    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-				                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 	
+			if st.session_state["CustomModel_available"]:
+				st.session_state["custom_model"] = st.selectbox("Custom Model:", st.session_state["custom_models"],
+									index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
+							help="Select the model you want to use. This option is only available if you have custom models \
+							on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+							the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+							will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
 			
 			st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=1, max_value=250)
 			
@@ -242,17 +242,20 @@ def layout():
 				write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
 				save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
 
-				if GFPGAN_available:
-					use_GFPGAN = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+				if st.session_state["GFPGAN_available"]:
+					st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
+							This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 				else:
-					use_GFPGAN = False
-
-				if RealESRGAN_available:
-					use_RealESRGAN = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-					RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+					st.session_state["use_GFPGAN"] = False
+					
+				if st.session_state["RealESRGAN_available"]:
+					st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
+											 help="Uses the RealESRGAN model to upscale the images after the generation.\
+							This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+					st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
 				else:
-					use_RealESRGAN = False
-					RealESRGAN_model = "RealESRGAN_x4plus"
+					st.session_state["use_RealESRGAN"] = False
+					st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 
 				variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
 				variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
@@ -260,14 +263,15 @@ def layout():
 
 		if generate_button:
 			#print("Loading models")
-			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.		
-			load_models(False, use_GFPGAN, use_RealESRGAN, RealESRGAN_model)                
+			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.	
+			load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
+					st.session_state["custom_model"])    
 
 			try:
-				output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, RealESRGAN_model, batch_count, batch_size,
+				output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
 										cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-										save_grid, group_by_prompt, save_as_jpg, use_GFPGAN, use_RealESRGAN, RealESRGAN_model, fp=st.session_state.defaults.general.fp,
-										variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+										save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
+										 fp=st.session_state.defaults.general.fp, variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
 				message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 				
@@ -319,11 +323,11 @@ def layout():
 #on import run init
 def createHTMLGallery(images,info):
 		html3 = """
-        <div class="gallery-history" style="
-    display: flex;
-    flex-wrap: wrap;
+		<div class="gallery-history" style="
+	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-start;">
-        """
+		"""
 		mkdwn_array = []
 		for i in images:
 			try:
@@ -352,7 +356,7 @@ def createHTMLGallery(images,info):
 			#mkdwn = f"""<img src="{img_str}" alt="Image" with="200" height="200" />"""
 			mkdwn = f'''<div class="gallery" style="margin: 3px;" >
   <a href="{img_str}">
-    <img src="{img_str}" alt="Image" width="{width}" height="{height}">
+	<img src="{img_str}" alt="Image" width="{width}" height="{height}">
   </a>
   <div class="desc" style="text-align: center; opacity: 40%;">{seed}</div>
 </div>
