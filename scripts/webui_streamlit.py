@@ -22,12 +22,14 @@ except:
 # remove some annoying deprecation warnings that show every now and then.
 warnings.filterwarnings("ignore", category=DeprecationWarning)     
 
-if "defaults" not in st.session_state:
-	st.session_state["defaults"] = OmegaConf.load(os.path.join("configs","webui", "webui_streamlit.yaml"))
 
-	if (os.path.exists(os.path.join("configs","webui", "userconfig_streamlit.yaml"))):
-		user_defaults = OmegaConf.load(os.path.join("configs","webui", "userconfig_streamlit.yaml"));
-		st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+
+
+st.session_state["defaults"] = OmegaConf.load(os.path.join("configs","webui", "webui_streamlit.yaml"))
+
+if (os.path.exists(os.path.join("configs","webui", "userconfig_streamlit.yaml"))):
+	user_defaults = OmegaConf.load(os.path.join("configs","webui", "userconfig_streamlit.yaml"));
+	st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
 
 defaults = st.session_state["defaults"]
 
