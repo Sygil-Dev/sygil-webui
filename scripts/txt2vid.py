@@ -44,12 +44,12 @@ class plugin_info():
         displayPriority = 1
         
 
-if os.path.exists(os.path.join(defaults.general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
 	GFPGAN_available = True
 else:
 	GFPGAN_available = False
 
-if os.path.exists(os.path.join(defaults.general.RealESRGAN_dir, "experiments","pretrained_models", f"{defaults.general.RealESRGAN_model}.pth")):
+if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
 	RealESRGAN_available = True
 else:
 	RealESRGAN_available = False	
@@ -128,14 +128,14 @@ def diffuse(
 		
 		#print (st.session_state["update_preview_frequency"])
 		#update the preview image if it is enabled and the frequency matches the step_counter
-		if defaults.general.update_preview:
+		if st.session_state['defaults'].general.update_preview:
 			step_counter += 1
 			
 			if st.session_state.dynamic_preview_frequency:
-				current_chunk_speed, previous_chunk_speed, defaults.general.update_preview_frequency = optimize_update_preview_frequency(
-				        current_chunk_speed, previous_chunk_speed, defaults.general.update_preview_frequency)   
+				current_chunk_speed, previous_chunk_speed, st.session_state['defaults'].general.update_preview_frequency = optimize_update_preview_frequency(
+				        current_chunk_speed, previous_chunk_speed, st.session_state['defaults'].general.update_preview_frequency)   
 			
-			if defaults.general.update_preview_frequency == step_counter or step_counter == st.session_state.sampling_steps:
+			if st.session_state['defaults'].general.update_preview_frequency == step_counter or step_counter == st.session_state.sampling_steps:
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
 				image_2 = pipe.vae.decode(cond_latents_2)
@@ -193,9 +193,9 @@ def txt2vid(
                 # --------------------------------------
                 # args you probably want to change
                 prompts = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
-                gpu:int = defaults.general.gpu, # id of the gpu to run on
+                gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
                 #name:str = 'test', # name of this project, for the output directory
-                #rootdir:str = defaults.general.outdir,
+                #rootdir:str = st.session_state['defaults'].general.outdir,
                 num_steps:int = 200, # number of steps between each pair of sampled points
                 max_frames:int = 10000, # number of frames to write and then exit the script
                 num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
@@ -217,9 +217,9 @@ def txt2vid(
                 ):	
 	"""
 	prompt = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
-	gpu:int = defaults.general.gpu, # id of the gpu to run on
+	gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
 	#name:str = 'test', # name of this project, for the output directory
-	#rootdir:str = defaults.general.outdir,
+	#rootdir:str = st.session_state['defaults'].general.outdir,
 	num_steps:int = 200, # number of steps between each pair of sampled points
 	max_frames:int = 10000, # number of frames to write and then exit the script
 	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
@@ -256,11 +256,11 @@ def txt2vid(
 	# init the output dir
 	sanitized_prompt = slugify(prompts)
 	
-	full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
+	full_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
 	
 	if len(full_path) > 220:
 		sanitized_prompt = sanitized_prompt[:220-len(full_path)]
-		full_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
+		full_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples", "samples", sanitized_prompt)
 		
 	os.makedirs(full_path, exist_ok=True)
 	
@@ -338,8 +338,8 @@ def txt2vid(
 				weights_path,
 				use_local_file=True,
 				use_auth_token=True,
-				#torch_dtype=torch.float16 if not defaults.general.no_half else None,
-				revision="fp16" if not defaults.general.no_half else None
+				#torch_dtype=torch.float16 if not st.session_state['defaults'].general.no_half else None,
+				revision="fp16" if not st.session_state['defaults'].general.no_half else None
 			)
 		
 			st.session_state["pipe"].unet.to(torch_device)
@@ -358,8 +358,8 @@ def txt2vid(
 			                weights_path,
 			                use_local_file=True,
 			                use_auth_token=True,
-			                #torch_dtype=torch.float16 if not defaults.general.no_half else None,
-			                revision="fp16" if not defaults.general.no_half else None
+			                #torch_dtype=torch.float16 if not st.session_state['defaults'].general.no_half else None,
+			                revision="fp16" if not st.session_state['defaults'].general.no_half else None
 			        )
 	
 		st.session_state["pipe"].unet.to(torch_device)
@@ -449,9 +449,9 @@ def txt2vid(
 	if st.session_state['save_video']:
 		# write video to memory
 		#output = io.BytesIO()
-		#writer = imageio.get_writer(os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples"), im, extension=".mp4", fps=30)
+		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples"), im, extension=".mp4", fps=30)
 		try:
-			video_path = os.path.join(os.getcwd(), defaults.general.outdir, "txt2vid-samples","temp.mp4")
+			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples","temp.mp4")
 			writer = imageio.get_writer(video_path, fps=24)
 			for frame in frames:
 				writer.append_data(frame)
@@ -493,25 +493,25 @@ def layout():
 		col1, col2, col3 = st.columns([1,2,1], gap="large")    
 	
 		with col1:
-			width = st.slider("Width:", min_value=64, max_value=2048, value=defaults.txt2vid.width, step=64)
-			height = st.slider("Height:", min_value=64, max_value=2048, value=defaults.txt2vid.height, step=64)
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2vid.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
-			seed = st.text_input("Seed:", value=defaults.txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
-			#batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2vid.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
-			#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2vid.batch_size, step=1,
+			width = st.slider("Width:", min_value=64, max_value=2048, value=st.session_state['defaults'].txt2vid.width, step=64)
+			height = st.slider("Height:", min_value=64, max_value=2048, value=st.session_state['defaults'].txt2vid.height, step=64)
+			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2vid.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+			seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
+			#batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2vid.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+			#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=st.session_state['defaults'].txt2vid.batch_size, step=1,
 				#help="How many images are at once in a batch.\
 				#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 				#Default: 1")
 				
-			st.session_state["max_frames"] = int(st.text_input("Max Frames:", value=defaults.txt2vid.max_frames, help="Specify the max number of frames you want to generate."))
+			st.session_state["max_frames"] = int(st.text_input("Max Frames:", value=st.session_state['defaults'].txt2vid.max_frames, help="Specify the max number of frames you want to generate."))
 			
 			with st.expander("Preview Settings"):
-				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=defaults.txt2vid.update_preview,
+				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
 					                                         help="If enabled the image preview will be updated during the generation instead of at the end. \
 					                                         You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
 					                                         By default this is enabled and the frequency is set to 1 step.")
 				
-				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=defaults.txt2vid.update_preview_frequency,
+				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2vid.update_preview_frequency,
 					                                                  help="Frequency in steps at which the the preview image is updated. By default the frequency \
 					                                                  is set to 1 step.")						
 		with col2:
@@ -544,8 +544,8 @@ def layout():
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 			#if CustomModel_available:
-			custom_model = st.selectbox("Custom Model:", defaults.txt2vid.custom_models_list,
-				                    index=defaults.txt2vid.custom_models_list.index(defaults.txt2vid.default_model),
+			custom_model = st.selectbox("Custom Model:", st.session_state['defaults'].txt2vid.custom_models_list,
+				                    index=st.session_state['defaults'].txt2vid.custom_models_list.index(st.session_state['defaults'].txt2vid.default_model),
 				                    help="Select the model you want to use. This option is only available if you have custom models \
 				                    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 				                    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
@@ -556,21 +556,21 @@ def layout():
 				#custom_model = "CompVis/stable-diffusion-v1-4"
 				#st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 				
-			st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
+			st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
 				                                    help="Number of steps between each pair of sampled points")
-			st.session_state.num_inference_steps = st.slider("Inference Steps:", value=defaults.txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
+			st.session_state.num_inference_steps = st.slider("Inference Steps:", value=st.session_state['defaults'].txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
 				                                         help="Higher values (e.g. 100, 200 etc) can create better images.")
 	
 			#sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 			#sampler_name = st.selectbox("Sampling method", sampler_name_list,
-						    #index=sampler_name_list.index(defaults.txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")  
+						    #index=sampler_name_list.index(st.session_state['defaults'].txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")  
 			scheduler_name_list = ["klms", "ddim"]
 			scheduler_name = st.selectbox("Scheduler:", scheduler_name_list,
-				                    index=scheduler_name_list.index(defaults.txt2vid.scheduler_name), help="Scheduler to use. Default: klms")  
+				                    index=scheduler_name_list.index(st.session_state['defaults'].txt2vid.scheduler_name), help="Scheduler to use. Default: klms")  
 			
 			beta_scheduler_type_list = ["scaled_linear", "linear"]
 			beta_scheduler_type = st.selectbox("Beta Schedule Type:", beta_scheduler_type_list,
-				                    index=beta_scheduler_type_list.index(defaults.txt2vid.beta_scheduler_type), help="Schedule Type to use. Default: linear")  			
+				                    index=beta_scheduler_type_list.index(st.session_state['defaults'].txt2vid.beta_scheduler_type), help="Schedule Type to use. Default: linear")  			
 	
 	
 			#basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
@@ -580,41 +580,41 @@ def layout():
 					#help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
 	
 			with st.expander("Advanced"):
-				st.session_state["separate_prompts"] = st.checkbox("Create Prompt Matrix.", value=defaults.txt2vid.separate_prompts,
+				st.session_state["separate_prompts"] = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2vid.separate_prompts,
 					                                           help="Separate multiple prompts using the `|` character, and get all combinations of them.")
 				st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.", 
-					                                                   value=defaults.txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
+					                                                   value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
 				st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
-					                                                 value=defaults.txt2vid.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
-				st.session_state["save_video"] = st.checkbox("Save video",value=defaults.txt2vid.save_video, help="Save a video with all the images generated as frames at the end of the generation.")
-				st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=defaults.txt2vid.group_by_prompt,
+					                                                 value=st.session_state['defaults'].txt2vid.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
+				st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video, help="Save a video with all the images generated as frames at the end of the generation.")
+				st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
 					                                          help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-				st.session_state["write_info_files"] = st.checkbox("Write Info file", value=defaults.txt2vid.write_info_files,
+				st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
 					                                           help="Save a file next to the image with informartion about the generation.")
-				st.session_state["dynamic_preview_frequency"] = st.checkbox("Dynamic Preview Frequency", value=defaults.txt2vid.dynamic_preview_frequency,
+				st.session_state["dynamic_preview_frequency"] = st.checkbox("Dynamic Preview Frequency", value=st.session_state['defaults'].txt2vid.dynamic_preview_frequency,
 					                                           help="This option tries to find the best value at which we can update \
 					                                           the preview image during generation while minimizing the impact it has in performance. Default: True")
-				st.session_state["do_loop"] = st.checkbox("Do Loop", value=defaults.txt2vid.do_loop,
+				st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
 					                                  help="Do loop")
-				st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=defaults.txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
+				st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 	
 				if GFPGAN_available:
-					st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=defaults.txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+					st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 				else:
 					st.session_state["use_GFPGAN"] = False
 	
 				if RealESRGAN_available:
-					st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=defaults.txt2vid.use_RealESRGAN,
+					st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
 						                                         help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")	
 					st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
 				else:
 					st.session_state["use_RealESRGAN"] = False
 					st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 	
-				st.session_state["variant_amount"] = st.slider("Variant Amount:", value=defaults.txt2vid.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
-				st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=defaults.txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-				st.session_state["beta_start"] = st.slider("Beta Start:", value=defaults.txt2vid.beta_start, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
-				st.session_state["beta_end"] = st.slider("Beta End:", value=defaults.txt2vid.beta_end, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
+				st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+				st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+				st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
+				st.session_state["beta_end"] = st.slider("Beta End:", value=st.session_state['defaults'].txt2vid.beta_end, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
 	
 		if generate_button:
 			#print("Loading models")
@@ -622,7 +622,7 @@ def layout():
 			#load_models(False, False, False, RealESRGAN_model, CustomModel_available=CustomModel_available, custom_model=custom_model)						
 			
 			# run video generation
-			image, seed, info, stats = txt2vid(prompts=prompt, gpu=defaults.general.gpu,
+			image, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state['defaults'].general.gpu,
 				                   num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
 				                   num_inference_steps=st.session_state.num_inference_steps,
 				                   cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],

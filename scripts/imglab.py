@@ -1,5 +1,5 @@
 # base webui import and utils.
-from webui_streamlit import st, defaults
+from webui_streamlit import st
 from sd_utils import *
 
 #home plugin

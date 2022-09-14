@@ -36,12 +36,12 @@ class plugin_info():
         displayPriority = 1
         
 
-if os.path.exists(os.path.join(defaults.general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
 	GFPGAN_available = True
 else:
 	GFPGAN_available = False
 
-if os.path.exists(os.path.join(defaults.general.RealESRGAN_dir, "experiments","pretrained_models", f"{defaults.general.RealESRGAN_model}.pth")):
+if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
 	RealESRGAN_available = True
 else:
 	RealESRGAN_available = False	
@@ -55,7 +55,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
             RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None, 
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
-	outpath = defaults.general.outdir_txt2img or defaults.general.outdir or "outputs/txt2img-samples"
+	outpath = st.session_state['defaults'].general.outdir_txt2img or st.session_state['defaults'].general.outdir or "outputs/txt2img-samples"
 
 	seed = seed_to_int(seed)
 
@@ -94,7 +94,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 	def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
 		samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
                                                  unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
-                                         log_every_t=int(defaults.general.update_preview_frequency))
+                                         log_every_t=int(st.session_state['defaults'].general.update_preview_frequency))
 
 		return samples_ddim
 
@@ -157,23 +157,23 @@ def layout():
 		col1, col2, col3 = st.columns([1,2,1], gap="large")    
 
 		with col1:
-			width = st.slider("Width:", min_value=64, max_value=1024, value=defaults.txt2img.width, step=64)
-			height = st.slider("Height:", min_value=64, max_value=1024, value=defaults.txt2img.height, step=64)
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=defaults.txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
-			seed = st.text_input("Seed:", value=defaults.txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-			batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=defaults.txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+			width = st.slider("Width:", min_value=64, max_value=1024, value=st.session_state['defaults'].txt2img.width, step=64)
+			height = st.slider("Height:", min_value=64, max_value=1024, value=st.session_state['defaults'].txt2img.height, step=64)
+			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+			seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
+			batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
 			#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=defaults.txt2img.batch_size, step=1,
 				#help="How many images are at once in a batch.\
 				#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 				#Default: 1")
 				
 			with st.expander("Preview Settings"):
-				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=defaults.txt2img.update_preview,
+				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
 			                                                         help="If enabled the image preview will be updated during the generation instead of at the end. \
 			                                                         You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
 			                                                         By default this is enabled and the frequency is set to 1 step.")
 				
-				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=defaults.txt2img.update_preview_frequency,
+				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
 			                                                                  help="Frequency in steps at which the the preview image is updated. By default the frequency \
 			                                                                  is set to 1 step.")
 
@@ -198,11 +198,11 @@ def layout():
 				message = st.empty()
 				
 		with col3:
-			st.session_state.sampling_steps = st.slider("Sampling Steps", value=defaults.txt2img.sampling_steps, min_value=1, max_value=250)
+			st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=1, max_value=250)
 			
 			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 			sampler_name = st.selectbox("Sampling method", sampler_name_list,
-										index=sampler_name_list.index(defaults.txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
+										index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
 
 
 
@@ -223,19 +223,19 @@ def layout():
 				save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
 
 				if GFPGAN_available:
-					use_GFPGAN = st.checkbox("Use GFPGAN", value=defaults.txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+					use_GFPGAN = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 				else:
 					use_GFPGAN = False
 
 				if RealESRGAN_available:
-					use_RealESRGAN = st.checkbox("Use RealESRGAN", value=defaults.txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+					use_RealESRGAN = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN, help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
 					RealESRGAN_model = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
 				else:
 					use_RealESRGAN = False
 					RealESRGAN_model = "RealESRGAN_x4plus"
 
-				variant_amount = st.slider("Variant Amount:", value=defaults.txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
-				variant_seed = st.text_input("Variant Seed:", value=defaults.txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+				variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+				variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
 		galleryCont = st.empty()
 
 		if generate_button:
