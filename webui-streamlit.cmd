@@ -23,17 +23,17 @@ set v_paths=%v_paths%;%ProgramData%\anaconda3
 set v_paths=%v_paths%;%USERPROFILE%\anaconda3
 
 for %%a in (%v_paths%) do (
- IF NOT "%v_custom_path%"=="" (
-   set v_paths=%v_custom_path%;%v_paths%
- )
+  IF NOT "%v_custom_path%"=="" (
+    set v_paths=%v_custom_path%;%v_paths%
+  )
 )
 
 for %%a in (%v_paths%) do (
- if EXIST "%%a\Scripts\activate.bat" (
+  if EXIST "%%a\Scripts\activate.bat" (
     SET v_conda_path=%%a
     echo anaconda3/miniconda3 detected in %%a
     goto :CONDA_FOUND
- )
+  )
 )
 
 IF "%v_conda_path%"=="" (
@@ -42,24 +42,10 @@ IF "%v_conda_path%"=="" (
 )
 
 :CONDA_FOUND
-echo Stashing local changes and pulling latest update...
-call git stash
-call git pull
-call "%v_conda_path%\Scripts\activate.bat"
 
-for /f "delims=" %%a in ('git log -1 --format^="%%H" -- environment.yaml')  DO set v_cur_hash=%%a
-set /p "v_last_hash="<"z_version_env.tmp"
-echo %v_cur_hash%>z_version_env.tmp
-
-echo Current  environment.yaml hash: %v_cur_hash%
-echo Previous environment.yaml hash: %v_last_hash%
-
-if "%v_last_hash%" == "%v_cur_hash%" (
-  echo   environment.yaml version doesn't change
-) else (
-  echo   environment.yaml changed, updating dependencies
-  call conda env create --name "%v_conda_env_name%" -f environment.yaml
-  call conda env update --name "%v_conda_env_name%" -f environment.yaml
+if not exist "z_version_env.tmp" (
+  :: first time running, we need to update
+  call "update_to_latest.cmd"
 )
 
 call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
