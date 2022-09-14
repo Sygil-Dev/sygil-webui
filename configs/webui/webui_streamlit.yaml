@@ -13,6 +13,7 @@ general:
     GFPGAN_dir: "./src/gfpgan"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
+    LDSR_dir: "./src/latent-diffusion"
     outdir_txt2img: outputs/txt2img-samples
     outdir_img2img: outputs/img2img-samples
     gfpgan_cpu: False
