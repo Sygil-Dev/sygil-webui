@@ -105,11 +105,11 @@ def layout():
                          iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
 		
 	if tabs =='Stable Diffusion':		
-		home_tab, txt2img_tab, img2img_tab, txt2vid_tab, postprocessing_tab = st.tabs(["Home","Text-to-Image Unified", "Image-to-Image Unified", 
+		txt2img_tab, img2img_tab, txt2vid_tab, postprocessing_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", 
 	                                                                                                "Text-to-Video","Post-Processing"])
-		with home_tab:
-			from home import layout
-			layout()		
+		#with home_tab:
+			#from home import layout
+			#layout()		
 		
 		with txt2img_tab:
 			from txt2img import layout
@@ -130,7 +130,7 @@ def layout():
 		layout()
 	
 	elif tabs == 'Textual Inversion':
-		from TextualInversion import layout
+		from textual_inversion import layout
 		layout()	
 	
 if __name__ == '__main__':
