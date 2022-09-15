@@ -193,22 +193,17 @@ def layout():
 			col3_cont = st.container()
 			
 			#print (len(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx]))
+			images = st.session_state['latestImages'][gallery_start_idx:gallery_end_idx]
 			
 			with col1_cont:
 				with col1:
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][0])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][3])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][6])
+					[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
 			with col2_cont:
 				with col2:
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][1])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][4])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][7])
+					[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
 			with col3_cont:
 				with col3:
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][2])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][5])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][8])
+					[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
 							
 					
 		st.session_state['historyTab'] = [history_tab,col1,col2,col3,placeholder,col1_cont,col2_cont,col3_cont]		
@@ -223,4 +218,3 @@ def layout():
 	#if st.button("Try it out"):
 		#if the button is clicked, go to the gallery
 		#st.experimental_rerun()
-	

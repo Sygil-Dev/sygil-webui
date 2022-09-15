@@ -290,21 +290,16 @@ def layout():
                         col1_cont = st.container()
                         col2_cont = st.container()
                         col3_cont = st.container()
+                        images = st.session_state['latestImages']
                         with col1_cont:
                             with col1:
-                                st.image(st.session_state['latestImages'][0])
-                                st.image(st.session_state['latestImages'][3])
-                                st.image(st.session_state['latestImages'][6])
+                                [st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
                         with col2_cont:
                             with col2:
-                                st.image(st.session_state['latestImages'][1])
-                                st.image(st.session_state['latestImages'][4])
-                                st.image(st.session_state['latestImages'][7])
+                                [st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
                         with col3_cont:
                             with col3:
-                                st.image(st.session_state['latestImages'][2])
-                                st.image(st.session_state['latestImages'][5])
-                                st.image(st.session_state['latestImages'][8])
+                                [st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
                         historyGallery = st.empty()
                 
                     # check if output_images length is the same as seeds length
