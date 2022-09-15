@@ -94,7 +94,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
     def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
         samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
                                                  unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
-                                         log_every_t=int(st.session_state['defaults'].general.update_preview_frequency))
+                                         log_every_t=int(st.session_state.update_preview_frequency))
 
         return samples_ddim
 

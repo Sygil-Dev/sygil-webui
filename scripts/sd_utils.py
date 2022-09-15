@@ -794,7 +794,7 @@ def generation_callback(img, i=0):
     except TypeError:
         pass
 
-    if i % int(st.session_state['defaults'].general.update_preview_frequency) == 0 and st.session_state['defaults'].general.update_preview:
+    if i % int(st.session_state.update_preview_frequency) == 0 and st.session_state.update_preview:
         #print (img)
         #print (type(img))
         # The following lines will convert the tensor we got on img to an actual image we can render on the UI.
