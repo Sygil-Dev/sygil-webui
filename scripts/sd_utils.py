@@ -164,7 +164,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             del st.session_state["RealESRGAN"]        
 
     if "model" in st.session_state:
-        if "model" in st.session_state and st.session_state["custom_model"] == custom_model:
+        if "model" in st.session_state and st.session_state["loaded_model"] == custom_model:
             # TODO: check if the optimized mode was changed?
             print("Model already loaded")
 
@@ -174,6 +174,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
                 del st.session_state.model
                 del st.session_state.modelCS
                 del st.session_state.modelFS
+                del st.session_state.loaded_model
             except KeyError:
                 pass
 
@@ -188,6 +189,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
     st.session_state.model = model
     st.session_state.modelCS = modelCS
     st.session_state.modelFS = modelFS
+    st.session_state.loaded_model = custom_model
 
     print("Model loaded.")
 
@@ -792,7 +794,7 @@ def generation_callback(img, i=0):
     except TypeError:
         pass
 
-    if i % int(st.session_state['defaults'].general.update_preview_frequency) == 0 and st.session_state['defaults'].general.update_preview:
+    if i % int(st.session_state.update_preview_frequency) == 0 and st.session_state.update_preview:
         #print (img)
         #print (type(img))
         # The following lines will convert the tensor we got on img to an actual image we can render on the UI.
