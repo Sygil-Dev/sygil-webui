@@ -481,7 +481,7 @@ def txt2vid(
                 Took { round(time_diff, 2) }s total ({ round(time_diff/(max_frames),2) }s per image)
                 Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
 
-	return im, seeds, info, stats
+	return video_path, seeds, info, stats
 
 #on import run init
 def createHTMLGallery(images,info):
@@ -679,7 +679,7 @@ def layout():
 			#load_models(False, False, False, st.session_state["RealESRGAN_model"], CustomModel_available=st.session_state["CustomModel_available"], custom_model=custom_model)						
 			
 			# run video generation
-			image, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
+			video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
 	                                           num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
 	                                           num_inference_steps=st.session_state.num_inference_steps,
 	                                           cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
@@ -690,12 +690,49 @@ def layout():
 			    
 			#message.success('Done!', icon="✅")
 			message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+			
+			history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+		
+			#if 'latestVideos' in st.session_state:
+				#for i in video:
+					##push the new image to the list of latest images and remove the oldest one
+					##remove the last index from the list\
+					#st.session_state['latestVideos'].pop()
+					##add the new image to the start of the list
+					#st.session_state['latestVideos'].insert(0, i)
+				#PlaceHolder.empty()
+				
+				#with PlaceHolder.container():
+					#col1, col2, col3 = st.columns(3)
+					#col1_cont = st.container()
+					#col2_cont = st.container()
+					#col3_cont = st.container()
+					
+					#with col1_cont:
+						#with col1:
+							#st.image(st.session_state['latestVideos'][0])
+							#st.image(st.session_state['latestVideos'][3])
+							#st.image(st.session_state['latestVideos'][6])
+					#with col2_cont:
+						#with col2:
+							#st.image(st.session_state['latestVideos'][1])
+							#st.image(st.session_state['latestVideos'][4])
+							#st.image(st.session_state['latestVideos'][7])
+					#with col3_cont:
+						#with col3:
+							#st.image(st.session_state['latestVideos'][2])
+							#st.image(st.session_state['latestVideos'][5])
+							#st.image(st.session_state['latestVideos'][8])
+					#historyGallery = st.empty()
+		
+				## check if output_images length is the same as seeds length
+				#with gallery_tab:
+					#st.markdown(createHTMLGallery(video,seed), unsafe_allow_html=True)
+		
+		
+				#st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]			
 	
 			#except (StopException, KeyError):
 				#print(f"Received Streamlit StopException")
 	
-			# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
-			# use the current col2 first tab to show the preview_img and update it as its generated.
-			#preview_image.image(output_images)		
-
 

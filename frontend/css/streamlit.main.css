@@ -93,3 +93,19 @@ button[kind="header"] {
 /***********************************************************
 *  Additional CSS for other elements                    
 ************************************************************/
+button[data-baseweb="tab"] {
+  font-size: 20px;
+}
+
+@media (min-width: 1200px){
+h1 {
+    font-size: 1.75rem;
+}
+}
+#tabs-1-tabpanel-0 > div:nth-child(1) > div > div.stTabs.css-0.exp6ofz0 {
+  width: 50rem;
+  align-self: center;
+}
+div.gallery:hover {
+  border: 1px solid #777;
+}
