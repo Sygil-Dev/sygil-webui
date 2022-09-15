@@ -1,4 +1,13 @@
+# base webui import and utils.
 import streamlit as st
+
+# streamlit imports
+import streamlit_nested_layout
+
+#streamlit components section
+from st_on_hover_tabs import on_hover_tabs
+
+#other imports
 
 import warnings
 import os
@@ -7,9 +16,9 @@ from omegaconf import OmegaConf
 
 from sd_utils import *
 
-#streamlit components section
-from st_on_hover_tabs import on_hover_tabs
 
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
 
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.

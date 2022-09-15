@@ -41,6 +41,7 @@ dependencies:
     - streamlit>=1.12.2
     - streamlit-on-Hover-tabs==1.0.1
     - streamlit-option-menu==0.3.2
+    - streamlit_nested_layout
     - test-tube>=0.7.5
     - torch-fidelity==0.3.0
     - torchmetrics==0.6.0
