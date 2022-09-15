@@ -174,6 +174,7 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
                 del st.session_state.model
                 del st.session_state.modelCS
                 del st.session_state.modelFS
+                del st.session_state.loaded_model
             except KeyError:
                 pass
 
@@ -883,21 +884,26 @@ def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
     return v2
 
 #
-def optimize_update_preview_frequency(current_chunk_speed, previous_chunk_speed, update_preview_frequency):
+def optimize_update_preview_frequency(current_chunk_speed, previous_chunk_speed_list, update_preview_frequency, update_preview_frequency_list):
     """Find the optimal update_preview_frequency value maximizing 
     performance while minimizing the time between updates."""
-    if current_chunk_speed >= previous_chunk_speed:
+    from statistics import mean
+       
+    previous_chunk_avg_speed = mean(previous_chunk_speed_list)
+    
+    previous_chunk_speed_list.append(current_chunk_speed)
+    current_chunk_avg_speed = mean(previous_chunk_speed_list)
+    
+    if current_chunk_avg_speed >= previous_chunk_avg_speed:
         #print(f"{current_chunk_speed} >= {previous_chunk_speed}")
-        update_preview_frequency +=1
-        previous_chunk_speed = current_chunk_speed
+        update_preview_frequency_list.append(update_preview_frequency + 1)
     else:
         #print(f"{current_chunk_speed} <= {previous_chunk_speed}")
-        update_preview_frequency -=1
-        previous_chunk_speed = current_chunk_speed
+        update_preview_frequency_list.append(update_preview_frequency - 1)
+        
+    update_preview_frequency = round(mean(update_preview_frequency_list))
 
-    return current_chunk_speed, previous_chunk_speed, update_preview_frequency
-
-
+    return current_chunk_speed, previous_chunk_speed_list, update_preview_frequency, update_preview_frequency_list
 
 
 def get_font(fontsize):
