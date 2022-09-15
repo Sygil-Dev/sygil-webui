@@ -1,5 +1,18 @@
-from webui_streamlit import st, defaults
+# base webui import and utils.
+from webui_streamlit import st
 from sd_utils import *
+
+# streamlit imports
+
+
+#other imports
+
+# Temp imports 
+
+
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
+
 import os
 from PIL import Image
 
@@ -30,15 +43,17 @@ def getLatestGeneratedImagesFromPath():
 				files.append(os.path.join(r, file))
 	#sort the files by date
 	files.sort(key=os.path.getmtime)
+	
 	#reverse the list so the latest images are first
 	for f in files:
 		img = Image.open(f)
 		files[files.index(f)] = img
+		
 	#get the latest 10 files
 	#get all the files with the .png or .jpg extension
 	#sort files by date
 	#get the latest 10 files
-	latestFiles = files[-10:]
+	latestFiles = files
 	#reverse the list
 	latestFiles.reverse()
 	return latestFiles
@@ -98,41 +113,109 @@ def layout():
 	# create a tab for the gallery
 	#st.markdown("<h2 style='text-align: center; color: white;'>Gallery</h2>", unsafe_allow_html=True)
 	#st.markdown("<h2 style='text-align: center; color: white;'>Gallery</h2>", unsafe_allow_html=True)
-	history_tab, discover_tabs, settings_tab = st.tabs(["History","Discover","Settings"])
-	with discover_tabs:
-		st.markdown("<h1 style='text-align: center; color: white;'>Soon :)</h1>", unsafe_allow_html=True)
-	with settings_tab:
-		st.markdown("<h1 style='text-align: center; color: white;'>Soon :)</h1>", unsafe_allow_html=True)
+	
+	history_tab, discover_tabs = st.tabs(["History","Discover"])
+	
+	latestImages = getLatestGeneratedImagesFromPath()
+	st.session_state['latestImages'] = latestImages	
+	
 	with history_tab:
+		##---------------------------------------------------------
+		## image slideshow test
+		## Number of entries per screen
+		#slideshow_N = 9
+		#slideshow_page_number = 0	
+		#slideshow_last_page = len(latestImages) // slideshow_N	
+			
+		## Add a next button and a previous button
+		
+		#slideshow_prev, slideshow_image_col , slideshow_next = st.columns([1, 10, 1])	
+		
+		#with slideshow_image_col:
+			#slideshow_image = st.empty()
+			
+			#slideshow_image.image(st.session_state['latestImages'][0])
+		
+		#current_image = 0
+		
+		#if slideshow_next.button("Next", key=1):
+			##print (current_image+1)
+			#current_image = current_image+1
+			#slideshow_image.image(st.session_state['latestImages'][current_image+1])
+		#if slideshow_prev.button("Previous", key=0):
+			##print ([current_image-1])
+			#current_image = current_image-1
+			#slideshow_image.image(st.session_state['latestImages'][current_image - 1])
+		
+		
+		#---------------------------------------------------------			
+		
 		placeholder = st.empty()
-
-
-
-		latestImages = getLatestGeneratedImagesFromPath()
-		st.session_state['latestImages'] = latestImages
-
+		
+		
+		# image gallery
+		# Number of entries per screen
+		gallery_N = 9
+		gallery_page_number = 0	
+		#gallery_last_page = len(latestImages) // gallery_N	
+			
+		# Add a next button and a previous button
+		
+		#gallery_prev, gallery_pagination , gallery_next = st.columns([1, 10, 1])	
+		
+		# the pagination doesnt work for now so its better to disable the buttons.
+		
+		#if gallery_next.button("Next", key=3):
+		
+			#if gallery_page_number + 1 > gallery_last_page:
+				#gallery_page_number = 0
+			#else:
+				#gallery_page_number += 1
+		
+		#if gallery_prev.button("Previous", key=2):
+		
+			#if gallery_page_number - 1 < 0:
+				#gallery_page_number = gallery_last_page
+			#else:
+				#gallery_page_number -= 1
+		
+		# Get start and end indices of the next page of the dataframe
+		gallery_start_idx = gallery_page_number * gallery_N 
+		gallery_end_idx = (1 + gallery_page_number) * gallery_N	
+		
+		#---------------------------------------------------------		
+		
 		#populate the 3 images per column
 		with placeholder.container():
 			col1, col2, col3 = st.columns(3)
 			col1_cont = st.container()
 			col2_cont = st.container()
 			col3_cont = st.container()
+			
+			#print (len(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx]))
+			
 			with col1_cont:
 				with col1:
-					st.image(st.session_state['latestImages'][0])
-					st.image(st.session_state['latestImages'][3])
-					st.image(st.session_state['latestImages'][6])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][0])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][3])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][6])
 			with col2_cont:
 				with col2:
-					st.image(st.session_state['latestImages'][1])
-					st.image(st.session_state['latestImages'][4])
-					st.image(st.session_state['latestImages'][7])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][1])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][4])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][7])
 			with col3_cont:
 				with col3:
-					st.image(st.session_state['latestImages'][2])
-					st.image(st.session_state['latestImages'][5])
-					st.image(st.session_state['latestImages'][8])
-		st.session_state['historyTab'] = [history_tab,col1,col2,col3,placeholder,col1_cont,col2_cont,col3_cont]
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][2])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][5])
+					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][8])
+							
+					
+		st.session_state['historyTab'] = [history_tab,col1,col2,col3,placeholder,col1_cont,col2_cont,col3_cont]		
+
+	with discover_tabs:
+		st.markdown("<h1 style='text-align: center; color: white;'>Soon :)</h1>", unsafe_allow_html=True)
+	
 	#display the images
 	#add a button to the gallery
 	#st.markdown("<h2 style='text-align: center; color: white;'>Try it out</h2>", unsafe_allow_html=True)
@@ -140,3 +223,4 @@ def layout():
 	#if st.button("Try it out"):
 		#if the button is clicked, go to the gallery
 		#st.experimental_rerun()
+	
