@@ -1099,7 +1099,7 @@ def txt2img(
         prompt: str, 
         ddim_steps: int = 50, 
         sampler_name: str = 'k_lms', 
-        toggles: List[int] = [1, 2, 4, 5], 
+        toggles: List[int] = [1, 4], 
         realesrgan_model_name: str = '',
         ddim_eta: float = 0.0, 
         n_iter: int = 1, 
