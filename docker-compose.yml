@@ -7,6 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file: .env_docker
+    environment:
+      PIP_EXISTS_ACTION: w
     volumes:
       - .:/sd
       - ./outputs:/sd/outputs
@@ -14,6 +16,7 @@ services:
       - root_profile:/root
     ports:
       - '7860:7860'
+      - '8501:8501'
     deploy:
       resources:
         reservations:
