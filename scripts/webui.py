@@ -2473,7 +2473,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     log_err("")
                     raise e
 
-            dst = dst.copy()
+            if dst is not None:
+                dst = dst.copy()
             return dst
 
         def render_mask(seeds, obj, img, input_mask = None):
