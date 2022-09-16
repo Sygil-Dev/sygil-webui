@@ -63,5 +63,5 @@ condaenv.*.requirements.txt
 /log/log.csv
 /flagged/*
 /gfpgan/*
-/models/custom/
-/z_version_env.tmp
+/models/*
+z_version_env.tmp
