@@ -473,6 +473,8 @@ def try_loading_monocular_depth_estimation():
                 monocular_depth_estimation_dir,
                 compile=False
             )
+            # todo: load model from pretrained keras into user .cache folder like transformers lib is doing it.
+            # 
             # custom_objects = {'BilinearUpSampling2D': BilinearUpSampling2D, 'depth_loss_function': None}
             # custom_objects = {'depth_loss_function': None}
             # monocular_depth_estimation = from_pretrained_keras(
@@ -486,7 +488,7 @@ def try_loading_monocular_depth_estimation():
             print("Error loading monocular_depth_estimation:", file=sys.stderr)
             print(traceback.format_exc(), file=sys.stderr)        
     else:
-        print(f"monocular_depth_estimation not found at path, please make sure you have cloned the LDSR repo to {Monocular_Depth_Filter_dir}")
+        print(f"monocular_depth_estimation not found at path, please make sure you have cloned \n the repository https://huggingface.co/keras-io/monocular-depth-estimation to {monocular_depth_estimation_dir}")
 try_loading_monocular_depth_estimation()
 
 print('Successfully loaded model...')
