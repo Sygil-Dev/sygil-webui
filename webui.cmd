@@ -66,6 +66,8 @@ if not "%v_last_hash%" == "%v_cur_hash%" (
     call conda env update --name "%v_conda_env_name%" -f environment.yaml
     echo %v_cur_hash%>z_version_env.tmp
   )
+) else (
+  echo No environment.yaml update required.
 )
 
 :PROMPT
