@@ -2432,7 +2432,7 @@ def layout():
 					image_holder = st.empty()
 
 					uploaded_images = st.file_uploader(
-						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
+						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
 						help="Upload an image which will be used for the image to image generation.",
 					)
 					if uploaded_images:
@@ -2443,7 +2443,7 @@ def layout():
 					mask_holder = st.empty()
 
 					uploaded_masks = st.file_uploader(
-						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg"],
+						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
 						help="Upload an mask image which will be used for masking the image to image generation.",
 					)
 					if uploaded_masks:
