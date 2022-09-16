@@ -219,6 +219,7 @@ def txt2vid(
                 weights_path = "CompVis/stable-diffusion-v1-4",
                 scheduler="klms",  # choices: default, ddim, klms
                 disable_tqdm = False,
+                fp = None,
                 #-----------------------------------------------
                 beta_start = 0.0001,
                 beta_end = 0.00012,
@@ -377,6 +378,9 @@ def txt2vid(
 		print("Tx2Vid Model Loaded")		
 
 	st.session_state["pipe"].scheduler = SCHEDULERS[scheduler]
+	
+	if fp is not None and hasattr(st.session_state["pipe"], "embedding_manager"):
+		st.session_state["pipe"].embedding_manager.load(fp['name'])	
 	
 	# get the conditional text embeddings based on the prompt
 	text_input = st.session_state["pipe"].tokenizer(prompts, padding="max_length", max_length=st.session_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
@@ -685,7 +689,7 @@ def layout():
 	                                           cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
 	                                           seeds=seed, quality=100, eta=0.0, width=width,
 	                                           height=height, weights_path=custom_model, scheduler=scheduler_name,
-	                                           disable_tqdm=False, beta_start=st.session_state["beta_start"], beta_end=st.session_state["beta_end"],
+	                                           disable_tqdm=False, fp=st.session_state.defaults.general.fp, beta_start=st.session_state["beta_start"], beta_end=st.session_state["beta_end"],
 	                                           beta_schedule=beta_scheduler_type)
 			    
 			#message.success('Done!', icon="✅")
