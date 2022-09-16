@@ -2112,15 +2112,21 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 "color"    : "color",
             },
             "render_mask": {
-                "mask_invert"       : "bool",
-                "mask_depth"        : "bool",
-                "mask_value"        : "int",
-                "mask_depth_min"    : "float",
-                "mask_depth_max"    : "float",
-                "mask_depth_invert" : "bool",
-                "mask_by_color"           : "color",
-                "mask_by_color_space"     : "str",
-                "mask_by_color_threshold" : "int",
+	            "mask_value"              : "int",
+	            "mask_by_color"           : "color",
+	            "mask_by_color_space"     : "str",
+	            "mask_by_color_threshold" : "int",
+	            "mask_by_color_at"        : "int_tuple",
+	            "mask_depth"              : "bool",
+	            "mask_depth_min"          : "float",
+	            "mask_depth_max"          : "float",
+	            "mask_depth_invert"       : "bool",
+	            "mask_open"               : "int",
+	            "mask_close"              : "int",
+	            "mask_blur"               : "float",
+	            "mask_grow"               : "int",
+	            "mask_shrink"             : "int",
+	            "mask_invert"             : "bool",
             },
             "object": {
                 "initial_seed": "int",
@@ -2489,13 +2495,23 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 new_value = obj["mask_value"]
                 mask.paste( new_value, mask.getbbox() )
 
-            if "mask_by_color" in obj and img is not None:
+            if ("mask_by_color" in obj or "mask_by_color_at" in obj) and img is not None:
+                img_arr = np.asarray(img.convert("RGB"))
                 color = obj["mask_by_color"]
+                color_at = obj["mask_by_color_at"] or None
+                if color_at is not None:
+                    num_points = int(math.floor(len(color_at)/2))
+                    points = [
+                        (color_at[k*2],color_at[k*2+1]) 
+                        for k in range(num_points)
+                    ]
+                    if len(points) > 0:
+                        colors = np.array([img_arr[y,x] for x,y in points])
+                        color = tuple(np.round(colors.mean(axis=0)).astype(np.uint8).flatten())
                 colorspace = obj["mask_by_color_space"] or "LAB"
                 threshold = obj["mask_by_color_threshold"] or 15
                 colorspace = colorspace.upper()
                 reference_color = "RGB"
-                img_arr = np.asarray(img.convert("RGB"))
                 if colorspace != "RGB":
                     cvts = {
                         "LAB": cv2.COLOR_RGB2Lab,
@@ -2524,6 +2540,23 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 mask = run_Monocular_Depth_Filter([img], mask_depth_min, mask_depth_max, mask_depth_invert)
                 mask = mask[0]
                 mask = mask.resize(img.size)
+
+            if "mask_open" in obj:
+                mask = mask.filter(ImageFilter.MinFilter(obj["mask_open"]))
+                mask = mask.filter(ImageFilter.MaxFilter(obj["mask_open"]))
+
+            if "mask_close" in obj:
+                mask = mask.filter(ImageFilter.MaxFilter(obj["mask_close"]))
+                mask = mask.filter(ImageFilter.MinFilter(obj["mask_close"]))
+
+            if "mask_grow" in obj:
+                mask = mask.filter(ImageFilter.MaxFilter(obj["mask_grow"]))
+
+            if "mask_shrink" in obj:
+                mask = mask.filter(ImageFilter.MinFilter(obj["mask_shrink"]))
+
+            if "mask_blur" in obj:
+                mask = mask.filter(ImageFilter.GaussianBlur(obj["mask_blur"]))
 
             if obj["mask_invert"]:
                 mask = ImageChops.invert(mask)
