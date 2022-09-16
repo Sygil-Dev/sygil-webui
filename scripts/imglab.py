@@ -149,7 +149,7 @@ def layout():
 
 	col1, col2 = st.columns(2)
 	with col1:
-		st.session_state['uploaded_file'] = st.file_uploader("Choose an image or images", type=["png", "jpg", "jpeg"],accept_multiple_files=True,on_change=changeImage)
+		st.session_state['uploaded_file'] = st.file_uploader("Choose an image or images", type=["png", "jpg", "jpeg", "webp"],accept_multiple_files=True,on_change=changeImage)
 		if 'previewImg' not in st.session_state:
 			st.session_state['previewImg'] = st.empty()
 		else:
