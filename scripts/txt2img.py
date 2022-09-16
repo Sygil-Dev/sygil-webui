@@ -157,8 +157,8 @@ def layout():
         col1, col2, col3 = st.columns([1,2,1], gap="large")    
 
         with col1:
-            width = st.slider("Width:", min_value=64, max_value=1024, value=st.session_state['defaults'].txt2img.width, step=64)
-            height = st.slider("Height:", min_value=64, max_value=1024, value=st.session_state['defaults'].txt2img.height, step=64)
+            width = st.slider("Width:", min_value=64, max_value=4096, value=st.session_state['defaults'].txt2img.width, step=64)
+            height = st.slider("Height:", min_value=64, max_value=4096, value=st.session_state['defaults'].txt2img.height, step=64)
             cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
             batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
@@ -218,7 +218,7 @@ def layout():
                             the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
                             will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
 
-            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=1, max_value=250)
+            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=10, max_value=500, step=10)
 
             sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
@@ -307,7 +307,7 @@ def layout():
                         st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
                 
                 
-                    st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
                 
             except (StopException, KeyError):
                 print(f"Received Streamlit StopException")
