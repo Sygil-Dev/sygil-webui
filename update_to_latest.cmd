@@ -36,25 +36,26 @@ IF "%v_conda_path%"=="" (
 echo Stashing local changes and pulling latest update...
 call git stash
 call git pull
-echo If you want to restore changes you made before updating, run "git stash pop".
-call "%v_conda_path%\Scripts\activate.bat"
+set /P restore="Do you want to restore changes you made before updating? (Y/N): "
+IF /I "%restore%" == "N" (
+  echo Removing changes please wait...
+  call git stash drop
+  echo Changes removed, press any key to continue...
+  pause >nul
+) ELSE IF /I "%restore%" == "Y" (
+  echo Restoring changes, please wait...
+  call git stash pop --quiet
+  echo Changes restored, press any key to continue...
+  pause >nul
+)
 
 for /f "delims=" %%a in ('git log -1 --format^="%%H" -- environment.yaml')  DO set v_cur_hash=%%a
-set /p "v_last_hash="<"z_version_env.tmp"
 echo %v_cur_hash%>z_version_env.tmp
 
-echo Current  environment.yaml hash: %v_cur_hash%
-echo Previous environment.yaml hash: %v_last_hash%
+call conda env create --name "%v_conda_env_name%" -f environment.yaml
+call conda env update --name "%v_conda_env_name%" -f environment.yaml
+if not defined AUTO pause
 
-if "%v_last_hash%" == "%v_cur_hash%" (
-  echo environment.yaml unchanged. dependencies should be up to date.
-  echo if you still have unresolved dependencies, delete "z_version_env.tmp"
-  if not defined AUTO pause
-) else (
-  echo environment.yaml changed. updating dependencies
-  call conda env create --name "%v_conda_env_name%" -f environment.yaml
-  call conda env update --name "%v_conda_env_name%" -f environment.yaml
-  if not defined AUTO pause
-)
+call "%v_conda_path%\Scripts\activate.bat"
 
 ::cmd /k
