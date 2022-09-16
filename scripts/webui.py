@@ -1965,6 +1965,7 @@ def scn2img_define_args():
         },
         "image": {
             "size"     : "int_tuple",
+            "crop"     : "int_tuple",
             "position" : "float_tuple",
             "resize"   : "int_tuple",
             "rotation" : "degrees",
