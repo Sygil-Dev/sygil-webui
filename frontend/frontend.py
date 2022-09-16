@@ -424,19 +424,19 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         with gr.Row():
                             imgproc_btn = gr.Button("Process", variant="primary")
                         gr.HTML("""
-                            <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-                                <p><b>Upscale Modes Guide</b></p>
-                                <p></p>
-                                <p><b>RealESRGAN</b></p>
-                                <p>A 4X/2X fast upscaler that works well for stylized content, will smooth more detailed compositions.</p>
-                                <p><b>GoBIG</b></p>
-                                <p>A 2X upscaler that uses RealESRGAN to upscale the image and then slice it into small parts, each part gets diffused further by SD to create more details, great for adding and increasing details but will change the composition, might also fix issues like eyes etc, use the settings like img2img etc</p>
-                                <p><b>Latent Diffusion Super Resolution</b></p>
-                                <p>A 4X upscaler with high VRAM usage that uses a Latent Diffusion model to upscale the image, this will accentuate the details but won't change the composition, might introduce sharpening, great for textures or compositions with plenty of details, is slower.</p>
-                                <p><b>GoLatent</b></p>
-                                <p>A 8X upscaler with high VRAM usage, uses GoBig to add details and then uses a Latent Diffusion model to upscale the image, this will result in less artifacting/sharpeninng, use the settings to feed GoBig settings that will contribute to the result, this mode is considerbly slower</p>
-                            </div>
-                        """)
+        <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+            <p><b>Upscale Modes Guide</b></p>
+            <p></p>
+            <p><b>RealESRGAN</b></p>
+            <p>A 4X/2X fast upscaler that works well for stylized content, will smooth more detailed compositions.</p>
+            <p><b>GoBIG</b></p>
+            <p>A 2X upscaler that uses RealESRGAN to upscale the image and then slice it into small parts, each part gets diffused further by SD to create more details, great for adding and increasing details but will change the composition, might also fix issues like eyes etc, use the settings like img2img etc</p>
+            <p><b>Latent Diffusion Super Resolution</b></p>
+            <p>A 4X upscaler with high VRAM usage that uses a Latent Diffusion model to upscale the image, this will accentuate the details but won't change the composition, might introduce sharpening, great for textures or compositions with plenty of details, is slower.</p>
+            <p><b>GoLatent</b></p>
+            <p>A 8X upscaler with high VRAM usage, uses GoBig to add details and then uses a Latent Diffusion model to upscale the image, this will result in less artifacting/sharpeninng, use the settings to feed GoBig settings that will contribute to the result, this mode is considerbly slower</p>
+        </div>
+        """)
                     with gr.Column():
                         with gr.Tabs():
                             with gr.TabItem('Output'):
@@ -459,10 +459,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                 gfpgan_defaults.update(user_defaults['gfpgan'])
                             if GFPGAN is None:
                                 gr.HTML("""
-                                    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-                                        <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
-                                    </div>
-                                """)
+    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+        <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+    </div>
+    """)
                                 # gr.Markdown("")
                                 # gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
                             with gr.Column():
@@ -477,10 +477,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                 upscaleModes = ['RealESRGAN', 'GoBig', 'Latent Diffusion SR', 'GoLatent ']
                             else:
                                 gr.HTML("""
-                                    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-                                        <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
-                                    </div>
-                                """)
+    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+        <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+    </div>
+    """)
                                 upscaleModes = ['RealESRGAN', 'GoBig']
                             with gr.Column():
                                 gr.Markdown("<b>Upscaler Selection</b>")
@@ -587,20 +587,20 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                         with gr.Column():
                                             # seperator
                                             gr.HTML("""
-                                                <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-                                                    <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
-                                                </div>
-                                            """)
-                imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
-                imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscale_group])
-                imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles],
-                                       outputs=[upscalerSettings_group])
-                imgproc_upscale_toggles.change(fn=uifn.toggle_options_realesrgan, inputs=[imgproc_upscale_toggles],
-                                               outputs=[realesrgan_group])
-                imgproc_upscale_toggles.change(fn=uifn.toggle_options_ldsr, inputs=[imgproc_upscale_toggles],
-                                               outputs=[ldsr_group])
-                imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles],
-                                               outputs=[gobig_group])
+            <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+                <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+            </div>
+        """)
+            imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
+            imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscale_group])
+            imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles],
+                                   outputs=[upscalerSettings_group])
+            imgproc_upscale_toggles.change(fn=uifn.toggle_options_realesrgan, inputs=[imgproc_upscale_toggles],
+                                           outputs=[realesrgan_group])
+            imgproc_upscale_toggles.change(fn=uifn.toggle_options_ldsr, inputs=[imgproc_upscale_toggles],
+                                           outputs=[ldsr_group])
+            imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles],
+                                           outputs=[gobig_group])
 
             with gr.TabItem("Scene-to-Image", id='scn2img_tab'):
                 example_path = os.path.join("data","scn2img_examples")
@@ -765,65 +765,61 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                 )
 
 
-        #     """
-        #     if GFPGAN is not None:
-        #         gfpgan_defaults = {
-        #             'strength': 100,
-        #         }
+            """
+            if GFPGAN is not None:
+                gfpgan_defaults = {
+                    'strength': 100,
+                }
 
-        #         if 'gfpgan' in user_defaults:
-        #             gfpgan_defaults.update(user_defaults['gfpgan'])
+                if 'gfpgan' in user_defaults:
+                    gfpgan_defaults.update(user_defaults['gfpgan'])
 
-        #         with gr.TabItem("GFPGAN", id='cfpgan_tab'):
-        #             gr.Markdown("Fix faces on images")
-        #             with gr.Row():
-        #                 with gr.Column():
-        #                     gfpgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
-        #                     gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
-        #                                                 value=gfpgan_defaults['strength'])
-        #                     gfpgan_btn = gr.Button("Generate", variant="primary")
-        #                 with gr.Column():
-        #                     gfpgan_output = gr.Image(label="Output", elem_id='gan_image')
-        #             gfpgan_btn.click(
-        #                 run_GFPGAN,
-        #                 [gfpgan_source, gfpgan_strength],
-        #                 [gfpgan_output]
-        #             )
-        #     if RealESRGAN is not None:
-        #         with gr.TabItem("RealESRGAN", id='realesrgan_tab'):
-        #             gr.Markdown("Upscale images")
-        #             with gr.Row():
-        #                 with gr.Column():
-        #                     realesrgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
-        #                     realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus',
-        #                                                                                            'RealESRGAN_x4plus_anime_6B'],
-        #                                                         value='RealESRGAN_x4plus')
-        #                     realesrgan_btn = gr.Button("Generate")
-        #                 with gr.Column():
-        #                     realesrgan_output = gr.Image(label="Output", elem_id='gan_image')
-        #             realesrgan_btn.click(
-        #                 run_RealESRGAN,
-        #                 [realesrgan_source, realesrgan_model_name],
-        #                 [realesrgan_output]
-        #             )
-        #         output_txt2img_to_upscale_esrgan.click(
-        #             uifn.copy_img_to_upscale_esrgan,
-        #             output_txt2img_gallery,
-        #             [realesrgan_source, tabs],
-        #             _js=js_move_image('txt2img_gallery_output', 'img2img_editor'))
-        # """
+                with gr.TabItem("GFPGAN", id='cfpgan_tab'):
+                    gr.Markdown("Fix faces on images")
+                    with gr.Row():
+                        with gr.Column():
+                            gfpgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
+                            gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
+                                                        value=gfpgan_defaults['strength'])
+                            gfpgan_btn = gr.Button("Generate", variant="primary")
+                        with gr.Column():
+                            gfpgan_output = gr.Image(label="Output", elem_id='gan_image')
+                    gfpgan_btn.click(
+                        run_GFPGAN,
+                        [gfpgan_source, gfpgan_strength],
+                        [gfpgan_output]
+                    )
+            if RealESRGAN is not None:
+                with gr.TabItem("RealESRGAN", id='realesrgan_tab'):
+                    gr.Markdown("Upscale images")
+                    with gr.Row():
+                        with gr.Column():
+                            realesrgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
+                            realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus',
+                                                                                                   'RealESRGAN_x4plus_anime_6B'],
+                                                                value='RealESRGAN_x4plus')
+                            realesrgan_btn = gr.Button("Generate")
+                        with gr.Column():
+                            realesrgan_output = gr.Image(label="Output", elem_id='gan_image')
+                    realesrgan_btn.click(
+                        run_RealESRGAN,
+                        [realesrgan_source, realesrgan_model_name],
+                        [realesrgan_output]
+                    )
+                output_txt2img_to_upscale_esrgan.click(
+                    uifn.copy_img_to_upscale_esrgan,
+                    output_txt2img_gallery,
+                    [realesrgan_source, tabs],
+                    _js=js_move_image('txt2img_gallery_output', 'img2img_editor'))
+        """
         gr.HTML("""
-            <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-                <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
-                <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
-                If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
-                <p>Device ID {current_device_index}: {current_device_name}<br/>{total_device_count} total devices</p>
-            </div>
-        """.format(
-            current_device_name=torch.cuda.get_device_name(), 
-            current_device_index=torch.cuda.current_device(), 
-            total_device_count=torch.cuda.device_count())
-        )
+    <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+        <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
+        <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
+        If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
+        <p>Device ID {current_device_index}: {current_device_name}<br/>{total_device_count} total devices</p>
+    </div>
+    """.format(current_device_name=torch.cuda.get_device_name(), current_device_index=torch.cuda.current_device(), total_device_count=torch.cuda.device_count()))
         # Hack: Detect the load event on the frontend
         # Won't be needed in the next version of gradio
         # See the relevant PR: https://github.com/gradio-app/gradio/pull/2108
