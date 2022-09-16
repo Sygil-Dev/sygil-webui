@@ -146,6 +146,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                 txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
                 txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
+                txt2img_dimensions_info_text_box.value = uifn.update_dimensions_info(txt2img_width.value, txt2img_height.value)
 
                 # Temporarily disable prompt parsing until memory issues could be solved
                 # See #676
@@ -401,6 +402,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                      outputs=img2img_dimensions_info_text_box)
                 img2img_height.change(fn=uifn.update_dimensions_info, inputs=[img2img_width, img2img_height],
                                       outputs=img2img_dimensions_info_text_box)
+                img2img_dimensions_info_text_box.value = uifn.update_dimensions_info(img2img_width.value, img2img_height.value)
 
             with gr.TabItem("Image Lab", id='imgproc_tab'):
                 gr.Markdown("Post-process results")
