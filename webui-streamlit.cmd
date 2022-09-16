@@ -52,6 +52,22 @@ if not exist "z_version_env.tmp" (
 
 call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 
+set v_last_hash=0
+set /p "v_last_hash="<"z_version_env.tmp"
+for /f "delims=" %%a in ('git log -1 --format^="%%H" -- environment.yaml')  DO set v_cur_hash=%%a
+
+if not "%v_last_hash%" == "%v_cur_hash%" (
+  set /P updateenv="Do you want to update with the latest environment.yaml? (Y/N): "
+  if /I "%updateenv%" == "N" (
+    echo Starting without updating dependencies.
+  ) else if /I "%updateenv%" == "Y" (
+    echo Updating dependencies...
+    call conda env create --name "%v_conda_env_name%" -f environment.yaml
+    call conda env update --name "%v_conda_env_name%" -f environment.yaml
+    echo %v_cur_hash%>z_version_env.tmp
+  )
+)
+
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
