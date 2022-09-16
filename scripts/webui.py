@@ -1992,7 +1992,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
 
             return init_latent,
 
-        def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
+        def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, img_callback: Callable = None):
             if sampler_name != 'DDIM':
                 x0, = init_data
 
@@ -2002,7 +2002,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                 xi = x0 + noise
                 sigma_sched = sigmas[ddim_steps - t_enc - 1:]
                 model_wrap_cfg = CFGDenoiser(sampler.model_wrap)
-                samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False)
+                samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False, callback=partial(KDiffusionSampler.img_callback_wrapper, img_callback))
             else:
                 x0, = init_data
                 sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
