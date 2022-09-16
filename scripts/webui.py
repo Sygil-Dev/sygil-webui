@@ -2541,9 +2541,10 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 mask_depth_min = obj["mask_depth_min"] or 0.2
                 mask_depth_max = obj["mask_depth_max"] or 0.8
                 mask_depth_invert = bool(obj["mask_depth_invert"]) or False
-                mask = run_Monocular_Depth_Filter([img], mask_depth_min, mask_depth_max, mask_depth_invert)
-                mask = mask[0]
-                mask = mask.resize(img.size)
+                res = run_Monocular_Depth_Filter([img], mask_depth_min, mask_depth_max, mask_depth_invert)
+                if res is not None:
+                    mask = res[0]
+                    mask = mask.resize(img.size)
 
             if "mask_open" in obj:
                 mask = mask.filter(ImageFilter.MinFilter(obj["mask_open"]))
@@ -3345,7 +3346,11 @@ def run_RealESRGAN(image, model_name: str):
 def run_monocular_depth_estimation(images, minDepth=10, maxDepth=1000, batch_size=2):
     # https://huggingface.co/keras-io/monocular-depth-estimation
     # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
-
+    global monocular_depth_estimation
+    if images is None:
+        return None
+    if monocular_depth_estimation is None:
+        return None
     if type(images) == Image:
         images = [images]
     loaded_images = []
@@ -3385,6 +3390,8 @@ def run_monocular_depth_estimation(images, minDepth=10, maxDepth=1000, batch_siz
 def run_Monocular_Depth_Filter(images, filter_min_depth=0.2, filter_max_depth=0.8, invert=False, **kwargs):
     # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
     depths = run_monocular_depth_estimation(images, **kwargs)
+    if depths is None: 
+        return None
     n,h,w,c = depths.shape
     # print("run_Monocular_Depth_Filter n,h,w,c", n,h,w,c)
     outputs = []
