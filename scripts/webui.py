@@ -873,7 +873,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
 def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_strength, mask_restore, use_RealESRGAN, RealESRGAN):
-    if not mask_restore: 
+    if not mask_restore:
         return image
     else:
         init_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
@@ -1254,16 +1254,16 @@ def process_images(
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_image = perform_color_correction(gfpgan_image, correction_target, do_color_correction)
                     gfpgan_image = perform_masked_image_restoration(
-                        gfpgan_image, init_img, init_mask, 
+                        gfpgan_image, init_img, init_mask,
                         mask_blur_strength, mask_restore,
                         use_RealESRGAN = False, RealESRGAN = None
-                    )                    
+                    )
                     gfpgan_metadata = copy.copy(metadata)
                     gfpgan_metadata.GFPGAN = True
                     ImageMetadata.set_on_image( gfpgan_image, gfpgan_metadata )
                     gfpgan_filename = original_filename + '-gfpgan'
                     save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-                                skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
                     output_images.append(gfpgan_image) #287
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan" )
@@ -1277,13 +1277,13 @@ def process_images(
                     esrgan_image = Image.fromarray(esrgan_sample)
                     esrgan_image = perform_color_correction(esrgan_image, correction_target, do_color_correction)
                     esrgan_image = perform_masked_image_restoration(
-                        esrgan_image, init_img, init_mask, 
+                        esrgan_image, init_img, init_mask,
                         mask_blur_strength, mask_restore,
                         use_RealESRGAN, RealESRGAN
                     )
                     ImageMetadata.set_on_image( esrgan_image, metadata )
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-                                skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
                     output_images.append(esrgan_image) #287
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\nesrgan" )
@@ -1299,13 +1299,13 @@ def process_images(
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
                     gfpgan_esrgan_image = perform_color_correction(gfpgan_esrgan_image, correction_target, do_color_correction)
                     gfpgan_esrgan_image = perform_masked_image_restoration(
-                        gfpgan_esrgan_image, init_img, init_mask, 
+                        gfpgan_esrgan_image, init_img, init_mask,
                         mask_blur_strength, mask_restore,
                         use_RealESRGAN, RealESRGAN
                     )
                     ImageMetadata.set_on_image(gfpgan_esrgan_image, metadata)
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
                     output_images.append(gfpgan_esrgan_image) #287
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
@@ -1315,7 +1315,7 @@ def process_images(
                     output_images.append(image)
 
                 image = perform_masked_image_restoration(
-                    image, init_img, init_mask, 
+                    image, init_img, init_mask,
                     mask_blur_strength, mask_restore,
                     # RealESRGAN image already processed in if-case above.
                     use_RealESRGAN = False, RealESRGAN = None
@@ -1323,7 +1323,7 @@ def process_images(
 
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-                                skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
                 if add_original_image or not simple_templating:
                     output_images.append(image)
                     if simple_templating:
