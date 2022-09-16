@@ -291,7 +291,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 					correction_target,
 					channel_axis=2
 				    ), cv2.COLOR_LAB2RGB).astype("uint8"))
-				if mask_restore is True:
+				if mask_restore is True and init_mask is not None:
 					color_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
 					color_mask = color_mask.convert('L')
 					source_image = input_image.convert('RGB')
