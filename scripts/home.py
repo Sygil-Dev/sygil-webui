@@ -36,27 +36,19 @@ def getLatestGeneratedImagesFromPath():
 	generatedImagesPath = os.path.join(os.getcwd(),'outputs')
 	#get all the files from the folders and subfolders
 	files = []
-	#get the laest 10 images from the output folder without walking the subfolders
+	#get the latest 10 images from the output folder without walking the subfolders
 	for r, d, f in os.walk(generatedImagesPath):
 		for file in f:
 			if '.png' in file:
 				files.append(os.path.join(r, file))
 	#sort the files by date
-	files.sort(key=os.path.getmtime)
-	
-	#reverse the list so the latest images are first
-	for f in files:
-		img = Image.open(f)
-		files[files.index(f)] = img
-		
-	#get the latest 10 files
-	#get all the files with the .png or .jpg extension
-	#sort files by date
-	#get the latest 10 files
-	latestFiles = files
-	#reverse the list
-	latestFiles.reverse()
-	return latestFiles
+	files.sort(reverse=True, key=os.path.getmtime)
+	latest = files[:90]
+	latest.reverse()
+
+	# reverse the list so the latest images are first and truncate to
+	# a reasonable number of images, 10 pages worth
+	return [Image.open(f) for f in latest]
 
 def get_images_from_lexica():
 	#scrape images from lexica.art
@@ -146,69 +138,68 @@ def layout():
 			##print ([current_image-1])
 			#current_image = current_image-1
 			#slideshow_image.image(st.session_state['latestImages'][current_image - 1])
-		
-		
-		#---------------------------------------------------------			
-		
-		placeholder = st.empty()
-		
-		
+
+
+		#---------------------------------------------------------
+
 		# image gallery
 		# Number of entries per screen
 		gallery_N = 9
-		gallery_page_number = 0	
-		#gallery_last_page = len(latestImages) // gallery_N	
-			
+		if not "galleryPage" in st.session_state:
+			st.session_state["galleryPage"] = 0
+		gallery_last_page = len(latestImages) // gallery_N
+
 		# Add a next button and a previous button
-		
-		#gallery_prev, gallery_pagination , gallery_next = st.columns([1, 10, 1])	
-		
+
+		gallery_prev, gallery_refresh, gallery_pagination , gallery_next = st.columns([2, 2, 8, 1])
+
 		# the pagination doesnt work for now so its better to disable the buttons.
-		
-		#if gallery_next.button("Next", key=3):
-		
-			#if gallery_page_number + 1 > gallery_last_page:
-				#gallery_page_number = 0
-			#else:
-				#gallery_page_number += 1
-		
-		#if gallery_prev.button("Previous", key=2):
-		
-			#if gallery_page_number - 1 < 0:
-				#gallery_page_number = gallery_last_page
-			#else:
-				#gallery_page_number -= 1
-		
+
+		if gallery_refresh.button("Refresh", key=4):
+			st.session_state["galleryPage"] = 0
+
+		if gallery_next.button("Next", key=3):
+
+			if st.session_state["galleryPage"] + 1 > gallery_last_page:
+				st.session_state["galleryPage"] = 0
+			else:
+				st.session_state["galleryPage"] += 1
+
+		if gallery_prev.button("Previous", key=2):
+
+			if st.session_state["galleryPage"] - 1 < 0:
+				st.session_state["galleryPage"] = gallery_last_page
+			else:
+				st.session_state["galleryPage"] -= 1
+
+		print(st.session_state["galleryPage"])
 		# Get start and end indices of the next page of the dataframe
-		gallery_start_idx = gallery_page_number * gallery_N 
-		gallery_end_idx = (1 + gallery_page_number) * gallery_N	
-		
-		#---------------------------------------------------------		
-		
+		gallery_start_idx = st.session_state["galleryPage"] * gallery_N
+		gallery_end_idx = (1 + st.session_state["galleryPage"]) * gallery_N
+
+		#---------------------------------------------------------
+
+		placeholder = st.empty()
+
 		#populate the 3 images per column
 		with placeholder.container():
 			col1, col2, col3 = st.columns(3)
 			col1_cont = st.container()
 			col2_cont = st.container()
 			col3_cont = st.container()
-			
-			#print (len(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx]))
-			
+
+			print (len(st.session_state['latestImages']))
+			images = list(reversed(st.session_state['latestImages']))[gallery_start_idx:(gallery_start_idx+gallery_N)]
+
 			with col1_cont:
 				with col1:
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][0])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][3])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][6])
+					[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
 			with col2_cont:
 				with col2:
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][1])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][4])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][7])
+					[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
 			with col3_cont:
 				with col3:
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][2])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][5])
-					st.image(st.session_state['latestImages'][gallery_start_idx:gallery_end_idx][8])
+					[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
 							
 					
 		st.session_state['historyTab'] = [history_tab,col1,col2,col3,placeholder,col1_cont,col2_cont,col3_cont]		
@@ -223,4 +214,3 @@ def layout():
 	#if st.button("Try it out"):
 		#if the button is clicked, go to the gallery
 		#st.experimental_rerun()
-	
