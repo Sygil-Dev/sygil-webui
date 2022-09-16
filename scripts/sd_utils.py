@@ -787,6 +787,8 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 #
 @retry(tries=5)
 def generation_callback(img, i=0):
+    if "update_preview_frequency" not in st.session_state:
+        return
 
     try:
         if i == 0:	
