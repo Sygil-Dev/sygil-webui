@@ -1889,6 +1889,113 @@ scn2img_cache = {
     "cache": {}
 }
 
+def try_many(fs, *args, **kwargs):
+    for f in fs:
+        try:
+            return f(*args, **kwargs)
+        except:
+            pass
+    raise Exception("")
+
+def scn2img_define_args():
+    parse_arg = {}
+    parse_arg["str"]         = lambda x: str(x)
+    parse_arg["int"]         = int
+    parse_arg["float"]       = float
+    parse_arg["bool"]        = lambda s: (s.strip()==str(bool(s)))
+    parse_arg["tuple"]       = lambda s: tuple(s.split(",")),
+    parse_arg["int_tuple"]   = lambda s: tuple(map(int,s.split(",")))
+    parse_arg["float_tuple"] = lambda s: tuple(map(float,s.split(",")))
+    parse_arg["degrees"]     = lambda s: float(s) * math.pi / 180
+    parse_arg["color"]       = lambda s: try_many([parse_arg["int_tuple"], parse_arg["str"]], s)
+    parse_arg["anything"] = lambda s:try_many([
+        parse_arg["int_tuple"],
+        parse_arg["float_tuple"],
+        parse_arg["int"],
+        parse_arg["float"],
+        parse_arg["tuple"],
+        parse_arg["color"],
+        parse_arg["str"],
+    ],s)
+    function_args = {
+        "img2img": {
+            "prompt"               : "str",
+            "image_editor_mode"    : "str",
+            "mask_mode"            : "int",
+            "mask_blur_strength"   : "float",
+            "mask_restore"         : "bool",
+            "ddim_steps"           : "int",
+            "sampler_name"         : "str",
+            "toggles"              : "int_tuple",
+            "realesrgan_model_name": "str",
+            "n_iter"               : "int",
+            "cfg_scale"            : "float",
+            "denoising_strength"   : "float",
+            "seed"                 : "int",
+            "height"               : "int",
+            "width"                : "int",
+            "resize_mode"          : "int",
+            "denoising_strength"   : "float",                
+        },
+        "txt2img": {
+            "prompt"                : "str",
+            "ddim_steps"            : "int",
+            "sampler_name"          : "str",
+            "toggles"               : "int_tuple",
+            "realesrgan_model_name" : "str",
+            "ddim_eta"              : "float",
+            "n_iter"                : "int",
+            "batch_size"            : "int",
+            "cfg_scale"             : "float",
+            "seed"                  : "int",
+            "height"                : "int",
+            "width"                 : "int",
+            "variant_amount"        : "float",
+            "variant_seed"          : "int",
+        },
+        "render_img2img": {
+            "select" : "int",
+            "variation": "int",
+        },
+        "render_txt2img": {
+            "select" : "int",
+            "variation": "int",
+        },
+        "image": {
+            "size"     : "int_tuple",
+            "position" : "float_tuple",
+            "resize"   : "int_tuple",
+            "rotation" : "degrees",
+            "color"    : "color",
+        },
+        "render_mask": {
+            "mask_value"              : "int",
+            "mask_by_color"           : "color",
+            "mask_by_color_space"     : "str",
+            "mask_by_color_threshold" : "int",
+            "mask_by_color_at"        : "int_tuple",
+            "mask_depth"              : "bool",
+            "mask_depth_min"          : "float",
+            "mask_depth_max"          : "float",
+            "mask_depth_invert"       : "bool",
+            "mask_open"               : "int",
+            "mask_close"              : "int",
+            "mask_blur"               : "float",
+            "mask_grow"               : "int",
+            "mask_shrink"             : "int",
+            "mask_invert"             : "bool",
+        },
+        "object": {
+            "initial_seed": "int",
+        }
+    }
+    function_args_ext = {
+        "image": ["image", "render_mask", "object"],
+        "img2img": ["render_img2img", "img2img", "image", "render_mask", "object"],
+        "txt2img": ["render_txt2img", "txt2img", "image", "render_mask", "object"],
+    }
+    return parse_arg, function_args, function_args_ext
+
 def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = None, job_info: JobInfo = None):
 
     outpath = opt.outdir_img2img or opt.outdir or "outputs/scn2img-samples"
@@ -2032,114 +2139,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             ))
 
 
-    def try_many(fs, *args, **kwargs):
-        for f in fs:
-            try:
-                return f(*args, **kwargs)
-            except:
-                pass
-        raise Exception("")
 
-    def define_args():
-        parse_arg = {}
-        parse_arg["str"]         = lambda x: str(x)
-        parse_arg["int"]         = int
-        parse_arg["float"]       = float
-        parse_arg["bool"]        = lambda s: (s.strip()==str(bool(s)))
-        parse_arg["tuple"]       = lambda s: tuple(s.split(",")),
-        parse_arg["int_tuple"]   = lambda s: tuple(map(int,s.split(",")))
-        parse_arg["float_tuple"] = lambda s: tuple(map(float,s.split(",")))
-        parse_arg["degrees"]     = lambda s: float(s) * math.pi / 180
-        parse_arg["color"]       = lambda s: try_many([parse_arg["int_tuple"], parse_arg["str"]], s)
-        parse_arg["anything"] = lambda s:try_many([
-            parse_arg["int_tuple"],
-            parse_arg["float_tuple"],
-            parse_arg["int"],
-            parse_arg["float"],
-            parse_arg["tuple"],
-            parse_arg["color"],
-            parse_arg["str"],
-        ],s)
-        function_args = {
-            "img2img": {
-                "prompt"               : "str",
-                "image_editor_mode"    : "str",
-                "mask_mode"            : "int",
-                "mask_blur_strength"   : "float",
-                "mask_restore"         : "bool",
-                "ddim_steps"           : "int",
-                "sampler_name"         : "str",
-                "toggles"              : "int_tuple",
-                "realesrgan_model_name": "str",
-                "n_iter"               : "int",
-                "cfg_scale"            : "float",
-                "denoising_strength"   : "float",
-                "seed"                 : "int",
-                "height"               : "int",
-                "width"                : "int",
-                "resize_mode"          : "int",
-                "denoising_strength"   : "float",                
-            },
-            "txt2img": {
-                "prompt"                : "str",
-                "ddim_steps"            : "int",
-                "sampler_name"          : "str",
-                "toggles"               : "int_tuple",
-                "realesrgan_model_name" : "str",
-                "ddim_eta"              : "float",
-                "n_iter"                : "int",
-                "batch_size"            : "int",
-                "cfg_scale"             : "float",
-                "seed"                  : "int",
-                "height"                : "int",
-                "width"                 : "int",
-                "variant_amount"        : "float",
-                "variant_seed"          : "int",
-            },
-            "render_img2img": {
-                "select" : "int",
-                "variation": "int",
-            },
-            "render_txt2img": {
-                "select" : "int",
-                "variation": "int",
-            },
-            "image": {
-                "size"     : "int_tuple",
-                "position" : "float_tuple",
-                "resize"   : "int_tuple",
-                "rotation" : "degrees",
-                "color"    : "color",
-            },
-            "render_mask": {
-	            "mask_value"              : "int",
-	            "mask_by_color"           : "color",
-	            "mask_by_color_space"     : "str",
-	            "mask_by_color_threshold" : "int",
-	            "mask_by_color_at"        : "int_tuple",
-	            "mask_depth"              : "bool",
-	            "mask_depth_min"          : "float",
-	            "mask_depth_max"          : "float",
-	            "mask_depth_invert"       : "bool",
-	            "mask_open"               : "int",
-	            "mask_close"              : "int",
-	            "mask_blur"               : "float",
-	            "mask_grow"               : "int",
-	            "mask_shrink"             : "int",
-	            "mask_invert"             : "bool",
-            },
-            "object": {
-                "initial_seed": "int",
-            }
-        }
-        function_args_ext = {
-            "image": ["image", "render_mask", "object"],
-            "img2img": ["render_img2img", "img2img", "image", "render_mask", "object"],
-            "txt2img": ["render_txt2img", "txt2img", "image", "render_mask", "object"],
-        }
-        return parse_arg, function_args, function_args_ext
-
-    parse_arg, function_args, function_args_ext = define_args()
+    parse_arg, function_args, function_args_ext = scn2img_define_args()
     # log_debug("function_args", function_args)
 
     def parse_scene(prompt, log):
@@ -3587,6 +3588,7 @@ demo = draw_gradio_ui(opt,
                       scn2img_defaults=scn2img_defaults,
                       scn2img_toggles=scn2img_toggles,
                       scn2img_toggle_defaults=scn2img_toggle_defaults,
+                      scn2img_define_args=scn2img_define_args,
                       RealESRGAN=RealESRGAN,
                       GFPGAN=GFPGAN,
                       LDSR=LDSR,
