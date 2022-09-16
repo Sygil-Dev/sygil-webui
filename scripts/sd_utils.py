@@ -1265,6 +1265,12 @@ def process_images(
     if not ("|" in prompt) and prompt.startswith("@"):
         prompt = prompt[1:]
 
+    negprompt = ''
+    if '###' in prompt:
+        prompt, negprompt = prompt.split('###', 1)
+        prompt = prompt.strip()
+        negprompt = negprompt.strip()
+
     comments = []
 
     prompt_matrix_parts = []
@@ -1338,7 +1344,7 @@ def process_images(
             if st.session_state['defaults'].general.optimized:
                 st.session_state.modelCS.to(st.session_state['defaults'].general.gpu)
 
-            uc = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(len(prompts) * [""])
+            uc = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(len(prompts) * [negprompt])
 
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
