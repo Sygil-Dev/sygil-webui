@@ -74,6 +74,7 @@ import copy
 from typing import List, Union, Dict, Callable, Any, Optional
 from pathlib import Path
 from collections import namedtuple
+from functools import partial
 
 # tell the user which GPU the code is actually using
 if os.getenv("SD_WEBUI_DEBUG", 'False').lower() in ('true', '1', 'y'):
@@ -309,15 +310,21 @@ class KDiffusionSampler:
         self.schedule = sampler
     def get_sampler_name(self):
         return self.schedule
-    def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T):
+    def sample(self, S, conditioning, batch_size, shape, verbose, unconditional_guidance_scale, unconditional_conditioning, eta, x_T, img_callback: Callable = None ):
         sigmas = self.model_wrap.get_sigmas(S)
         x = x_T * sigmas[0]
         model_wrap_cfg = CFGDenoiser(self.model_wrap)
 
-        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False)
+        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](model_wrap_cfg, x, sigmas, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': unconditional_guidance_scale}, disable=False, callback=partial(KDiffusionSampler.img_callback_wrapper, img_callback))
 
         return samples_ddim, None
 
+    @classmethod
+    def img_callback_wrapper(cls, callback: Callable, *args):
+        ''' Converts a KDiffusion callback to the standard img_callback '''
+        if callback:
+            arg_dict = args[0]
+            callback(image_sample=arg_dict['denoised'], iter_num=arg_dict['i'])
 
 def create_random_tensors(shape, seeds):
     xs = []
@@ -971,6 +978,12 @@ def process_images(
     if not ("|" in prompt) and prompt.startswith("@"):
         prompt = prompt[1:]
 
+    negprompt = ''
+    if '###' in prompt:
+        prompt, negprompt = prompt.split('###', 1)
+        prompt = prompt.strip()
+        negprompt = negprompt.strip()
+
     comments = []
 
     prompt_matrix_parts = []
@@ -1049,12 +1062,14 @@ def process_images(
 
             if job_info:
                 job_info.job_status = f"Processing Iteration {n+1}/{n_iter}. Batch size {batch_size}"
+                job_info.rec_steps_imgs.clear()
                 for idx,(p,s) in enumerate(zip(prompts,seeds)):
                     job_info.job_status += f"\nItem {idx}: Seed {s}\nPrompt: {p}"
+                    print(f"Current prompt: {p}")
 
             if opt.optimized:
                 modelCS.to(device)
-            uc = (model if not opt.optimized else modelCS).get_learned_conditioning(len(prompts) * [""])
+            uc = (model if not opt.optimized else modelCS).get_learned_conditioning(len(prompts) * [negprompt])
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
 
@@ -1102,7 +1117,78 @@ def process_images(
                 # finally, slerp base_x noise to target_x noise for creating a variant
                 x = slerp(device, max(0.0, min(1.0, cur_variant_amount)), base_x, target_x)
 
-            samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
+            # If optimized then use first stage for preview and store it on cpu until needed
+            if opt.optimized:
+                step_preview_model = modelFS
+                step_preview_model.cpu()
+            else:
+                step_preview_model = model
+
+            def sample_iteration_callback(image_sample: torch.Tensor, iter_num: int):
+                ''' Called from the sampler every iteration '''
+                if job_info:
+                    job_info.active_iteration_cnt = iter_num
+                    record_periodic_image = job_info.rec_steps_enabled and (0 == iter_num % job_info.rec_steps_intrvl)
+                    if record_periodic_image or job_info.refresh_active_image_requested.is_set():
+                        preview_start_time = time.time()
+                        if opt.optimized:
+                            step_preview_model.to(device)
+
+                        decoded_batch: List[torch.Tensor] = []
+                        # Break up batch to save VRAM
+                        for sample in image_sample:
+                            sample = sample[None, :]  # expands the tensor as if it still had a batch dimension
+                            decoded_sample = step_preview_model.decode_first_stage(sample)[0]
+                            decoded_sample = torch.clamp((decoded_sample + 1.0) / 2.0, min=0.0, max=1.0)
+                            decoded_sample = decoded_sample.cpu()
+                            decoded_batch.append(decoded_sample)
+
+                        batch_size = len(decoded_batch)
+
+                        if opt.optimized:
+                            step_preview_model.cpu()
+
+                        images: List[Image.Image] = []
+                        # Convert tensor to image (copied from code below)
+                        for ddim in decoded_batch:
+                            x_sample = 255. * rearrange(ddim.numpy(), 'c h w -> h w c')
+                            x_sample = x_sample.astype(np.uint8)
+                            image = Image.fromarray(x_sample)
+                            images.append(image)
+
+                        caption = f"Iter {iter_num}"
+                        grid = image_grid(images, len(images), force_n_rows=1, captions=[caption]*len(images))
+
+                        # Save the images if recording steps, and append existing saved steps
+                        if job_info.rec_steps_enabled:
+                            gallery_img_size = tuple(int(0.25*dim) for dim in images[0].size)
+                            job_info.rec_steps_imgs.append(grid.resize(gallery_img_size))
+
+                        # Notify the requester that the image is updated
+                        if job_info.refresh_active_image_requested.is_set():
+                            if job_info.rec_steps_enabled:
+                                grid_rows = None if batch_size == 1 else len(job_info.rec_steps_imgs)
+                                grid = image_grid(imgs=job_info.rec_steps_imgs[::-1], batch_size=1, force_n_rows=grid_rows)
+                            job_info.active_image = grid
+                            job_info.refresh_active_image_done.set()
+                            job_info.refresh_active_image_requested.clear()
+
+                        preview_elapsed_timed = time.time() - preview_start_time
+                        if preview_elapsed_timed / job_info.rec_steps_intrvl > 1:
+                            print(
+                                f"Warning: Preview generation is slowing image generation. It took {preview_elapsed_timed:.2f}s to generate progress images for batch of {batch_size} images!")
+
+                    # Interrupt current iteration?
+                    if job_info.stop_cur_iter.is_set():
+                        job_info.stop_cur_iter.clear()
+                        raise StopIteration()
+
+            try:
+                samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name, img_callback=sample_iteration_callback)
+            except StopIteration:
+                print("Skipping iteration")
+                job_info.job_status = "Skipping iteration"
+                continue
 
             if opt.optimized:
                 modelFS.to(device)
@@ -1241,6 +1327,19 @@ def process_images(
                     if simple_templating:
                         grid_captions.append( captions[i] )
 
+            # Save the progress images?
+            if job_info:
+                if job_info.rec_steps_enabled and (job_info.rec_steps_to_file or job_info.rec_steps_to_gallery):
+                    steps_grid = image_grid(job_info.rec_steps_imgs, 1)
+                    if job_info.rec_steps_to_gallery:
+                        gallery_img_size = tuple(2*dim for dim in image.size)
+                        output_images.append( steps_grid.resize( gallery_img_size ) )
+                    if job_info.rec_steps_to_file:
+                        steps_grid_filename = f"{original_filename}_step_grid"
+                        save_sample(steps_grid, sample_path_i, steps_grid_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                    normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+
             if opt.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
                 modelFS.to("cpu")
@@ -1260,7 +1359,7 @@ def process_images(
                         import traceback
                         print("Error creating prompt_matrix text:", file=sys.stderr)
                         print(traceback.format_exc(), file=sys.stderr)
-            elif batch_size > 1  or n_iter > 1:
+            elif len(output_images) > 0 and (batch_size > 1  or n_iter > 1):
                 grid = image_grid(output_images, batch_size)
             if grid is not None:
                 grid_count = get_next_sequence_number(outpath, 'grid-')
@@ -1353,8 +1452,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     def init():
         pass
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
-        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x)
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, img_callback: Callable = None):
+        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale, unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=img_callback)
         return samples_ddim
 
     try:
@@ -1618,7 +1717,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
 
         return init_latent, mask,
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
+    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name, img_callback: Callable = None):
         t_enc_steps = t_enc
         obliterate = False
         if ddim_steps == t_enc_steps:
@@ -1640,7 +1739,7 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
 
             sigma_sched = sigmas[ddim_steps - t_enc_steps - 1:]
             model_wrap_cfg = CFGMaskedDenoiser(sampler.model_wrap)
-            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False)
+            samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False, callback=partial(KDiffusionSampler.img_callback_wrapper, img_callback))
         else:
 
             x0, z_mask = init_data

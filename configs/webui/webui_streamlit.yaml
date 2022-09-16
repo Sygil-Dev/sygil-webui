@@ -13,6 +13,7 @@ general:
     GFPGAN_dir: "./src/gfpgan"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
+    LDSR_dir: "./src/latent-diffusion"
     outdir_txt2img: outputs/txt2img-samples
     outdir_img2img: outputs/img2img-samples
     gfpgan_cpu: False
@@ -27,9 +28,11 @@ general:
     n_rows: -1
     no_verify_input: False
     no_half: False
+    use_float16: False
     precision: "autocast"
     optimized: False
     optimized_turbo: False
+    optimized_config: "optimizedSD/v1-inference.yaml"
     update_preview: True
     update_preview_frequency: 5
 
@@ -44,6 +47,8 @@ txt2img:
     sampling_steps: 30
     default_sampler: "k_euler"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
@@ -57,6 +62,8 @@ txt2img:
     write_info_files: True
     
 txt2vid:
+    default_model: "CompVis/stable-diffusion-v1-4"
+    custom_models_list: ["CompVis/stable-diffusion-v1-4", "naclbit/trinart_stable_diffusion_v2", "hakurei/waifu-diffusion", "osanseviero/BigGAN-deep-128"]
     prompt:
     height: 512
     width: 512
@@ -67,17 +74,26 @@ txt2vid:
     sampling_steps: 30
     num_inference_steps: 200
     default_sampler: "k_euler"
+    scheduler_name: "klms"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
+    dynamic_preview_frequency: True
     normalize_prompt_weights: True
     save_individual_images: True
-    save_grid: False
+    save_video: True
     group_by_prompt: True
+    write_info_files: True
+    do_loop: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
+    beta_start: 0.00085
+    beta_end: 0.012
+    beta_scheduler_type: "linear"
     max_frames: 1000
     
 img2img:
@@ -100,6 +116,7 @@ img2img:
   # 0: Keep masked area
   # 1: Regenerate only masked area
   mask_mode: 0
+  mask_restore: False
   # 0: Just resize
   # 1: Crop and resize
   # 2: Resize and fill
@@ -117,6 +134,8 @@ img2img:
   loopback: True
   random_seed_loopback: True
   separate_prompts: False
+  update_preview: True
+  update_preview_frequency: 5
   normalize_prompt_weights: True
   save_individual_images: True
   save_grid: True
