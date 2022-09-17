@@ -31,14 +31,9 @@ except:
 # remove some annoying deprecation warnings that show every now and then.
 warnings.filterwarnings("ignore", category=DeprecationWarning)     
 
-st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
-if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
-	user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml");
-	st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
-
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
+#os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
 # TODO, maybe look into async loading the file especially for remote fetching 

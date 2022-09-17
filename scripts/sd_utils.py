@@ -3,15 +3,14 @@ from webui_streamlit import st
 
 
 # streamlit imports
-
-
+from streamlit import StopException
 #other imports
 
 import warnings
 import json
 
 import base64
-import os, sys, re, random, datetime, time, math
+import os, sys, re, random, datetime, time, math, glob
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
 from PIL.PngImagePlugin import PngInfo
 from scipy import integrate
@@ -65,6 +64,16 @@ mimetypes.add_type('application/javascript', '.js')
 opt_C = 4
 opt_f = 8
 
+if not "defaults" in st.session_state:
+    st.session_state["defaults"] = {}
+    
+st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+
+if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
+    user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+    st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+
+
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
 grid_lossless = False
@@ -102,7 +111,7 @@ elif save_format[0] == 'webp':
     if save_quality < 0: # e.g. webp:-100 for lossless mode
         save_lossless = True
         save_quality = abs(save_quality)
-
+        
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
@@ -788,7 +797,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 @retry(tries=5)
 def generation_callback(img, i=0):
     if "update_preview_frequency" not in st.session_state:
-        return
+        raise StopException
 
     try:
         if i == 0:	
@@ -927,6 +936,82 @@ def get_font(fontsize):
 def load_embeddings(fp):
     if fp is not None and hasattr(st.session_state["model"], "embedding_manager"):
         st.session_state["model"].embedding_manager.load(fp['name'])
+
+def load_learned_embed_in_clip(learned_embeds_path, text_encoder, tokenizer, token=None):
+    loaded_learned_embeds = torch.load(learned_embeds_path, map_location="cpu")
+
+    # separate token and the embeds
+    if learned_embeds_path.endswith('.pt'):
+        print(loaded_learned_embeds['string_to_token'])
+        trained_token = list(loaded_learned_embeds['string_to_token'].keys())[0]
+        embeds = list(loaded_learned_embeds['string_to_param'].values())[0]
+        
+    elif learned_embeds_path.endswith('.bin'):
+        trained_token = list(loaded_learned_embeds.keys())[0]
+        embeds = loaded_learned_embeds[trained_token]
+
+    embeds = loaded_learned_embeds[trained_token]
+    # cast to dtype of text_encoder
+    dtype = text_encoder.get_input_embeddings().weight.dtype
+    embeds.to(dtype)
+
+    # add the token in tokenizer
+    token = token if token is not None else trained_token
+    num_added_tokens = tokenizer.add_tokens(token)
+
+    # resize the token embeddings
+    text_encoder.resize_token_embeddings(len(tokenizer))
+
+    # get the id for the token and assign the embeds
+    token_id = tokenizer.convert_tokens_to_ids(token)
+    text_encoder.get_input_embeddings().weight.data[token_id] = embeds
+    return token
+
+def concepts_library():
+    
+    html_gallery = '''
+    <div class="flex gr-gap gr-form-gap row gap-4 w-full flex-wrap" id="main_row">
+    '''
+    for model in models:
+        html_gallery = html_gallery+f'''
+        <div class="gr-block gr-box relative w-full overflow-hidden border-solid border border-gray-200 gr-panel">
+        <div class="output-markdown gr-prose" style="max-width: 100%;">
+        <h3>
+        <a href="https://huggingface.co/{model["id"]}" target="_blank">
+        <code>{html.escape(model["token"])}</code>
+        </a>
+        </h3>
+        </div>
+        <div id="gallery" class="gr-block gr-box relative w-full overflow-hidden border-solid border border-gray-200">
+        <div class="wrap svelte-17ttdjv opacity-0"></div>
+        <div class="absolute left-0 top-0 py-1 px-2 rounded-br-lg shadow-sm text-xs text-gray-500 flex items-center pointer-events-none bg-white z-20 border-b border-r border-gray-100 dark:bg-gray-900">
+        <span class="mr-2 h-[12px] w-[12px] opacity-80">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        </span> {model["concept_type"]}
+        </div>
+        <div class="overflow-y-auto h-full p-2" style="position: relative;">
+        <div class="grid gap-2 grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 svelte-1g9btlg pt-6">
+        '''
+    for image in model["images"]:
+        html_gallery = html_gallery + f'''
+                        <button class="gallery-item svelte-1g9btlg">
+                        <img alt="" loading="lazy" class="h-full w-full overflow-hidden object-contain" src="file/{image}">
+                        </button>
+                        '''
+        html_gallery = html_gallery+'''
+              </div>
+              <iframe style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;" aria-hidden="true" tabindex="-1" src="about:blank"></iframe>
+            </div>
+          </div>
+        </div>
+        '''
+        html_gallery = html_gallery+'''
+      </div>
+      '''    
 
 def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     #print (len(imgs))
@@ -1242,7 +1327,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
-        fp=None, ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
+        ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
         mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
@@ -1257,10 +1342,36 @@ def process_images(
 
     mem_mon = MemUsageMonitor('MemMon')
     mem_mon.start()
+    
+    if st.session_state.defaults.general.use_sd_concepts_library:
 
-    if hasattr(st.session_state["model"], "embedding_manager"):
-        load_embeddings(fp)
+        prompt_tokens = re.findall('<([a-zA-Z0-9-]+)>', prompt)    
 
+        if prompt_tokens:
+            # compviz
+            tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer
+            text_encoder = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.transformer
+    
+            # diffusers
+            #tokenizer = pipe.tokenizer
+            #text_encoder = pipe.text_encoder
+    
+            ext = ('pt', 'bin')
+    
+            if len(prompt_tokens) > 1:                                      
+                for token_name in prompt_tokens:
+                    embedding_path = os.path.join(st.session_state['defaults'].general.sd_concepts_library_folder, token_name)	
+                    if os.path.exists(embedding_path):
+                        for files in os.listdir(embedding_path):
+                            if files.endswith(ext):
+                                load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{token_name}>")
+            else:
+                embedding_path = os.path.join(st.session_state['defaults'].general.sd_concepts_library_folder, prompt_tokens[0])
+                if os.path.exists(embedding_path):
+                    for files in os.listdir(embedding_path):
+                        if files.endswith(ext):
+                            load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{prompt_tokens[0]}>")  
+                        
     os.makedirs(outpath, exist_ok=True)
 
     sample_path = os.path.join(outpath, "samples")
