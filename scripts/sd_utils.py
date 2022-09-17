@@ -199,6 +199,12 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
     st.session_state.modelCS = modelCS
     st.session_state.modelFS = modelFS
     st.session_state.loaded_model = custom_model
+    
+    if st.session_state.defaults.general.enable_attention_slicing:
+        st.session_state.model.enable_attention_slicing()  
+        
+    if st.session_state.defaults.general.enable_minimal_memory_usage:	
+        st.session_state.model.enable_minimal_memory_usage()    
 
     print("Model loaded.")
 
