@@ -1142,8 +1142,6 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
                             json.dumps(metadata), encoding="unicode")
             piexif.insert(piexif.dump(exif_dict), f"{filename_i}.{save_ext}")
 
-    # render the image on the frontend
-    st.session_state["preview_image"].image(image)    
 
 def get_next_sequence_number(path, prefix=''):
     """
@@ -1407,8 +1405,12 @@ def process_images(
             x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
-            for i, x_sample in enumerate(x_samples_ddim):				
+            run_images = []
+            for i, x_sample in enumerate(x_samples_ddim):
                 sanitized_prompt = slugify(prompts[i])
+
+                percent = i / len(x_samples_ddim)
+                st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
 
                 if sort_samples:
                     full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
@@ -1436,6 +1438,7 @@ def process_images(
                 original_filename = filename
 
                 if use_GFPGAN and st.session_state["GFPGAN"] is not None and not use_RealESRGAN:
+                    st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = st.session_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
@@ -1443,16 +1446,19 @@ def process_images(
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
 
-                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback,
                                                     uses_random_seed_loopback, save_grid, sort_samples, sampler_name, ddim_eta,
                                                     n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
 
                     output_images.append(gfpgan_image) #287
+                    run_images.append(gfpgan_image)
+
                     if simple_templating:
                         grid_captions.append( captions[i] + "\ngfpgan" )
 
-                if use_RealESRGAN and st.session_state["RealESRGAN"] is not None and not use_GFPGAN:
+                elif use_RealESRGAN and st.session_state["RealESRGAN"] is not None and not use_GFPGAN:
+                    st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
 
@@ -1465,19 +1471,22 @@ def process_images(
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
 
-                    #save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    #save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                             #normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
                             #save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
 
-                    save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                                                     save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
 
                     output_images.append(esrgan_image) #287
+                    run_images.append(esrgan_image)
+
                     if simple_templating:
                         grid_captions.append( captions[i] + "\nesrgan" )
 
-                if use_RealESRGAN and st.session_state["RealESRGAN"] is not None and use_GFPGAN and st.session_state["GFPGAN"] is not None:
+                elif use_RealESRGAN and st.session_state["RealESRGAN"] is not None and use_GFPGAN and st.session_state["GFPGAN"] is not None:
+                    st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = st.session_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
@@ -1490,16 +1499,20 @@ def process_images(
                     output, img_mode = st.session_state["RealESRGAN"].enhance(gfpgan_sample[:,:,::-1])
                     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
                     gfpgan_esrgan_sample = output[:,:,::-1]
-                    gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)						    
+                    gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
 
-                    save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
+                    save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, False, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                                                     save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
 
                     output_images.append(gfpgan_esrgan_image) #287
+                    run_images.append(gfpgan_esrgan_image)
 
                     if simple_templating:
                         grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
+                else:
+                    output_images.append(image)
+                    run_images.append(image)
 
                 if mask_restore and init_mask:
                     #init_mask = init_mask if keep_mask else ImageOps.invert(init_mask)
@@ -1528,9 +1541,6 @@ def process_images(
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                                                     save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images)
 
-                    if not use_GFPGAN or not use_RealESRGAN:
-                        output_images.append(image)
-
                     #if add_original_image or not simple_templating:
                         #output_images.append(image)
                         #if simple_templating:
@@ -1541,6 +1551,17 @@ def process_images(
                     st.session_state.modelFS.to("cpu")
                     while(torch.cuda.memory_allocated()/1e6 >= mem):
                         time.sleep(1)
+
+            if len(run_images) > 1:
+                preview_image = image_grid(run_images, n_iter)
+            else:
+                preview_image = run_images[0]
+
+            # Constrain the final preview image to 1440x900 so we're not sending huge amounts of data
+            # to the browser
+            preview_image = constrain_image(preview_image, 1440, 900)
+            st.session_state["progress_bar_text"].text("Finished!")
+            st.session_state["preview_image"].image(preview_image)
 
         if prompt_matrix or save_grid:
             if prompt_matrix:
@@ -1622,4 +1643,10 @@ def resize_image(resize_mode, im, width, height):
 
     return res
 
-#
+def constrain_image(img, max_width, max_height):
+    ratio = max(img.width / max_width, img.height / max_height)
+    if ratio <= 1:
+        return img
+    resampler = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
+    resized = img.resize((int(img.width / ratio), int(img.height / ratio)), resample=resampler)
+    return resized
