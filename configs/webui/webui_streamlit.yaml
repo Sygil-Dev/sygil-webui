@@ -8,8 +8,8 @@ general:
     default_model: "Stable Diffusion v1.4" 
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
     default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
-    fp:
-        name: ''
+    use_sd_concepts_library: True
+    sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./src/gfpgan"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"

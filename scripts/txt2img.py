@@ -117,7 +117,6 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
                 use_GFPGAN=st.session_state["use_GFPGAN"],
                 use_RealESRGAN=st.session_state["use_RealESRGAN"],
                 realesrgan_model_name=realesrgan_model_name,
-                fp=fp,
                 ddim_eta=ddim_eta,
                 normalize_prompt_weights=normalize_prompt_weights,
                 save_individual_images=save_individual_images,
@@ -186,6 +185,11 @@ def layout():
                 st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                              help="Frequency in steps at which the the preview image is updated. By default the frequency \
                                                                               is set to 1 step.")
+            #
+            #if st.session_state.defaults.general.use_sd_concepts_library:
+                #with st.expander("Concept Library"):
+                    #st.write("test")
+                    
 
         with col2:
             preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
@@ -265,49 +269,51 @@ def layout():
             #print("Loading models")
             # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.	
             load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
-                        st.session_state["custom_model"])    
+                        st.session_state["custom_model"])  
+            
 
             try:
+                #
                 output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
                                                             cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                        save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
-                                        fp=st.session_state.defaults.general.fp, variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-        
+                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
+                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+                
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
         
-                history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+                #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
         
-                if 'latestImages' in st.session_state:
-                    for i in output_images:
-                        #push the new image to the list of latest images and remove the oldest one
-                        #remove the last index from the list\
-                        st.session_state['latestImages'].pop()
-                        #add the new image to the start of the list
-                        st.session_state['latestImages'].insert(0, i)
-                    PlaceHolder.empty()
-                    with PlaceHolder.container():
-                        col1, col2, col3 = st.columns(3)
-                        col1_cont = st.container()
-                        col2_cont = st.container()
-                        col3_cont = st.container()
-                        images = st.session_state['latestImages']
-                        with col1_cont:
-                            with col1:
-                                [st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                        with col2_cont:
-                            with col2:
-                                [st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                        with col3_cont:
-                            with col3:
-                                [st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                        historyGallery = st.empty()
+                #if 'latestImages' in st.session_state:
+                    #for i in output_images:
+                        ##push the new image to the list of latest images and remove the oldest one
+                        ##remove the last index from the list\
+                        #st.session_state['latestImages'].pop()
+                        ##add the new image to the start of the list
+                        #st.session_state['latestImages'].insert(0, i)
+                    #PlaceHolder.empty()
+                    #with PlaceHolder.container():
+                        #col1, col2, col3 = st.columns(3)
+                        #col1_cont = st.container()
+                        #col2_cont = st.container()
+                        #col3_cont = st.container()
+                        #images = st.session_state['latestImages']
+                        #with col1_cont:
+                            #with col1:
+                                #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
+                        #with col2_cont:
+                            #with col2:
+                                #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
+                        #with col3_cont:
+                            #with col3:
+                                #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
+                        #historyGallery = st.empty()
                 
-                    # check if output_images length is the same as seeds length
-                    with gallery_tab:
-                        st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
-                
-                
-                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                    ## check if output_images length is the same as seeds length
+                    #with gallery_tab:
+                        #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
+                    
+                    
+                        #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
                 
             except (StopException, KeyError):
                 print(f"Received Streamlit StopException")
