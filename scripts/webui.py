@@ -2298,11 +2298,14 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             current_payload = pop['payload']
         images, seed, info, stats = txt2img(**current_payload)
         buffer = BytesIO()
+        # We send as WebP to avoid using all the horde bandwidth
         images[0].save(buffer, format="WebP", quality=90)
+        # logger.info(info)
         submit_dict = {
             "id": current_id,
             "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
             "api_key": api_key,
+            "seed": seed,
         }
         current_generation = seed
         while current_id and current_generation:
