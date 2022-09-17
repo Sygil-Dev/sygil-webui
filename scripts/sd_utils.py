@@ -796,7 +796,7 @@ def generation_callback(img, i=0):
     except TypeError:
         pass
 
-    if i % int(st.session_state.update_preview_frequency) == 0 and st.session_state.update_preview:
+    if i % int(st.session_state.update_preview_frequency) == 0 and st.session_state.update_preview and i > 0:
         #print (img)
         #print (type(img))
         # The following lines will convert the tensor we got on img to an actual image we can render on the UI.
@@ -1436,6 +1436,8 @@ def process_images(
                 image = Image.fromarray(x_sample)
                 original_sample = x_sample
                 original_filename = filename
+
+                st.session_state["preview_image"].image(image)
 
                 if use_GFPGAN and st.session_state["GFPGAN"] is not None and not use_RealESRGAN:
                     st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
