@@ -314,12 +314,8 @@ def txt2vid(
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
 	# ------------------------------------------------------------------------------
-
-	#if weights_path == "Stable Diffusion v1.4":
-		#weights_path = "CompVis/stable-diffusion-v1-4"
-	#else:
-		#weights_path = os.path.join("./models", "custom", f"{weights_path}.ckpt")
-
+	st.session_state["progress_bar_text"].text("Loading models...")	
+	
 	try:
 		if "model" in st.session_state:
 			del st.session_state["model"]
@@ -345,6 +341,12 @@ def txt2vid(
 			st.session_state["pipe"].unet.to(torch_device)
 			st.session_state["pipe"].vae.to(torch_device)
 			st.session_state["pipe"].text_encoder.to(torch_device)
+			
+			if st.session_state.defaults.general.enable_attention_slicing:
+				st.session_state["pipe"].enable_attention_slicing()
+			if st.session_state.defaults.general.enable_minimal_memory_usage:	
+				st.session_state["pipe"].enable_minimal_memory_usage()
+				
 			print("Tx2Vid Model Loaded")
 		else:
 			print("Tx2Vid Model already Loaded")
@@ -356,15 +358,20 @@ def txt2vid(
 		st.session_state["weights_path"] = weights_path
 		st.session_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 			weights_path,
-				use_local_file=True,
-					use_auth_token=True,
-					torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+			use_local_file=True,
+			use_auth_token=True,
+			torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+			revision="fp16" if not st.session_state['defaults'].general.no_half else None
 		)
 
 		st.session_state["pipe"].unet.to(torch_device)
 		st.session_state["pipe"].vae.to(torch_device)
 		st.session_state["pipe"].text_encoder.to(torch_device)
+		
+		if st.session_state.defaults.general.enable_attention_slicing:
+			st.session_state["pipe"].enable_attention_slicing()
+			
+			
 		print("Tx2Vid Model Loaded")
 
 	st.session_state["pipe"].scheduler = SCHEDULERS[scheduler]
