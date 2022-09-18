@@ -65,3 +65,4 @@ condaenv.*.requirements.txt
 /gfpgan/*
 /models/*
 z_version_env.tmp
+scripts/bridgeData.py
