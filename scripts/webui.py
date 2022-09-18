@@ -46,6 +46,14 @@ parser.add_argument("--skip-save", action='store_true', help="do not save indivi
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
 parser.add_argument("--tiling", action='store_true', help="Generate tiling images", default=False)
+parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+parser.add_argument('-q', '--quiet', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+parser.add_argument("--bridge", action='store_true', help="don't launch web server, but make this instance into a Horde bridge.", default=False)
+parser.add_argument('--horde_api_key', action="store", required=False, type=str, help="The API key corresponding to the owner of this Horde instance")
+parser.add_argument('--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
+parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
+parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
+parser.add_argument('--horde_max_power',type=int, default=8, required=False, help="How much power this instance has to generate pictures. Min: 2")
 opt = parser.parse_args()
 
 #Should not be needed anymore
