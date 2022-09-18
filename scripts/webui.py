@@ -1,4 +1,4 @@
-import argparse, os, sys, glob, re
+import argparse, os, sys, glob, re, requests, json, time
 
 import cv2
 
@@ -2627,7 +2627,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 continue
             current_id = pop['id']
             current_payload = pop['payload']
-        images, seed, info, stats = gi(**current_payload)
+        images, seed, info, stats = txt2img(**current_payload)
         buffer = BytesIO()
         # We send as WebP to avoid using all the horde bandwidth
         images[0].save(buffer, format="WebP", quality=90)
