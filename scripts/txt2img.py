@@ -156,25 +156,24 @@ def layout():
         col1, col2, col3 = st.columns([1,2,1], gap="large")    
 
         with col1:
-            width = st.slider("Width:", min_value=64, max_value=4096, value=st.session_state['defaults'].txt2img.width, step=64)
-            height = st.slider("Height:", min_value=64, max_value=4096, value=st.session_state['defaults'].txt2img.height, step=64)
-            cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+            width = st.slider("Width:", min_value=st.session_state['defaults'].txt2img.width.min_value, max_value=st.session_state['defaults'].txt2img.width.max_value,
+                              value=st.session_state['defaults'].txt2img.width.value, step=st.session_state['defaults'].txt2img.width.step)
+            height = st.slider("Height:", min_value=st.session_state['defaults'].txt2img.height.min_value, max_value=st.session_state['defaults'].txt2img.height.max_value,
+                               value=st.session_state['defaults'].txt2img.height.value, step=st.session_state['defaults'].txt2img.height.step)
+            cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2img.cfg_scale.min_value,
+                                  max_value=st.session_state['defaults'].txt2img.cfg_scale.max_value,
+                                  value=st.session_state['defaults'].txt2img.cfg_scale.value, step=st.session_state['defaults'].txt2img.cfg_scale.step, 
+                                  help="How strongly the image should follow the prompt.")
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-            batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+            batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
+                                    value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
+                                    help="How many iterations or batches of images to generate in total.")
 
-            bs_slider_max_value = 5
-            if st.session_state.defaults.general.optimized:
-                bs_slider_max_value = 100
-
-            batch_size = st.slider(
-                "Batch size",
-                min_value=1,
-                max_value=bs_slider_max_value,
-                value=st.session_state.defaults.txt2img.batch_size,
-                step=1,
-                help="How many images are at once in a batch.\
-                It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                Default: 1")
+            batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
+                                   value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
+                                   help="How many images are at once in a batch.\
+                                   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+                                   Default: 1")
 
             with st.expander("Preview Settings"):
                 st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
@@ -212,16 +211,15 @@ def layout():
             if st.session_state.CustomModel_available:
                 st.session_state.custom_model = st.selectbox("Custom Model:", st.session_state.custom_models,
                                                                 index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
-                                    help="Select the model you want to use. This option is only available if you have custom models \
-                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
-                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-                            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
-
-            st.session_state.sampling_steps = st.slider("Sampling Steps",
-            value=st.session_state['defaults'].txt2img.sampling_steps,
-            min_value=st.session_state['defaults'].txt2img.slider_bounds.sampling.lower,
-		    max_value=st.session_state['defaults'].txt2img.slider_bounds.sampling.upper,
-		    step=st.session_state['defaults'].txt2img.slider_steps.sampling)
+                                                                help="Select the model you want to use. This option is only available if you have custom models \
+                                                                on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+                                                                the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+                                                                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
+            
+            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state.defaults.txt2img.sampling_steps.value,
+                                                        min_value=st.session_state.defaults.txt2img.sampling_steps.min_value,
+                                                        max_value=st.session_state['defaults'].txt2img.sampling_steps.max_value,
+                                                        step=st.session_state['defaults'].txt2img.sampling_steps.step)    
 
             sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
@@ -260,7 +258,9 @@ def layout():
                     st.session_state["use_RealESRGAN"] = False
                     st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 
-                variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+                variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
+                                           min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
+                                           step=st.session_state['defaults'].txt2img.variant_amount.step)
                 variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
         galleryCont = st.empty()
 
