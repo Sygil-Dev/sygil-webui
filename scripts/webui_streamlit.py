@@ -15,7 +15,14 @@ import k_diffusion as K
 from omegaconf import OmegaConf
 
 from sd_utils import *
+if not "defaults" in st.session_state:
+    st.session_state["defaults"] = {}
+    
+st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
 
+if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
+    user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+    st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
