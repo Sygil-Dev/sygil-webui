@@ -2,12 +2,9 @@ plugins:
   - jekyll-relative-links
   - jekyll-readme-index
   - jemoji
+  - jekyll-remote-theme
 relative_links:
   enabled: true
   collections: true
 source: docs
-theme: minima
-include:
-  - CONTRIBUTING.md
-#  - README.md
-  - LICENSE.md
+remote_theme: pages-themes/midnight@v0.2.0
