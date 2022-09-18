@@ -18,10 +18,15 @@ import argparse, os, sys, glob, re
 import cv2
 
 from perlin import perlinNoise
+from functools import lru_cache
+from dataclasses import dataclass, field
 from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
 from frontend.image_metadata import ImageMetadata
 from frontend.ui_functions import resize_image
+import scripts.webui.util.ModelRepo as ModelRepo
+
+
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model",)
 parser.add_argument("--cli", type=str, help="don't launch web server, take Python function kwargs from this file.", default=None)
@@ -101,7 +106,7 @@ if os.getenv("SD_WEBUI_DEBUG", 'False').lower() in ('true', '1', 'y'):
         gpu_in_use = opt.gfpgan_gpu
     print("Starting on GPU {selected_gpu_name}".format(selected_gpu_name=torch.cuda.get_device_name(gpu_in_use)))
 
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager, nullcontext, ExitStack
 from einops import rearrange, repeat
 from itertools import islice
 from omegaconf import OmegaConf
@@ -210,6 +215,8 @@ def load_model_from_config(config, ckpt, verbose=False):
     model.eval()
     return model
 
+
+@lru_cache(maxsize=1)
 def load_sd_from_config(ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
@@ -224,7 +231,6 @@ def crash(e, s):
 
     print(s, '\n', e)
     try:
-        del model
         del device
     except:
         try:
@@ -415,111 +421,167 @@ def load_RealESRGAN(model_name: str, checking = False):
     instance.model.name = model_name
     return instance
 
-GFPGAN = None
-if os.path.exists(GFPGAN_dir):
-    try:
-        GFPGAN = load_GFPGAN(checking=True)
-        print("Found GFPGAN")
-    except Exception:
-        import traceback
-        print("Error loading GFPGAN:", file=sys.stderr)
-        print(traceback.format_exc(), file=sys.stderr)
 
-RealESRGAN = None
-def try_loading_RealESRGAN(model_name: str,checking=False):
-    global RealESRGAN
-    if os.path.exists(RealESRGAN_dir):
-        try:
-            RealESRGAN = load_RealESRGAN(model_name,checking) # TODO: Should try to load both models before giving up
-            if checking == True:
-                print("Found RealESRGAN")
-                return True
-            print("Loaded RealESRGAN with model "+RealESRGAN.model.name)
-        except Exception:
-            import traceback
-            print("Error loading RealESRGAN:", file=sys.stderr)
-            print(traceback.format_exc(), file=sys.stderr)
-try_loading_RealESRGAN('RealESRGAN_x4plus',checking=True)
+def sd_model_exists(*args, **kwargs):
+    return os.path.exists(opt.ckpt)
 
-LDSR = None
-def try_loading_LDSR(model_name: str,checking=False):
-    global LDSR
-    if os.path.exists(LDSR_dir):
-        try:
-            LDSR = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
-            if checking == True:
-                print("Found LDSR")
-                return True
-            print("Latent Diffusion Super Sampling (LDSR) model loaded")
-        except Exception:
-            import traceback
-            print("Error loading LDSR:", file=sys.stderr)
-            print(traceback.format_exc(), file=sys.stderr)
-    else:
-        print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
-try_loading_LDSR('model',checking=True)
 
 def load_SD_model():
-    if opt.optimized:
-        sd = load_sd_from_config(opt.ckpt)
-        li, lo = [], []
-        for key, v_ in sd.items():
-            sp = key.split('.')
-            if(sp[0]) == 'model':
-                if('input_blocks' in sp):
-                    li.append(key)
-                elif('middle_block' in sp):
-                    li.append(key)
-                elif('time_embed' in sp):
-                    li.append(key)
-                else:
-                    lo.append(key)
-        for key in li:
-            sd['model1.' + key[6:]] = sd.pop(key)
-        for key in lo:
-            sd['model2.' + key[6:]] = sd.pop(key)
+    config = OmegaConf.load(opt.config)
+    model = load_model_from_config(config, opt.ckpt)
+    if not opt.no_half:
+        model.half()
+    return model
 
-        config = OmegaConf.load("optimizedSD/v1-inference.yaml")
-        device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
 
+def load_SD_model_optimized(stage: int):
+    """ Returns optimized SD model stage
+    Stage 1 - UNet
+    Stage 2 - CondStage
+    Stage 3 - First Stage """
+    sd = load_sd_from_config(opt.ckpt)
+    li, lo = [], []
+    for key, v_ in sd.items():
+        sp = key.split('.')
+        if (sp[0]) == 'model':
+            if ('input_blocks' in sp):
+                li.append(key)
+            elif ('middle_block' in sp):
+                li.append(key)
+            elif ('time_embed' in sp):
+                li.append(key)
+            else:
+                lo.append(key)
+    for key in li:
+        sd['model1.' + key[6:]] = sd.pop(key)
+    for key in lo:
+        sd['model2.' + key[6:]] = sd.pop(key)
+
+    config = OmegaConf.load("optimizedSD/v1-inference.yaml")
+
+    model = None
+    if stage == 1:
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
+        # model.cuda()
         model.eval()
         model.turbo = opt.optimized_turbo
+    elif stage == 2:
+        model = instantiate_from_config(config.modelCondStage)
+        _, _ = model.load_state_dict(sd, strict=False)
+        model.cond_stage_model.device = device
+        model.eval()
+    elif stage == 3:
+        model = instantiate_from_config(config.modelFirstStage)
+        _, _ = model.load_state_dict(sd, strict=False)
+        model.eval()
 
-        modelCS = instantiate_from_config(config.modelCondStage)
-        _, _ = modelCS.load_state_dict(sd, strict=False)
-        modelCS.cond_stage_model.device = device
-        modelCS.eval()
+    if not opt.no_half:
+        model = model.half()
+    return model
 
-        modelFS = instantiate_from_config(config.modelFirstStage)
-        _, _ = modelFS.load_state_dict(sd, strict=False)
-        modelFS.eval()
+device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
 
-        del sd
+# Available model names (useful for autocompletion)
+class ModelNames:
+    RealESRGANx4Plus = "RealESRGAN_x4plus"
+    RealESRGANx4Plus_Anime_6B = "RealESRGAN_x4plus_anime_6B"
+    RealESRGANx2Plus = "RealESRGAN_x4plus"  # Uses x4 model
+    RealESRGANx2Plus_Anime_6B = "RealESRGAN_x4plus_anime_6B"  # Uses x4 model
+    LDSR = "LDSR"
+    SD_opt_unet = "sd_unet"
+    SD_opt_cs = "sd_cs"
+    SD_opt_fs = "sd_fs"
+    SD_full = "sd_full"
+    GFPGAN = "GFPGAN"
 
-        if not opt.no_half:
-            model = model.half()
-            modelCS = modelCS.half()
-            modelFS = modelFS.half()
-        return model,modelCS,modelFS,device, config
-    else:
-        config = OmegaConf.load(opt.config)
-        model = load_model_from_config(config, opt.ckpt)
+    # Aliases for optimized mode
+    SD_unet = "sd_full" if not opt.optimized else "sd_unet"
+    SD_cs = "sd_full" if not opt.optimized else "sd_cs"
+    SD_fs = "sd_full" if not opt.optimized else "sd_fs"
 
-        device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
-        model = (model if opt.no_half else model.half()).to(device)
-    return model, device,config
-
-if opt.optimized:
-    model,modelCS,modelFS,device, config = load_SD_model()
-else:
-    model, device,config = load_SD_model()
+    # Alias for any RealESRGAN
+    RealESRGAN = "RealESRGAN_x4plus"
 
 
-def load_embeddings(fp):
-    if fp is not None and hasattr(model, "embedding_manager"):
+@dataclass
+class ModelParams:
+    load_func: Callable = None
+    exists_func: Callable = None
+    load_kwargs: Dict = field(default_factory=dict)
+    reg_kwargs: Dict = field(default_factory=dict)
+
+
+model_params: Dict[str, ModelParams] = {
+    ModelNames.RealESRGANx4Plus:
+        ModelParams(load_func=load_RealESRGAN,
+                    load_kwargs={"model_name": "RealESRGAN_x4plus"},
+                    exists_func=partial(load_RealESRGAN, checking=True)),
+
+    ModelNames.LDSR:
+        ModelParams(load_func=load_LDSR, load_kwargs={"model_name": "model"},
+                    exists_func=partial(load_LDSR, checking=True)),
+
+    ModelNames.SD_opt_unet:
+        ModelParams(load_func=load_SD_model_optimized,
+                    load_kwargs={"stage": 1},
+                    exists_func=sd_model_exists,
+                    reg_kwargs={"preload": opt.optimized}),
+
+    ModelNames.SD_opt_cs:
+        ModelParams(load_func=load_SD_model_optimized,
+                    load_kwargs={"stage": 2},
+                    exists_func=sd_model_exists),
+
+    ModelNames.SD_opt_fs:
+        ModelParams(load_func=load_SD_model_optimized,
+                    load_kwargs={"stage": 3},
+                    exists_func=sd_model_exists),
+
+    ModelNames.SD_full:
+        ModelParams(load_func=load_SD_model,
+                    exists_func=sd_model_exists,
+                    reg_kwargs={"preload": not opt.optimized}),
+
+    ModelNames.GFPGAN:
+        ModelParams(load_func=load_GFPGAN, exists_func=partial(load_GFPGAN, checking=True))
+}
+
+# Register every model in model_params above
+model_manager = ModelRepo.Manager(device=device)
+for name, params in model_params.items():
+    preload = params.reg_kwargs.get("preload", False)
+    if callable(params.load_func):
+        model_manager.register_model(name=name, load_func=params.load_func, exists_func=params.exists_func,
+                                     load_kwargs=params.load_kwargs, preload=preload)
+
+
+# Set the default esrgan model
+esrgan_priority = [ModelNames.RealESRGANx4Plus, ModelNames.RealESRGANx4Plus_Anime_6B]
+for name in esrgan_priority:
+    if model_manager.is_loadable(name):
+        ModelNames.RealESRGAN = name
+        break
+
+
+if model_manager.is_loadable(ModelNames.GFPGAN):
+    print("Found GFPGAN")
+
+if model_manager.is_loadable(ModelNames.RealESRGAN):
+    print("Found RealESRGAN")
+
+if model_manager.is_loadable(ModelNames.LDSR):
+    print("Found LDSR")
+
+try:
+    with model_manager.model_context(ModelNames.SD_unet) as model:
+        has_embeddings = model.embedding_manager is not None
+except AttributeError as e:
+    has_embeddings = False
+
+
+def load_embeddings(model, fp):
+    if fp is not None and has_embeddings:
         model.embedding_manager.load(fp.name)
 
 
@@ -642,10 +704,12 @@ def draw_prompt_matrix(im, width, height, all_prompts):
 def check_prompt_length(prompt, comments):
     """this function tests if prompt is too long, and if so, adds a message to comments"""
 
-    tokenizer = (model if not opt.optimized else modelCS).cond_stage_model.tokenizer
-    max_length = (model if not opt.optimized else modelCS).cond_stage_model.max_length
+    with model_manager.model_context(ModelNames.SD_cs) as model:
+        tokenizer = model.cond_stage_model.tokenizer
+        max_length = model.cond_stage_model.max_length
+        info = tokenizer([prompt], truncation=True, max_length=max_length, return_overflowing_tokens=True,
+                         padding="max_length", return_tensors="pt")
 
-    info = (model if not opt.optimized else modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length, return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
     ovf = info['overflowing_tokens'][0]
     overflowing_count = ovf.shape[0]
     if overflowing_count == 0:
@@ -833,7 +897,8 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
-def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_strength, mask_restore, use_RealESRGAN, RealESRGAN):
+def perform_masked_image_restoration(
+        image: Image, init_img: Image, init_mask: Image, mask_blur_strength, mask_restore, esrgan_model):
     if not mask_restore:
         return image
     else:
@@ -842,12 +907,12 @@ def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_stren
         init_img = init_img.convert('RGB')
         image = image.convert('RGB')
 
-        if use_RealESRGAN and RealESRGAN is not None:
-            output, img_mode = RealESRGAN.enhance(np.array(init_mask, dtype=np.uint8))
+        if esrgan_model is not None:
+            output, img_mode = esrgan_model.enhance(np.array(init_mask, dtype=np.uint8))
             init_mask = Image.fromarray(output)
             init_mask = init_mask.convert('L')
 
-            output, img_mode = RealESRGAN.enhance(np.array(init_img, dtype=np.uint8))
+            output, img_mode = esrgan_model.enhance(np.array(init_img, dtype=np.uint8))
             init_img = Image.fromarray(output)
             init_img = init_img.convert('RGB')
 
@@ -856,14 +921,13 @@ def perform_masked_image_restoration(image, init_img, init_mask, mask_blur_stren
         return image
 
 
-def perform_color_correction(img_rgb, correction_target_lab, do_color_correction):
+def perform_color_correction(img_rgb, correction_target_lab):
     try:
         from skimage import exposure
     except:
         print("Install scikit-image to perform color correction")
         return img_rgb
 
-    if not do_color_correction: return img_rgb
     if correction_target_lab is None: return img_rgb
 
     return (
@@ -930,8 +994,9 @@ def process_images(
     mem_mon = MemUsageMonitor('MemMon')
     mem_mon.start()
 
-    if hasattr(model, "embedding_manager"):
-        load_embeddings(fp)
+    if has_embeddings:
+        with model_manager.model_context(ModelNames.SD_unet) as model:
+            load_embeddings(model, fp)
 
     os.makedirs(outpath, exist_ok=True)
 
@@ -995,7 +1060,13 @@ def process_images(
         output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (model.ema_scope() if not opt.optimized else nullcontext()):
+    with ExitStack() as stack:
+        stack.enter_context( torch.no_grad() )
+        stack.enter_context( precision_scope("cuda") )
+        model = stack.enter_context( model_manager.model_context(ModelNames.SD_unet) )
+        if not opt.optimized:
+            stack.enter_context(model.ema_scope())
+
         init_data = func_init()
         tic = time.time()
 
@@ -1030,32 +1101,26 @@ def process_images(
                     job_info.job_status += f"\nItem {idx}: Seed {s}\nPrompt: {p}"
                     print(f"Current prompt: {p}")
 
-            if opt.optimized:
-                modelCS.to(device)
-            uc = (model if not opt.optimized else modelCS).get_learned_conditioning(len(prompts) * [negprompt])
-            if isinstance(prompts, tuple):
-                prompts = list(prompts)
+            with model_manager.model_context(ModelNames.SD_cs) as model_cs:
+                uc = model_cs.get_learned_conditioning(len(prompts)*[negprompt])
+                if isinstance(prompts, tuple):
+                    prompts = list(prompts)
 
-            # split the prompt if it has : for weighting
-            # TODO for speed it might help to have this occur when all_prompts filled??
-            weighted_subprompts = split_weighted_subprompts(prompts[0], normalize_prompt_weights)
+                # split the prompt if it has : for weighting
+                # TODO for speed it might help to have this occur when all_prompts filled??
+                weighted_subprompts = split_weighted_subprompts(prompts[0], normalize_prompt_weights)
 
-            # sub-prompt weighting used if more than 1
-            if len(weighted_subprompts) > 1:
-                c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
-                for i in range(0, len(weighted_subprompts)):
-                    # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (model if not opt.optimized else modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
-            else: # just behave like usual
-                c = (model if not opt.optimized else modelCS).get_learned_conditioning(prompts)
+                # sub-prompt weighting used if more than 1
+                if len(weighted_subprompts) > 1:
+                    c = torch.zeros_like(uc)  # i dont know if this is correct.. but it works
+                    for i in range(0, len(weighted_subprompts)):
+                        # note if alpha negative, it functions same as torch.sub
+                        c = torch.add(c, model.get_learned_conditioning(
+                            weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                else:  # just behave like usual
+                    c = model_cs.get_learned_conditioning(prompts)
 
             shape = [opt_C, height // opt_f, width // opt_f]
-
-            if opt.optimized:
-                mem = torch.cuda.memory_allocated()/1e6
-                modelCS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
-                    time.sleep(1)
 
             cur_variant_amount = variant_amount
             if variant_amount == 0.0:
@@ -1080,13 +1145,6 @@ def process_images(
                 # finally, slerp base_x noise to target_x noise for creating a variant
                 x = slerp(device, max(0.0, min(1.0, cur_variant_amount)), base_x, target_x)
 
-            # If optimized then use first stage for preview and store it on cpu until needed
-            if opt.optimized:
-                step_preview_model = modelFS
-                step_preview_model.cpu()
-            else:
-                step_preview_model = model
-
             def sample_iteration_callback(image_sample: torch.Tensor, iter_num: int):
                 ''' Called from the sampler every iteration '''
                 if job_info:
@@ -1094,22 +1152,17 @@ def process_images(
                     record_periodic_image = job_info.rec_steps_enabled and (0 == iter_num % job_info.rec_steps_intrvl)
                     if record_periodic_image or job_info.refresh_active_image_requested.is_set():
                         preview_start_time = time.time()
-                        if opt.optimized:
-                            step_preview_model.to(device)
 
-                        decoded_batch: List[torch.Tensor] = []
-                        # Break up batch to save VRAM
-                        for sample in image_sample:
-                            sample = sample[None, :]  # expands the tensor as if it still had a batch dimension
-                            decoded_sample = step_preview_model.decode_first_stage(sample)[0]
-                            decoded_sample = torch.clamp((decoded_sample + 1.0) / 2.0, min=0.0, max=1.0)
-                            decoded_sample = decoded_sample.cpu()
-                            decoded_batch.append(decoded_sample)
-
+                        with model_manager.model_context(ModelNames.SD_fs) as model_fs:
+                            decoded_batch: List[torch.Tensor] = []
+                            # Break up batch to save VRAM
+                            for sample in image_sample:
+                                sample = sample[None, :]  # expands the tensor as if it still had a batch dimension
+                                decoded_sample = model_fs.decode_first_stage(sample)[0]
+                                decoded_sample = torch.clamp((decoded_sample + 1.0) / 2.0, min=0.0, max=1.0)
+                                decoded_sample = decoded_sample.cpu()
+                                decoded_batch.append(decoded_sample)
                         batch_size = len(decoded_batch)
-
-                        if opt.optimized:
-                            step_preview_model.cpu()
 
                         images: List[Image.Image] = []
                         # Convert tensor to image (copied from code below)
@@ -1153,12 +1206,10 @@ def process_images(
                 job_info.job_status = "Skipping iteration"
                 continue
 
-            if opt.optimized:
-                modelFS.to(device)
-
             for i in range(len(samples_ddim)):
-                x_samples_ddim = (model if not opt.optimized else modelFS).decode_first_stage(samples_ddim[i].unsqueeze(0))
-                x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+                with model_manager.model_context(ModelNames.SD_fs) as model_fs:
+                    x_samples_ddim = model_fs.decode_first_stage(samples_ddim[i].unsqueeze(0))
+                    x_sample = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
                 if filter_nsfw:
                     x_samples_ddim_numpy = x_sample.cpu().permute(0, 2, 3, 1).numpy()
@@ -1202,91 +1253,104 @@ def process_images(
                                     cfg_scale=cfg_scale, normalize_prompt_weights=normalize_prompt_weights, denoising_strength=denoising_strength,
                                     GFPGAN=use_GFPGAN )
                 image = Image.fromarray(x_sample)
-                image = perform_color_correction(image, correction_target, do_color_correction)
+
+                if do_color_correction:
+                    image = perform_color_correction(image, correction_target)
                 ImageMetadata.set_on_image(image, metadata)
 
                 original_sample = x_sample
                 original_filename = filename
-                if use_GFPGAN and GFPGAN is not None and not use_RealESRGAN:
-                    skip_save = True # #287 >_>
-                    torch_gc()
-                    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(original_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
-                    gfpgan_sample = restored_img[:,:,::-1]
-                    gfpgan_image = Image.fromarray(gfpgan_sample)
-                    gfpgan_image = perform_color_correction(gfpgan_image, correction_target, do_color_correction)
-                    gfpgan_image = perform_masked_image_restoration(
-                        gfpgan_image, init_img, init_mask,
-                        mask_blur_strength, mask_restore,
-                        use_RealESRGAN = False, RealESRGAN = None
-                    )
-                    gfpgan_metadata = copy.copy(metadata)
-                    gfpgan_metadata.GFPGAN = True
-                    ImageMetadata.set_on_image( gfpgan_image, gfpgan_metadata )
-                    gfpgan_filename = original_filename + '-gfpgan'
-                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
-                    output_images.append(gfpgan_image) #287
-                    #if simple_templating:
-                    #    grid_captions.append( captions[i] + "\ngfpgan" )
+                processed_samples = x_sample[:, :, ::-1]
+                processed_metadata: ImageMetadata = copy.copy(metadata)
 
-                if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
-                    skip_save = True # #287 >_>
-                    torch_gc()
-                    output, img_mode = RealESRGAN.enhance(original_sample[:,:,::-1])
-                    esrgan_filename = original_filename + '-esrgan4x'
-                    esrgan_sample = output[:,:,::-1]
-                    esrgan_image = Image.fromarray(esrgan_sample)
-                    esrgan_image = perform_color_correction(esrgan_image, correction_target, do_color_correction)
-                    esrgan_image = perform_masked_image_restoration(
-                        esrgan_image, init_img, init_mask,
-                        mask_blur_strength, mask_restore,
-                        use_RealESRGAN, RealESRGAN
-                    )
-                    ImageMetadata.set_on_image( esrgan_image, metadata )
-                    save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
-                    output_images.append(esrgan_image) #287
-                    #if simple_templating:
-                    #    grid_captions.append( captions[i] + "\nesrgan" )
+                if use_RealESRGAN:
+                    with model_manager.model_context(ModelNames.RealESRGAN) as realesrgan_model:
+                        processed_samples, img_mode = realesrgan_model.enhance(processed_samples)
+                    processed_samples = processed_samples[:, :, ::-1]
+                    filename += "-esrgan4x"  # TODO: Model name
 
-                if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
-                    skip_save = True # #287 >_>
-                    torch_gc()
-                    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
-                    gfpgan_sample = restored_img[:,:,::-1]
-                    output, img_mode = RealESRGAN.enhance(gfpgan_sample[:,:,::-1])
-                    gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
-                    gfpgan_esrgan_sample = output[:,:,::-1]
-                    gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
-                    gfpgan_esrgan_image = perform_color_correction(gfpgan_esrgan_image, correction_target, do_color_correction)
-                    gfpgan_esrgan_image = perform_masked_image_restoration(
-                        gfpgan_esrgan_image, init_img, init_mask,
-                        mask_blur_strength, mask_restore,
-                        use_RealESRGAN, RealESRGAN
-                    )
-                    ImageMetadata.set_on_image(gfpgan_esrgan_image, metadata)
-                    save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
-                    output_images.append(gfpgan_esrgan_image) #287
-                    #if simple_templating:
-                    #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
 
-                # this flag is used for imgProcessorTasks like GoBig, will return the image without saving it
-                if imgProcessorTask == True:
-                    output_images.append(image)
+                if use_GFPGAN:
+                    with model_manager.model_context(ModelNames.GFPGAN) as gfpgan_model:
+                        cropped_faces, fixed_faces, processed_samples = gfpgan_model.enhance(
+                            processed_samples, has_aligned=False, only_center_face=False, paste_back=True)
+                    processed_samples = processed_samples[:, :, ::-1]
+                    filename += "-gfpgan"
+                    processed_metadata.GFPGAN = True
 
-                image = perform_masked_image_restoration(
-                    image, init_img, init_mask,
-                    mask_blur_strength, mask_restore,
-                    # RealESRGAN image already processed in if-case above.
-                    use_RealESRGAN = False, RealESRGAN = None
-                )
+
+                processed_image = Image.fromarray(processed_samples)
+                if do_color_correction and correction_target is not None:
+                    processed_image = perform_color_correction(processed_image, correction_target)
+
+                processed_image = perform_masked_image_restoration(
+                    processed_image, init_img, init_mask, mask_blur_strength, mask_restore, None)
+
+                ImageMetadata.set_on_image(processed_image, processed_metadata)
+
+                # if use_RealESRGAN and RealESRGAN is not None and not use_GFPGAN:
+                #     skip_save = True  # 287 >_>
+                #     torch_gc()
+                #     output, img_mode = RealESRGAN.enhance(original_sample[:, :, ::-1])
+                #     esrgan_filename = original_filename + '-esrgan4x'
+                #     esrgan_sample = output[:, :, ::-1]
+                #     esrgan_image = Image.fromarray(esrgan_sample)
+                #     esrgan_image =
+                #     esrgan_image = perform_masked_image_restoration(
+                #         esrgan_image, init_img, init_mask,
+                #         mask_blur_strength, mask_restore,
+                #         use_RealESRGAN, RealESRGAN
+                #     )
+                #     ImageMetadata.set_on_image(esrgan_image, metadata)
+                #     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, write_info_files,
+                #                 write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback,
+                #                 uses_random_seed_loopback, skip_save, skip_grid, sort_samples, sampler_name, ddim_eta,
+                #                 n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+                #     output_images.append(esrgan_image)  # 287
+                #     # if simple_templating:
+                #     #    grid_captions.append( captions[i] + "\nesrgan" )
+
+                # if use_RealESRGAN and RealESRGAN is not None and use_GFPGAN and GFPGAN is not None:
+                #     skip_save = True  # 287 >_>
+                #     torch_gc()
+                #     cropped_faces, restored_faces, restored_img = GFPGAN.enhance(
+                #         x_sample[:, :, ::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                #     gfpgan_sample = restored_img[:, :, ::-1]
+                #     output, img_mode = RealESRGAN.enhance(gfpgan_sample[:, :, ::-1])
+                #     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
+                #     gfpgan_esrgan_sample = output[:, :, ::-1]
+                #     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
+                #     gfpgan_esrgan_image = perform_color_correction(
+                #         gfpgan_esrgan_image, correction_target, do_color_correction)
+                #     gfpgan_esrgan_image = perform_masked_image_restoration(
+                #         gfpgan_esrgan_image, init_img, init_mask,
+                #         mask_blur_strength, mask_restore,
+                #         use_RealESRGAN, RealESRGAN
+                #     )
+                #     ImageMetadata.set_on_image(gfpgan_esrgan_image, metadata)
+                #     save_sample(
+                #         gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, write_info_files,
+                #         write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback,
+                #         uses_random_seed_loopback, skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter,
+                #         batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+                #     output_images.append(gfpgan_esrgan_image)  # 287
+                #     # if simple_templating:
+                #     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
+
+                # image = perform_masked_image_restoration(
+                #     image, init_img, init_mask,
+                #     mask_blur_strength, mask_restore,
+                #     # RealESRGAN image already processed in if-case above.
+                #     use_RealESRGAN=False, RealESRGAN=None
+                # )
 
                 if not skip_save:
-                    save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                    save_sample(processed_image, sample_path_i, filename, jpg_sample, write_info_files,
+                                write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback,
+                                uses_random_seed_loopback, skip_save, skip_grid, sort_samples, sampler_name, ddim_eta,
+                                n_iter, batch_size, i, denoising_strength, resize_mode, False)
                 if add_original_image or not simple_templating:
-                    output_images.append(image)
+                    output_images.append(processed_image)
                     if simple_templating:
                         grid_captions.append( captions[i] )
 
@@ -1301,12 +1365,6 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         steps_grid_filename = f"{original_filename}_step_grid"
                         save_sample(steps_grid, sample_path_i, steps_grid_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
                                     skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
-
-            if opt.optimized:
-                mem = torch.cuda.memory_allocated()/1e6
-                modelFS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
-                    time.sleep(1)
 
         if (prompt_matrix or not skip_grid) and not do_not_save_grid:
             grid = None
@@ -1385,33 +1443,25 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
     do_color_correction = False
     correction_target = None
 
-    ModelLoader(['model'],True,False)
-    if use_GFPGAN and not use_RealESRGAN:
-        ModelLoader(['GFPGAN'],True,False)
-        ModelLoader(['RealESRGAN'],False,True)
-    if use_RealESRGAN and not use_GFPGAN:
-        ModelLoader(['GFPGAN'],False,True)
-        ModelLoader(['RealESRGAN'],True,False,realesrgan_model_name)
-    if use_RealESRGAN and use_GFPGAN:
-        ModelLoader(['GFPGAN','RealESRGAN'],True,False,realesrgan_model_name)
-    if sampler_name == 'PLMS':
-        sampler = PLMSSampler(model)
-    elif sampler_name == 'DDIM':
-        sampler = DDIMSampler(model)
-    elif sampler_name == 'k_dpm_2_a':
-        sampler = KDiffusionSampler(model,'dpm_2_ancestral')
-    elif sampler_name == 'k_dpm_2':
-        sampler = KDiffusionSampler(model,'dpm_2')
-    elif sampler_name == 'k_euler_a':
-        sampler = KDiffusionSampler(model,'euler_ancestral')
-    elif sampler_name == 'k_euler':
-        sampler = KDiffusionSampler(model,'euler')
-    elif sampler_name == 'k_heun':
-        sampler = KDiffusionSampler(model,'heun')
-    elif sampler_name == 'k_lms':
-        sampler = KDiffusionSampler(model,'lms')
-    else:
-        raise Exception("Unknown sampler: " + sampler_name)
+    with model_manager.model_context(ModelNames.SD_unet) as model_unet:
+        if sampler_name == 'PLMS':
+            sampler = PLMSSampler(model_unet)
+        elif sampler_name == 'DDIM':
+            sampler = DDIMSampler(model_unet)
+        elif sampler_name == 'k_dpm_2_a':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2_ancestral')
+        elif sampler_name == 'k_dpm_2':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2')
+        elif sampler_name == 'k_euler_a':
+            sampler = KDiffusionSampler(model_unet, 'euler_ancestral')
+        elif sampler_name == 'k_euler':
+            sampler = KDiffusionSampler(model_unet, 'euler')
+        elif sampler_name == 'k_heun':
+            sampler = KDiffusionSampler(model_unet, 'heun')
+        elif sampler_name == 'k_lms':
+            sampler = KDiffusionSampler(model_unet, 'lms')
+        else:
+            raise Exception("Unknown sampler: " + sampler_name)
 
     def init():
         pass
@@ -1459,6 +1509,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
 
         return output_images, seed, info, stats
     except RuntimeError as e:
+        import traceback
+        print(traceback.format_exc(), file=sys.stderr)
         err = e
         err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
         stats = err_msg
@@ -1546,31 +1598,23 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
     filter_nsfw = 11 in toggles
     use_GFPGAN = 12 in toggles
     use_RealESRGAN = 13 in toggles
-    ModelLoader(['model'],True,False)
-    if use_GFPGAN and not use_RealESRGAN:
-        ModelLoader(['GFPGAN'],True,False)
-        ModelLoader(['RealESRGAN'],False,True)
-    if use_RealESRGAN and not use_GFPGAN:
-        ModelLoader(['GFPGAN'],False,True)
-        ModelLoader(['RealESRGAN'],True,False,realesrgan_model_name)
-    if use_RealESRGAN and use_GFPGAN:
-        ModelLoader(['GFPGAN','RealESRGAN'],True,False,realesrgan_model_name)
-    if sampler_name == 'DDIM':
-        sampler = DDIMSampler(model)
-    elif sampler_name == 'k_dpm_2_a':
-        sampler = KDiffusionSampler(model,'dpm_2_ancestral')
-    elif sampler_name == 'k_dpm_2':
-        sampler = KDiffusionSampler(model,'dpm_2')
-    elif sampler_name == 'k_euler_a':
-        sampler = KDiffusionSampler(model,'euler_ancestral')
-    elif sampler_name == 'k_euler':
-        sampler = KDiffusionSampler(model,'euler')
-    elif sampler_name == 'k_heun':
-        sampler = KDiffusionSampler(model,'heun')
-    elif sampler_name == 'k_lms':
-        sampler = KDiffusionSampler(model,'lms')
-    else:
-        raise Exception("Unknown sampler: " + sampler_name)
+    with model_manager.model_context(ModelNames.SD_unet) as model_unet:
+        if sampler_name == 'DDIM':
+            sampler = DDIMSampler(model_unet)
+        elif sampler_name == 'k_dpm_2_a':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2_ancestral')
+        elif sampler_name == 'k_dpm_2':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2')
+        elif sampler_name == 'k_euler_a':
+            sampler = KDiffusionSampler(model_unet, 'euler_ancestral')
+        elif sampler_name == 'k_euler':
+            sampler = KDiffusionSampler(model_unet, 'euler')
+        elif sampler_name == 'k_heun':
+            sampler = KDiffusionSampler(model_unet, 'heun')
+        elif sampler_name == 'k_lms':
+            sampler = KDiffusionSampler(model_unet, 'lms')
+        else:
+            raise Exception("Unknown sampler: " + sampler_name)
 
     if image_editor_mode == 'Mask':
         init_img = init_info_mask["image"]
@@ -1614,8 +1658,6 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
             mask = np.tile(mask, (4, 1, 1))
             mask = mask[None].transpose(0, 1, 2, 3)
             mask = torch.from_numpy(mask).to(device)
-        if opt.optimized:
-            modelFS.to(device)
 
         #let's try and find where init_image is 0's
         #shape is probably (3,width,height)?
@@ -1671,13 +1713,9 @@ def img2img(prompt: str, image_editor_mode: str, mask_mode: str, mask_blur_stren
 
         init_image = init_image.to(device)
         init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
-        init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
-
-        if opt.optimized:
-            mem = torch.cuda.memory_allocated()/1e6
-            modelFS.to("cpu")
-            while(torch.cuda.memory_allocated()/1e6 >= mem):
-                time.sleep(1)
+        with model_manager.model_context(ModelNames.SD_fs) as model_fs:
+            init_latent = model_fs.get_first_stage_encoding(
+                model_fs.encode_first_stage(init_image))  # move to latent space
 
         return init_latent, mask,
 
@@ -1909,7 +1947,10 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
     def processGFPGAN(image,strength):
         image = image.convert("RGB")
         metadata = ImageMetadata.get_from_image(image)
-        cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(image, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
+        with model_manager.model_context(ModelNames.GFPGAN) as gfpgan:
+            cropped_faces, restored_faces, restored_img = gfpgan.enhance(
+                np.array(image, dtype=np.uint8),
+                has_aligned=False, only_center_face=False, paste_back=True)
         result = Image.fromarray(restored_img)
         if metadata:
             metadata.GFPGAN = True
@@ -1927,8 +1968,10 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             modelMode = imgproc_realesrgan_model_name
         image = image.convert("RGB")
         metadata = ImageMetadata.get_from_image(image)
-        RealESRGAN = load_RealESRGAN(modelMode)
-        result, res = RealESRGAN.enhance(np.array(image, dtype=np.uint8))
+
+        with model_manager.model_context(modelMode) as model:
+            result, res = model.enhance(np.array(image, dtype=np.uint8))
+
         result = Image.fromarray(result)
         ImageMetadata.set_on_image(result, metadata)
         if 'x2' in imgproc_realesrgan_model_name:
@@ -1961,24 +2004,23 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         t_enc = int(denoising_strength * ddim_steps)
         sampler_name = imgproc_sampling
 
-
-        if sampler_name == 'DDIM':
-            sampler = DDIMSampler(model)
-        elif sampler_name == 'k_dpm_2_a':
-            sampler = KDiffusionSampler(model,'dpm_2_ancestral')
-        elif sampler_name == 'k_dpm_2':
-            sampler = KDiffusionSampler(model,'dpm_2')
-        elif sampler_name == 'k_euler_a':
-            sampler = KDiffusionSampler(model,'euler_ancestral')
-        elif sampler_name == 'k_euler':
-            sampler = KDiffusionSampler(model,'euler')
-        elif sampler_name == 'k_heun':
-            sampler = KDiffusionSampler(model,'heun')
-        elif sampler_name == 'k_lms':
-            sampler = KDiffusionSampler(model,'lms')
-        else:
-            raise Exception("Unknown sampler: " + sampler_name)
-            pass
+        with model_manager.model_context(ModelNames.SD_fs) as model_fs:
+            if sampler_name == 'DDIM':
+                sampler = DDIMSampler(model_fs)
+            elif sampler_name == 'k_dpm_2_a':
+                sampler = KDiffusionSampler(model_fs, 'dpm_2_ancestral')
+            elif sampler_name == 'k_dpm_2':
+                sampler = KDiffusionSampler(model_fs, 'dpm_2')
+            elif sampler_name == 'k_euler_a':
+                sampler = KDiffusionSampler(model_fs, 'euler_ancestral')
+            elif sampler_name == 'k_euler':
+                sampler = KDiffusionSampler(model_fs, 'euler')
+            elif sampler_name == 'k_heun':
+                sampler = KDiffusionSampler(model_fs, 'heun')
+            elif sampler_name == 'k_lms':
+                sampler = KDiffusionSampler(model_fs, 'lms')
+            else:
+                raise Exception("Unknown sampler: " + sampler_name)
         init_img = result
         init_mask = None
         keep_mask = False
@@ -1992,19 +2034,12 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
             image = image[None].transpose(0, 3, 1, 2)
             image = torch.from_numpy(image)
 
-            if opt.optimized:
-                modelFS.to(device)
-
             init_image = 2. * image - 1.
             init_image = init_image.to(device)
             init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
-            init_latent = (model if not opt.optimized else modelFS).get_first_stage_encoding((model if not opt.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
-
-            if opt.optimized:
-                mem = torch.cuda.memory_allocated()/1e6
-                modelFS.to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
-                    time.sleep(1)
+            with model_manager.model_context(ModelNames.SD_fs) as model_fs:
+                init_latent = model_fs.get_first_stage_encoding(
+                    model_fs.encode_first_stage(init_image))  # move to latent space
 
             return init_latent,
 
@@ -2019,6 +2054,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                 sigma_sched = sigmas[ddim_steps - t_enc - 1:]
                 model_wrap_cfg = CFGDenoiser(sampler.model_wrap)
                 samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched, extra_args={'cond': conditioning, 'uncond': unconditional_conditioning, 'cond_scale': cfg_scale}, disable=False, callback=partial(KDiffusionSampler.img_callback_wrapper, img_callback))
+
             else:
                 x0, = init_data
                 sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
@@ -2163,6 +2199,10 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         ImageMetadata.set_on_image(result, metadata)
         return result
 
+    def processGoLatent(image):
+        image = processGoBig(image)
+        image = processGoLatent(image)
+        return image
 
     if image_batch != None:
         if image != None:
@@ -2182,162 +2222,48 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
 
     if len(images) > 0:
         print("Processing images...")
-        #pre load models not in loop
-        if 0 in imgproc_toggles:
-            ModelLoader(['RealESGAN','LDSR'],False,True) # Unload unused models
-            ModelLoader(['GFPGAN'],True,False) # Load used models
-        if 1 in imgproc_toggles:
-                if imgproc_upscale_toggles == 0:
-                     ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
-                     ModelLoader(['RealESGAN'],True,False,imgproc_realesrgan_model_name) # Load used models
-                elif imgproc_upscale_toggles == 1:
-                        ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
-                        ModelLoader(['RealESGAN','model'],True,False) # Load used models
-                elif imgproc_upscale_toggles == 2:
 
-                    ModelLoader(['model','GFPGAN','RealESGAN'],False,True) # Unload unused models
-                    ModelLoader(['LDSR'],True,False) # Load used models
-                elif imgproc_upscale_toggles == 3:
-                    ModelLoader(['GFPGAN','LDSR'],False,True) # Unload unused models
-                    ModelLoader(['RealESGAN','model'],True,False,imgproc_realesrgan_model_name) # Load used models
-        for image in images:
-            metadata = ImageMetadata.get_from_image(image)
-            if 0 in imgproc_toggles:
-                #recheck if GFPGAN is loaded since it's the only model that can be loaded in the loop as well
-                ModelLoader(['GFPGAN'],True,False) # Load used models
-                image = processGFPGAN(image,imgproc_gfpgan_strength)
-                if metadata:
-                    metadata.GFPGAN = True
-                ImageMetadata.set_on_image(image, metadata)
-                outpathDir = os.path.join(outpath,'GFPGAN')
-                os.makedirs(outpathDir, exist_ok=True)
-                batchNumber = get_next_sequence_number(outpathDir)
-                outFilename = str(batchNumber)+'-'+'result'
+        fix_faces = (0 in imgproc_toggles)
+        upscale = (1 in imgproc_toggles)
+        outpathDir = outpath
+        if upscale:
+            if imgproc_upscale_toggles == 0:  # RealESRGAN
+                upscaler, upscaler_name = processRealESRGAN, "realESRGAN"
+            elif imgproc_upscale_toggles == 1:  # GoBig
+                upscaler, upscaler_name = processGoBig, "GoBig"
+            elif imgproc_upscale_toggles == 2:  # Latent Diffusion SR
+                upscaler, upscaler_name = processLDSR, "LDSR"
+            elif imgproc_upscale_toggles == 3:  # GoLatent
+                upscaler, upscaler_name = processGoLatent, "GoLatent"
+            outpathDir = os.path.join(outpath, upscaler_name)
 
-                if 1 not in imgproc_toggles:
-                    output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
-            if 1 in imgproc_toggles:
-                if imgproc_upscale_toggles == 0:
-                    image = processRealESRGAN(image)
-                    ImageMetadata.set_on_image(image, metadata)
-                    outpathDir = os.path.join(outpath,'RealESRGAN')
-                    os.makedirs(outpathDir, exist_ok=True)
-                    batchNumber = get_next_sequence_number(outpathDir)
-                    outFilename = str(batchNumber)+'-'+'result'
-                    output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+        name_modifiers = ""
+        if fix_faces:
+            name_modifiers += "-gfpgan"
 
-                elif imgproc_upscale_toggles == 1:
-                    image = processGoBig(image)
-                    ImageMetadata.set_on_image(image, metadata)
-                    outpathDir = os.path.join(outpath,'GoBig')
-                    os.makedirs(outpathDir, exist_ok=True)
-                    batchNumber = get_next_sequence_number(outpathDir)
-                    outFilename = str(batchNumber)+'-'+'result'
-                    output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+        for orig_image in images:
+            processed_image = orig_image
 
-                elif imgproc_upscale_toggles == 2:
-                    image = processLDSR(image)
-                    ImageMetadata.set_on_image(image, metadata)
-                    outpathDir = os.path.join(outpath,'LDSR')
-                    os.makedirs(outpathDir, exist_ok=True)
-                    batchNumber = get_next_sequence_number(outpathDir)
-                    outFilename = str(batchNumber)+'-'+'result'
-                    output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+            if fix_faces:
+                processed_image = processGFPGAN(processed_image, imgproc_gfpgan_strength)
 
-                elif imgproc_upscale_toggles == 3:
-                    image = processGoBig(image)
-                    ModelLoader(['model','GFPGAN','RealESGAN'],False,True) # Unload unused models
-                    ModelLoader(['LDSR'],True,False) # Load used models
-                    image = processLDSR(image)
-                    ImageMetadata.set_on_image(image, metadata)
-                    outpathDir = os.path.join(outpath,'GoLatent')
-                    os.makedirs(outpathDir, exist_ok=True)
-                    batchNumber = get_next_sequence_number(outpathDir)
-                    outFilename = str(batchNumber)+'-'+'result'
-                    output.append(image)
+            if upscale:
+                # Upscalers may not save metadata
+                metadata = ImageMetadata.get_from_image(processed_image)
+                processed_image = upscaler(processed_image)
+                ImageMetadata.set_on_image(processed_image, metadata)
 
-                    save_sample(image, outpathDir, outFilename, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+            # TODO: What was the toggle to disable saving this before?
+            os.makedirs(outpathDir, exist_ok=True)
+            batchNumber = get_next_sequence_number(outpathDir)
+            outFilename = f"{batchNumber}-result{name_modifiers}"
+            save_sample(processed_image, outpathDir, outFilename, False, None, None, None, None, None,
+                        False, None, None, None, None, None, None, None, None, None, False)
 
-    #LDSR is always unloaded to avoid memory issues
-    #ModelLoader(['LDSR'],False,True)
-    #print("Reloading default models...")
-    #ModelLoader(['model','RealESGAN','GFPGAN'],True,False) # load back models
+            output.append(processed_image)
+
     print("Done.")
     return output
-
-def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='RealESRGAN_x4plus'):
-    #get global variables
-    global_vars = globals()
-    #check if m is in globals
-    if unload:
-        for m in models:
-            if m in global_vars:
-                #if it is, delete it
-                del global_vars[m]
-                if opt.optimized:
-                    if m == 'model':
-                        del global_vars[m+'FS']
-                        del global_vars[m+'CS']
-                if m =='model':
-                    m='Stable Diffusion'
-                print('Unloaded ' + m)
-    if load:
-        for m in models:
-            if m not in global_vars or m in global_vars and type(global_vars[m]) == bool:
-                #if it isn't, load it
-                if m == 'GFPGAN':
-                    global_vars[m] = load_GFPGAN()
-                elif m == 'model':
-                    sdLoader = load_SD_model()
-                    global_vars[m] = sdLoader[0]
-                    if opt.optimized:
-                        global_vars[m+'CS'] = sdLoader[1]
-                        global_vars[m+'FS'] = sdLoader[2]
-                elif m == 'RealESRGAN':
-                    global_vars[m] = load_RealESRGAN(imgproc_realesrgan_model_name)
-                elif m == 'LDSR':
-                    global_vars[m] = load_LDSR()
-                if m =='model':
-                    m='Stable Diffusion'
-                print('Loaded ' + m)
-    torch_gc()
-
-
-def run_GFPGAN(image, strength):
-    ModelLoader(['LDSR','RealESRGAN'],False,True)
-    ModelLoader(['GFPGAN'],True,False)
-    metadata = ImageMetadata.get_from_image(image)
-    image = image.convert("RGB")
-
-    cropped_faces, restored_faces, restored_img = GFPGAN.enhance(np.array(image, dtype=np.uint8), has_aligned=False, only_center_face=False, paste_back=True)
-    res = Image.fromarray(restored_img)
-    metadata.GFPGAN = True
-    ImageMetadata.set_on_image(res, metadata)
-
-    if strength < 1.0:
-        res = Image.blend(image, res, strength)
-
-    return res
-
-def run_RealESRGAN(image, model_name: str):
-    ModelLoader(['GFPGAN','LDSR'],False,True)
-    ModelLoader(['RealESRGAN'],True,False)
-    if RealESRGAN.model.name != model_name:
-            try_loading_RealESRGAN(model_name)
-
-    metadata = ImageMetadata.get_from_image(image)
-    image = image.convert("RGB")
-
-    output, img_mode = RealESRGAN.enhance(np.array(image, dtype=np.uint8))
-    res = Image.fromarray(output)
-    ImageMetadata.set_on_image(res, metadata)
-
-    return res
-
 
 if opt.defaults is not None and os.path.isfile(opt.defaults):
     try:
@@ -2363,9 +2289,9 @@ txt2img_toggles = [
     'Filter NSFW content',
 ]
 
-if GFPGAN is not None:
+if model_manager.is_loadable(ModelNames.GFPGAN):
     txt2img_toggles.append('Fix faces using GFPGAN')
-if RealESRGAN is not None:
+if model_manager.is_loadable(ModelNames.RealESRGAN):
     txt2img_toggles.append('Upscale images using RealESRGAN')
 
 txt2img_defaults = {
@@ -2425,9 +2351,9 @@ img2img_toggles = [
     'Filter NSFW content',
 ]
 # removed for now becuase of Image Lab implementation
-if GFPGAN is not None:
+if model_manager.is_loadable(ModelNames.GFPGAN):
     img2img_toggles.append('Fix faces using GFPGAN')
-if RealESRGAN is not None:
+if model_manager.is_loadable(ModelNames.RealESRGAN):
     img2img_toggles.append('Upscale images using RealESRGAN')
 
 img2img_mask_modes = [
@@ -2497,7 +2423,7 @@ demo = draw_gradio_ui(opt,
                       txt2img_defaults=txt2img_defaults,
                       txt2img_toggles=txt2img_toggles,
                       txt2img_toggle_defaults=txt2img_toggle_defaults,
-                      show_embeddings=hasattr(model, "embedding_manager"),
+                      show_embeddings=has_embeddings,
                       img2img_defaults=img2img_defaults,
                       img2img_toggles=img2img_toggles,
                       img2img_toggle_defaults=img2img_toggle_defaults,
@@ -2506,11 +2432,9 @@ demo = draw_gradio_ui(opt,
                       sample_img2img=sample_img2img,
                       imgproc_defaults=imgproc_defaults,
                       imgproc_mode_toggles=imgproc_mode_toggles,
-                      RealESRGAN=RealESRGAN,
-                      GFPGAN=GFPGAN,
-                      LDSR=LDSR,
-                      run_GFPGAN=run_GFPGAN,
-                      run_RealESRGAN=run_RealESRGAN,
+                      has_real_esrgan=model_manager.is_loadable(ModelNames.RealESRGAN),
+                      has_gfpgan=model_manager.is_loadable(ModelNames.GFPGAN),
+                      has_ldsr=model_manager.is_loadable(ModelNames.LDSR),
                       job_manager=job_manager
                         )
 

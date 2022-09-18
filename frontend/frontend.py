@@ -23,11 +23,10 @@ import torch
 
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, txt2img_defaults={},
-                   RealESRGAN=True, GFPGAN=True, LDSR=True,
+                   has_real_esrgan=True, has_gfpgan=True, has_ldsr=True,
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
                    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
                    img2img_resize_modes=None, imgproc_defaults={}, imgproc_mode_toggles={}, user_defaults={},
-                   run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
                    job_manager: JobManager = None) -> gr.Blocks:
     with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
         with gr.Tabs(elem_id='tabss') as tabs:
@@ -331,7 +330,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                                     choices=['RealESRGAN_x4plus',
                                                                              'RealESRGAN_x4plus_anime_6B'],
                                                                     value='RealESRGAN_x4plus',
-                                                                    visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
+                                                                    visible=has_real_esrgan)  # TODO: Feels like I shouldnt slot it in here.
 
                         img2img_embeddings = gr.File(label="Embeddings file for textual inversion",
                                                      visible=show_embeddings)
@@ -495,7 +494,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                             if 'gfpgan' in user_defaults:
                                 gfpgan_defaults.update(user_defaults['gfpgan'])
-                            if GFPGAN is None:
+                            if has_gfpgan:
                                 gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
         <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
@@ -508,10 +507,10 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                 imgproc_gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001,
                                                                     label="Effect strength",
                                                                     value=gfpgan_defaults['strength'],
-                                                                    visible=GFPGAN is not None)
+                                                                    visible=has_gfpgan)
                         with gr.Box(visible=False) as upscale_group:
 
-                            if LDSR:
+                            if has_ldsr:
                                 upscaleModes = ['RealESRGAN', 'GoBig', 'Latent Diffusion SR', 'GoLatent ']
                             else:
                                 gr.HTML("""
@@ -523,34 +522,34 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             with gr.Column():
                                 gr.Markdown("<b>Upscaler Selection</b>")
                                 imgproc_upscale_toggles = gr.Radio(label='', choices=upscaleModes, type="index",
-                                                                   visible=RealESRGAN is not None, value='RealESRGAN')
+                                                                   visible=has_real_esrgan, value='RealESRGAN')
                         with gr.Box(visible=False) as upscalerSettings_group:
 
                             with gr.Box(visible=True) as realesrgan_group:
                                 with gr.Column():
                                     gr.Markdown("<b>RealESRGAN Settings</b>")
                                     imgproc_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model',
-                                                                                interactive=RealESRGAN is not None,
+                                                                                interactive=has_real_esrgan,
                                                                                 choices=['RealESRGAN_x4plus',
                                                                                          'RealESRGAN_x4plus_anime_6B',
                                                                                          'RealESRGAN_x2plus',
                                                                                          'RealESRGAN_x2plus_anime_6B'],
                                                                                 value='RealESRGAN_x4plus',
-                                                                                visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
+                                                                                visible=has_real_esrgan)  # TODO: Feels like I shouldnt slot it in here.
                             with gr.Box(visible=False) as ldsr_group:
                                 with gr.Row(elem_id="ldsr_settings_row"):
                                     with gr.Column():
                                         gr.Markdown("<b>Latent Diffusion Super Sampling Settings</b>")
                                         imgproc_ldsr_steps = gr.Slider(minimum=0, maximum=500, step=10,
                                                                        label="LDSR Sampling Steps",
-                                                                       value=100, visible=LDSR is not None)
+                                                                       value=100, visible=has_ldsr)
                                         imgproc_ldsr_pre_downSample = gr.Dropdown(
                                             label='LDSR Pre Downsample mode (Lower resolution before processing for speed)',
-                                            choices=["None", '1/2', '1/4'], value="None", visible=LDSR is not None)
+                                            choices=["None", '1/2', '1/4'], value="None", visible=has_ldsr)
                                         imgproc_ldsr_post_downSample = gr.Dropdown(
                                             label='LDSR Post Downsample mode (aka SuperSampling)',
                                             choices=["None", "Original Size", '1/2', '1/4'], value="None",
-                                            visible=LDSR is not None)
+                                            visible=has_ldsr)
                             with gr.Box(visible=False) as gobig_group:
                                 with gr.Row(elem_id="proc_prompt_row"):
                                     with gr.Column():
@@ -562,24 +561,24 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                                     max_lines=1,
                                                                     value=imgproc_defaults['prompt'],
                                                                     show_label=True,
-                                                                    visible=RealESRGAN is not None)
+                                                                    visible=has_real_esrgan)
                                         imgproc_sampling = gr.Dropdown(
                                             label='Sampling method (k_lms is default k-diffusion sampler)',
                                             choices=["DDIM", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler',
                                                      'k_heun', 'k_lms'],
-                                            value=imgproc_defaults['sampler_name'], visible=RealESRGAN is not None)
+                                            value=imgproc_defaults['sampler_name'], visible=has_real_esrgan)
                                         imgproc_steps = gr.Slider(minimum=1, maximum=250, step=1,
                                                                   label="Sampling Steps",
                                                                   value=imgproc_defaults['ddim_steps'],
-                                                                  visible=RealESRGAN is not None)
+                                                                  visible=has_real_esrgan)
                                         imgproc_cfg = gr.Slider(minimum=1.0, maximum=30.0, step=0.5,
                                                                 label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)',
                                                                 value=imgproc_defaults['cfg_scale'],
-                                                                visible=RealESRGAN is not None)
+                                                                visible=has_real_esrgan)
                                         imgproc_denoising = gr.Slider(minimum=0.0, maximum=1.0, step=0.01,
                                                                       label='Denoising Strength',
                                                                       value=imgproc_defaults['denoising_strength'],
-                                                                      visible=RealESRGAN is not None)
+                                                                      visible=has_real_esrgan)
                                         imgproc_height = gr.Slider(minimum=64, maximum=2048, step=64, label="Height",
                                                                    value=imgproc_defaults["height"],
                                                                    visible=False)  # not currently implemented
@@ -589,7 +588,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                         imgproc_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1,
                                                                   max_lines=1,
                                                                   value=imgproc_defaults["seed"],
-                                                                  visible=RealESRGAN is not None)
+                                                                  visible=has_real_esrgan)
                                         imgproc_btn.click(
                                             imgproc,
                                             [imgproc_source, imgproc_folder, imgproc_prompt, imgproc_toggles,
@@ -620,7 +619,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                 fromId="txt2img_gallery_output",
                                                 toId="imglab_input")
                                 )
-                                if RealESRGAN is None:
+                                if has_real_esrgan:
                                     with gr.Row():
                                         with gr.Column():
                                             # seperator
@@ -639,54 +638,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                            outputs=[ldsr_group])
             imgproc_upscale_toggles.change(fn=uifn.toggle_options_gobig, inputs=[imgproc_upscale_toggles],
                                            outputs=[gobig_group])
-
-            """
-            if GFPGAN is not None:
-                gfpgan_defaults = {
-                    'strength': 100,
-                }
-
-                if 'gfpgan' in user_defaults:
-                    gfpgan_defaults.update(user_defaults['gfpgan'])
-
-                with gr.TabItem("GFPGAN", id='cfpgan_tab'):
-                    gr.Markdown("Fix faces on images")
-                    with gr.Row():
-                        with gr.Column():
-                            gfpgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
-                            gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
-                                                        value=gfpgan_defaults['strength'])
-                            gfpgan_btn = gr.Button("Generate", variant="primary")
-                        with gr.Column():
-                            gfpgan_output = gr.Image(label="Output", elem_id='gan_image')
-                    gfpgan_btn.click(
-                        run_GFPGAN,
-                        [gfpgan_source, gfpgan_strength],
-                        [gfpgan_output]
-                    )
-            if RealESRGAN is not None:
-                with gr.TabItem("RealESRGAN", id='realesrgan_tab'):
-                    gr.Markdown("Upscale images")
-                    with gr.Row():
-                        with gr.Column():
-                            realesrgan_source = gr.Image(label="Source", source="upload", interactive=True, type="pil")
-                            realesrgan_model_name = gr.Dropdown(label='RealESRGAN model', choices=['RealESRGAN_x4plus',
-                                                                                                   'RealESRGAN_x4plus_anime_6B'],
-                                                                value='RealESRGAN_x4plus')
-                            realesrgan_btn = gr.Button("Generate")
-                        with gr.Column():
-                            realesrgan_output = gr.Image(label="Output", elem_id='gan_image')
-                    realesrgan_btn.click(
-                        run_RealESRGAN,
-                        [realesrgan_source, realesrgan_model_name],
-                        [realesrgan_output]
-                    )
-                output_txt2img_to_upscale_esrgan.click(
-                    uifn.copy_img_to_upscale_esrgan,
-                    output_txt2img_gallery,
-                    [realesrgan_source, tabs],
-                    _js=js_move_image('txt2img_gallery_output', 'img2img_editor'))
-        """
         gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
         <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
