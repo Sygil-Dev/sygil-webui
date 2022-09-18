@@ -217,7 +217,11 @@ def layout():
                             the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
                             will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
 
-            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=10, max_value=500, step=10)
+            st.session_state.sampling_steps = st.slider("Sampling Steps",
+            value=st.session_state['defaults'].txt2img.sampling_steps,
+            min_value=st.session_state['defaults'].txt2img.slider_bounds.sampling.lower,
+		    max_value=st.session_state['defaults'].txt2img.slider_bounds.sampling.upper,
+		    step=st.session_state['defaults'].txt2img.slider_steps.sampling)
 
             sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,

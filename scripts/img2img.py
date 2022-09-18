@@ -383,7 +383,11 @@ def layout():
 				st.session_state["custom_model"] = "Stable Diffusion v1.4"
 				
 				
-			st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=st.session_state['defaults'].img2img.sampling_steps, min_value=1, max_value=500)
+			st.session_state["sampling_steps"] = st.slider("Sampling Steps",
+			value=st.session_state['defaults'].img2img.sampling_steps,
+			min_value=st.session_state['defaults'].img2img.slider_bounds.sampling.lower,
+		    max_value=st.session_state['defaults'].img2img.slider_bounds.sampling.upper,
+		    step=st.session_state['defaults'].img2img.slider_steps.sampling)
 			
 			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 			st.session_state["sampler_name"] = st.selectbox("Sampling method",sampler_name_list, 

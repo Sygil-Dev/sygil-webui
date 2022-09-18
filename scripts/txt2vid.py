@@ -650,8 +650,12 @@ def layout():
 			#custom_model = "CompVis/stable-diffusion-v1-4"
 			#st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 
-		st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2vid.sampling_steps, min_value=10, step=10, max_value=500,
-													help="Number of steps between each pair of sampled points")
+		st.session_state.sampling_steps = st.slider("Sampling Steps",
+		value=st.session_state['defaults'].txt2vid.sampling_steps,
+		min_value=st.session_state['defaults'].txt2vid.slider_bounds.sampling.lower,
+		max_value=st.session_state['defaults'].txt2vid.slider_bounds.sampling.upper,
+		step=st.session_state['defaults'].txt2vid.slider_steps.sampling,
+		help="Number of steps between each pair of sampled points")
 		st.session_state.num_inference_steps = st.slider("Inference Steps:", value=st.session_state['defaults'].txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
 														 help="Higher values (e.g. 100, 200 etc) can create better images.")
 
