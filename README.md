@@ -1,15 +1,28 @@
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/altryne/sd-webui-colab/blob/main/Stable_Diffusion_WebUi_Altryne.ipynb)
+# [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
 
-# [Installation](https://github.com/hlky/stable-diffusion/wiki/Installation)
+# Installation instructions for [Windows](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation), [Linux](https://github.com/sd-webui/stable-diffusion-webui/wiki/Linux-Automated-Setup-Guide)
 
 ### Have an **issue**? 
 
-* If the issue involves _a bug_ in **textual-inversion** create the issue on **_[hlky/stable-diffusion-webui](https://github.com/hlky/stable-diffusion-webui)_**
-* If you want to know how to **activate** or **use** textual-inversion see **_[hlky/sd-enable-textual-inversion](https://github.com/hlky/sd-enable-textual-inversion)_**. Activation not working? create the issue on **_[hlky/stable-diffusion-webui](https://github.com/hlky/stable-diffusion-webui)_**
+* If the issue involves _a bug_ in **textual-inversion** create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
+* If you want to know how to **activate** or **use** textual-inversion see **_[hlky/sd-enable-textual-inversion](https://github.com/hlky/sd-enable-textual-inversion)_**. Activation not working? create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 
+### Want to contribute?
+
+Gradio version (stable)
+
+Open new Pull Requests on `dev` branch!
+
+for Gradio check out the [docs](https://gradio.app/docs/) to contribute
+
+Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
+
+Need more support with Gradio? We have a discord channel called `gradio-stable-diffusion` for Q&A with the gradio authors, to join use this link https://discord.gg/Qs8AsnX7Jd, then go to `role-assignment` and click gradio to join the `gradio` channels.
+
+**New features can be added to Gradio or Streamlit versions**
 
 ## More documentation about features, troubleshooting, common issues very soon
-### Want to help with documentation? Documented something? Use [Discussions](https://github.com/hlky/stable-diffusion-webui/discussions)
+### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
 
 ## **Important**
 
@@ -22,9 +35,9 @@
 
 --------------
 
-### Questions about **_[Upscalers](https://github.com/hlky/stable-diffusion-webui/wiki/Upscalers)_**?
-### Questions about **_[Optimized mode](https://github.com/hlky/stable-diffusion-webui/wiki/Optimized-mode)_**?
-### Questions about **_[Command line options](https://github.com/hlky/stable-diffusion-webui/wiki/Command-line-options)_**?
+### Questions about **_[Upscalers](https://github.com/sd-webui/stable-diffusion-webui/wiki/Upscalers)_**?
+### Questions about **_[Optimized mode](https://github.com/sd-webui/stable-diffusion-webui/wiki/Optimized-mode)_**?
+### Questions about **_[Command line options](https://github.com/sd-webui/stable-diffusion-webui/wiki/Command-line-options)_**?
 
 --------------
 
@@ -33,8 +46,8 @@ Features:
 
 * Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
-* GFPGAN Face Correction 🔥: [Download the model](https://github.com/hlky/stable-diffusion-webui#gfpgan)Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
-* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/hlky/stable-diffusion-webui#realesrgan) Boosts the resolution of images with a built-in RealESRGAN option 
+* GFPGAN Face Correction 🔥: [Download the model](https://github.com/sd-webui/stable-diffusion-webui#gfpgan)Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
+* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/sd-webui/stable-diffusion-webui#realesrgan) Boosts the resolution of images with a built-in RealESRGAN option 
 * :computer: esrgan/gfpgan on cpu support :computer:
 * Textual inversion 🔥: [info](https://textual-inversion.github.io/) - requires enabling, see [here](https://github.com/hlky/sd-enable-textual-inversion), script works as usual without it enabled
 * Advanced img2img editor :art: :fire: :art:
@@ -58,20 +71,23 @@ A browser interface based on Gradio library for Stable Diffusion.
 
 Original script with Gradio UI was written by a kind anonymous user. This is a modification.
 
-![](https://github.com/hlky/stable-diffusion-webui/blob/master/images/txt2img.jpg)
-![](https://github.com/hlky/stable-diffusion-webui/blob/master/images/img2img.jpg)
-![](https://github.com/hlky/stable-diffusion-webui/blob/master/images/gfpgan.jpg)
-![](https://github.com/hlky/stable-diffusion-webui/blob/master/images/esrgan.jpg)
+![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/txt2img.jpg)
+![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/img2img.jpg)
+![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/gfpgan.jpg)
+![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/esrgan.jpg)
 
 ### GFPGAN
 
 If you want to use GFPGAN to improve generated faces, you need to install it separately.
 Download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
-into the `/stable-diffusion/src/gfpgan/experiments/pretrained_models` directory. 
+into the `/stable-diffusion-webui/src/gfpgan/experiments/pretrained_models` directory. 
 
 ### RealESRGAN
 Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
-Put them into the `stable-diffusion/src/realesrgan/experiments/pretrained_models` directory. 
+Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
+
+### LDSR
+* Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [ model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/
 
 ### Web UI
 
@@ -125,7 +141,7 @@ If you use this feature, batch count will be ignored, because the number of pict
 depends on your prompts, but batch size will still work (generating multiple pictures at the
 same time for a small speed boost).
 
-### Flagging (Broken after UI changed to gradio.Blocks() see [Flag button missing from new UI](https://github.com/hlky/stable-diffusion-webui/issues/50))
+### Flagging (Broken after UI changed to gradio.Blocks() see [Flag button missing from new UI](https://github.com/sd-webui/stable-diffusion-webui/issues/50))
 Click the Flag button under the output section, and generated images will be saved to `log/images` directory, and generation parameters
 will be appended to a csv file `log/log.csv` in the `/sd` directory.
 

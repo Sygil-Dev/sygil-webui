@@ -57,3 +57,6 @@ condaenv.*.requirements.txt
 /log/**/*.png
 /log/log.csv
 /flagged/*
+/gfpgan/*
+/models/*
+z_version_env.tmp
