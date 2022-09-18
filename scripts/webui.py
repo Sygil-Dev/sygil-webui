@@ -2564,8 +2564,119 @@ def run_headless():
         print(stats)
         print()
 
+@logger.catch
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels):
+    current_id = None
+    current_payload = None
+    loop_retry = 0
+    while True:
+        gen_dict = {
+            "api_key": api_key,
+            "name": horde_name,
+            "max_pixels": horde_max_pixels,
+            "priority_usernames": priority_usernames,
+        }
+        if current_id:
+            loop_retry += 1
+        else:
+            try:
+                pop_req = requests.post(horde_url + '/api/v1/generate/pop', json = gen_dict)
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            except requests.exceptions.JSONDecodeError():
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            if not pop_req.ok:
+                logger.warning(f"During gen pop, server {horde_url} responded: {pop_req.text}. Waiting for 10 seconds...")
+                time.sleep(10)
+                continue
+            pop = pop_req.json()
+            if not pop:
+                logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if not pop["id"]:
+                logger.debug(f"Server {horde_url} has no valid generations to do for us. Skipped Info: {pop['skipped']}.")
+                time.sleep(interval)
+                continue
+            current_id = pop['id']
+            current_payload = pop['payload']
+        images, seed, info, stats = gi(**current_payload)
+        buffer = BytesIO()
+        # We send as WebP to avoid using all the horde bandwidth
+        images[0].save(buffer, format="WebP", quality=90)
+        # logger.info(info)
+        submit_dict = {
+            "id": current_id,
+            "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
+            "api_key": api_key,
+            "seed": seed,
+        }
+        current_generation = seed
+        while current_id and current_generation:
+            try:
+                submit_req = requests.post(horde_url + '/api/v1/generate/submit', json = submit_dict)
+                if submit_req.status_code == 404:
+                    logger.warning(f"The generation we were working on got stale. Aborting!")
+                elif not submit_req.ok:
+                    if "already submitted" in submit_req.text:
+                        logger.warning(f'Server think this gen already submitted. Continuing')
+                    else:
+                        logger.error(submit_req.status_code)
+                        logger.warning(f"During gen submit, server {horde_url} responded: {submit_req.text}. Waiting for 10 seconds...")
+                        time.sleep(10)
+                        continue
+                else:
+                    logger.info(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
+                current_id = None
+                current_payload = None
+                current_generation = None
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+        time.sleep(interval)
+
+
 if __name__ == '__main__':
-    if opt.cli is None:
-        launch_server()
-    else:
+    set_logger_verbosity(opt.verbosity)
+    quiesce_logger(opt.quiet)
+    if opt.cli:
         run_headless()
+    if opt.bridge:
+        try:
+            import bridgeData as cd
+        except:
+            logger.warning("No bridgeData found, use default where no CLI args are set")
+            class temp(object):
+                def __init__(self):
+                    random.seed()
+                    self.horde_url = "https://stablehorde.net"
+                    # Give a cool name to your instance
+                    self.horde_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                    # The api_key identifies a unique user in the horde
+                    self.horde_api_key = "0000000000"
+                    # Put other users whose prompts you want to prioritize.
+                    # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
+                    self.horde_priority_usernames = []
+                    self.horde_max_power = 8
+            cd = temp()
+        horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
+        horde_name = opt.horde_name if opt.horde_name else cd.horde_name
+        horde_url = opt.horde_url if opt.horde_url else cd.horde_url
+        horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
+        horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
+        if horde_max_power < 2:
+            horde_max_power = 2
+        horde_max_pixels = 64*64*8*horde_max_power
+        logger.debug(f"Max Pixels set to {horde_max_pixels}")
+        logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'files?")
+        try:
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels)
+        except KeyboardInterrupt:
+            logger.info(f"Keyboard Interrupt Received. Ending Bridge")
+    else:
+        launch_server()
