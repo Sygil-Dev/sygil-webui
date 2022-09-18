@@ -4,6 +4,8 @@ from sd_utils import *
 
 # streamlit imports
 from streamlit import StopException
+from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
+from streamlit.elements import image as STImage
 
 #other imports
 import os
@@ -12,8 +14,6 @@ from io import BytesIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
-from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
-from streamlit.elements import image as STImage
 # Temp imports 
 
 
@@ -185,12 +185,7 @@ def layout():
                 st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                              help="Frequency in steps at which the the preview image is updated. By default the frequency \
                                                                               is set to 1 step.")
-            #
-            #if st.session_state.defaults.general.use_sd_concepts_library:
-                #with st.expander("Concept Library"):
-                    #st.write("test")
-                    
-
+                
         with col2:
             preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
 
