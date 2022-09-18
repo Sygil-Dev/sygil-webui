@@ -973,52 +973,6 @@ def load_learned_embed_in_clip(learned_embeds_path, text_encoder, tokenizer, tok
     text_encoder.get_input_embeddings().weight.data[token_id] = embeds
     return token
 
-def concepts_library():
-    
-    html_gallery = '''
-    <div class="flex gr-gap gr-form-gap row gap-4 w-full flex-wrap" id="main_row">
-    '''
-    for model in models:
-        html_gallery = html_gallery+f'''
-        <div class="gr-block gr-box relative w-full overflow-hidden border-solid border border-gray-200 gr-panel">
-        <div class="output-markdown gr-prose" style="max-width: 100%;">
-        <h3>
-        <a href="https://huggingface.co/{model["id"]}" target="_blank">
-        <code>{html.escape(model["token"])}</code>
-        </a>
-        </h3>
-        </div>
-        <div id="gallery" class="gr-block gr-box relative w-full overflow-hidden border-solid border border-gray-200">
-        <div class="wrap svelte-17ttdjv opacity-0"></div>
-        <div class="absolute left-0 top-0 py-1 px-2 rounded-br-lg shadow-sm text-xs text-gray-500 flex items-center pointer-events-none bg-white z-20 border-b border-r border-gray-100 dark:bg-gray-900">
-        <span class="mr-2 h-[12px] w-[12px] opacity-80">
-        <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-        <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>
-        </span> {model["concept_type"]}
-        </div>
-        <div class="overflow-y-auto h-full p-2" style="position: relative;">
-        <div class="grid gap-2 grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 svelte-1g9btlg pt-6">
-        '''
-    for image in model["images"]:
-        html_gallery = html_gallery + f'''
-                        <button class="gallery-item svelte-1g9btlg">
-                        <img alt="" loading="lazy" class="h-full w-full overflow-hidden object-contain" src="file/{image}">
-                        </button>
-                        '''
-        html_gallery = html_gallery+'''
-              </div>
-              <iframe style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;" aria-hidden="true" tabindex="-1" src="about:blank"></iframe>
-            </div>
-          </div>
-        </div>
-        '''
-        html_gallery = html_gallery+'''
-      </div>
-      '''    
-
 def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     #print (len(imgs))
     if force_n_rows is not None:
@@ -1377,6 +1331,9 @@ def process_images(
                     for files in os.listdir(embedding_path):
                         if files.endswith(ext):
                             load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{prompt_tokens[0]}>")  
+                            
+        #
+            
                         
     os.makedirs(outpath, exist_ok=True)
 
