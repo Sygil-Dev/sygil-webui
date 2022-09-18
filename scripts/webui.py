@@ -1356,9 +1356,23 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
     return output_images, seed, info, stats
 
 
-def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
-            ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None, job_info: JobInfo = None):
+def txt2img(
+        prompt: str, 
+        ddim_steps: int = 50, 
+        sampler_name: str = 'k_lms', 
+        toggles: List[int] = [1, 4], 
+        realesrgan_model_name: str = '',
+        ddim_eta: float = 0.0, 
+        n_iter: int = 1, 
+        batch_size: int = 1, 
+        cfg_scale: float = 5.0, 
+        seed: Union[int, str, None] = None,
+        height: int = 512, 
+        width: int = 512, 
+        fp = None, 
+        variant_amount: float = 0.0, 
+        variant_seed: int = None, 
+        job_info: JobInfo = None):
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
