@@ -9,22 +9,17 @@
 * If the issue involves _a bug_ in **textual-inversion** create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 * If you want to know how to **activate** or **use** textual-inversion see **_[hlky/sd-enable-textual-inversion](https://github.com/hlky/sd-enable-textual-inversion)_**. Activation not working? create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 
-### Want to contribute?
+### Want to ask a question or request a feature?
 
-Gradio version (stable)
+Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions).
 
-Open new Pull Requests on `dev` branch!
+## Documentation
 
-for Gradio check out the [docs](https://gradio.app/docs/) to contribute
+[Documentaion is located here](https://sd-webui.github.io/stable-diffusion-webui/)
 
-Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
+## Want to contribute?
 
-Need more support with Gradio? We have a discord channel called `gradio-stable-diffusion` for Q&A with the gradio authors, to join use this link https://discord.gg/Qs8AsnX7Jd, then go to `role-assignment` and click gradio to join the `gradio` channels.
-
-**New features can be added to Gradio or Streamlit versions**
-
-## More documentation about features, troubleshooting, common issues very soon
-### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
+Check the [Contribution Guide](CONTRIBUTING.md)
 
 ## **Important**
 
