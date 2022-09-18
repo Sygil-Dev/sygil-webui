@@ -1,14 +1,19 @@
 # UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_streamlit.yaml.
 # Any changes made here will be available automatically on the web app without having to stop it.
+# You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
+# of the properties below.
 general:
     gpu: 0
     outdir: outputs
-    ckpt: "models/ldm/stable-diffusion-v1/model.ckpt"
-    fp:
-        name: 'embeddings/alex/embeddings_gs-11000.pt'
+    default_model: "Stable Diffusion v1.4" 
+    default_model_config: "configs/stable-diffusion/v1-inference.yaml"
+    default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
+    use_sd_concepts_library: True
+    sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./src/gfpgan"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
+    LDSR_dir: "./src/latent-diffusion"
     outdir_txt2img: outputs/txt2img-samples
     outdir_img2img: outputs/img2img-samples
     gfpgan_cpu: False
@@ -16,88 +21,161 @@ general:
     extra_models_cpu: False
     extra_models_gpu: False
     save_metadata: True
+    save_format: "png"
     skip_grid: False
     skip_save: False
     grid_format: "jpg:95"
     n_rows: -1
     no_verify_input: False
     no_half: False
+    use_float16: False
     precision: "autocast"
     optimized: False
     optimized_turbo: False
+    optimized_config: "optimizedSD/v1-inference.yaml"
+    enable_attention_slicing: False
+    enable_minimal_memory_usage : False
     update_preview: True
-    update_preview_frequency: 1
+    update_preview_frequency: 5
 
 txt2img:
     prompt:
     height: 512
     width: 512
-    cfg_scale: 5.0
+    cfg_scale: 7.5
     seed: ""
     batch_count: 1
     batch_size: 1
-    sampling_steps: 50
-    default_sampler: "k_lms"
+    sampling_steps: 30
+    default_sampler: "k_euler"
     separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
     group_by_prompt: True
     save_as_jpg: False
-    use_GFPGAN: True
-    use_RealESRGAN: True
+    use_GFPGAN: False
+    use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     variant_amount: 0.0
     variant_seed: ""
+    write_info_files: True
+    slider_steps: {
+      sampling: 1
+    }
+    slider_bounds: {
+      sampling: {
+        lower: 1,
+        upper: 150
+      }
+    }
+    
+txt2vid:
+    default_model: "CompVis/stable-diffusion-v1-4"
+    custom_models_list: ["CompVis/stable-diffusion-v1-4", "naclbit/trinart_stable_diffusion_v2", "hakurei/waifu-diffusion", "osanseviero/BigGAN-deep-128"]
+    prompt:
+    height: 512
+    width: 512
+    cfg_scale: 7.5
+    seed: ""
+    batch_count: 1
+    batch_size: 1
+    sampling_steps: 30
+    num_inference_steps: 200
+    default_sampler: "k_euler"
+    scheduler_name: "klms"
+    separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
+    dynamic_preview_frequency: True
+    normalize_prompt_weights: True
+    save_individual_images: True
+    save_video: True
+    group_by_prompt: True
+    write_info_files: True
+    do_loop: False
+    save_as_jpg: False
+    use_GFPGAN: False
+    use_RealESRGAN: False
+    RealESRGAN_model: "RealESRGAN_x4plus"
+    variant_amount: 0.0
+    variant_seed: ""
+    beta_start: 0.00085
+    beta_end: 0.012
+    beta_scheduler_type: "linear"
+    max_frames: 1000
+    slider_steps: {
+      sampling: 1
+    }
+    slider_bounds: {
+      sampling: {
+        lower: 1,
+        upper: 150
+      }
+    }
     
 img2img:
-  prompt:
-  sampling_steps: 50
-  # Adding an int to toggles enables the corresponding feature.
-  # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
-  # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
-  # 2: Loopback (use images from previous batch when creating next batch)
-  # 3: Random loopback seed
-  # 4: Save individual images
-  # 5: Save grid
-  # 6: Sort samples by prompt
-  # 7: Write sample info files
-  # 8: jpg samples
-  # 9: Fix faces using GFPGAN
-  # 10: Upscale images using Real-ESRGAN
-  sampler_name: k_lms
-  denoising_strength: 0.45
-  # 0: Keep masked area
-  # 1: Regenerate only masked area
-  mask_mode: 0
-  # 0: Just resize
-  # 1: Crop and resize
-  # 2: Resize and fill
-  resize_mode: 0
-  # Leave blank for random seed:
-  seed: ""
-  ddim_eta: 0.0
-  cfg_scale: 5.0
-  batch_count: 1
-  batch_size: 1
-  height: 512
-  width: 512
-  # Textual inversion embeddings file path:
-  fp: ""
-  loopback: True
-  random_seed_loopback: True
-  separate_prompts: False
-  normalize_prompt_weights: True
-  save_individual_images: True
-  save_grid: True
-  group_by_prompt: True
-  save_as_jpg: False
-  use_GFPGAN: True
-  use_RealESRGAN: True
-  RealESRGAN_model: "RealESRGAN_x4plus"
-  variant_amount: 0.0
-  variant_seed: ""
+    prompt: 
+    sampling_steps: 30
+    # Adding an int to toggles enables the corresponding feature.
+    # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
+    # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
+    # 2: Loopback (use images from previous batch when creating next batch)
+    # 3: Random loopback seed
+    # 4: Save individual images
+    # 5: Save grid
+    # 6: Sort samples by prompt
+    # 7: Write sample info files
+    # 8: jpg samples
+    # 9: Fix faces using GFPGAN
+    # 10: Upscale images using Real-ESRGAN
+    sampler_name: "k_euler"
+    denoising_strength: 0.75
+    # 0: Keep masked area
+    # 1: Regenerate only masked area
+    mask_mode: 0
+    mask_restore: False
+    # 0: Just resize
+    # 1: Crop and resize
+    # 2: Resize and fill
+    resize_mode: 0
+    # Leave blank for random seed:
+    seed: ""
+    ddim_eta: 0.0
+    cfg_scale: 7.5
+    batch_count: 1
+    batch_size: 1
+    height: 512
+    width: 512
+    # Textual inversion embeddings file path:
+    fp: ""
+    loopback: True
+    random_seed_loopback: True
+    separate_prompts: False
+    update_preview: True
+    update_preview_frequency: 5
+    normalize_prompt_weights: True
+    save_individual_images: True
+    save_grid: True
+    group_by_prompt: True
+    save_as_jpg: False
+    use_GFPGAN: False
+    use_RealESRGAN: False
+    RealESRGAN_model: "RealESRGAN_x4plus"
+    variant_amount: 0.0
+    variant_seed: ""
+    write_info_files: True
+    slider_steps: {
+        sampling: 1
+      }
+    slider_bounds: {
+      sampling: {
+        lower: 1,
+        upper: 150
+      }
+    } 
 
 gfpgan:
   strength: 100
-  

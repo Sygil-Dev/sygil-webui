@@ -3,6 +3,8 @@ from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2i
 from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
 import uuid
+import torch
+
 
 
 def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda x: x, txt2img_defaults={},
@@ -36,8 +38,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                 value=txt2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=txt2img_defaults["seed"])
+                        txt2img_batch_size = gr.Slider(minimum=1, maximum=50, step=1,
+                                                       label='Images per batch',
+                                                       value=txt2img_defaults['batch_size'])
                         txt2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
-                                                        label='Number of images to generate',
+                                                        label='Number of batches to generate',
                                                         value=txt2img_defaults['n_iter'])
 
                         txt2img_job_ui = job_manager.draw_gradio_ui() if job_manager else None
@@ -51,11 +56,15 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             gr.Markdown(
                                 "Select an image from the gallery, then click one of the buttons below to perform an action.")
                             with gr.Row(elem_id='txt2img_actions_row'):
-                                gr.Button("Copy to clipboard").click(fn=None,
-                                                                     inputs=output_txt2img_gallery,
-                                                                     outputs=[],
-                                                                     # _js=js_copy_to_clipboard( 'txt2img_gallery_output')
-                                                                     )
+                                gr.Button("Copy to clipboard").click(
+                                    fn=None,
+                                    inputs=output_txt2img_gallery,
+                                    outputs=[],
+                                    _js=call_JS(
+                                        "copyImageFromGalleryToClipboard",
+                                        fromId="txt2img_gallery_output"
+                                    )
+                                )
                                 output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                                 output_txt2img_to_imglab = gr.Button("Send to Lab", visible=True)
 
@@ -91,9 +100,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             with gr.TabItem('Advanced'):
                                 txt2img_toggles = gr.CheckboxGroup(label='', choices=txt2img_toggles,
                                                                    value=txt2img_toggle_defaults, type="index")
-                                txt2img_batch_size = gr.Slider(minimum=1, maximum=8, step=1,
-                                                               label='Batch size (how many images are in a batch; memory-hungry)',
-                                                               value=txt2img_defaults['batch_size'])
                                 txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model',
                                                                             choices=['RealESRGAN_x4plus',
                                                                                      'RealESRGAN_x4plus_anime_6B'],
@@ -124,20 +130,27 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         inputs=txt2img_inputs,
                         outputs=txt2img_outputs
                     )
+                    use_queue = False
+                else:
+                    use_queue = True
 
                 txt2img_btn.click(
                     txt2img_func,
                     txt2img_inputs,
-                    txt2img_outputs
+                    txt2img_outputs,
+                    api_name='txt2img',
+                    queue=use_queue
                 )
                 txt2img_prompt.submit(
                     txt2img_func,
                     txt2img_inputs,
-                    txt2img_outputs
+                    txt2img_outputs,
+                    queue=use_queue
                 )
 
-                # txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
-                # txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
+                txt2img_width.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
+                txt2img_height.change(fn=uifn.update_dimensions_info, inputs=[txt2img_width, txt2img_height], outputs=txt2img_dimensions_info_text_box)
+                txt2img_dimensions_info_text_box.value = uifn.update_dimensions_info(txt2img_width.value, txt2img_height.value)
 
                 # Temporarily disable prompt parsing until memory issues could be solved
                 # See #676
@@ -189,8 +202,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             with gr.TabItem("Editor Options"):
                                 with gr.Row():
                                     # disable Uncrop for now
-                                    # choices=["Mask", "Crop", "Uncrop"]
-                                    img2img_image_editor_mode = gr.Radio(choices=["Mask", "Crop"],
+                                    choices=["Mask", "Crop", "Uncrop"]
+                                    #choices=["Mask", "Crop"]
+                                    img2img_image_editor_mode = gr.Radio(choices=choices,
                                                                          label="Image Editor Mode",
                                                                          value="Mask", elem_id='edit_mode_select',
                                                                          visible=True)
@@ -199,9 +213,13 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                             value=img2img_mask_modes[img2img_defaults['mask_mode']],
                                                             visible=True)
 
-                                    img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=10, step=1,
+                                    img2img_mask_restore = gr.Checkbox(label="Only modify regenerated parts of image",
+                                                            value=img2img_defaults['mask_restore'],
+                                                            visible=True)
+
+                                    img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=100, step=1,
                                                                            label="How much blurry should the mask be? (to avoid hard edges)",
-                                                                           value=3, visible=False)
+                                                                           value=3, visible=True)
 
                                     img2img_resize = gr.Radio(label="Resize mode",
                                                               choices=["Just resize", "Crop and resize",
@@ -293,7 +311,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                      img2img_height
                      ],
                     [img2img_image_editor, img2img_image_mask, img2img_btn_editor, img2img_btn_mask,
-                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength]
+                     img2img_painterro_btn, img2img_mask, img2img_mask_blur_strength, img2img_mask_restore]
                 )
 
                 # img2img_image_editor_mode.change(
@@ -334,8 +352,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                            )
 
                 img2img_func = img2img
-                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_mask,
-                                  img2img_mask_blur_strength, img2img_steps, img2img_sampling, img2img_toggles,
+                img2img_inputs = [img2img_prompt, img2img_image_editor_mode, img2img_mask, img2img_mask_blur_strength,
+                                  img2img_mask_restore, img2img_steps, img2img_sampling, img2img_toggles,
                                   img2img_realesrgan_model_name, img2img_batch_count, img2img_cfg,
                                   img2img_denoising, img2img_seed, img2img_height, img2img_width, img2img_resize,
                                   img2img_image_editor, img2img_image_mask, img2img_embeddings]
@@ -349,11 +367,16 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         inputs=img2img_inputs,
                         outputs=img2img_outputs,
                     )
+                    use_queue = False
+                else:
+                    use_queue = True
 
                 img2img_btn_mask.click(
                     img2img_func,
                     img2img_inputs,
-                    img2img_outputs
+                    img2img_outputs,
+                    api_name="img2img",
+                    queue=use_queue
                 )
 
                 def img2img_submit_params():
@@ -383,6 +406,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                      outputs=img2img_dimensions_info_text_box)
                 img2img_height.change(fn=uifn.update_dimensions_info, inputs=[img2img_width, img2img_height],
                                       outputs=img2img_dimensions_info_text_box)
+                img2img_dimensions_info_text_box.value = uifn.update_dimensions_info(img2img_width.value, img2img_height.value)
 
             with gr.TabItem("Image Lab", id='imgproc_tab'):
                 gr.Markdown("Post-process results")
@@ -397,8 +421,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             #                            value=gfpgan_defaults['strength'])
                             # select folder with images to process
                             with gr.TabItem('Batch Process'):
-                                imgproc_folder = gr.File(label="Batch Process", file_count="multiple", source="upload",
-                                                         interactive=True, type="file")
+                                imgproc_folder = gr.File(label="Batch Process", file_count="multiple", interactive=True, type="file")
                         imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="PngNfo", visible=False,
                                                     max_lines=5)
                         with gr.Row():
@@ -540,7 +563,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                              imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,
                                              imgproc_gfpgan_strength, imgproc_ldsr_steps, imgproc_ldsr_pre_downSample,
                                              imgproc_ldsr_post_downSample],
-                                            [imgproc_output])
+                                            [imgproc_output], api_name="imgproc")
 
                                         imgproc_source.change(
                                             uifn.get_png_nfo,
@@ -631,11 +654,12 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
         """
         gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-        <p>For help and advanced usage guides, visit the <a href="https://github.com/sd-webui/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
-        <p><a href="https://github.com/sd-webui/stable-diffusion-webui">Stable Diffusion WebUI</a> is an open-source project.
-        If you would like to contribute to development or test bleeding edge builds, use the <a href="https://github.com/sd-webui/stable-diffusion-webui/tree/dev" target="_blank">dev branch</a>.</p>
+        <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
+        <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
+        If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
+        <p>Device ID {current_device_index}: {current_device_name}<br/>{total_device_count} total devices</p>
     </div>
-    """)
+    """.format(current_device_name=torch.cuda.get_device_name(), current_device_index=torch.cuda.current_device(), total_device_count=torch.cuda.device_count()))
         # Hack: Detect the load event on the frontend
         # Won't be needed in the next version of gradio
         # See the relevant PR: https://github.com/gradio-app/gradio/pull/2108
