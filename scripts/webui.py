@@ -2365,6 +2365,7 @@ if __name__ == '__main__':
             horde_max_power = 2
         horde_max_pixels = 64*64*8*horde_max_power
         logger.debug(f"Max Pixels set to {horde_max_pixels}")
+        logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'")
         try:
             run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels)
         except KeyboardInterrupt:
