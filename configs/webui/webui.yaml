@@ -12,8 +12,9 @@ txt2img:
   #  5:  Write sample info files
   #  6:  write sample info to log file
   #  7:  jpg samples
-  #  8:  Fix faces using GFPGAN
-  #  9:  Upscale images using RealESRGAN
+  #  8:  Filter NSFW content
+  #  9:  Fix faces using GFPGAN
+  #  10:  Upscale images using RealESRGAN
   toggles: [1, 2, 3, 4, 5]
   sampler_name: k_lms
   ddim_eta: 0.0  # legacy name, applies to all algorithms.
@@ -40,8 +41,10 @@ img2img:
   # 6: Sort samples by prompt
   # 7: Write sample info files
   # 8: jpg samples
-  # 9: Fix faces using GFPGAN
-  # 10: Upscale images using Real-ESRGAN
+  # 9: Color correction
+  # 10: Filter NSFW content
+  # 11: Fix faces using GFPGAN
+  # 12: Upscale images using Real-ESRGAN
   toggles: [1, 4, 5, 6, 7]
   sampler_name: k_lms
   ddim_eta: 0.0

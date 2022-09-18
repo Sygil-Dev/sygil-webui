@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   stable-diffusion:
-    container_name: sd
+    container_name: sd-webui
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,6 +12,7 @@ services:
     volumes:
       - .:/sd
       - ./outputs:/sd/outputs
+      - ./model_cache:/sd/model_cache
       - conda_env:/opt/conda
       - root_profile:/root
     ports:
@@ -21,7 +22,7 @@ services:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]
+            - capabilities: [ gpu ]
 
 volumes:
   conda_env:
