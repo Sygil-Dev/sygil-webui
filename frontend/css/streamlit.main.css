@@ -1,15 +1,111 @@
-.css-18e3th9 {
-  padding-top: 2rem;
-  padding-bottom: 10rem;
-  padding-left: 5rem;
-  padding-right: 5rem;
-}
-.css-1d391kg {
-  padding-top: 3.5rem;
-  padding-right: 1rem;
-  padding-bottom: 3.5rem;
-  padding-left: 1rem;
-}
+/***********************************************************
+* Additional CSS for streamlit builtin components          *
+************************************************************/
+
+/* Tab name (e.g. Text-to-Image) */
 button[data-baseweb="tab"] {
-  font-size: 25px;
+  font-size: 25px; //improve legibility
+}
+
+/* Image Container (only appear after run finished) */
+.css-du1fp8 {
+  justify-content: center; //center the image, especially better looks in wide screen
+}
+
+/* Streamlit header */
+.css-1avcm0n {
+  background-color: transparent;
+}
+
+/* Main streamlit container (below header) */
+.css-18e3th9 {
+  padding-top: 2rem; //reduce the empty spaces
+}
+
+/* @media only for widescreen, to ensure enough space to see all */
+@media (min-width: 1024px) {
+  /* Main streamlit container (below header) */
+  .css-18e3th9 {
+    padding-top: 0px; //reduce the empty spaces, can go fully to the top on widescreen devices
+  }
+}
+
+/***********************************************************
+* Additional CSS for streamlit custom/3rd party components *
+************************************************************/
+/* For stream_on_hover */
+section[data-testid="stSidebar"] > div:nth-of-type(1) {
+  background-color: #111;
+}
+
+button[kind="header"] {
+  background-color: transparent;
+  color: rgb(180, 167, 141);
+}
+
+@media (hover) {
+  /* header element */
+  header[data-testid="stHeader"] {
+    /* display: none;*/ /*suggested behavior by streamlit hover components*/
+    pointer-events: none; /* disable interaction of the transparent background */
+  }
+
+  /* The button on the streamlit navigation menu  */
+  button[kind="header"] {
+    /* display: none;*/ /*suggested behavior by streamlit hover components*/
+    pointer-events: auto; /* enable interaction of the button even if parents intereaction disabled */
+  }
+  
+  /* added to avoid main sectors (all element to the right of sidebar from) moving */
+  section[data-testid="stSidebar"] {
+    width: 3.5% !important;
+    min-width: 3.5% !important;
+  }
+
+  /* The navigation menu specs and size */
+  section[data-testid="stSidebar"] > div {
+    height: 100%;
+    width: 2% !important;
+    min-width: 100% !important;
+    position: relative;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #111;
+    overflow-x: hidden;
+    transition: 0.5s ease-in-out;
+    padding-top: 0px;
+    white-space: nowrap;
+  }
+
+  /* The navigation menu open and close on hover and size */
+  section[data-testid="stSidebar"] > div:hover {
+    width: 300px !important;
+  }
+}
+
+@media (max-width: 272px) {
+  section[data-testid="stSidebar"] > div {
+    width: 15rem;
+  }
+}
+
+/***********************************************************
+*  Additional CSS for other elements                    
+************************************************************/
+button[data-baseweb="tab"] {
+  font-size: 20px;
+}
+
+@media (min-width: 1200px){
+h1 {
+    font-size: 1.75rem;
+}
+}
+#tabs-1-tabpanel-0 > div:nth-child(1) > div > div.stTabs.css-0.exp6ofz0 {
+  width: 50rem;
+  align-self: center;
+}
+div.gallery:hover {
+  border: 1px solid #777;
 }
