@@ -1839,7 +1839,7 @@ prompt_parser = re.compile("""
     (?:             # non-capture group
     :+              # match one or more ':' characters
     (?P<weight>     # capture group for 'weight'
-    -?\d+(?:\.\d+)? # match positive or negative integer or decimal number
+    -?\d*\.{0,1}\d+ # match positive or negative integer or decimal number
     )?              # end weight capture group, make optional
     \s*             # strip spaces after weight
     |               # OR

@@ -213,7 +213,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                             value=img2img_mask_modes[img2img_defaults['mask_mode']],
                                                             visible=True)
 
-                                    img2img_mask_restore = gr.Checkbox(label="Only modify regenerated parts of image", 
+                                    img2img_mask_restore = gr.Checkbox(label="Only modify regenerated parts of image",
                                                             value=img2img_defaults['mask_restore'],
                                                             visible=True)
 
