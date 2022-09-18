@@ -1108,7 +1108,7 @@ def check_prompt_length(prompt, comments):
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images):
+                save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images, model_name):
 
     filename_i = os.path.join(sample_path_i, filename)
 
@@ -1140,7 +1140,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
                             target="txt2img" if init_img is None else "img2img",
                                 prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
                                 ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights)
+                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=st.session_state["loaded_model"])
         # Not yet any use for these, but they bloat up the files:
         # info_dict["init_img"] = init_img
         # info_dict["init_mask"] = init_mask
@@ -1525,7 +1525,7 @@ def process_images(
                     save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback,
                                                     uses_random_seed_loopback, save_grid, sort_samples, sampler_name, ddim_eta,
-                                                    n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
+                                                    n_iter, batch_size, i, denoising_strength, resize_mode, False, st.session_state["loaded_model"])
 
                     output_images.append(gfpgan_image) #287
                     run_images.append(gfpgan_image)
@@ -1553,7 +1553,7 @@ def process_images(
 
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, st.session_state["loaded_model"])
 
                     output_images.append(esrgan_image) #287
                     run_images.append(esrgan_image)
@@ -1579,7 +1579,7 @@ def process_images(
 
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, False, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images=False)
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, st.session_state["loaded_model"])
 
                     output_images.append(gfpgan_esrgan_image) #287
                     run_images.append(gfpgan_esrgan_image)
@@ -1615,7 +1615,7 @@ def process_images(
                 if save_individual_images:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images)
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images, st.session_state["loaded_model"])
 
                     #if add_original_image or not simple_templating:
                         #output_images.append(image)
