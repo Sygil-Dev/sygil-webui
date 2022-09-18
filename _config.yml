@@ -1,0 +1,12 @@
+plugins:
+  - jekyll-relative-links
+  - jekyll-readme-index
+  - jemoji
+relative_links:
+  enabled: true
+  collections: true
+source: docs
+include:
+  - CONTRIBUTING.md
+  - README.md
+  - LICENSE.md
