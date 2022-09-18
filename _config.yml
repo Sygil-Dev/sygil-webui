@@ -2,11 +2,12 @@ plugins:
   - jekyll-relative-links
   - jekyll-readme-index
   - jemoji
+  - jekyll-remote-theme
 relative_links:
   enabled: true
   collections: true
 source: docs
-theme: minima
+remote_theme: jekyll/minima
 minima:
   skin: dark
 include:
