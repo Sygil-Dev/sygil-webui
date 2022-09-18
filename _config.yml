@@ -6,7 +6,7 @@ relative_links:
   enabled: true
   collections: true
 source: docs
-theme: midnight
+theme: minima
 include:
   - CONTRIBUTING.md
   - README.md
