@@ -3,15 +3,14 @@ from webui_streamlit import st
 
 
 # streamlit imports
-
-
+from streamlit import StopException
 #other imports
 
 import warnings
 import json
 
 import base64
-import os, sys, re, random, datetime, time, math
+import os, sys, re, random, datetime, time, math, glob
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
 from PIL.PngImagePlugin import PngInfo
 from scipy import integrate
@@ -65,6 +64,16 @@ mimetypes.add_type('application/javascript', '.js')
 opt_C = 4
 opt_f = 8
 
+if not "defaults" in st.session_state:
+    st.session_state["defaults"] = {}
+    
+st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+
+if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
+    user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+    st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+
+
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
 grid_lossless = False
@@ -102,7 +111,7 @@ elif save_format[0] == 'webp':
     if save_quality < 0: # e.g. webp:-100 for lossless mode
         save_lossless = True
         save_quality = abs(save_quality)
-
+        
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
@@ -190,6 +199,12 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
     st.session_state.modelCS = modelCS
     st.session_state.modelFS = modelFS
     st.session_state.loaded_model = custom_model
+    
+    if st.session_state.defaults.general.enable_attention_slicing:
+        st.session_state.model.enable_attention_slicing()  
+        
+    if st.session_state.defaults.general.enable_minimal_memory_usage:	
+        st.session_state.model.enable_minimal_memory_usage()    
 
     print("Model loaded.")
 
@@ -788,7 +803,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 @retry(tries=5)
 def generation_callback(img, i=0):
     if "update_preview_frequency" not in st.session_state:
-        return
+        raise StopException
 
     try:
         if i == 0:	
@@ -927,6 +942,36 @@ def get_font(fontsize):
 def load_embeddings(fp):
     if fp is not None and hasattr(st.session_state["model"], "embedding_manager"):
         st.session_state["model"].embedding_manager.load(fp['name'])
+
+def load_learned_embed_in_clip(learned_embeds_path, text_encoder, tokenizer, token=None):
+    loaded_learned_embeds = torch.load(learned_embeds_path, map_location="cpu")
+
+    # separate token and the embeds
+    if learned_embeds_path.endswith('.pt'):
+        print(loaded_learned_embeds['string_to_token'])
+        trained_token = list(loaded_learned_embeds['string_to_token'].keys())[0]
+        embeds = list(loaded_learned_embeds['string_to_param'].values())[0]
+        
+    elif learned_embeds_path.endswith('.bin'):
+        trained_token = list(loaded_learned_embeds.keys())[0]
+        embeds = loaded_learned_embeds[trained_token]
+
+    embeds = loaded_learned_embeds[trained_token]
+    # cast to dtype of text_encoder
+    dtype = text_encoder.get_input_embeddings().weight.dtype
+    embeds.to(dtype)
+
+    # add the token in tokenizer
+    token = token if token is not None else trained_token
+    num_added_tokens = tokenizer.add_tokens(token)
+
+    # resize the token embeddings
+    text_encoder.resize_token_embeddings(len(tokenizer))
+
+    # get the id for the token and assign the embeds
+    token_id = tokenizer.convert_tokens_to_ids(token)
+    text_encoder.get_input_embeddings().weight.data[token_id] = embeds
+    return token
 
 def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     #print (len(imgs))
@@ -1242,7 +1287,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
         n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
-        fp=None, ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
+        ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
         mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
@@ -1257,10 +1302,39 @@ def process_images(
 
     mem_mon = MemUsageMonitor('MemMon')
     mem_mon.start()
+    
+    if st.session_state.defaults.general.use_sd_concepts_library:
 
-    if hasattr(st.session_state["model"], "embedding_manager"):
-        load_embeddings(fp)
+        prompt_tokens = re.findall('<([a-zA-Z0-9-]+)>', prompt)    
 
+        if prompt_tokens:
+            # compviz
+            tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer
+            text_encoder = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.transformer
+    
+            # diffusers
+            #tokenizer = pipe.tokenizer
+            #text_encoder = pipe.text_encoder
+    
+            ext = ('pt', 'bin')
+    
+            if len(prompt_tokens) > 1:                                      
+                for token_name in prompt_tokens:
+                    embedding_path = os.path.join(st.session_state['defaults'].general.sd_concepts_library_folder, token_name)	
+                    if os.path.exists(embedding_path):
+                        for files in os.listdir(embedding_path):
+                            if files.endswith(ext):
+                                load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{token_name}>")
+            else:
+                embedding_path = os.path.join(st.session_state['defaults'].general.sd_concepts_library_folder, prompt_tokens[0])
+                if os.path.exists(embedding_path):
+                    for files in os.listdir(embedding_path):
+                        if files.endswith(ext):
+                            load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{prompt_tokens[0]}>")  
+                            
+        #
+            
+                        
     os.makedirs(outpath, exist_ok=True)
 
     sample_path = os.path.join(outpath, "samples")
