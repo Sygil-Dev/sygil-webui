@@ -1,10 +1,6 @@
 FROM nvidia/cuda:11.3.1-runtime-ubuntu20.04
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PYTHONIOENCODING=UTF-8 \
-    CONDA_DIR=/opt/conda
-
+ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /sd
 
 SHELL ["/bin/bash", "-c"]
@@ -15,6 +11,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install miniconda
+ENV CONDA_DIR /opt/conda
 RUN wget -O ~/miniconda.sh -q --show-progress --progress=bar:force https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash ~/miniconda.sh -b -p $CONDA_DIR && \
     rm ~/miniconda.sh
@@ -23,7 +20,7 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 # Install font for prompt matrix
 COPY /data/DejaVuSans.ttf /usr/share/fonts/truetype/
 
-EXPOSE 7860 8501
+EXPOSE 7860
 
 COPY ./entrypoint.sh /sd/
 ENTRYPOINT /sd/entrypoint.sh
