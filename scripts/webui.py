@@ -2,6 +2,7 @@ import argparse, os, sys, glob, re
 
 import cv2
 
+from logger import logger, set_logger_verbosity, quiesce_logger
 from perlin import perlinNoise
 from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
