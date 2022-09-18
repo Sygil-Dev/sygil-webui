@@ -114,7 +114,7 @@ img2img:
   # 9: Fix faces using GFPGAN
   # 10: Upscale images using Real-ESRGAN
   sampler_name: "k_euler"
-  denoising_strength: 0.45
+  denoising_strength: 0.75
   # 0: Keep masked area
   # 1: Regenerate only masked area
   mask_mode: 0
