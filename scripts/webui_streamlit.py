@@ -71,7 +71,7 @@ def layout():
 	else:
 		st.session_state["GFPGAN_available"] = False
 
-	if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+	if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "realesrgan","weights", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
 		st.session_state["RealESRGAN_available"] = True
 	else:
 		st.session_state["RealESRGAN_available"] = False	
