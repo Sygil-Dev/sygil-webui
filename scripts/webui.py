@@ -54,7 +54,7 @@ parser.add_argument('--horde_api_key', action="store", required=False, type=str,
 parser.add_argument('--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
 parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
 parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
-parser.add_argument('--horde_max_power',type=int, default=8, required=False, help="How much power this instance has to generate pictures. Min: 2")
+parser.add_argument('--horde_max_power',type=int, required=False, help="How much power this instance has to generate pictures. Min: 2")
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -2637,6 +2637,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
             "api_key": api_key,
             "seed": seed,
+            "max_pixels": horde_max_pixels,
         }
         current_generation = seed
         while current_id and current_generation:
@@ -2695,8 +2696,7 @@ if __name__ == '__main__':
         if horde_max_power < 2:
             horde_max_power = 2
         horde_max_pixels = 64*64*8*horde_max_power
-        logger.debug(f"Max Pixels set to {horde_max_pixels}")
-        logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'files?")
+        logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
         try:
             run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels)
         except KeyboardInterrupt:
