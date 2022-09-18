@@ -9,5 +9,5 @@ source: docs
 theme: minima
 include:
   - CONTRIBUTING.md
-  - README.md
+#  - README.md
   - LICENSE.md

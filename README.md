@@ -1,6 +1,8 @@
-# [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
+# Stable Diffusion Web UI
 
-# Installation instructions for [Windows](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation), [Linux](https://github.com/sd-webui/stable-diffusion-webui/wiki/Linux-Automated-Setup-Guide)
+## [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
+
+## Installation instructions for [Windows](/docs/1.installation.md), [Linux](/docs/1.linux-installation.md)
 
 ### Have an **issue**? 
 
@@ -35,9 +37,8 @@ Need more support with Gradio? We have a discord channel called `gradio-stable-d
 
 --------------
 
-### Questions about **_[Upscalers](https://github.com/sd-webui/stable-diffusion-webui/wiki/Upscalers)_**?
-### Questions about **_[Optimized mode](https://github.com/sd-webui/stable-diffusion-webui/wiki/Optimized-mode)_**?
-### Questions about **_[Command line options](https://github.com/sd-webui/stable-diffusion-webui/wiki/Command-line-options)_**?
+### Questions about **_[Upscalers](/docs/4.upscalers.md)_**?
+### Questions about **_[Command line options](/docs/2.cli.md)_**?
 
 --------------
 
@@ -46,8 +47,8 @@ Features:
 
 * Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
-* GFPGAN Face Correction 🔥: [Download the model](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models) Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
-* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models) Boosts the resolution of images with a built-in RealESRGAN option 
+* GFPGAN Face Correction 🔥: [Download the model](/docs/1.installation.md#optional-additional-models) Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
+* RealESRGAN Upscaling 🔥: [Download the models](/docs/1.installation.md#optional-additional-models) Boosts the resolution of images with a built-in RealESRGAN option 
 * :computer: esrgan/gfpgan on cpu support :computer:
 * Textual inversion 🔥: [info](https://textual-inversion.github.io/) - requires enabling, see [here](https://github.com/hlky/sd-enable-textual-inversion), script works as usual without it enabled
 * Advanced img2img editor :art: :fire: :art:
@@ -140,17 +141,6 @@ Another example, this time with 5 prompts and 16 variations:
 If you use this feature, batch count will be ignored, because the number of pictures to produce
 depends on your prompts, but batch size will still work (generating multiple pictures at the
 same time for a small speed boost).
-
-### Flagging (Broken after UI changed to gradio.Blocks() see [Flag button missing from new UI](https://github.com/sd-webui/stable-diffusion-webui/issues/50))
-Click the Flag button under the output section, and generated images will be saved to `log/images` directory, and generation parameters
-will be appended to a csv file `log/log.csv` in the `/sd` directory.
-
-> but every image is saved, why would I need this?
-
-If you're like me, you experiment a lot with prompts and settings, and only few images are worth saving. You can
-just save them using right click in browser, but then you won't be able to reproduce them later because you will not
-know what exact prompt created the image. If you use the flag button, generation paramerters will be written to csv file,
-and you can easily find parameters for an image by searching for its filename.
 
 ### Copy-paste generation parameters
 A text output provides generation parameters in an easy to copy-paste form for easy sharing.
