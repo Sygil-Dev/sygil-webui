@@ -98,6 +98,7 @@ from torch import autocast
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.util import instantiate_from_config
+from prompt_parser import PromptGuidanceModelWrapper
 
 # add global options to models
 def patch_conv(**patch):
@@ -499,8 +500,14 @@ def load_SD_model():
 
 if opt.optimized:
     model,modelCS,modelFS,device, config = load_SD_model()
+    # use for prompt2prompt
+    model = PromptGuidanceModelWrapper(model)
+    modelCS = PromptGuidanceModelWrapper(modelCS)
+    modelFS = PromptGuidanceModelWrapper(modelFS)
 else:
     model, device,config = load_SD_model()
+    # use for prompt2prompt
+    model = PromptGuidanceModelWrapper(model)
 
 
 def load_embeddings(fp):
@@ -1034,6 +1041,14 @@ def process_images(
             else: # just behave like usual
                 c = (model if not opt.optimized else modelCS).get_learned_conditioning(prompts)
 
+            # check is prompt has [xxx:xxx] in side
+            if bool(re.search(r"""\[.+\:.+\]""", prompts[0])):
+                (model if not opt.optimized else modelCS).prepare_prompts(prompts[0], cfg_scale, steps, batch_size)
+                c = (model if not opt.optimized else modelCS).c
+                uc = (model if not opt.optimized else modelCS).uc
+            else:
+                (model if not opt.optimized else modelCS).clear_prompt_guidance()
+
             shape = [opt_C, height // opt_f, width // opt_f]
 
             if opt.optimized:
@@ -1443,6 +1458,9 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int],
 
         return output_images, seed, info, stats
     except RuntimeError as e:
+        # print out the line for better debuging
+        print(traceback.print_exc())
+
         err = e
         err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
         stats = err_msg
