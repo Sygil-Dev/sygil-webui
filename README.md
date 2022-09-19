@@ -1,28 +1,25 @@
-# [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
+# Stable Diffusion Web UI
 
-# Installation instructions for [Windows](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation), [Linux](https://github.com/sd-webui/stable-diffusion-webui/wiki/Linux-Automated-Setup-Guide)
+## [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
+
+## Installation instructions for [Windows](/docs/1.installation.md), [Linux](/docs/1.linux-installation.md)
 
 ### Have an **issue**? 
 
 * If the issue involves _a bug_ in **textual-inversion** create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 * If you want to know how to **activate** or **use** textual-inversion see **_[hlky/sd-enable-textual-inversion](https://github.com/hlky/sd-enable-textual-inversion)_**. Activation not working? create the issue on **_[sd-webui/stable-diffusion-webui](https://github.com/sd-webui/stable-diffusion-webui)_**
 
-### Want to contribute?
+### Want to ask a question or request a feature?
 
-Gradio version (stable)
+Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions).
 
-Open new Pull Requests on `dev` branch!
+## Documentation
 
-for Gradio check out the [docs](https://gradio.app/docs/) to contribute
+[Documentaion is located here](https://sd-webui.github.io/stable-diffusion-webui/)
 
-Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
+## Want to contribute?
 
-Need more support with Gradio? We have a discord channel called `gradio-stable-diffusion` for Q&A with the gradio authors, to join use this link https://discord.gg/Qs8AsnX7Jd, then go to `role-assignment` and click gradio to join the `gradio` channels.
-
-**New features can be added to Gradio or Streamlit versions**
-
-## More documentation about features, troubleshooting, common issues very soon
-### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
+Check the [Contribution Guide](CONTRIBUTING.md)
 
 ## **Important**
 
@@ -35,9 +32,8 @@ Need more support with Gradio? We have a discord channel called `gradio-stable-d
 
 --------------
 
-### Questions about **_[Upscalers](https://github.com/sd-webui/stable-diffusion-webui/wiki/Upscalers)_**?
-### Questions about **_[Optimized mode](https://github.com/sd-webui/stable-diffusion-webui/wiki/Optimized-mode)_**?
-### Questions about **_[Command line options](https://github.com/sd-webui/stable-diffusion-webui/wiki/Command-line-options)_**?
+### Questions about **_[Upscalers](/docs/4.upscalers.md)_**?
+### Questions about **_[Command line options](/docs/2.cli.md)_**?
 
 --------------
 
@@ -46,8 +42,8 @@ Features:
 
 * Gradio GUI: Idiot-proof, fully featured frontend for both txt2img and img2img generation
 * No more manually typing parameters, now all you have to do is write your prompt and adjust sliders
-* GFPGAN Face Correction 🔥: [Download the model](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models) Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
-* RealESRGAN Upscaling 🔥: [Download the models](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models) Boosts the resolution of images with a built-in RealESRGAN option 
+* GFPGAN Face Correction 🔥: [Download the model](/docs/1.installation.md#optional-additional-models) Automatically correct distorted faces with a built-in GFPGAN option, fixes them in less than half a second 
+* RealESRGAN Upscaling 🔥: [Download the models](/docs/1.installation.md#optional-additional-models) Boosts the resolution of images with a built-in RealESRGAN option 
 * :computer: esrgan/gfpgan on cpu support :computer:
 * Textual inversion 🔥: [info](https://textual-inversion.github.io/) - requires enabling, see [here](https://github.com/hlky/sd-enable-textual-inversion), script works as usual without it enabled
 * Advanced img2img editor :art: :fire: :art:
@@ -141,17 +137,6 @@ If you use this feature, batch count will be ignored, because the number of pict
 depends on your prompts, but batch size will still work (generating multiple pictures at the
 same time for a small speed boost).
 
-### Flagging (Broken after UI changed to gradio.Blocks() see [Flag button missing from new UI](https://github.com/sd-webui/stable-diffusion-webui/issues/50))
-Click the Flag button under the output section, and generated images will be saved to `log/images` directory, and generation parameters
-will be appended to a csv file `log/log.csv` in the `/sd` directory.
-
-> but every image is saved, why would I need this?
-
-If you're like me, you experiment a lot with prompts and settings, and only few images are worth saving. You can
-just save them using right click in browser, but then you won't be able to reproduce them later because you will not
-know what exact prompt created the image. If you use the flag button, generation paramerters will be written to csv file,
-and you can easily find parameters for an image by searching for its filename.
-
 ### Copy-paste generation parameters
 A text output provides generation parameters in an easy to copy-paste form for easy sharing.
 
@@ -201,37 +186,66 @@ Example: (cherrypicked result; original picture by anon)
 ```
 optional arguments:
   -h, --help            show this help message and exit
-  --outdir [OUTDIR]     dir to write results to
-  --outdir_txt2img [OUTDIR_TXT2IMG]
-                        dir to write txt2img results to (overrides --outdir)
-  --outdir_img2img [OUTDIR_IMG2IMG]
-                        dir to write img2img results to (overrides --outdir)
-  --save-metadata       Whether to embed the generation parameters in the sample images
-  --skip-grid           do not save a grid, only individual samples. Helpful when evaluating lots of samples
-  --skip-save           do not save indiviual samples. For speed measurements.
-  --n_rows N_ROWS       rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default:
-                        -1)
-  --config CONFIG       path to config which constructs model
-  --ckpt CKPT           path to checkpoint of model
-  --precision {full,autocast}
-                        evaluate at this precision
+  --ckpt CKPT           path to checkpoint of model (default: models/ldm/stable-diffusion-v1/model.ckpt)
+  --cli CLI             don't launch web server, take Python function kwargs from this file. (default: None)
+  --config CONFIG       path to config which constructs model (default: configs/stable-diffusion/v1-inference.yaml)
+  --defaults DEFAULTS   path to configuration file providing UI defaults, uses same format as cli parameter (default:
+                        configs/webui/webui.yaml)
+  --esrgan-cpu          run ESRGAN on cpu (default: False)
+  --esrgan-gpu ESRGAN_GPU
+                        run ESRGAN on specific gpu (overrides --gpu) (default: 0)
+  --extra-models-cpu    run extra models (GFGPAN/ESRGAN) on cpu (default: False)
+  --extra-models-gpu    run extra models (GFGPAN/ESRGAN) on gpu (default: False)
+  --gfpgan-cpu          run GFPGAN on cpu (default: False)
   --gfpgan-dir GFPGAN_DIR
-                        GFPGAN directory
-  --realesrgan-dir REALESRGAN_DIR
-                        RealESRGAN directory
-  --realesrgan-model REALESRGAN_MODEL
-                        Upscaling model for RealESRGAN
-  --no-verify-input     do not verify input to check if it's too long
-  --no-half             do not switch the model to 16-bit floats
+                        GFPGAN directory (default: ./src/gfpgan)
+  --gfpgan-gpu GFPGAN_GPU
+                        run GFPGAN on specific gpu (overrides --gpu) (default: 0)
+  --gpu GPU             choose which GPU to use if you have multiple (default: 0)
+  --grid-format GRID_FORMAT
+                        png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or
+                        webp:-compression for lossless webp (default: jpg:95)
+  --inbrowser           automatically launch the interface in a new tab on the default browser (default: False)
+  --ldsr-dir LDSR_DIR   LDSR directory (default: ./src/latent-diffusion)
+  --n_rows N_ROWS       rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default:
+                        -1) (default: -1)
+  --no-half             do not switch the model to 16-bit floats (default: False)
   --no-progressbar-hiding
                         do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware
-                        accleration in browser)
-  --defaults DEFAULTS   path to configuration file providing UI defaults, uses same format as cli parameter
-  --gpu GPU             choose which GPU to use if you have multiple
-  --extra-models-cpu    run extra models (GFGPAN/ESRGAN) on cpu
-  --esrgan-cpu          run ESRGAN on cpu
-  --gfpgan-cpu          run GFPGAN on cpu
-  --cli CLI             don't launch web server, take Python function kwargs from this file.
+                        accleration in browser) (default: False)
+  --no-verify-input     do not verify input to check if it's too long (default: False)
+  --optimized-turbo     alternative optimization mode that does not save as much VRAM but runs siginificantly faster
+                        (default: False)
+  --optimized           load the model onto the device piecemeal instead of all at once to reduce VRAM usage at the
+                        cost of performance (default: False)
+  --outdir_img2img [OUTDIR_IMG2IMG]
+                        dir to write img2img results to (overrides --outdir) (default: None)
+  --outdir_imglab [OUTDIR_IMGLAB]
+                        dir to write imglab results to (overrides --outdir) (default: None)
+  --outdir_txt2img [OUTDIR_TXT2IMG]
+                        dir to write txt2img results to (overrides --outdir) (default: None)
+  --outdir [OUTDIR]     dir to write results to (default: None)
+  --filename_format [FILENAME_FORMAT]
+                        filenames format (default: None)
+  --port PORT           choose the port for the gradio webserver to use (default: 7860)
+  --precision {full,autocast}
+                        evaluate at this precision (default: autocast)
+  --realesrgan-dir REALESRGAN_DIR
+                        RealESRGAN directory (default: ./src/realesrgan)
+  --realesrgan-model REALESRGAN_MODEL
+                        Upscaling model for RealESRGAN (default: RealESRGAN_x4plus)
+  --save-metadata       Store generation parameters in the output png. Drop saved png into Image Lab to read
+                        parameters (default: False)
+  --share-password SHARE_PASSWORD
+                        Sharing is open by default, use this to set a password. Username: webui (default: None)
+  --share               Should share your server on gradio.app, this allows you to use the UI from your mobile app
+                        (default: False)
+  --skip-grid           do not save a grid, only individual samples. Helpful when evaluating lots of samples (default:
+                        False)
+  --skip-save           do not save indiviual samples. For speed measurements. (default: False)
+  --no-job-manager      Don't use the experimental job manager on top of gradio (default: False)
+  --max-jobs MAX_JOBS   Maximum number of concurrent 'generate' commands (default: 1)
+  --tiling              Generate tiling images (default: False)
 ```
 
 -----
@@ -250,7 +264,7 @@ optional arguments:
 
 which is available on [GitHub](https://github.com/CompVis/latent-diffusion). PDF at [arXiv](https://arxiv.org/abs/2112.10752). Please also visit our [Project page](https://ommer-lab.com/research/latent-diffusion-models/).
 
-![txt2img-stable2](assets/stable-samples/txt2img/merged-0006.png)
+
 [Stable Diffusion](#stable-diffusion-v1) is a latent text-to-image diffusion
 model.
 Thanks to a generous compute donation from [Stability AI](https://stability.ai/) and support from [LAION](https://laion.ai/), we were able to train a Latent Diffusion Model on 512x512 images from a subset of the [LAION-5B](https://laion.ai/blog/laion-5b/) database. 
