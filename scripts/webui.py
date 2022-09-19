@@ -169,7 +169,7 @@ if opt.no_job_manager:
     job_manager = None
 else:
     job_manager = JobManager(opt.max_jobs)
-    opt.max_jobs += 1 # Leave a free job open for button clicks
+    opt.max_jobs += 10 # Leave a free job open for button clicks
 
 # should probably be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in opt.grid_format.split(':')]
@@ -463,7 +463,7 @@ def load_SD_model_optimized(stage: int):
     if stage == 1:
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        # model.cuda()
+        model.cuda()
         model.eval()
         model.turbo = opt.optimized_turbo
     elif stage == 2:
@@ -519,7 +519,7 @@ model_params: Dict[str, ModelParams] = {
                     exists_func=partial(load_RealESRGAN, checking=True)),
 
     ModelNames.LDSR:
-        ModelParams(load_func=load_LDSR, load_kwargs={"model_name": "model"},
+        ModelParams(load_func=load_LDSR,
                     exists_func=partial(load_LDSR, checking=True)),
 
     ModelNames.SD_opt_unet:
@@ -2195,7 +2195,8 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
         return combined_image
     def processLDSR(image):
         metadata = ImageMetadata.get_from_image(image)
-        result = LDSR.superResolution(image,int(imgproc_ldsr_steps),str(imgproc_ldsr_pre_downSample),str(imgproc_ldsr_post_downSample))
+        with model_manager.model_context(ModelNames.LDSR) as ldsr:
+            result = ldsr.superResolution(image,int(imgproc_ldsr_steps),str(imgproc_ldsr_pre_downSample),str(imgproc_ldsr_post_downSample))
         ImageMetadata.set_on_image(result, metadata)
         return result
 
