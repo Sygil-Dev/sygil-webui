@@ -1,8 +1,6 @@
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/altryne/sd-webui-colab/blob/main/Stable_Diffusion_WebUi_Altryne.ipynb) 
+# [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
 
-[Visit Our Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
-
-# Installation instructions for [Windows](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation), [Linux](https://github.com/sd-webui/stable-diffusion-webui/wiki/Linux-Automated-Setup-Guide), or [Google Colab](https://colab.research.google.com/github/altryne/sd-webui-colab/blob/main/Stable_Diffusion_WebUi_Altryne.ipynb)
+# Installation instructions for [Windows](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation), [Linux](https://github.com/sd-webui/stable-diffusion-webui/wiki/Linux-Automated-Setup-Guide)
 
 ### Have an **issue**? 
 
@@ -11,9 +9,17 @@
 
 ### Want to contribute?
 
-Open new Pull Requests against `dev` branch!
+Gradio version (stable)
 
-**If you're thinking about adding a new feature to Web UI focus on the Streamlit version (webui_streamlit.py) which is in active development.**
+Open new Pull Requests on `dev` branch!
+
+for Gradio check out the [docs](https://gradio.app/docs/) to contribute
+
+Have an issue or feature request with Gradio? open a issue/feature request on github for support: https://github.com/gradio-app/gradio/issues
+
+Need more support with Gradio? We have a discord channel called `gradio-stable-diffusion` for Q&A with the gradio authors, to join use this link https://discord.gg/Qs8AsnX7Jd, then go to `role-assignment` and click gradio to join the `gradio` channels.
+
+**New features can be added to Gradio or Streamlit versions**
 
 ## More documentation about features, troubleshooting, common issues very soon
 ### Want to help with documentation? Documented something? Use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions)
@@ -70,10 +76,18 @@ Original script with Gradio UI was written by a kind anonymous user. This is a m
 ![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/gfpgan.jpg)
 ![](https://github.com/sd-webui/stable-diffusion-webui/blob/master/images/esrgan.jpg)
 
-### Additional Models
+### GFPGAN
 
-**GFPGAN**, **RealESRGAN** and **LDSR** optional models are supported. Detailed download instructios is available in the wiki [wiki](https://github.com/sd-webui/stable-diffusion-webui/wiki/Installation#optional-additional-models).
-Please ensure that you run `webui.cmd` OR `webui_streamlit.cmd` **first** before downloading and initializing `/stable-diffusion-webui/src` folder.  
+If you want to use GFPGAN to improve generated faces, you need to install it separately.
+Download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
+into the `/stable-diffusion-webui/src/gfpgan/experiments/pretrained_models` directory. 
+
+### RealESRGAN
+Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
+Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
+
+### LDSR
+* Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [ model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/
 
 ### Web UI
 

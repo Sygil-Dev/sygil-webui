@@ -57,11 +57,15 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             gr.Markdown(
                                 "Select an image from the gallery, then click one of the buttons below to perform an action.")
                             with gr.Row(elem_id='txt2img_actions_row'):
-                                gr.Button("Copy to clipboard").click(fn=None,
-                                                                     inputs=output_txt2img_gallery,
-                                                                     outputs=[],
-                                                                     # _js=js_copy_to_clipboard( 'txt2img_gallery_output')
-                                                                     )
+                                gr.Button("Copy to clipboard").click(
+                                    fn=None,
+                                    inputs=output_txt2img_gallery,
+                                    outputs=[],
+                                    _js=call_JS(
+                                        "copyImageFromGalleryToClipboard",
+                                        fromId="txt2img_gallery_output"
+                                    )
+                                )
                                 output_txt2img_copy_to_input_btn = gr.Button("Push to img2img")
                                 output_txt2img_to_imglab = gr.Button("Send to Lab", visible=True)
 
@@ -210,7 +214,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                             value=img2img_mask_modes[img2img_defaults['mask_mode']],
                                                             visible=True)
 
-                                    img2img_mask_restore = gr.Checkbox(label="Only modify regenerated parts of image", 
+                                    img2img_mask_restore = gr.Checkbox(label="Only modify regenerated parts of image",
                                                             value=img2img_defaults['mask_restore'],
                                                             visible=True)
 

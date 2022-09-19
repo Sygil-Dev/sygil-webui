@@ -258,7 +258,6 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 				use_GFPGAN=use_GFPGAN,
 				use_RealESRGAN=use_RealESRGAN, # Forcefully disable upscaling when using loopback
 				realesrgan_model_name=RealESRGAN_model,
-				fp=fp,
 				normalize_prompt_weights=normalize_prompt_weights,
 				save_individual_images=save_individual_images,
 				init_img=init_img,
@@ -291,7 +290,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 					correction_target,
 					channel_axis=2
 				    ), cv2.COLOR_LAB2RGB).astype("uint8"))
-				if mask_restore is True:
+				if mask_restore is True and init_mask is not None:
 					color_mask = init_mask.filter(ImageFilter.GaussianBlur(mask_blur_strength))
 					color_mask = color_mask.convert('L')
 					source_image = input_image.convert('RGB')
@@ -329,7 +328,6 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			use_GFPGAN=use_GFPGAN,
 			use_RealESRGAN=use_RealESRGAN,
 			realesrgan_model_name=RealESRGAN_model,
-			fp=fp,
 			normalize_prompt_weights=normalize_prompt_weights,
 			save_individual_images=save_individual_images,
 			init_img=init_img,
@@ -385,7 +383,10 @@ def layout():
 				st.session_state["custom_model"] = "Stable Diffusion v1.4"
 				
 				
-			st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=st.session_state['defaults'].img2img.sampling_steps, min_value=1, max_value=500)
+			st.session_state["sampling_steps"] = st.slider("Sampling Steps", value=st.session_state['defaults'].img2img.sampling_steps.value,
+														   min_value=st.session_state['defaults'].img2img.sampling_steps.min_value,
+														   max_value=st.session_state['defaults'].img2img.sampling_steps.max_value,
+														   step=st.session_state['defaults'].img2img.sampling_steps.step)
 			
 			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 			st.session_state["sampler_name"] = st.selectbox("Sampling method",sampler_name_list, 
@@ -398,8 +399,10 @@ def layout():
 								 )
 			mask_mode = mask_mode_list.index(mask_mode)
 	
-			width = st.slider("Width:", min_value=64, max_value=1024, value=st.session_state['defaults'].img2img.width, step=64)
-			height = st.slider("Height:", min_value=64, max_value=1024, value=st.session_state['defaults'].img2img.height, step=64)
+			width = st.slider("Width:", min_value=st.session_state['defaults'].img2img.width.min_value, max_value=st.session_state['defaults'].img2img.width.max_value,
+							  value=st.session_state['defaults'].img2img.width.value, step=st.session_state['defaults'].img2img.width.step)
+			height = st.slider("Height:", min_value=st.session_state['defaults'].img2img.height.min_value, max_value=st.session_state['defaults'].img2img.height.max_value,
+							   value=st.session_state['defaults'].img2img.height.value, step=st.session_state['defaults'].img2img.height.step)
 			seed = st.text_input("Seed:", value=st.session_state['defaults'].img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 			noise_mode_list = ["Seed", "Find Noise", "Matched Noise", "Find+Matched Noise"]
 			noise_mode = st.selectbox(
@@ -408,7 +411,8 @@ def layout():
 					)
 			noise_mode = noise_mode_list.index(noise_mode)
 			find_noise_steps = st.slider("Find Noise Steps", value=100, min_value=1, max_value=500)
-			batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].img2img.batch_count, step=1,
+			batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].img2img.batch_count.min_value, max_value=st.session_state['defaults'].img2img.batch_count.max_value,
+									value=st.session_state['defaults'].img2img.batch_count.value, step=st.session_state['defaults'].img2img.batch_count.step,
 								help="How many iterations or batches of images to generate in total.")
 	
 			#			
@@ -450,13 +454,13 @@ def layout():
 				variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].img2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
 				variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].img2img.variant_seed,
 									     help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].img2img.cfg_scale, step=0.5,
-								      help="How strongly the image should follow the prompt.")
-				batch_size = st.slider("Batch size", min_value=1, max_value=100, value=st.session_state['defaults'].img2img.batch_size, step=1,
-								       help="How many images are at once in a batch.\
-									       It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish \
-									       generation as more images are generated at once.\
-									       Default: 1")
+				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
+									  max_value=st.session_state['defaults'].img2img.cfg_scale.max_value, value=st.session_state['defaults'].img2img.cfg_scale.value,
+									  step=st.session_state['defaults'].img2img.cfg_scale.step, help="How strongly the image should follow the prompt.")
+				batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].img2img.batch_size.min_value, max_value=st.session_state['defaults'].img2img.batch_size.max_value,
+									   value=st.session_state['defaults'].img2img.batch_size.value, step=st.session_state['defaults'].img2img.batch_size.step,
+								       help="How many images are at once in a batch. It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish \
+									       generation as more images are generated at once.Default: 1")
 	
 				st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength, 
 												   min_value=0.01, max_value=1.0, step=0.01)
@@ -569,8 +573,9 @@ def layout():
 										   sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
 										   cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
 										   seed=seed, noise_mode=noise_mode, find_noise_steps=find_noise_steps, width=width, 
-										   height=height, fp=st.session_state['defaults'].general.fp, variant_amount=variant_amount, 
-										   ddim_eta=0.0, write_info_files=write_info_files, RealESRGAN_model=st.session_state["RealESRGAN_model"],
+										   height=height, variant_amount=variant_amount, 
+										   ddim_eta=st.session_state.defaults.img2img.ddim_eta, write_info_files=write_info_files,
+										   RealESRGAN_model=st.session_state["RealESRGAN_model"],
 										   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
 										   save_individual_images=save_individual_images, save_grid=save_grid, 
 										   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,

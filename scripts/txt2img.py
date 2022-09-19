@@ -4,6 +4,8 @@ from sd_utils import *
 
 # streamlit imports
 from streamlit import StopException
+from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
+from streamlit.elements import image as STImage
 
 #other imports
 import os
@@ -12,8 +14,6 @@ from io import BytesIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
-from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
-from streamlit.elements import image as STImage
 # Temp imports 
 
 
@@ -117,7 +117,6 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
                 use_GFPGAN=st.session_state["use_GFPGAN"],
                 use_RealESRGAN=st.session_state["use_RealESRGAN"],
                 realesrgan_model_name=realesrgan_model_name,
-                fp=fp,
                 ddim_eta=ddim_eta,
                 normalize_prompt_weights=normalize_prompt_weights,
                 save_individual_images=save_individual_images,
@@ -157,25 +156,24 @@ def layout():
         col1, col2, col3 = st.columns([1,2,1], gap="large")    
 
         with col1:
-            width = st.slider("Width:", min_value=64, max_value=4096, value=st.session_state['defaults'].txt2img.width, step=64)
-            height = st.slider("Height:", min_value=64, max_value=4096, value=st.session_state['defaults'].txt2img.height, step=64)
-            cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2img.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+            width = st.slider("Width:", min_value=st.session_state['defaults'].txt2img.width.min_value, max_value=st.session_state['defaults'].txt2img.width.max_value,
+                              value=st.session_state['defaults'].txt2img.width.value, step=st.session_state['defaults'].txt2img.width.step)
+            height = st.slider("Height:", min_value=st.session_state['defaults'].txt2img.height.min_value, max_value=st.session_state['defaults'].txt2img.height.max_value,
+                               value=st.session_state['defaults'].txt2img.height.value, step=st.session_state['defaults'].txt2img.height.step)
+            cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2img.cfg_scale.min_value,
+                                  max_value=st.session_state['defaults'].txt2img.cfg_scale.max_value,
+                                  value=st.session_state['defaults'].txt2img.cfg_scale.value, step=st.session_state['defaults'].txt2img.cfg_scale.step, 
+                                  help="How strongly the image should follow the prompt.")
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-            batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2img.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+            batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
+                                    value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
+                                    help="How many iterations or batches of images to generate in total.")
 
-            bs_slider_max_value = 5
-            if st.session_state.defaults.general.optimized:
-                bs_slider_max_value = 100
-
-            batch_size = st.slider(
-                "Batch size",
-                min_value=1,
-                max_value=bs_slider_max_value,
-                value=st.session_state.defaults.txt2img.batch_size,
-                step=1,
-                help="How many images are at once in a batch.\
-                It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                Default: 1")
+            batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
+                                   value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
+                                   help="How many images are at once in a batch.\
+                                   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+                                   Default: 1")
 
             with st.expander("Preview Settings"):
                 st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
@@ -186,7 +184,7 @@ def layout():
                 st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                              help="Frequency in steps at which the the preview image is updated. By default the frequency \
                                                                               is set to 1 step.")
-
+                
         with col2:
             preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
 
@@ -213,12 +211,15 @@ def layout():
             if st.session_state.CustomModel_available:
                 st.session_state.custom_model = st.selectbox("Custom Model:", st.session_state.custom_models,
                                                                 index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
-                                    help="Select the model you want to use. This option is only available if you have custom models \
-                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
-                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-                            will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
-
-            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps, min_value=10, max_value=500, step=10)
+                                                                help="Select the model you want to use. This option is only available if you have custom models \
+                                                                on your 'models/custom' folder. The model name that will be shown here is the same as the name\
+                                                                the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+                                                                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
+            
+            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state.defaults.txt2img.sampling_steps.value,
+                                                        min_value=st.session_state.defaults.txt2img.sampling_steps.min_value,
+                                                        max_value=st.session_state['defaults'].txt2img.sampling_steps.max_value,
+                                                        step=st.session_state['defaults'].txt2img.sampling_steps.step)    
 
             sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
@@ -233,14 +234,14 @@ def layout():
                     #help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
 
             with st.expander("Advanced"):
-                separate_prompts = st.checkbox("Create Prompt Matrix.", value=False, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-                normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=True, help="Ensure the sum of all weights add up to 1.0")
-                save_individual_images = st.checkbox("Save individual images.", value=True, help="Save each image generated before any filter or enhancement is applied.")
-                save_grid = st.checkbox("Save grid",value=True, help="Save a grid with all the images generated into a single image.")
-                group_by_prompt = st.checkbox("Group results by prompt", value=True,
+                separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+                normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].txt2img.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
+                save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].txt2img.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
+                save_grid = st.checkbox("Save grid",value=st.session_state['defaults'].txt2img.save_grid, help="Save a grid with all the images generated into a single image.")
+                group_by_prompt = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2img.group_by_prompt,
                                               help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-                write_info_files = st.checkbox("Write Info file", value=True, help="Save a file next to the image with informartion about the generation.")
-                save_as_jpg = st.checkbox("Save samples as jpg", value=False, help="Saves the images as jpg instead of png.")
+                write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2img.write_info_files, help="Save a file next to the image with informartion about the generation.")
+                save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 
                 if st.session_state["GFPGAN_available"]:
                     st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
@@ -257,7 +258,9 @@ def layout():
                     st.session_state["use_RealESRGAN"] = False
                     st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 
-                variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+                variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
+                                           min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
+                                           step=st.session_state['defaults'].txt2img.variant_amount.step)
                 variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
         galleryCont = st.empty()
 
@@ -265,49 +268,51 @@ def layout():
             #print("Loading models")
             # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.	
             load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
-                        st.session_state["custom_model"])    
+                        st.session_state["custom_model"])  
+            
 
             try:
+                #
                 output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
                                                             cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                        save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
-                                        fp=st.session_state.defaults.general.fp, variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-        
+                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
+                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+                
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
         
-                history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+                #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
         
-                if 'latestImages' in st.session_state:
-                    for i in output_images:
-                        #push the new image to the list of latest images and remove the oldest one
-                        #remove the last index from the list\
-                        st.session_state['latestImages'].pop()
-                        #add the new image to the start of the list
-                        st.session_state['latestImages'].insert(0, i)
-                    PlaceHolder.empty()
-                    with PlaceHolder.container():
-                        col1, col2, col3 = st.columns(3)
-                        col1_cont = st.container()
-                        col2_cont = st.container()
-                        col3_cont = st.container()
-                        images = st.session_state['latestImages']
-                        with col1_cont:
-                            with col1:
-                                [st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                        with col2_cont:
-                            with col2:
-                                [st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                        with col3_cont:
-                            with col3:
-                                [st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                        historyGallery = st.empty()
+                #if 'latestImages' in st.session_state:
+                    #for i in output_images:
+                        ##push the new image to the list of latest images and remove the oldest one
+                        ##remove the last index from the list\
+                        #st.session_state['latestImages'].pop()
+                        ##add the new image to the start of the list
+                        #st.session_state['latestImages'].insert(0, i)
+                    #PlaceHolder.empty()
+                    #with PlaceHolder.container():
+                        #col1, col2, col3 = st.columns(3)
+                        #col1_cont = st.container()
+                        #col2_cont = st.container()
+                        #col3_cont = st.container()
+                        #images = st.session_state['latestImages']
+                        #with col1_cont:
+                            #with col1:
+                                #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
+                        #with col2_cont:
+                            #with col2:
+                                #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
+                        #with col3_cont:
+                            #with col3:
+                                #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
+                        #historyGallery = st.empty()
                 
-                    # check if output_images length is the same as seeds length
-                    with gallery_tab:
-                        st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
-                
-                
-                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                    ## check if output_images length is the same as seeds length
+                    #with gallery_tab:
+                        #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
+                    
+                    
+                        #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
                 
             except (StopException, KeyError):
                 print(f"Received Streamlit StopException")
