@@ -21,10 +21,9 @@ import imageio
 from slugify import slugify
 
 # Temp imports
-
-# these are for testing txt2vid, should be removed and we should use things from our own code.
 from diffusers import StableDiffusionPipeline
-from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, PNDMScheduler
+from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
+     PNDMScheduler
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
@@ -310,7 +309,7 @@ def txt2vid(
 	klms_scheduler = LMSDiscreteScheduler(
 		beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
 	)
-
+	
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
 	# ------------------------------------------------------------------------------
@@ -514,7 +513,7 @@ def txt2vid(
 		#output = io.BytesIO()
 		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples"), im, extension=".mp4", fps=30)
 		try:
-			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples","temp.mp4")
+			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples",f"{seeds}_{sanitized_prompt}.mp4")
 			writer = imageio.get_writer(video_path, fps=24)
 			for frame in frames:
 				writer.append_data(frame)
