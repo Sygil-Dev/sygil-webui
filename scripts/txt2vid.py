@@ -369,7 +369,9 @@ def txt2vid(
 		
 		if st.session_state.defaults.general.enable_attention_slicing:
 			st.session_state["pipe"].enable_attention_slicing()
-			
+		
+		if st.session_state.defaults.general.enable_minimal_memory_usage:
+			st.session_state["pipe"].enable_minimal_memory_usage()
 			
 		print("Tx2Vid Model Loaded")
 
@@ -514,7 +516,7 @@ def txt2vid(
 		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples"), im, extension=".mp4", fps=30)
 		try:
 			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples",f"{seeds}_{sanitized_prompt}.mp4")
-			writer = imageio.get_writer(video_path, fps=24)
+			writer = imageio.get_writer(video_path, fps=6)
 			for frame in frames:
 				writer.append_data(frame)
 			writer.close()
