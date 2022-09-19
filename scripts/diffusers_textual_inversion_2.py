@@ -566,7 +566,7 @@ def main():
         # Also save the newly trained embeddings
         learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
         learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
-        torch.save(learned_embeds_dict, os.path.join(args.output_dir, "learned_embeds.bin"))
+        torch.save(learned_embeds_dict, os.path.join(args.train_data_dir, f"learned_embeds.bin"))
 
         if args.push_to_hub:
             repo.push_to_hub(
