@@ -1,67 +1,68 @@
-# OS-generated
-# ------------
+### OS, IDE, generic exclusions
+## Windows, Mac related
 .DS_Store*
-[Tt]humbs.db
 [Dd]esktop.ini
+[Tt]humbs.db
 
-# Programming - general
+## Intellij related
+.idea/
+*.iml
+
+## Visual Studio related
+.vscode/
+.vs/
+
+## Generic program logs
 *.log
 
 
-# =========================================================================== #
-# 	Python-related
-# =========================================================================== #
-# src: https://github.com/github/gitignore/blob/master/Python.gitignore
-
-# JetBrains PyCharm / Rider
-.idea/
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
+### Generic distribution, packaging, environments exclusions
 build/
-develop-eggs/
 dist/
 downloads/
-eggs/
-.eggs/
 lib/
 lib64/
+out/
 parts/
 sdist/
 var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 .env_docker
 .env_updated
-condaenv.*.requirements.txt
+.installed.cfg
+MANIFEST
 
-# Visual Studio directories
-.vs/
-.vscode/
 
-# =========================================================================== #
-# 	Repo-specific
-# =========================================================================== #
-/configs/webui/userconfig_streamlit.yaml
-/custom-conda-path.txt
-/src/*
-/outputs
-/model_cache
-/log/**/*.png
-/log/log.csv
+### Programming languages specific
+### src: https://github.com/github/gitignore/blob/master/Python.gitignore
+## Python byte-compiled, optimized, libraries, etc.
+*.egg-info/
+.eggs/
+__pycache__/
+develop-eggs/
+eggs/
+share/python-wheels/
+wheels/
+*$py.class
+*.egg
+*.py[cod]
+.Python
+
+## C related
+*.so
+
+
+### Stable-diffusion project specific
+## SD environment
+/envs/*
 /flagged/*
 /gfpgan/*
+/model_cache/*
 /models/*
+/outputs/*
+/src/*
+/configs/webui/userconfig_streamlit.yaml
+/custom-conda-path.txt
+/log/**/*.png
+/log/log.csv
+condaenv.*.requirements.txt
 z_version_env.tmp
