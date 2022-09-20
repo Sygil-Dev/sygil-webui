@@ -10,6 +10,7 @@ cd $SCRIPT_DIR
 export PYTHONPATH=$SCRIPT_DIR
 
 MODEL_DIR="${SCRIPT_DIR}/model_cache"
+mkdir -p $MODEL_DIR
 # Array of model files to pre-download
 # local filename
 # local path in container (no trailing slash)
@@ -49,7 +50,7 @@ fi
 # Clear artifacts from conda after create/update
 # @see https://docs.conda.io/projects/conda/en/latest/commands/clean.html
 if (( $ENV_UPDATED > 0 )); then
-    conda clean --all
+    yes | conda clean --all
     echo -n $ENV_MODIFIED > $ENV_MODIFED_FILE
 fi
 
