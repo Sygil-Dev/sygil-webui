@@ -1,0 +1,15 @@
+# Optional packages commonly used with Stable Diffusion workflow
+
+# Upscalers
+basicsr==1.4.2  # required by RealESRGAN
+gfpgan==1.3.8  # GFPGAN
+realesrgan==0.2.8  # RealESRGAN brings in GFPGAN as a requirement
+-e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion  #ldsr
+
+
+# Orphaned Packages:  No usage found
+#albumentations
+#imageio-ffmpeg
+#pudb
+#test-tube
+#torch-fidelity

@@ -1,0 +1,14 @@
+plugins:
+  - jekyll-relative-links
+  - jekyll-readme-index
+  - jemoji
+  - jekyll-remote-theme
+relative_links:
+  enabled: true
+  collections: true
+source: docs
+remote_theme: jekyll/minima
+minima:
+  skin: dark
+include:
+  - CONTRIBUTING.md

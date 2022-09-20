@@ -439,7 +439,7 @@ def txt2vid(
 			# sample the destination
 			init2 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 
-			for i, t in enumerate(np.linspace(0, 1, max_frames)):
+			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
 				print(f"COUNT: {frame_index+1}/{max_frames}")
 
