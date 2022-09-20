@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Starts the gui inside the docker container using the conda env
+# Starts the webserver inside the docker container
 #
 
 # set -x
@@ -24,39 +24,6 @@ MODEL_FILES=(
     'model.ckpt src/latent-diffusion/experiments/pretrained_models https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1 c209caecac2f97b4bb8f4d726b70ac2ac9b35904b7fc99801e1f5e61f9210c13'
 )
 
-# Conda environment installs/updates
-# @see https://github.com/ContinuumIO/docker-images/issues/89#issuecomment-467287039
-ENV_NAME="ldm"
-ENV_FILE="${SCRIPT_DIR}/environment.yaml"
-ENV_UPDATED=0
-ENV_MODIFIED=$(date -r $ENV_FILE "+%s")
-ENV_MODIFED_FILE="${SCRIPT_DIR}/.env_updated"
-if [[ -f $ENV_MODIFED_FILE ]]; then ENV_MODIFIED_CACHED=$(<${ENV_MODIFED_FILE}); else ENV_MODIFIED_CACHED=0; fi
-export PIP_EXISTS_ACTION=w
-
-# Create/update conda env if needed
-if ! conda env list | grep ".*${ENV_NAME}.*" >/dev/null 2>&1; then
-    echo "Could not find conda env: ${ENV_NAME} ... creating ..."
-    conda env create -f $ENV_FILE
-    echo "source activate ${ENV_NAME}" > /root/.bashrc
-    ENV_UPDATED=1
-elif [[ ! -z $CONDA_FORCE_UPDATE && $CONDA_FORCE_UPDATE == "true" ]] || (( $ENV_MODIFIED > $ENV_MODIFIED_CACHED )); then
-    echo "Updating conda env: ${ENV_NAME} ..."
-    conda env update --file $ENV_FILE --prune
-    ENV_UPDATED=1
-fi
-
-# Clear artifacts from conda after create/update
-# @see https://docs.conda.io/projects/conda/en/latest/commands/clean.html
-if (( $ENV_UPDATED > 0 )); then
-    conda clean --all
-    echo -n $ENV_MODIFIED > $ENV_MODIFED_FILE
-fi
-
-# activate conda env
-. /opt/conda/etc/profile.d/conda.sh
-conda activate $ENV_NAME
-conda info | grep active
 
 # Function to checks for valid hash for model files and download/replaces if invalid or does not exist
 validateDownloadModel() {
@@ -89,23 +56,29 @@ validateDownloadModel() {
     fi
 }
 
-# Validate model files
-echo "Validating model files..."
-for models in "${MODEL_FILES[@]}"; do
-    model=($models)
-    if [[ ! -e ${model[1]}/${model[0]} || ! -L ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
-        validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
-    fi
-done
 
-# Launch web gui
+# Validate model files
+if [ $VALIDATE_MODELS == "false" ]; then
+    echo "Skipping model file validation..."
+else
+    echo "Validating model files..."
+    for models in "${MODEL_FILES[@]}"; do
+        model=($models)
+        if [[ ! -e ${model[1]}/${model[0]} || ! -L ${model[1]}/${model[0]} || -z $VALIDATE_MODELS || $VALIDATE_MODELS == "true" ]]; then
+            validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
+        fi
+    done
+fi
+
+# Determine which webserver interface to launch (Streamlit vs Default: Gradio)
 if [[ ! -z $WEBUI_SCRIPT && $WEBUI_SCRIPT == "webui_streamlit.py" ]]; then
     launch_command="streamlit run scripts/${WEBUI_SCRIPT:-webui.py} $WEBUI_ARGS"
 else
     launch_command="python scripts/${WEBUI_SCRIPT:-webui.py} $WEBUI_ARGS"
 fi
 
-launch_message="entrypoint.sh: Run ${launch_command}..."
+# Start webserver interface
+launch_message="Starting Stable Diffusion WebUI... ${launch_command}..."
 if [[ -z $WEBUI_RELAUNCH || $WEBUI_RELAUNCH == "true" ]]; then
     n=0
     while true; do
