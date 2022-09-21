@@ -410,7 +410,9 @@ def layout():
 						help=""
 					)
 			noise_mode = noise_mode_list.index(noise_mode)
-			find_noise_steps = st.slider("Find Noise Steps", value=100, min_value=1, max_value=500)
+			find_noise_steps = st.slider("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
+										 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value, max_value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
+										 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 			batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].img2img.batch_count.min_value, max_value=st.session_state['defaults'].img2img.batch_count.max_value,
 									value=st.session_state['defaults'].img2img.batch_count.value, step=st.session_state['defaults'].img2img.batch_count.step,
 								help="How many iterations or batches of images to generate in total.")

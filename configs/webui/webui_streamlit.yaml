@@ -244,6 +244,12 @@ img2img:
         max_value:  500
         step:       10
         
+    find_noise_steps:
+        value:      100
+        min_value:  0
+        max_value:  500
+        step:       10
+        
     loopback: True
     random_seed_loopback: True
     separate_prompts: False
