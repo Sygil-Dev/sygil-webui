@@ -84,7 +84,7 @@ txt2img:
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
-    group_by_prompt: True
+    group_by_prompt: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
@@ -258,7 +258,7 @@ img2img:
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
-    group_by_prompt: True
+    group_by_prompt: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
