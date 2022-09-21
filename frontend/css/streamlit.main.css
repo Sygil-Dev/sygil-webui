@@ -109,3 +109,9 @@ h1 {
 div.gallery:hover {
   border: 1px solid #777;
 }
+.css-dg4u6x p {
+  font-size: 0.8rem;
+  text-align: center;
+  position: relative;
+  top: 6px;
+}
