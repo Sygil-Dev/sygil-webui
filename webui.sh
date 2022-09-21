@@ -3,17 +3,28 @@
 # Start the Stable Diffusion WebUI for Linux Users
 
 DIRECTORY="."
-ENV_NAME="ldm"
 ENV_FILE="environment.yaml"
-ENV_UPDATED=0
+ENV_NAME="ldm"
 ENV_MODIFIED=$(date -r $ENV_FILE "+%s")
 ENV_MODIFED_FILE=".env_updated"
+ENV_UPDATED=0
+
+# Models used for upscaling
+GFPGAN_MODEL="https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth"
+LATENT_DIFFUSION_REPO="https://github.com/devilismyfriend/latent-diffusion.git"
+LSDR_CONFIG="https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
+LSDR_MODEL="https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
+REALESRGAN_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+REALESRGAN_ANIME_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
+
+
 if [[ -f $ENV_MODIFED_FILE ]]; then 
     ENV_MODIFIED_CACHED=$(<${ENV_MODIFED_FILE})
 else 
     ENV_MODIFIED_CACHED=0
 fi
 
+# Setup the Conda env for the project. This will also handle updating the env as needed too.
 conda_env_setup () {
     # Set conda path if it is not already in default environment
     CUSTOM_CONDA_PATH=
@@ -53,14 +64,14 @@ conda_env_setup () {
     fi
 }
 
+# Activate conda environment
 conda_env_activation () {
-    # Activate conda environment
     conda activate $ENV_NAME
     conda info | grep active
 }
 
+# Check to see if the SD model already exists, if not then it creates it and prompts the user to add the SD AI models to the repo directory
 sd_model_loading () {
-    # Check to see if the SD model already exists, if not then it creates it and prompts the user to add the SD AI models to the Models directory
     if [ -f "$DIRECTORY/models/ldm/stable-diffusion-v1/model.ckpt" ]; then
         printf "AI Model already in place. Continuing...\n\n"
     else
@@ -75,13 +86,14 @@ sd_model_loading () {
     fi
 }
 
+# Checks to see if the upscaling models exist in their correct locations. If they do not they will be downloaded as required
 post_processor_model_loading () {
     # Check to see if GFPGAN has been added yet, if not it will download it and place it in the proper directory
     if [ -f "$DIRECTORY/src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth" ]; then
         printf "GFPGAN already exists. Continuing...\n\n"
     else
         printf "Downloading GFPGAN model. Please wait...\n"
-        wget https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth -P $DIRECTORY/src/gfpgan/experiments/pretrained_models
+        wget $GFPGAN_MODEL -P $DIRECTORY/src/gfpgan/experiments/pretrained_models
     fi
 
     # Check to see if realESRGAN has been added yet, if not it will download it and place it in the proper directory
@@ -89,8 +101,8 @@ post_processor_model_loading () {
         printf "realESRGAN already exists. Continuing...\n\n"
     else
         printf "Downloading realESRGAN model. Please wait...\n"
-        wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -P $DIRECTORY/src/realesrgan/experiments/pretrained_models
-        wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth -P $DIRECTORY/src/realesrgan/experiments/pretrained_models
+        wget $REALESRGAN_MODEL -P $DIRECTORY/src/realesrgan/experiments/pretrained_models
+        wget $REALESRGAN_ANIME_MODEL -P $DIRECTORY/src/realesrgan/experiments/pretrained_models
     fi
 
     # Check to see if LDSR has been added yet, if not it will be cloned and its models downloaded to the correct directory
@@ -98,31 +110,33 @@ post_processor_model_loading () {
         printf "LDSR already exists. Continuing...\n\n"
     else
         printf "Cloning LDSR and downloading model. Please wait...\n"
-        git clone https://github.com/devilismyfriend/latent-diffusion.git
+        git clone $LATENT_DIFFUSION_REPO
         mv latent-diffusion $DIRECTORY/src/latent-diffusion
         mkdir $DIRECTORY/src/latent-diffusion/experiments
         mkdir $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
-        wget https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1 -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
+        wget $LSDR_CONFIG -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
         mv $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/index.html?dl=1 $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/project.yaml
-        wget https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1 -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
+        wget $LSDR_MODEL -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
         mv $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/index.html?dl=1 $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/model.ckpt
     fi
 }
 
+# Show the user a prompt asking them which version of the WebUI they wish to use, Streamlit or Gradio
 launch_webui () {
-    printf "\n\n########## LAUNCH USING GRADIO OR STREAMLIT? ##########\n\n"
-    printf "Do you wish to run the Stable Diffusion WebUI using the Gradio or StreamLit Interface?\n\n"
-    printf "Gradio: Currently Feature Complete, But Uses An Older Interface Style And Will Not Receive Major Updates\n"
-    printf "StreamLit: Has A More Modern UI With More Features To Be Added And Will Be The Main UI Going Forward, But Currently In Active Development And Missing Some Gradio Features\n\n"
+    printf "\n\n########## LAUNCH USING STREAMLIT OR GRADIO? ##########\n\n"
+    printf "Do you wish to run the WebUI using the Gradio or StreamLit Interface?\n\n"
+    printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \nMissing Some Gradio Features\n\n"
+    printf "Gradio: \nCurrently Feature Complete \nUses An Older Interface Style \nWill Not Receive Major Updates\n\n"
     printf "Which Version of the WebUI Interface do you wish to use?\n"
-    select yn in "Gradio" "StreamLit"; do
+    select yn in "Streamlit" "Gradio"; do
         case $yn in
+            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
             Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py; break;;
-            StreamLit ) printf "\nStarting Stable Diffusion WebUI: StreamLit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
         esac
     done
 }
 
+# Function to initialize the other functions
 start_initialization () {
     conda_env_setup
     sd_model_loading
