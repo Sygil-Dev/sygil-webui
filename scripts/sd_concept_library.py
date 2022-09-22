@@ -43,12 +43,12 @@ def getConceptsFromPath(page, conceptPerPage, searchText= ""):
 	path = os.path.join(os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
 	acceptedExtensions = ('jpeg', 'jpg', "png")
 	concepts = []
-	
+
 	if os.path.exists(path):
 		# List all folders (concepts) in the path
 		folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
 		filteredFolders = folders
-	
+
 		# Filter the folders by the search text
 		if searchText != "":
 			filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
@@ -121,12 +121,12 @@ def getTotalNumberOfConcepts(searchText= ""):
 	# get the path where the concepts are stored
 	path = os.path.join(os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
 	concepts = []
-	
+
 	if os.path.exists(path):
 		# List all folders (concepts) in the path
 		folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
 		filteredFolders = folders
-	
+
 		# Filter the folders by the search text
 		if searchText != "":
 			filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
@@ -148,6 +148,25 @@ def layout():
 	if searchInput != "":
 		st.session_state["cl_page"] = 1
 		totalNumberOfConcepts = getTotalNumberOfConcepts(searchInput)
+
+	# Pagination
+	last_page = math.ceil(getTotalNumberOfConcepts(searchInput) / st.session_state["cl_conceptPerPage"])
+	_prev, _per_page ,_next = st.columns([1, 10, 1])
+	if ("concepts" in st.session_state and len(st.session_state['concepts']) > 0):
+		# The condition doesnt work, it should be fixed
+
+		with _prev:
+			if st.button("Previous", disabled = st.session_state["cl_page"] == 1):
+				st.session_state["cl_page"] -= 1
+				st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)
+
+		with _per_page:
+			st.caption("Page " + str(st.session_state["cl_page"]) + " / " + str(last_page))
+
+		with _next:
+			if st.button("Next", disabled = st.session_state["cl_page"] == last_page):
+				st.session_state["cl_page"] += 1
+				st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)
 
 	placeholder = st.empty()
 
@@ -171,24 +190,6 @@ def layout():
 
 		# print("Number of concept matching the query:", conceptsLenght)
 		sdConceptsBrowser(st.session_state['concepts'], key="clipboard")
-	#
-	# Pagination
-	last_page = math.ceil(getTotalNumberOfConcepts(searchInput) / st.session_state["cl_conceptPerPage"])
-	_prev, _per_page ,_next = st.columns([1, 10, 1])
-	if ("concepts" in st.session_state and len(st.session_state['concepts']) > 0):
-		# The condition doesnt work, it should be fixed
 
-		with _prev:
-			if st.button("Previous", disabled = st.session_state["cl_page"] == 1):
-				st.session_state["cl_page"] -= 1
-				st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)
-
-		with _per_page:
-			st.caption("Page " + str(st.session_state["cl_page"]) + " / " + str(last_page))
-
-		with _next:
-			if st.button("Next", disabled = st.session_state["cl_page"] == last_page):
-				st.session_state["cl_page"] += 1
-				st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)	
 
 	return False
