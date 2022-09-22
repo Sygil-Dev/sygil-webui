@@ -194,7 +194,7 @@ img2img:
         value:      0.75
         min_value:  0.0
         max_value:  1.0
-        step:       0.1
+        step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
     mask_mode: 0
