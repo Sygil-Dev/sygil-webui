@@ -16,6 +16,7 @@ LSDR_CONFIG="https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
 LSDR_MODEL="https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
 REALESRGAN_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
 REALESRGAN_ANIME_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
+SD_CONCEPT_REPO="https://github.com/sd-webui/sd-concepts-library/archive/refs/heads/main.zip"
 
 
 if [[ -f $ENV_MODIFED_FILE ]]; then 
@@ -118,6 +119,22 @@ post_processor_model_loading () {
         mv $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/index.html?dl=1 $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/project.yaml
         wget $LSDR_MODEL -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
         mv $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/index.html?dl=1 $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/model.ckpt
+    fi
+
+    # Check to see if SD Concepts has been added yet, if not it will download it and place it in the proper directory
+    if [ -d "$DIRECTORY/models/custom/sd-concepts-library" ]; then
+        printf "SD Concepts Library already exists. Continuing...\n\n"
+    else
+        printf "Downloading and Extracting SD Concepts Library model. Please wait...\n"
+        mkdir $DIRECTORY/models/custom
+        wget $SD_CONCEPT_REPO
+        if ! command -v unzip &> /dev/null
+        then
+            printf "Warning: unzip could not be found. \nPlease install 'unzip' from your package manager and rerun this program.\n"
+            exit 1
+        fi
+        unzip main.zip
+        mv sd-concepts-library-main/sd-concepts-library $DIRECTORY/models/custom
     fi
 }
 
