@@ -134,9 +134,9 @@ def layout():
 		from ModelManager import layout
 		layout()
 	
-	# elif tabs == 'Textual Inversion':
-	# 	from textual_inversion import layout
-	# 	layout()	
+	elif tabs == 'Textual Inversion':
+		from textual_inversion import layout
+		layout()	
 	
 if __name__ == '__main__':
 	layout()     
