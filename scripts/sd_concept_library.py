@@ -43,14 +43,17 @@ def getConceptsFromPath(page, conceptPerPage, searchText= ""):
 	path = os.path.join(os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
 	acceptedExtensions = ('jpeg', 'jpg', "png")
 	concepts = []
-
-	# List all folders (concepts) in the path
-	folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
-	filteredFolders = folders
-
-	# Filter the folders by the search text
-	if searchText != "":
-		filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
+	
+	if os.path.exists(path):
+		# List all folders (concepts) in the path
+		folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+		filteredFolders = folders
+	
+		# Filter the folders by the search text
+		if searchText != "":
+			filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
+	else:
+		filteredFolders = []
 
 	conceptIndex = 1
 	for folder in filteredFolders:
@@ -118,14 +121,17 @@ def getTotalNumberOfConcepts(searchText= ""):
 	# get the path where the concepts are stored
 	path = os.path.join(os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
 	concepts = []
-
-	# List all folders (concepts) in the path
-	folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
-	filteredFolders = folders
-
-	# Filter the folders by the search text
-	if searchText != "":
-		filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
+	
+	if os.path.exists(path):
+		# List all folders (concepts) in the path
+		folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+		filteredFolders = folders
+	
+		# Filter the folders by the search text
+		if searchText != "":
+			filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
+	else:
+		filteredFolders = []
 	return len(filteredFolders)
 
 def layout():
@@ -159,7 +165,7 @@ def layout():
 				st.write("You don't have any concepts in your library ")
 				# Propose the user to go to "https://github.com/sd-webui/sd-concepts-library"
 				st.markdown("To add concepts to your library, download some from the [sd-concepts-library](https://github.com/sd-webui/sd-concepts-library) \
-				repository and save the content of `sd-concepts-library` into ```./models/custom/sd-concepts-library``` or just create your own concept.", unsafe_allow_html=False)
+				repository and save the content of `sd-concepts-library` into ```./models/custom/sd-concepts-library``` or just create your own concepts :wink:.", unsafe_allow_html=False)
 			else:
 				st.write("No concepts found in the library matching your search: " + searchInput)
 
