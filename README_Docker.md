@@ -30,12 +30,13 @@ Other Notes:
 ## First-Time Startup Instructions
 
 ### Clone Repository
-* Clone this repository to your host machine:  `git clone https://github.com/sd-webui/stable-diffusion-webui.git`
+* Clone this repository to your host machine:
+    * `git clone https://github.com/sd-webui/stable-diffusion-webui.git`
 * If you plan to use Docker Compose to run the image in a container (most users), create an `.env_docker` file using the example file:
     * `cp .env_docker.example .env_docker`
     * Edit `.env_docker` using the text editor of your choice.
     * Ensure `VALIDATE_MODELS` is set to `true`
-> Options available in `.env_docker` allow you to control automatic model file checking/download during startup, and to select the Stable Diffusion WebUI implementation to run (Gradio vs Streamlit). You may the set `VALIDATE_MODELS` option to `false` on future runs to speed up startup time.
+> Options available in `.env_docker` allow you to control automatic model file checking/download during startup, and to select the Stable Diffusion WebUI implementation to run (Gradio vs Streamlit). You may the set `VALIDATE_MODELS` option to `false` after the initial run (once models are downloaded) to speed up startup time.
 
 
 ### Create a Container Instance Using Docker Compose
@@ -44,10 +45,10 @@ The default `docker-compose.yml` file  will create a Docker container instance n
 * Create an instance of the Stable Diffusion WebUI image as a Docker container:
     * `docker compose up`
 * During the first run, the container image will be build containing all of the dependencies necessary to run Stable Diffusion. This build process will take several minutes to complete
-    * After the image build has completed, you will have a docker image for running the Stable Diffusion WebUI named `stable-diffusion-webui:dev`
+    * After the image build has completed, you will have a docker image for running the Stable Diffusion WebUI tagged `stable-diffusion-webui:dev`
 
 (Optional) Daemon mode:
-* Note you can start the container in "daemon" mode by applying the `-d` option:  `docker compose up -d`. This will run the server in the background so you can close your console window without losing your work.
+* You can start the container in "daemon" mode by applying the `-d` option:  `docker compose up -d`. This will run the server in the background so you can close your console window without losing your work.
 * When running in daemon mode, you can view logging output from your container by running `docker logs sd-webui`
 
 > Note: Depending on your version of Docker/Docker Compose installed, the command may be `docker-compose` (older versions) or `docker compose` (newer versions)
@@ -63,8 +64,8 @@ Depending on the WebUI implementation you selected in `.env_docker`, you can acc
 
 You can expose and access your WebUI to/from remote hosts by the machine's IP address:
 (note: This generally does not apply to Windows/WSL2 users due to WSL's implementation)
-* Gradio:  http://<host-ip-address>:7860
-* Streamlit:  http://<host-ip-address>:8501
+* Gradio:  http://\<host-ip-address\>:7860
+* Streamlit:  http://\<host-ip-address\>:8501
 
 
 ### Where is ___ stored?
