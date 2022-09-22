@@ -3,6 +3,7 @@ import itertools
 import math
 import os
 import random
+import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -19,12 +20,13 @@ from accelerate.utils import set_seed
 from diffusers import AutoencoderKL, DDPMScheduler, PNDMScheduler, StableDiffusionPipeline, UNet2DConditionModel
 from diffusers.optimization import get_scheduler
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from pipelines.stable_diffusion.no_check import NoCheck
 from huggingface_hub import HfFolder, Repository, whoami
 from PIL import Image
 from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
-
+from slugify import slugify
 
 logger = get_logger(__name__)
 
@@ -159,6 +161,38 @@ def parse_args():
         ),
     )
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
+    parser.add_argument(
+        "--checkpoint_frequency",
+        type=int,
+        default=500,
+        help="How often to save a checkpoint and sample image",
+    )
+    parser.add_argument(
+        "--stable_sample_batches",
+        type=int,
+        default=1,
+        help="Number of fixed seed sample batches to generate per checkpoint",
+    )
+    parser.add_argument(
+        "--random_sample_batches",
+        type=int,
+        default=1,
+        help="Number of random seed sample batches to generate per checkpoint",
+    )
+    parser.add_argument(
+        "--sample_batch_size",
+        type=int,
+        default=1,
+        help="Number of samples to generate per batch",
+    )
+    parser.add_argument(
+        "--custom_templates",
+        type=str,
+        default=None,
+        help=(
+            "A comma-delimited list of custom template to use for samples, using {} as a placeholder for the concept."
+        ),
+    )
 
     args = parser.parse_args()
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
@@ -237,6 +271,7 @@ class TextualInversionDataset(Dataset):
         set="train",
         placeholder_token="*",
         center_crop=False,
+        templates=None
     ):
 
         self.data_root = data_root
@@ -247,7 +282,7 @@ class TextualInversionDataset(Dataset):
         self.center_crop = center_crop
         self.flip_p = flip_p
 
-        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root)]
+        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root) if file_path.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
         self.num_images = len(self.image_paths)
         self._length = self.num_images
@@ -262,7 +297,7 @@ class TextualInversionDataset(Dataset):
             "lanczos": PIL.Image.LANCZOS,
         }[interpolation]
 
-        self.templates = imagenet_style_templates_small if learnable_property == "style" else imagenet_templates_small
+        self.templates = templates
         self.flip_transform = transforms.RandomHorizontalFlip(p=self.flip_p)
 
     def __len__(self):
@@ -323,9 +358,114 @@ def freeze_params(params):
         param.requires_grad = False
 
 
+class Checkpointer:
+    def __init__(
+        self,
+        accelerator,
+        vae,
+        unet,
+        tokenizer,
+        placeholder_token,
+        placeholder_token_id,
+        templates,
+        output_dir,
+        random_sample_batches,
+        sample_batch_size,
+        stable_sample_batches,
+        seed
+    ):
+        self.accelerator = accelerator
+        self.vae = vae
+        self.unet = unet
+        self.tokenizer = tokenizer
+        self.placeholder_token = placeholder_token
+        self.placeholder_token_id = placeholder_token_id
+        self.templates = templates
+        self.output_dir = output_dir
+        self.random_sample_batches = random_sample_batches
+        self.sample_batch_size = sample_batch_size
+        self.stable_sample_batches = stable_sample_batches
+        self.seed = seed
+
+    def checkpoint(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
+        with torch.autocast("cuda"):
+
+            checkpoints_path = self.output_dir / "checkpoints"
+            samples_path = self.output_dir / "samples"
+            checkpoints_path.mkdir(exist_ok=True, parents=True)
+            samples_path.mkdir(exist_ok=True, parents=True)
+
+            unwrapped = self.accelerator.unwrap_model(text_encoder)
+
+            # Save a checkpoint
+            learned_embeds = unwrapped.get_input_embeddings().weight[self.placeholder_token_id]
+            learned_embeds_dict = {self.placeholder_token: learned_embeds.detach().cpu()}
+
+            filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
+            torch.save(learned_embeds_dict, checkpoints_path / filename)
+
+            checker = NoCheck()
+            # Save a sample image
+            pipeline = StableDiffusionPipeline(
+                text_encoder=unwrapped,
+                vae=self.vae,
+                unet=self.unet,
+                tokenizer=self.tokenizer,
+                scheduler=PNDMScheduler(
+                    beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
+                ),
+                # safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
+                safety_checker=NoCheck(),
+                feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
+            ).to('cuda')
+            pipeline.enable_attention_slicing()
+
+            stable_latents = stable_latent = torch.randn(
+                (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
+                device=pipeline.device,
+                generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
+            )
+
+            prompts = [choice.format(self.placeholder_token) for choice in random.choices(self.templates, k=self.sample_batch_size)]
+            stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
+
+            # Generate and save stable samples
+            for i in range(0, self.stable_sample_batches):
+                samples = pipeline(
+                    prompt=stable_prompts,
+                    height=height,
+                    latents=stable_latents,
+                    width=width,
+                    guidance_scale=guidance_scale,
+                    eta=eta,
+                    num_inference_steps=num_inference_steps,
+                    output_type='pil'
+                )["sample"]
+                for idx, im in enumerate(samples):
+                        filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
+                        im.save(samples_path / filename)
+
+            # Generate and save random samples
+            for i in range(0, self.random_sample_batches):
+                samples = pipeline(
+                    prompt=prompts,
+                    height=height,
+                    width=width,
+                    guidance_scale=guidance_scale,
+                    eta=eta,
+                    num_inference_steps=num_inference_steps,
+                    output_type='pil'
+                )["sample"]
+                for idx, im in enumerate(samples):
+                    filename = f"step_%d_sample_%d_%d.png" % (step, i+1, idx+1)
+                    im.save(samples_path / filename)
+
+            del im
+            del pipeline
+            del unwrapped
+
 def main():
     args = parse_args()
-    #logging_dir = os.path.join(args.output_dir, args.logging_dir)
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -386,8 +526,33 @@ def main():
         args.pretrained_model_name_or_path + '/vae',  
     )
     unet = UNet2DConditionModel.from_pretrained(
-        args.pretrained_model_name_or_path + '/unet',  
+        args.pretrained_model_name_or_path + '/unet',
     )
+
+    now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    basepath = Path(args.logging_dir) / slugify(args.placeholder_token) / now
+
+    base_templates = imagenet_style_templates_small if args.learnable_property == "style" else imagenet_templates_small
+    if args.custom_templates:
+        templates = args.custom_templates.split(",")
+    else:
+        templates = base_templates
+
+    checkpointer = Checkpointer(
+        accelerator=accelerator,
+        vae=vae,
+        unet=unet,
+        tokenizer=tokenizer,
+        placeholder_token=args.placeholder_token,
+        placeholder_token_id=placeholder_token_id,
+        templates=templates,
+        output_dir=basepath,
+        sample_batch_size=args.sample_batch_size,
+        random_sample_batches=args.random_sample_batches,
+        stable_sample_batches=args.stable_sample_batches,
+        seed=args.seed
+    )
+
     slice_size = unet.config.attention_head_dim // 2
     unet.set_attention_slice(slice_size)
 #    vae = vae.to("cuda").half()
@@ -438,6 +603,7 @@ def main():
         learnable_property=args.learnable_property,
         center_crop=args.center_crop,
         set="train",
+        templates=base_templates
     )
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
 
@@ -540,6 +706,11 @@ def main():
                 progress_bar.update(1)
                 global_step += 1
 
+                if global_step % args.checkpoint_frequency == 0 and global_step > 0:
+                    print("Saving checkpoint...")
+                    checkpointer.checkpoint(global_step, text_encoder,
+                        args.resolution, args.resolution, 7.5, 0.0, 25)
+
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
             #accelerator.log(logs, step=global_step)
@@ -566,7 +737,7 @@ def main():
         # Also save the newly trained embeddings
         learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
         learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
-        torch.save(learned_embeds_dict, os.path.join(args.train_data_dir, f"learned_embeds.bin"))
+        torch.save(learned_embeds_dict, basepath / f"learned_embeds.bin")
 
         if args.push_to_hub:
             repo.push_to_hub(
