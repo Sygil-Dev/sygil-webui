@@ -21,10 +21,9 @@ import imageio
 from slugify import slugify
 
 # Temp imports
-
-# these are for testing txt2vid, should be removed and we should use things from our own code.
 from diffusers import StableDiffusionPipeline
-from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, PNDMScheduler
+from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
+     PNDMScheduler
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
@@ -143,7 +142,13 @@ def diffuse(
 
 			if st.session_state['defaults'].txt2vid.update_preview_frequency == step_counter or step_counter == st.session_state.sampling_steps:
 				if st.session_state.dynamic_preview_frequency:
-					st.session_state["current_chunk_speed"], st.session_state["previous_chunk_speed_list"], st.session_state['defaults'].txt2vid.update_preview_frequency, st.session_state["avg_update_preview_frequency"] = optimize_update_preview_frequency(st.session_state["current_chunk_speed"], st.session_state["previous_chunk_speed_list"], st.session_state['defaults'].txt2vid.update_preview_frequency, st.session_state["update_preview_frequency_list"])   
+					st.session_state["current_chunk_speed"], 
+					st.session_state["previous_chunk_speed_list"],
+					st.session_state['defaults'].txt2vid.update_preview_frequency,
+					st.session_state["avg_update_preview_frequency"] = optimize_update_preview_frequency(st.session_state["current_chunk_speed"],
+					                                                                                     st.session_state["previous_chunk_speed_list"], 
+					                                                                                     st.session_state['defaults'].txt2vid.update_preview_frequency, 
+					                                                                                     st.session_state["update_preview_frequency_list"])   
 
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
@@ -151,12 +156,12 @@ def diffuse(
 
 				# generate output numpy image as uint8
 				image = torch.clamp((image["sample"] + 1.0) / 2.0, min=0.0, max=1.0)
-				image = transforms.ToPILImage()(image.squeeze_(0))
+				image2 = transforms.ToPILImage()(image.squeeze_(0))
 
-				st.session_state["preview_image"].image(image)
+				st.session_state["preview_image"].image(image2)
 
-				step_counter = 0
-
+				step_counter = 0	
+				
 		duration = timeit.default_timer() - start
 
 		st.session_state["current_chunk_speed"] = duration
@@ -184,8 +189,17 @@ def diffuse(
 					f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
 		)
 		st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+		
+	#scale and decode the image latents with vae
+	cond_latents_2 = 1 / 0.18215 * cond_latents
+	image = pipe.vae.decode(cond_latents_2)
 
-	return image
+	# generate output numpy image as uint8
+	image = torch.clamp((image["sample"] + 1.0) / 2.0, min=0.0, max=1.0)
+	image2 = transforms.ToPILImage()(image.squeeze_(0))
+	
+
+	return image2
 
 #
 def txt2vid(
@@ -310,7 +324,7 @@ def txt2vid(
 	klms_scheduler = LMSDiscreteScheduler(
 		beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
 	)
-
+	
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
 	# ------------------------------------------------------------------------------
@@ -370,11 +384,20 @@ def txt2vid(
 		
 		if st.session_state.defaults.general.enable_attention_slicing:
 			st.session_state["pipe"].enable_attention_slicing()
-			
+		
+		if st.session_state.defaults.general.enable_minimal_memory_usage:
+			st.session_state["pipe"].enable_minimal_memory_usage()
 			
 		print("Tx2Vid Model Loaded")
 
 	st.session_state["pipe"].scheduler = SCHEDULERS[scheduler]
+	
+	if do_loop:
+		prompts = str([prompts, prompts])
+		seeds = [seeds, seeds]
+		#first_seed, *seeds = seeds
+		#prompts.append(prompts)
+		#seeds.append(first_seed)	
 
 	# get the conditional text embeddings based on the prompt
 	text_input = st.session_state["pipe"].tokenizer(prompts, padding="max_length", max_length=st.session_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
@@ -414,13 +437,6 @@ def txt2vid(
 	# sample a source
 	init1 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 
-	if do_loop:
-		prompts = [prompts, prompts]
-		seeds = [seeds, seeds]
-		#first_seed, *seeds = seeds
-		#prompts.append(prompts)
-		#seeds.append(first_seed)
-
 
 	# iterate the loop
 	frames = []
@@ -438,7 +454,7 @@ def txt2vid(
 			# sample the destination
 			init2 = torch.randn((1, st.session_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 
-			for i, t in enumerate(np.linspace(0, 1, max_frames)):
+			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
 				print(f"COUNT: {frame_index+1}/{max_frames}")
 
@@ -451,17 +467,42 @@ def txt2vid(
 
 				with autocast("cuda"):
 					image = diffuse(st.session_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
-
-				#im = Image.fromarray(image)
-				outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
-				image.save(outpath, quality=quality)
-
-				# send the image to the UI to update it
-				#st.session_state["preview_image"].image(im)
-
-				#append the frames to the frames list so we can use them later.
-				frames.append(np.asarray(image))
-
+					
+				if st.session_state["save_individual_images"] and not st.session_state["use_GFPGAN"] and not st.session_state["use_RealESRGAN"]:
+					#im = Image.fromarray(image)
+					outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
+					image.save(outpath, quality=quality)
+					
+					# send the image to the UI to update it
+					#st.session_state["preview_image"].image(im)
+				
+					#append the frames to the frames list so we can use them later.
+					frames.append(np.asarray(image))
+					
+				
+				#
+				#try:
+				#if st.session_state["use_GFPGAN"] and st.session_state["GFPGAN"] is not None and not st.session_state["use_RealESRGAN"]:
+				if st.session_state["use_GFPGAN"] and st.session_state["GFPGAN"] is not None:
+					#print("Running GFPGAN on image ...")
+					st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
+					#skip_save = True # #287 >_>
+					torch_gc()
+					cropped_faces, restored_faces, restored_img = st.session_state["GFPGAN"].enhance(np.array(image)[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+					gfpgan_sample = restored_img[:,:,::-1]
+					gfpgan_image = Image.fromarray(gfpgan_sample)
+					
+					outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
+					gfpgan_image.save(outpath, quality=quality)
+					
+					#append the frames to the frames list so we can use them later.
+					frames.append(np.asarray(gfpgan_image))						
+			
+					st.session_state["preview_image"].image(gfpgan_image)
+				#except AttributeError:
+					#print("Cant perform GFPGAN, skipping.")
+					#pass
+				
 				#increase frame_index counter.
 				frame_index += 1
 
@@ -489,8 +530,8 @@ def txt2vid(
 		#output = io.BytesIO()
 		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples"), im, extension=".mp4", fps=30)
 		try:
-			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples","temp.mp4")
-			writer = imageio.get_writer(video_path, fps=24)
+			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples",f"{seeds}_{sanitized_prompt}.mp4")
+			writer = imageio.get_writer(video_path, fps=6)
 			for frame in frames:
 				writer.append_data(frame)
 			writer.close()
@@ -577,9 +618,13 @@ def layout():
 		col1, col2, col3 = st.columns([1,2,1], gap="large")    
 
 		with col1:
-			width = st.slider("Width:", min_value=64, max_value=2048, value=st.session_state['defaults'].txt2vid.width, step=64)
-			height = st.slider("Height:", min_value=64, max_value=2048, value=st.session_state['defaults'].txt2vid.height, step=64)
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=1.0, max_value=30.0, value=st.session_state['defaults'].txt2vid.cfg_scale, step=0.5, help="How strongly the image should follow the prompt.")
+			width = st.slider("Width:", min_value=st.session_state['defaults'].txt2vid.width.min_value, max_value=st.session_state['defaults'].txt2vid.width.max_value,
+							  value=st.session_state['defaults'].txt2vid.width.value, step=st.session_state['defaults'].txt2vid.width.step)
+			height = st.slider("Height:", min_value=st.session_state['defaults'].txt2vid.height.min_value, max_value=st.session_state['defaults'].txt2vid.height.max_value,
+							   value=st.session_state['defaults'].txt2vid.height.value, step=st.session_state['defaults'].txt2vid.height.step)
+			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
+								  max_value=st.session_state['defaults'].txt2vid.cfg_scale.max_value, value=st.session_state['defaults'].txt2vid.cfg_scale.value,
+								  step=st.session_state['defaults'].txt2vid.cfg_scale.step, help="How strongly the image should follow the prompt.")
 
 			#uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
 												#help="Upload an image which will be used for the image to image generation.")			
@@ -650,13 +695,15 @@ def layout():
 			#custom_model = "CompVis/stable-diffusion-v1-4"
 			#st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 
-		st.session_state.sampling_steps = st.slider("Sampling Steps",
-		value=st.session_state['defaults'].txt2vid.sampling_steps,
-		min_value=st.session_state['defaults'].txt2vid.slider_bounds.sampling.lower,
-		max_value=st.session_state['defaults'].txt2vid.slider_bounds.sampling.upper,
-		step=st.session_state['defaults'].txt2vid.slider_steps.sampling,
-		help="Number of steps between each pair of sampled points")
-		st.session_state.num_inference_steps = st.slider("Inference Steps:", value=st.session_state['defaults'].txt2vid.num_inference_steps, min_value=10,step=10, max_value=500,
+		st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state['defaults'].txt2vid.sampling_steps.value, 
+													min_value=st.session_state['defaults'].txt2vid.sampling_steps.min_value,
+													max_value=st.session_state['defaults'].txt2vid.sampling_steps.max_value,
+													step=st.session_state['defaults'].txt2vid.sampling_steps.step, help="Number of steps between each pair of sampled points")	
+		
+		st.session_state.num_inference_steps = st.slider("Inference Steps:", value=st.session_state['defaults'].txt2vid.num_inference_steps.value,
+														 min_value=st.session_state['defaults'].txt2vid.num_inference_steps.min_value,
+														 step=st.session_state['defaults'].txt2vid.num_inference_steps.step,
+														 max_value=st.session_state['defaults'].txt2vid.num_inference_steps.max_value,
 														 help="Higher values (e.g. 100, 200 etc) can create better images.")
 
 		#sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
@@ -709,72 +756,98 @@ def layout():
 				st.session_state["use_RealESRGAN"] = False
 				st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 
-			st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+			st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
+														   min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
+														   max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
+														   step=st.session_state['defaults'].txt2vid.variant_amount.step)
 			st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-			st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
-			st.session_state["beta_end"] = st.slider("Beta End:", value=st.session_state['defaults'].txt2vid.beta_end, min_value=0.0001, max_value=0.03, step=0.0001, format="%.4f")
+			#st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start.value,
+													   #min_value=st.session_state['defaults'].txt2vid.beta_start.min_value,
+													   #max_value=st.session_state['defaults'].txt2vid.beta_start.max_value,
+													   #step=st.session_state['defaults'].txt2vid.beta_start.step, format=st.session_state['defaults'].txt2vid.beta_start.format)
+			#st.session_state["beta_end"] = st.slider("Beta End:", value=st.session_state['defaults'].txt2vid.beta_end.value,
+													 #min_value=st.session_state['defaults'].txt2vid.beta_end.min_value, max_value=st.session_state['defaults'].txt2vid.beta_end.max_value,
+													 #step=st.session_state['defaults'].txt2vid.beta_end.step, format=st.session_state['defaults'].txt2vid.beta_end.format)
 
 	if generate_button:
 		#print("Loading models")
 		# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-		#load_models(False, False, False, st.session_state["RealESRGAN_model"], CustomModel_available=st.session_state["CustomModel_available"], custom_model=custom_model)
+		#load_models(False, st.session_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
 
-		try:
-			# run video generation
-			video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
-											   num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
-							   num_inference_steps=st.session_state.num_inference_steps,
-							   cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
-							   seeds=seed, quality=100, eta=0.0, width=width,
-							   height=height, weights_path=custom_model, scheduler=scheduler_name,
-							   disable_tqdm=False, beta_start=st.session_state["beta_start"], beta_end=st.session_state["beta_end"],
-							   beta_schedule=beta_scheduler_type, starting_image=None)
+		if st.session_state["use_GFPGAN"]:
+			if "GFPGAN" in st.session_state:
+				print("GFPGAN already loaded")
+			else:
+				# Load GFPGAN
+				if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+					try:
+						st.session_state["GFPGAN"] = load_GFPGAN()
+						print("Loaded GFPGAN")
+					except Exception:
+						import traceback
+						print("Error loading GFPGAN:", file=sys.stderr)
+						print(traceback.format_exc(), file=sys.stderr)          
+		else:
+			if "GFPGAN" in st.session_state:
+				del st.session_state["GFPGAN"] 		
 
-			#message.success('Done!', icon="✅")
-			message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+		#try:
+		# run video generation
+		video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
+	                                       num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
+	                       num_inference_steps=st.session_state.num_inference_steps,
+	                       cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
+	                       seeds=seed, quality=100, eta=0.0, width=width,
+	                       height=height, weights_path=custom_model, scheduler=scheduler_name,
+	                       disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
+	                       beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
+	                       beta_schedule=beta_scheduler_type, starting_image=None)
 
-			#history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+		#message.success('Done!', icon="✅")
+		message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
-			#if 'latestVideos' in st.session_state:
-				#for i in video:
-					##push the new image to the list of latest images and remove the oldest one
-					##remove the last index from the list\
-					#st.session_state['latestVideos'].pop()
-					##add the new image to the start of the list
-					#st.session_state['latestVideos'].insert(0, i)
-				#PlaceHolder.empty()
+		#history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
 
-				#with PlaceHolder.container():
-					#col1, col2, col3 = st.columns(3)
-					#col1_cont = st.container()
-					#col2_cont = st.container()
-					#col3_cont = st.container()
+		#if 'latestVideos' in st.session_state:
+			#for i in video:
+				##push the new image to the list of latest images and remove the oldest one
+				##remove the last index from the list\
+				#st.session_state['latestVideos'].pop()
+				##add the new image to the start of the list
+				#st.session_state['latestVideos'].insert(0, i)
+			#PlaceHolder.empty()
 
-					#with col1_cont:
-						#with col1:
-							#st.image(st.session_state['latestVideos'][0])
-							#st.image(st.session_state['latestVideos'][3])
-							#st.image(st.session_state['latestVideos'][6])
-					#with col2_cont:
-						#with col2:
-							#st.image(st.session_state['latestVideos'][1])
-							#st.image(st.session_state['latestVideos'][4])
-							#st.image(st.session_state['latestVideos'][7])
-					#with col3_cont:
-						#with col3:
-							#st.image(st.session_state['latestVideos'][2])
-							#st.image(st.session_state['latestVideos'][5])
-							#st.image(st.session_state['latestVideos'][8])
-					#historyGallery = st.empty()
+			#with PlaceHolder.container():
+				#col1, col2, col3 = st.columns(3)
+				#col1_cont = st.container()
+				#col2_cont = st.container()
+				#col3_cont = st.container()
 
-				## check if output_images length is the same as seeds length
-				#with gallery_tab:
-					#st.markdown(createHTMLGallery(video,seed), unsafe_allow_html=True)
+				#with col1_cont:
+					#with col1:
+						#st.image(st.session_state['latestVideos'][0])
+						#st.image(st.session_state['latestVideos'][3])
+						#st.image(st.session_state['latestVideos'][6])
+				#with col2_cont:
+					#with col2:
+						#st.image(st.session_state['latestVideos'][1])
+						#st.image(st.session_state['latestVideos'][4])
+						#st.image(st.session_state['latestVideos'][7])
+				#with col3_cont:
+					#with col3:
+						#st.image(st.session_state['latestVideos'][2])
+						#st.image(st.session_state['latestVideos'][5])
+						#st.image(st.session_state['latestVideos'][8])
+				#historyGallery = st.empty()
+
+			## check if output_images length is the same as seeds length
+			#with gallery_tab:
+				#st.markdown(createHTMLGallery(video,seed), unsafe_allow_html=True)
 
 
-				#st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+			#st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
 
-		except (StopException, KeyError):
-			print(f"Received Streamlit StopException")
+		#except (StopException, KeyError):
+			#print(f"Received Streamlit StopException")
 
 

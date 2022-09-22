@@ -36,59 +36,121 @@ general:
     enable_attention_slicing: False
     enable_minimal_memory_usage : False
     update_preview: True
-    update_preview_frequency: 5
+    update_preview_frequency: 10
 
 txt2img:
     prompt:
-    height: 512
-    width: 512
-    cfg_scale: 7.5
+    width:
+        value:      512
+        min_value:  64
+        max_value:  2048
+        step:       64
+        
+    height:
+        value:      512
+        min_value:  64
+        max_value:  2048
+        step:       64
+        
+    cfg_scale:
+        value:      7.5
+        min_value:  1.0
+        max_value:  30.0
+        step:       0.5
+
     seed: ""
-    batch_count: 1
-    batch_size: 1
-    sampling_steps: 30
+    batch_count:
+        value:      1
+        min_value:  1
+        max_value:  100
+        step:       1
+        
+    batch_size:
+        value:      1
+        min_value:  1 
+        max_value:  5
+        step:       1
+        
+    sampling_steps:
+        value:      30
+        min_value:  10
+        max_value:  250
+        step:       10
+
     default_sampler: "k_euler"
     separate_prompts: False
     update_preview: True
-    update_preview_frequency: 5
+    update_preview_frequency: 10
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
-    group_by_prompt: True
+    group_by_prompt: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
-    variant_amount: 0.0
+    
+    variant_amount:
+        value:      0.0
+        min_value:  0.0
+        max_value:  1.0
+        step:       0.01
+        
     variant_seed: ""
     write_info_files: True
-    slider_steps: {
-      sampling: 1
-    }
-    slider_bounds: {
-      sampling: {
-        lower: 1,
-        upper: 150
-      }
-    }
     
 txt2vid:
     default_model: "CompVis/stable-diffusion-v1-4"
     custom_models_list: ["CompVis/stable-diffusion-v1-4", "naclbit/trinart_stable_diffusion_v2", "hakurei/waifu-diffusion", "osanseviero/BigGAN-deep-128"]
     prompt:
-    height: 512
-    width: 512
-    cfg_scale: 7.5
+    width:
+        value:      512
+        min_value:  64
+        max_value:  2048
+        step:       64
+        
+    height:
+        value:      512
+        min_value:  64
+        max_value:  2048
+        step:       64
+        
+    cfg_scale:
+        value:      7.5
+        min_value:  1.0
+        max_value:  30.0
+        step:       0.5
+        
+    batch_count:
+        value:      1
+        min_value:  1
+        max_value:  100
+        step:       1
+        
+    batch_size:
+        value:      1
+        min_value:  1 
+        max_value:  5
+        step:       1
+        
+    sampling_steps:
+        value:      30
+        min_value:  10
+        max_value:  250
+        step:       10
+        
+    num_inference_steps:
+        value:      200
+        min_value:  10
+        max_value:  500
+        step:       10
+        
     seed: ""
-    batch_count: 1
-    batch_size: 1
-    sampling_steps: 30
-    num_inference_steps: 200
     default_sampler: "k_euler"
     scheduler_name: "klms"
     separate_prompts: False
     update_preview: True
-    update_preview_frequency: 5
+    update_preview_frequency: 10
     dynamic_preview_frequency: True
     normalize_prompt_weights: True
     save_individual_images: True
@@ -100,39 +162,39 @@ txt2vid:
     use_GFPGAN: False
     use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
-    variant_amount: 0.0
+    variant_amount:
+        value:      0.0
+        min_value:  0.0
+        max_value:  1.0
+        step:       0.01
+        
     variant_seed: ""
-    beta_start: 0.00085
-    beta_end: 0.012
+    
+    beta_start:
+        value:      0.00085
+        min_value:  0.0001
+        max_value:  0.0300
+        step:       0.0001
+        format:     "%.5f"
+        
+    beta_end:
+        value:      0.012
+        min_value:  0.0001
+        max_value:  0.0300
+        step:       0.0001
+        format:     "%.5f"
+        
     beta_scheduler_type: "linear"
-    max_frames: 1000
-    slider_steps: {
-      sampling: 1
-    }
-    slider_bounds: {
-      sampling: {
-        lower: 1,
-        upper: 150
-      }
-    }
+    max_frames: 100
     
 img2img:
     prompt: 
-    sampling_steps: 30
-    # Adding an int to toggles enables the corresponding feature.
-    # 0: Create prompt matrix (separate multiple prompts using |, and get all combinations of them)
-    # 1: Normalize Prompt Weights (ensure sum of weights add up to 1.0)
-    # 2: Loopback (use images from previous batch when creating next batch)
-    # 3: Random loopback seed
-    # 4: Save individual images
-    # 5: Save grid
-    # 6: Sort samples by prompt
-    # 7: Write sample info files
-    # 8: jpg samples
-    # 9: Fix faces using GFPGAN
-    # 10: Upscale images using Real-ESRGAN
     sampler_name: "k_euler"
-    denoising_strength: 0.75
+    denoising_strength: 
+        value:      0.75
+        min_value:  0.0
+        max_value:  1.0
+        step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
     mask_mode: 0
@@ -144,22 +206,63 @@ img2img:
     # Leave blank for random seed:
     seed: ""
     ddim_eta: 0.0
-    cfg_scale: 7.5
-    batch_count: 1
-    batch_size: 1
-    height: 512
-    width: 512
-    # Textual inversion embeddings file path:
-    fp: ""
+    width:
+        value:      512
+        min_value:  64
+        max_value:  2048
+        step:       64
+        
+    height:
+        value:      512
+        min_value:  64
+        max_value:  2048
+        step:       64
+        
+    cfg_scale:
+        value:      7.5
+        min_value:  1.0
+        max_value:  30.0
+        step:       0.5
+        
+    batch_count:
+        value:      1
+        min_value:  1
+        max_value:  100
+        step:       1
+        
+    batch_size:
+        value:      1
+        min_value:  1 
+        max_value:  5
+        step:       1
+        
+    sampling_steps:
+        value:      30
+        min_value:  10
+        max_value:  250
+        step:       10
+        
+    num_inference_steps:
+        value:      200
+        min_value:  10
+        max_value:  500
+        step:       10
+        
+    find_noise_steps:
+        value:      100
+        min_value:  0
+        max_value:  500
+        step:       10
+        
     loopback: True
     random_seed_loopback: True
     separate_prompts: False
     update_preview: True
-    update_preview_frequency: 5
+    update_preview_frequency: 10
     normalize_prompt_weights: True
     save_individual_images: True
     save_grid: True
-    group_by_prompt: True
+    group_by_prompt: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
@@ -167,15 +270,6 @@ img2img:
     variant_amount: 0.0
     variant_seed: ""
     write_info_files: True
-    slider_steps: {
-        sampling: 1
-      }
-    slider_bounds: {
-      sampling: {
-        lower: 1,
-        upper: 150
-      }
-    } 
-
+    
 gfpgan:
   strength: 100

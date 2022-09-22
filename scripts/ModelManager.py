@@ -25,7 +25,7 @@ def layout():
                     ,RealESRGAN_x4plus_anime_6B       , ./src/realesrgan/experiments/pretrained_models , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth 
                     ,Waifu Diffusion v1.2             , ./models/custom                                , http://wd.links.sd:8880/wd-v1-2-full-ema.ckpt
                     ,TrinArt Stable Diffusion v2      , ./models/custom                                , https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step115000.ckpt
-                    ,Stable Diffusion Concept Library , ./models/customsd-concepts-library             , https://github.com/sd-webui/sd-concepts-library
+                    ,Stable Diffusion Concept Library , ./models/custom/sd-concepts-library             , https://github.com/sd-webui/sd-concepts-library
                     """
     colms = st.columns((1, 3, 5, 5))
     columns = ["№",'Model Name','Save Location','Download Link']

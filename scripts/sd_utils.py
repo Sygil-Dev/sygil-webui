@@ -175,6 +175,9 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
     if "model" in st.session_state:
         if "model" in st.session_state and st.session_state["loaded_model"] == custom_model:
             # TODO: check if the optimized mode was changed?
+            if "pipe" in st.session_state:
+                del st.session_state.pipe
+                
             print("Model already loaded")
 
             return
@@ -184,6 +187,9 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
                 del st.session_state.modelCS
                 del st.session_state.modelFS
                 del st.session_state.loaded_model
+                
+                if "pipe" in st.session_state:
+                    del st.session_state.pipe
             except KeyError:
                 pass
 
@@ -743,9 +749,9 @@ def load_sd_model(model_name: str) -> [any, any, any, any, any]:
         del sd
 
         if not st.session_state.defaults.general.no_half:
-            model = model.half()
-            modelCS = modelCS.half()
-            modelFS = modelFS.half()
+            model = model.half().to(device)
+            modelCS = modelCS.half().to(device)
+            modelFS = modelFS.half().to(device)
 
         return config, device, model, modelCS, modelFS
     else:
@@ -811,27 +817,33 @@ def generation_callback(img, i=0):
     except TypeError:
         pass
 
-    if i % int(st.session_state.update_preview_frequency) == 0 and st.session_state.update_preview and i > 0:
+    if st.session_state.update_preview and\
+        int(st.session_state.update_preview_frequency) > 0 and\
+        i % int(st.session_state.update_preview_frequency) == 0 and\
+        i > 0:
         #print (img)
         #print (type(img))
         # The following lines will convert the tensor we got on img to an actual image we can render on the UI.
         # It can probably be done in a better way for someone who knows what they're doing. I don't.		
         #print (img,isinstance(img, torch.Tensor))
         if isinstance(img, torch.Tensor):
-            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(img)
+            x_samples_ddim = (st.session_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else st.session_state.modelFS.to('cuda')
+                              ).decode_first_stage(img).to('cuda')
         else:
             # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
-            # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}			
-            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(img["denoised"])
+            # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
+            x_samples_ddim = (st.session_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else st.session_state.modelFS.to('cuda')
+                              ).decode_first_stage(img["denoised"]).to('cuda')
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
-
+        
         if x_samples_ddim.ndimension() == 4:
             pil_images = [transforms.ToPILImage()(x.squeeze_(0)) for x in x_samples_ddim]
             pil_image = image_grid(pil_images, 1)
         else:
             pil_image = transforms.ToPILImage()(x_samples_ddim.squeeze_(0))
-
+        
+        
         # update image on the UI so we can see the progress
         st.session_state["preview_image"].image(pil_image) 	
 
@@ -1726,3 +1738,13 @@ def constrain_image(img, max_width, max_height):
     resampler = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
     resized = img.resize((int(img.width / ratio), int(img.height / ratio)), resample=resampler)
     return resized
+
+def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_token):
+    x = torch.load(input_file, map_location=torch.device('cpu'))
+
+    params_dict = {
+        placeholder_token: torch.tensor(list(x['string_to_param'].items())[0][1])
+    }
+    torch.save(params_dict, "learned_embeds.bin")
+    load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
+    print("loaded", placeholder_token)
