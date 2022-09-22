@@ -29,40 +29,34 @@ Other Notes:
 
 ## First-Time Startup Instructions
 
-### Clone Repository and Build the Container Image
+### Clone Repository
 * Clone this repository to your host machine:  `git clone https://github.com/sd-webui/stable-diffusion-webui.git`
-* Change directories to your copy of the repository and run the Docker Image build script:
-    * `cd https://github.com/sd-webui/stable-diffusion-webui.git`
-    * `./build_docker.sh`
-* The build process will take several minutes to complete
-* After the image build has completed, you will have a docker image for running the Stable Diffusion WebUI named `stable-diffusion-webui:dev`
-* **The `stable-diffusion-webui:dev` Docker image will contain all software dependencies required to run Stable Diffusion and the Stable Diffusion WebUI; model files (i.e. weights/checkpoints) are stored separate from the Docker image. (Note: with this implementation, the Stable Diffusion WebUI code is also stored separate from the Docker image)**
-
 * If you plan to use Docker Compose to run the image in a container (most users), create an `.env_docker` file using the example file:
     * `cp .env_docker.example .env_docker`
     * Edit `.env_docker` using the text editor of your choice.
-    * Options available in `.env_docker` allow you to control automatic model file checking/download during startup, and to select the Stable Diffusion WebUI implementation to run (Gradio vs Streamlit). **You must set the `VALIDATE_MODELS` option to `true` during the first run to download necessary model weights/checkpoints.** You may the set `VALIDATE_MODELS` option to `false` on future runs to speed up startup time.
+    * Ensure `VALIDATE_MODELS` is set to `true`
+> Options available in `.env_docker` allow you to control automatic model file checking/download during startup, and to select the Stable Diffusion WebUI implementation to run (Gradio vs Streamlit). You may the set `VALIDATE_MODELS` option to `false` on future runs to speed up startup time.
 
 
 ### Create a Container Instance Using Docker Compose
-During the first run of the image, several files will be downloaded automatically including model weights/checkpoints. After downloading, these files will be cached locally to speed up future runs.
-
 The default `docker-compose.yml` file  will create a Docker container instance named `sd-webui`
 
 * Create an instance of the Stable Diffusion WebUI image as a Docker container:
     * `docker compose up`
+* During the first run, the container image will be build containing all of the dependencies necessary to run Stable Diffusion. This build process will take several minutes to complete
+    * After the image build has completed, you will have a docker image for running the Stable Diffusion WebUI named `stable-diffusion-webui:dev`
 
 (Optional) Daemon mode:
-* Note you can start the container in "daemon" mode by applying the `-d` option:  `docker compose up -d`
+* Note you can start the container in "daemon" mode by applying the `-d` option:  `docker compose up -d`. This will run the server in the background so you can close your console window without losing your work.
 * When running in daemon mode, you can view logging output from your container by running `docker logs sd-webui`
 
-(Note: Depending on your version of Docker/Docker Compose installed, the command may be `docker-compose` (older versions) or `docker compose` (newer versions))
-
-The container may take several minutes to start up if model weights/checkpoints need to be downloaded.
+> Note: Depending on your version of Docker/Docker Compose installed, the command may be `docker-compose` (older versions) or `docker compose` (newer versions)
 
 
 ### Accessing your Stable Diffusion WebUI Instance
-Depending on the WebUI implementation you have selected, you can access the WebUI at the following URLs:
+The container may take several minutes to start up if model weights/checkpoints need to be downloaded. You can view progress via `docker compose ps` to see the current status or by checking the logs using `docker compose logs`.
+
+Depending on the WebUI implementation you selected in `.env_docker`, you can access the WebUI at the following URLs:
 
 * Gradio:  http://localhost:7860
 * Streamlit:  http://localhost:8501
@@ -101,8 +95,9 @@ You will need to re-download all associated model files/weights used by Stable D
 
 
 ## Misc Related How-to
-* You can obtain shell access to a running Stable Diffusion WebUI container started with Docker Compose with the following command:
+* You can obtain shell access to a running Stable Diffusion WebUI container started with Docker Compose with either of the following commands:
     * `docker exec -it st-webui /bin/bash`
+    * `docker compose exec stable-diffusion bash`
 * To start a container using the Stable Diffusion WebUI Docker image without Docker Compose, you can do so with the following command:
     * `docker run --rm -it --entrypoint /bin/bash stable-diffusion-webui:dev`
 * To start a container, with mapped ports, GPU resource access, and a local directory bound as a container volume, you can do so with the following command:
