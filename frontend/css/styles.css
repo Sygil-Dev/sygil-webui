@@ -28,23 +28,37 @@ input[type=number]:disabled {
     /* Limit the generate button from becoming huge as it shares it's row with prompt text input  */
     max-width: 150px;
     width: 150px;
-    height: calc(1.6em + 24px);
     /* height, set to #prompt_input text size + padding, etc */
+    height: calc(1.6em + 24px);
 }
 
 /* ### txt2img: Output Column ### */
 
 #txt2img_output_gallery {
-    height: 587px;
     /* Needed with paddings to allow image to be 512 when displayed*/
+    height: 587px;
     min-width: 512px;
 }
 
 #body>.col:nth-child(2),
 #txt2img_output_column {
-    min-width: 556px;
     /* With paddings should give a 512px size output */
+    min-width: 556px;
     height: auto;
+}
+
+/* ### img2img: Input ### */
+
+#img2img_input_container {
+    min-height: 570px;
+    height: 570px;
+}
+
+#img2img_input_container [data-testid="image"] {
+    min-height: 512px;
+    min-width: 512px;
+    height: 512px;
+    margin: auto;
 }
 
 /* ### txt2img: Output Parameters ###*/

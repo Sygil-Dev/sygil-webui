@@ -44,27 +44,32 @@ def ui_image_to_image(
             img2img_ui["edit_generate"] = gr.Button("Generate", variant="primary", elem_id="img2img_edit_generate")
 
         with gr.Row().style(equal_height=False):
+
+            # Input Column
             with gr.Column():
-                gr.Markdown("#### Img2Img Input")
-                img2img_ui["image_mask"] = gr.Image(
-                    value=sample_img2img,
-                    source="upload",
-                    interactive=True,
-                    type="pil",
-                    tool="sketch",
-                    elem_id="img2img_mask",
-                    image_mode="RGBA",
-                )
-                img2img_ui["image_editor"] = gr.Image(
-                    value=sample_img2img,
-                    source="upload",
-                    interactive=True,
-                    type="pil",
-                    tool="select",
-                    visible=False,
-                    image_mode="RGBA",
-                    elem_id="img2img_editor",
-                )
+                with gr.Box(elem_id="img2img_input_container",):
+                    gr.Markdown("#### Img2Img Input")
+
+                    img2img_ui["image_mask"] = gr.Image(
+                        value=sample_img2img,
+                        source="upload",
+                        interactive=True,
+                        type="pil",
+                        tool="sketch",
+                        elem_id="img2img_mask",
+                        image_mode="RGBA",
+                    )
+
+                    img2img_ui["image_editor"] = gr.Image(
+                        value=sample_img2img,
+                        source="upload",
+                        interactive=True,
+                        type="pil",
+                        tool="select",
+                        visible=False,
+                        image_mode="RGBA",
+                        elem_id="img2img_editor",
+                    )
 
                 with gr.Tabs():
                     with gr.TabItem("Editor Options"):
