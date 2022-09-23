@@ -204,18 +204,9 @@ def parse_args():
         default=None,
         help="Path to a specific checkpoint to resume training from (ie, logs/token_name/2022-09-22T23-36-27/checkpoints/something.bin)."
     )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Path to a JSON config file specifying the arguments to use. If resume_from is given, it is automatically inferred."
-    )
 
     args = parser.parse_args()
-    if args.config is not None:
-        with open(args.config, 'rt') as f:
-            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)))
-    elif args.resume_from is not None:
+    if args.resume_from is not None:
         with open(Path(args.resume_from) / "resume.json", 'rt') as f:
             args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
 
