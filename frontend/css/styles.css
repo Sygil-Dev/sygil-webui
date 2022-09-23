@@ -5,7 +5,8 @@ input[data-testid="testbox"] {
 
 /* ### Prompt Boxes ### */
 
-#prompt_input, #img2img_prompt_input {
+#prompt_input,
+#img2img_prompt_input {
     padding: 0px;
     border: none;
 }
@@ -17,40 +18,50 @@ input[data-testid="testbox"] {
 }
 
 /* Not sure what this does */
-input[type=number]:disabled { -moz-appearance: textfield; }
+input[type=number]:disabled {
+    -moz-appearance: textfield;
+}
 
-#img2img_mask_generate, #img2img_edit_generate, #txt2img_generate {
+#img2img_mask_generate,
+#img2img_edit_generate,
+#txt2img_generate {
     /* Limit the generate button from becoming huge as it shares it's row with prompt text input  */
     max-width: 150px;
     width: 150px;
-    height: calc(1.6em + 24px); /* height, set to #prompt_input text size + padding, etc */
+    height: calc(1.6em + 24px);
+    /* height, set to #prompt_input text size + padding, etc */
 }
 
 /* ### txt2img: Output Column ### */
 
-#txt2img_gallery_output, #txt2img_output_column {
+#txt2img_output_gallery {
+    height: 587px;
+    /* Needed with paddings to allow image to be 512 when displayed*/
     min-width: 512px;
-    height: auto;
 }
 
+#body>.col:nth-child(2),
 #txt2img_output_column {
-    width: 600px;
+    min-width: 556px;
+    /* With paddings should give a 512px size output */
+    height: auto;
 }
 
 /* ### txt2img: Output Parameters ###*/
 
 /* This exists only to allow the copy seed button to work */
-#seed_box_container {
+#seed_box_container,
+#seed_box {
     visibility: hidden;
     height: 10px;
     overflow: hidden;
 }
 
 #output_parameters {
-   font-size: 1.2rem;
+    font-size: 1.2rem;
 }
 
-#output_parameters .uppercase{
+#output_parameters .uppercase {
     text-transform: initial;
 }
 
@@ -64,19 +75,26 @@ input[type=number]:disabled { -moz-appearance: textfield; }
 @media only screen and (max-width: 768px) {
 
     /* rearrange the columns on mobile */
+
+    #body>.col:nth-child(2),
+    /* TODO:L */
     #txt2img_output_column {
-        width:100%;
-        max-width:100vw;
+        width: 100%;
+        max-width: 100vw;
         order: 1;
     }
+
+    #body>.col:nth-child(1),
     #txt2img_start_column {
-        width:100%;
-        max-width:100vw;
+        width: 100%;
+        max-width: 100vw;
         order: 2;
     }
+
+    #body>.col:nth-child(3),
     #txt2img_end_column {
-        width:100%;
-        max-width:100vw;
+        width: 100%;
+        max-width: 100vw;
         order: 3;
     }
 

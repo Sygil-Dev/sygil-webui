@@ -10,10 +10,11 @@
  * animation fade-in
  * ----------------------------------------
  */
- @-webkit-keyframes fade-in {
+@-webkit-keyframes fade-in {
     0% {
         opacity: 0;
     }
+
     100% {
         opacity: 1;
     }
@@ -23,6 +24,7 @@
     0% {
         opacity: 0;
     }
+
     100% {
         opacity: 1;
     }
@@ -45,56 +47,66 @@
 }
 
 /* Loading background */
-.dark .wrap.svelte-2fvq7v{
+.dark .wrap.svelte-2fvq7v {
     background-color: #373737ff;
 }
 
 /* generate button */
-#txt2img_generate, #img2img_mask_generate, #img2img_edit_generate {
+#txt2img_generate,
+#img2img_mask_generate,
+#img2img_edit_generate {
     transition: 0.3s;
     color: #9c85fb !important;
     border-color: #9c85fb !important;
 }
 
-#txt2img_generate:hover, #img2img_mask_generate:hover, #img2img_edit_generate:hover {
+#txt2img_generate:hover,
+#img2img_mask_generate:hover,
+#img2img_edit_generate:hover {
     color: #141414ff !important;
     background-color: #9c85fb !important;
 }
 
 
 /* Generation paramters */
-#highlight > div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7 > span:nth-child(2) {
+#highlight>div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7>span:nth-child(2) {
     background: none !important;
     color: white !important;
 }
-#highlight > div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7 > span:nth-child(4) {
+
+#highlight>div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7>span:nth-child(4) {
     background: none !important;
     color: white !important;
 }
-#highlight > div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7 > span:nth-child(6) {
+
+#highlight>div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7>span:nth-child(6) {
     background: none !important;
     color: white !important;
 }
-#highlight > div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7 > span:nth-child(8) {
+
+#highlight>div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7>span:nth-child(8) {
     background: none !important;
     color: white !important;
 }
-#highlight > div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7 > span:nth-child(10) {
+
+#highlight>div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7>span:nth-child(10) {
     background: none !important;
     color: white !important;
 }
-#highlight > div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7 > span:nth-child(12) {
+
+#highlight>div.textfield.bg-white.dark\:bg-transparent.rounded-sm.text-sm.box-border.max-w-full.break-word.leading-7.mt-7>span:nth-child(12) {
     background: none !important;
     color: white !important;
 }
 
 /* Mask background */
-.dark .bg-gray-200{
-    background-color:rgba(55, 55, 55, 0.105) !important;
+.dark .bg-gray-200 {
+    background-color: rgba(55, 55, 55, 0.105) !important;
 }
 
-.cropper-wrap-box, .cropper-canvas {
-    background-color:rgba(55, 55, 55, 0.105) !important;
+.cropper-wrap-box,
+.cropper-canvas {
+    background-color: rgba(55, 55, 55, 0.105) !important;
 }
 
 .cropper-bg {
@@ -102,18 +114,18 @@
 }
 
 select {
-    background:#000;
-    color:#fff;
+    background: #000;
+    color: #fff;
 }
 
 select * {
-    background:#373737ff;
-    color:#9c85fb;
+    background: #373737ff;
+    color: #9c85fb;
 }
 
 /* General Background */
 .gradio-container {
-    background:#141414ff;
+    background: #141414ff;
 }
 
 /*General Text color on hover */
@@ -123,7 +135,7 @@ select * {
 
 /*General Text color */
 .text-gray-400 {
-    color:rgba(255, 255, 255, 0.504);
+    color: rgba(255, 255, 255, 0.504);
     transition: 0.3s;
 }
 
@@ -131,17 +143,18 @@ select * {
 .dark .dark\:bg-gray-950 {
     background-color: #141414ff !important;
     -webkit-animation: fade-in 1s ease-in both;
-	        animation: fade-in 1s ease-in both;
+    animation: fade-in 1s ease-in both;
 }
+
 /* labels in frames of gallery */
 .dark .dark\:bg-gray-900 {
-    background-color:#9d85fbdf !important;
+    background-color: #9d85fbdf !important;
     border: none !important;
 }
 
 /* Background for Gradio stuff along with colors for text */
 .dark .gr-box {
-    background-color:rgba(55, 55, 55, 0.105) !important;
+    background-color: rgba(55, 55, 55, 0.105) !important;
     border: solid 0.5px !important;
     border-color: rgba(55, 55, 55, 0.055) !important;
     /* sampler selector color */
@@ -178,22 +191,30 @@ div[id*="111"] {
 }
 
 /* Selected tabs color */
-button, input, optgroup, select, textarea {
+button,
+input,
+optgroup,
+select,
+textarea {
     color: #9c85fb;
 }
 
 /* -or- text color wtf */
-.text-gray-300{
-    color:rgba(255, 255, 255, 0.504);
+.text-gray-300 {
+    color: rgba(255, 255, 255, 0.504);
 }
 
 /* Sliders colors */
-button, input, optgroup, select, textarea {
+button,
+input,
+optgroup,
+select,
+textarea {
     accent-color: #9c85fb !important;
 }
 
 /* Text color for placeholder in prompt */
-input.scroll-hide.block.gr-box.gr-input.w-full.gr-text-input::placeholder{
+input.scroll-hide.block.gr-box.gr-input.w-full.gr-text-input::placeholder {
     color: #9d85fb5c;
     transition: 0.3s;
 }
@@ -208,24 +229,26 @@ input.scroll-hide.block.gr-box.gr-input.w-full.gr-text-input::placeholder{
     /* no border */
     border: none;
 }
+
 /* disabling backgrounds for labels and buttons */
-button, select, textarea {
+button,
+select,
+textarea {
     background: none !important;
 }
 
 /* radio selection border and background */
-.dark .gr-input-label{
+.dark .gr-input-label {
     background: none !important;
     border: none !important;
 }
 
 /* checkbox and radio buttons color when checked */
-.dark .gr-check-radio:checked{
+.dark .gr-check-radio:checked {
     background-color: #9c85fb !important;
 }
 
 /* checkbox and radio buttons color when unchecked */
-.dark .gr-check-radio{
+.dark .gr-check-radio {
     background-color: #373737ff !important;
 }
-

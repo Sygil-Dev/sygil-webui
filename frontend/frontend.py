@@ -1,49 +1,52 @@
 import gradio as gr
-from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2img_output
+from frontend.css_and_js import css, js
 from frontend.job_manager import JobManager
-import frontend.ui_functions as uifn
 import torch
 
 from .ui_text_to_image import ui_text_to_image
 from .ui_image_to_image import ui_image_to_image
 from .ui_image_lab import ui_image_lab
 
+
 def draw_gradio_ui(
     opt,
 
     # txt2img
-    txt2img=lambda x: x,
+    txt2img_func=lambda x: x,
     txt2img_defaults={},
     txt2img_toggles={},
-    txt2img_toggle_defaults='k_euler',
+    txt2img_toggle_defaults="k_euler",
     show_embeddings=False,
 
-
     # img2img
-    img2img=lambda x: x,
+    img2img_func=lambda x: x,
     img2img_defaults={},
-    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
-    img2img_resize_modes=None, imgproc_defaults={}, imgproc_mode_toggles={}, user_defaults={},
-    RealESRGAN=True, # imgLab also
+    img2img_toggles={},
+    img2img_toggle_defaults={},
+    sample_img2img=None,
+    img2img_mask_modes=None,
+    img2img_resize_modes=None,
+    img_lab_defaults={},
+    img_lab_mode_toggles={},
+    user_defaults={},
+    RealESRGAN=True,  # and img_lab
 
-    # imgLab
-    imgproc=lambda x: x,
+    # img_lab
+    img_lab_func=lambda x: x,
     GFPGAN=True,
     LDSR=True,
-
     # TODO: Unused?
     run_GFPGAN=lambda x: x,
     run_RealESRGAN=lambda x: x,
-
     # Common
     job_manager: JobManager = None,
 ) -> gr.Blocks:
 
     with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as gr_blocks:
-        with gr.Tabs(elem_id='tabs') as tabs:
+        with gr.Tabs(elem_id="tabs") as ui_tabs:
 
             txt2img_ui = ui_text_to_image(
-                txt2img_func=txt2img,
+                txt2img_func=txt2img_func,
                 txt2img_toggles=txt2img_toggles,
                 txt2img_toggle_defaults=txt2img_toggle_defaults,
                 txt2img_defaults=txt2img_defaults,
@@ -52,41 +55,47 @@ def draw_gradio_ui(
             )
 
             img2img_ui = ui_image_to_image(
-                tabs,
-                txt2img_ui = txt2img_ui, # from txt2img
-                txt2img_defaults = txt2img_defaults,
-                show_embeddings = show_embeddings,
-                img2img = img2img,
-                img2img_defaults = img2img_defaults,
-                img2img_toggles = img2img_toggles,
-                img2img_toggle_defaults = img2img_toggle_defaults,
-                sample_img2img = sample_img2img,
-                img2img_mask_modes = img2img_mask_modes,
-                img2img_resize_modes = img2img_resize_modes,
-                RealESRGAN = RealESRGAN,
-                job_manager = job_manager,
+                ui_tabs=ui_tabs,
+                txt2img_ui=txt2img_ui,
+                txt2img_defaults=txt2img_defaults,
+                show_embeddings=show_embeddings,
+                img2img_func=img2img_func,
+                img2img_defaults=img2img_defaults,
+                img2img_toggles=img2img_toggles,
+                img2img_toggle_defaults=img2img_toggle_defaults,
+                sample_img2img=sample_img2img,
+                img2img_mask_modes=img2img_mask_modes,
+                img2img_resize_modes=img2img_resize_modes,
+                RealESRGAN=RealESRGAN,
+                job_manager=job_manager,
             )
 
             image_lab_ui = ui_image_lab(
-                tabs = tabs,
-                txt2img_ui = txt2img_ui,
-                RealESRGAN = RealESRGAN,
-                imgproc_defaults = imgproc_defaults,
-                imgproc_mode_toggles = imgproc_mode_toggles,
-                user_defaults = user_defaults,
-                imgproc = imgproc,
-                GFPGAN = GFPGAN,
-                LDSR = LDSR,
+                ui_tabs=ui_tabs,
+                txt2img_ui=txt2img_ui,
+                RealESRGAN=RealESRGAN,
+                img_lab_defaults=img_lab_defaults,
+                img_lab_mode_toggles=img_lab_mode_toggles,
+                user_defaults=user_defaults,
+                img_lab_func=img_lab_func,
+                GFPGAN=GFPGAN,
+                LDSR=LDSR,
             )
 
-        gr.HTML("""
+        gr.HTML(
+            """
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
         <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
         <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
         If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">development repository</a>.</p>
         <p>Device ID {current_device_index}: {current_device_name}<br/>{total_device_count} total devices</p>
     </div>
-    """.format(current_device_name=torch.cuda.get_device_name(), current_device_index=torch.cuda.current_device(), total_device_count=torch.cuda.device_count()))
+    """.format(
+                current_device_name=torch.cuda.get_device_name(),
+                current_device_index=torch.cuda.current_device(),
+                total_device_count=torch.cuda.device_count(),
+            )
+        )
         # Hack: Detect the load event on the frontend
         # Won't be needed in the next version of gradio
         # See the relevant PR: https://github.com/gradio-app/gradio/pull/2108

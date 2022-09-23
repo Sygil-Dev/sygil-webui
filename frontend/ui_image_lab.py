@@ -2,46 +2,57 @@ import gradio as gr
 from frontend.css_and_js import call_JS
 import frontend.ui_functions as uifn
 
+
 def ui_image_lab(
-    tabs: gr.Tabs,
+    ui_tabs: gr.Tabs,
     txt2img_ui: dict,
     RealESRGAN: bool = True,
-    imgproc_defaults={},
-    imgproc_mode_toggles={},
+    img_lab_defaults={},
+    img_lab_mode_toggles={},
     user_defaults={},
-    imgproc=lambda x: x,
+    img_lab_func=lambda x: x,
     GFPGAN=True,
     LDSR=True,
 ) -> dict:
 
     img_lab_ui = {}
 
-    with gr.TabItem("Image Lab", id='imgproc_tab'):
+    with gr.TabItem("Image Lab", id="imgproc_tab"):
         gr.Markdown("Post-process results")
         with gr.Row():
 
             #  Start Column
             with gr.Column():
 
-                # Single or Batch
                 with gr.Tabs():
-                    with gr.TabItem('Single Image'):
-                        imgproc_source = gr.Image(
-                            label="Source", source="upload", interactive=True, type="pil", elem_id="imglab_input"
+                    # Single image to process
+                    with gr.TabItem("Single Image"):
+                        img_lab_ui["image"] = gr.Image(
+                            label="Source",
+                            source="upload",
+                            interactive=True,
+                            type="pil",
+                            elem_id="imglab_input",
                         )
-                    # gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, label="Effect strength",
-                    #                            value=gfpgan_defaults['strength'])
+
                     # select folder with images to process
+                    with gr.TabItem("Batch Process"):
+                        img_lab_ui["folder"] = gr.File(
+                            label="Batch Process",
+                            file_count="multiple",
+                            interactive=True,
+                            type="file",
+                        )
 
-                    with gr.TabItem('Batch Process'):
-                        imgproc_folder = gr.File(label="Batch Process", file_count="multiple", interactive=True, type="file")
-
-                imgproc_pngnfo = gr.Textbox(label="PNG Metadata", placeholder="File Metadata", visible=True, max_lines=5)
+                img_lab_ui["file_metadata"] = gr.Textbox(
+                    label="PNG Metadata", placeholder="File Metadata", visible=True, max_lines=5
+                )
 
                 with gr.Row():
-                    imgproc_btn = gr.Button("Process", variant="primary")
+                    img_lab_ui["process_btn"] = gr.Button("Process", variant="primary")
 
-                gr.HTML("""
+                gr.HTML(
+                    """
 <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
     <p><b>Upscale Modes Guide</b></p>
     <p></p>
@@ -54,62 +65,71 @@ def ui_image_lab(
     <p><b>GoLatent</b></p>
     <p>A 8X upscaler with high VRAM usage, uses GoBig to add details and then uses a Latent Diffusion model to upscale the image, this will result in less artifacting/sharpening, use the settings to feed GoBig settings that will contribute to the result, this mode is considerably slower</p>
 </div>
-""")
+"""
+                )
             #  End Column
             with gr.Column():
 
                 with gr.Tabs():
-                    with gr.TabItem('Output'):
-                        imgproc_output = gr.Gallery(label="Output", elem_id="imgproc_gallery_output")
+                    with gr.TabItem("Output"):
+                        img_lab_ui["output_gallery"] = gr.Gallery(label="Output", elem_id="img_lab_output_gallery")
 
                 # Lab Controls
                 with gr.Box():
                     gr.Markdown("<b>Processor Selection</b>")
-                    imgproc_toggles = gr.CheckboxGroup(
-                        label='', choices=imgproc_mode_toggles, type="index",
+                    img_lab_ui["toggles"] = gr.CheckboxGroup(
+                        label="",
+                        choices=img_lab_mode_toggles,
+                        type="index",
                     )
 
                 # Fix Faces
                 with gr.Box(visible=False) as gfpgan_group:
-                    gfpgan_defaults = { 'strength': 100 }
-                    if 'gfpgan' in user_defaults:
-                        gfpgan_defaults.update(user_defaults['gfpgan'])
+                    gfpgan_defaults = {"strength": 100}
+                    if "gfpgan" in user_defaults:
+                        gfpgan_defaults.update(user_defaults["gfpgan"])
                     if GFPGAN is None:
-                        gr.HTML("""
+                        gr.HTML(
+                            """
 <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
 <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
 </div>
-""")
+"""
+                        )
                     # gr.Markdown("")
                     # gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
 
                     gr.Markdown("<b>GFPGAN Settings</b>")
-                    imgproc_gfpgan_strength = gr.Slider(
-                        minimum=0.0, maximum=1.0, step=0.001,
+                    img_lab_ui["gfpgan_strength"] = gr.Slider(
+                        minimum=0.0,
+                        maximum=1.0,
+                        step=0.001,
                         label="Effect strength",
-                        value=gfpgan_defaults['strength'],
-                        visible=GFPGAN is not None
+                        value=gfpgan_defaults["strength"],
+                        visible=GFPGAN is not None,
                     )
 
                 # Upscaler choice
                 with gr.Box(visible=False) as upscale_group:
                     if LDSR:
-                        upscaleModes = ['RealESRGAN', 'GoBig', 'Latent Diffusion SR', 'GoLatent ']
+                        upscaleModes = ["RealESRGAN", "GoBig", "Latent Diffusion SR", "GoLatent "]
                     else:
-                        gr.HTML("""
+                        gr.HTML(
+                            """
 <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
 <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
 </div>
-""")
-                        upscaleModes = ['RealESRGAN', 'GoBig']
+"""
+                        )
+                        upscaleModes = ["RealESRGAN", "GoBig"]
 
                     gr.Markdown("<b>Upscaler Selection</b>")
-                    imgproc_upscale_toggles = gr.Radio(
-                        label='',
+                    img_lab_ui["upscale_toggles"] = gr.Radio(
+                        label="",
                         choices=upscaleModes,
                         type="index",
                         visible=RealESRGAN is not None,
-                        value='RealESRGAN'
+                        value="RealESRGAN",
                     )
 
                 with gr.Box(visible=False) as upscalerSettings_group:
@@ -117,160 +137,196 @@ def ui_image_lab(
                     with gr.Box(visible=True) as realesrgan_group:
                         with gr.Column():
                             gr.Markdown("<b>RealESRGAN Settings</b>")
-                            imgproc_realesrgan_model_name = gr.Dropdown(
-                                label='RealESRGAN model',
+                            img_lab_ui["realesrgan_model_name"] = gr.Dropdown(
+                                label="RealESRGAN model",
                                 interactive=RealESRGAN is not None,
                                 choices=[
-                                    'RealESRGAN_x4plus',
-                                    'RealESRGAN_x4plus_anime_6B',
-                                    'RealESRGAN_x2plus',
-                                    'RealESRGAN_x2plus_anime_6B'
+                                    "RealESRGAN_x4plus",
+                                    "RealESRGAN_x4plus_anime_6B",
+                                    "RealESRGAN_x2plus",
+                                    "RealESRGAN_x2plus_anime_6B",
                                 ],
-                                value='RealESRGAN_x4plus',
+                                value="RealESRGAN_x4plus",
                                 visible=RealESRGAN is not None,
                             )  # TODO: Feels like I shouldn't slot it in here.
+
                     with gr.Box(visible=False) as ldsr_group:
                         with gr.Row(elem_id="ldsr_settings_row"):
                             with gr.Column():
                                 gr.Markdown("<b>Latent Diffusion Super Sampling Settings</b>")
-                                imgproc_ldsr_steps = gr.Slider(
-                                    minimum=0, maximum=500, step=10,
+                                img_lab_ui["ldsr_steps"] = gr.Slider(
+                                    minimum=0,
+                                    maximum=500,
+                                    step=10,
                                     label="LDSR Sampling Steps",
-                                    value=100, visible=LDSR is not None
+                                    value=100,
+                                    visible=LDSR is not None,
                                 )
-                                imgproc_ldsr_pre_downSample = gr.Dropdown(
-                                    label='LDSR Pre Downsample mode (Lower resolution before processing for speed)',
-                                    choices=["None", '1/2', '1/4'], value="None", visible=LDSR is not None,
+                                img_lab_ui["ldsr_pre_downSample"] = gr.Dropdown(
+                                    label="LDSR Pre Downsample mode (Lower resolution before processing for speed)",
+                                    choices=["None", "1/2", "1/4"],
+                                    value="None",
+                                    visible=LDSR is not None,
                                 )
-                                imgproc_ldsr_post_downSample = gr.Dropdown(
-                                    label='LDSR Post Downsample mode (aka SuperSampling)',
-                                    choices=["None", "Original Size", '1/2', '1/4'], value="None",
+                                img_lab_ui["ldsr_post_downSample"] = gr.Dropdown(
+                                    label="LDSR Post Downsample mode (aka SuperSampling)",
+                                    choices=["None", "Original Size", "1/2", "1/4"],
+                                    value="None",
                                     visible=LDSR is not None,
                                 )
                     with gr.Box(visible=False) as gobig_group:
                         with gr.Row(elem_id="proc_prompt_row"):
                             with gr.Column():
                                 gr.Markdown("<b>GoBig Settings</b>")
-                                imgproc_prompt = gr.Textbox(
+                                img_lab_ui["prompt"] = gr.Textbox(
                                     label="",
-                                    elem_id='prompt_input',
+                                    elem_id="prompt_input",
                                     placeholder="A corgi wearing a top hat as an oil painting.",
                                     lines=1,
                                     max_lines=1,
-                                    value=imgproc_defaults['prompt'],
+                                    value=img_lab_defaults["prompt"],
                                     show_label=True,
                                     visible=RealESRGAN is not None,
                                 )
-                                imgproc_sampling = gr.Dropdown(
-                                    label='Sampling method (k_lms is default k-diffusion sampler)',
+                                img_lab_ui["sampling"] = gr.Dropdown(
+                                    label="Sampling method (k_lms is default k-diffusion sampler)",
                                     choices=[
-                                        "DDIM", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a', 'k_euler',
-                                        'k_heun', 'k_lms'
+                                        "DDIM",
+                                        "k_dpm_2_a",
+                                        "k_dpm_2",
+                                        "k_euler_a",
+                                        "k_euler",
+                                        "k_heun",
+                                        "k_lms",
                                     ],
-                                    value=imgproc_defaults['sampler_name'], visible=RealESRGAN is not None,
+                                    value=img_lab_defaults["sampler_name"],
+                                    visible=RealESRGAN is not None,
                                 )
-                                imgproc_steps = gr.Slider(
-                                    minimum=1, maximum=250, step=1,
+                                img_lab_ui["steps"] = gr.Slider(
+                                    minimum=1,
+                                    maximum=250,
+                                    step=1,
                                     label="Sampling Steps",
-                                    value=imgproc_defaults['ddim_steps'],
+                                    value=img_lab_defaults["ddim_steps"],
                                     visible=RealESRGAN is not None,
                                 )
-                                imgproc_cfg = gr.Slider(
-                                    minimum=1.0, maximum=30.0, step=0.5,
-                                    label='Classifier Free Guidance Scale (how strongly the image should follow the prompt)',
-                                    value=imgproc_defaults['cfg_scale'],
+                                img_lab_ui["cfg"] = gr.Slider(
+                                    minimum=1.0,
+                                    maximum=30.0,
+                                    step=0.5,
+                                    label="Classifier Free Guidance Scale (how strongly the image should follow the prompt)",
+                                    value=img_lab_defaults["cfg_scale"],
                                     visible=RealESRGAN is not None,
                                 )
-                                imgproc_denoising = gr.Slider(
-                                    minimum=0.0, maximum=1.0, step=0.01,
-                                    label='Denoising Strength',
-                                    value=imgproc_defaults['denoising_strength'],
+                                img_lab_ui["denoising"] = gr.Slider(
+                                    minimum=0.0,
+                                    maximum=1.0,
+                                    step=0.01,
+                                    label="Denoising Strength",
+                                    value=img_lab_defaults["denoising_strength"],
                                     visible=RealESRGAN is not None,
                                 )
-                                imgproc_height = gr.Slider(
-                                    minimum=64, maximum=2048, step=64, label="Height",
-                                    value=imgproc_defaults["height"],
+                                img_lab_ui["height"] = gr.Slider(
+                                    minimum=64,
+                                    maximum=2048,
+                                    step=64,
+                                    label="Height",
+                                    value=img_lab_defaults["height"],
                                     visible=False,
                                 )  # not currently implemented
-                                imgproc_width = gr.Slider(
-                                    minimum=64, maximum=2048, step=64, label="Width",
-                                    value=imgproc_defaults["width"],
+                                img_lab_ui["width"] = gr.Slider(
+                                    minimum=64,
+                                    maximum=2048,
+                                    step=64,
+                                    label="Width",
+                                    value=img_lab_defaults["width"],
                                     visible=False,
                                 )  # not currently implemented
-                                imgproc_seed = gr.Textbox(
-                                    label="Seed (blank to randomize)", lines=1,
+                                img_lab_ui["seed"] = gr.Textbox(
+                                    label="Seed (blank to randomize)",
+                                    lines=1,
                                     max_lines=1,
-                                    value=imgproc_defaults["seed"],
+                                    value=img_lab_defaults["seed"],
                                     visible=RealESRGAN is not None,
                                 )
-                                imgproc_btn.click(
-                                    imgproc,
+                                img_lab_ui["process_btn"].click(
+                                    img_lab_func,
                                     [
-                                        imgproc_source, imgproc_folder, imgproc_prompt, imgproc_toggles,
-                                        imgproc_upscale_toggles, imgproc_realesrgan_model_name, imgproc_sampling,
-                                        imgproc_steps, imgproc_height,
-                                        imgproc_width, imgproc_cfg, imgproc_denoising, imgproc_seed,
-                                        imgproc_gfpgan_strength, imgproc_ldsr_steps, imgproc_ldsr_pre_downSample,
-                                        imgproc_ldsr_post_downSample,
+                                        img_lab_ui["image"],
+                                        img_lab_ui["folder"],
+                                        img_lab_ui["prompt"],
+                                        img_lab_ui["toggles"],
+                                        img_lab_ui["upscale_toggles"],
+                                        img_lab_ui["realesrgan_model_name"],
+                                        img_lab_ui["sampling"],
+                                        img_lab_ui["steps"],
+                                        img_lab_ui["height"],
+                                        img_lab_ui["width"],
+                                        img_lab_ui["cfg"],
+                                        img_lab_ui["denoising"],
+                                        img_lab_ui["seed"],
+                                        img_lab_ui["gfpgan_strength"],
+                                        img_lab_ui["ldsr_steps"],
+                                        img_lab_ui["ldsr_pre_downSample"],
+                                        img_lab_ui["ldsr_post_downSample"],
                                     ],
-                                    [imgproc_output],
+                                    [img_lab_ui["output_gallery"]],
                                     api_name="imgproc",
                                 )
 
-                                imgproc_source.change(
+                                img_lab_ui["image"].change(
                                     uifn.get_png_nfo,
-                                    [imgproc_source],
-                                    [imgproc_pngnfo],
+                                    [img_lab_ui["image"]],
+                                    [img_lab_ui["file_metadata"]],
                                 )
 
-                        txt2img_ui['to_imglab_btn'].click(
+                        txt2img_ui["to_imglab_btn"].click(
                             fn=uifn.copy_img_params_to_lab,
-                            inputs=[txt2img_ui['output_params']],
+                            inputs=[txt2img_ui["output_params"]],
                             outputs=[
-                                imgproc_prompt, imgproc_seed, imgproc_steps, imgproc_cfg, imgproc_sampling,
+                                img_lab_ui["prompt"],
+                                img_lab_ui["seed"],
+                                img_lab_ui["steps"],
+                                img_lab_ui["cfg"],
+                                img_lab_ui["sampling"],
                             ],
                         )
 
-                        txt2img_ui['to_imglab_btn'].click(
+                        txt2img_ui["to_imglab_btn"].click(
                             fn=uifn.copy_img_to_lab,
-                            inputs=[txt2img_ui['gallery']],
-                            outputs=[imgproc_source, tabs],
+                            inputs=[txt2img_ui["gallery"]],
+                            outputs=[img_lab_ui["image"], ui_tabs],
                             _js=call_JS(
                                 "moveImageFromGallery",
-                                fromId="txt2img_gallery_output",
+                                fromId="txt2img_output_gallery",
                                 toId="imglab_input",
-                            )
+                            ),
                         )
                         if RealESRGAN is None:
                             with gr.Row():
                                 with gr.Column():
                                     # separator
-                                    gr.HTML("""
+                                    gr.HTML(
+                                        """
 <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
     <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
 </div>
-""")
+"""
+                                    )
 
-    imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
-    imgproc_toggles.change(fn=uifn.toggle_options_upscalers, inputs=[imgproc_toggles], outputs=[upscale_group])
-    imgproc_toggles.change(
-        fn=uifn.toggle_options_upscalers,
-        inputs=[imgproc_toggles],
-        outputs=[upscalerSettings_group]
+    img_lab_ui["toggles"].change(fn=uifn.toggle_options_gfpgan, inputs=[img_lab_ui["toggles"]], outputs=[gfpgan_group])
+    img_lab_ui["toggles"].change(
+        fn=uifn.toggle_options_upscalers, inputs=[img_lab_ui["toggles"]], outputs=[upscale_group]
     )
-    imgproc_upscale_toggles.change(
-        fn=uifn.toggle_options_realesrgan,
-        inputs=[imgproc_upscale_toggles],
-        outputs=[realesrgan_group]
+    img_lab_ui["toggles"].change(
+        fn=uifn.toggle_options_upscalers, inputs=[img_lab_ui["toggles"]], outputs=[upscalerSettings_group]
     )
-    imgproc_upscale_toggles.change(
-        fn=uifn.toggle_options_ldsr,
-        inputs=[imgproc_upscale_toggles],
-        outputs=[ldsr_group]
+    img_lab_ui["upscale_toggles"].change(
+        fn=uifn.toggle_options_realesrgan, inputs=[img_lab_ui["upscale_toggles"]], outputs=[realesrgan_group]
     )
-    imgproc_upscale_toggles.change(
-        fn=uifn.toggle_options_gobig,
-        inputs=[imgproc_upscale_toggles],
-        outputs=[gobig_group]
+    img_lab_ui["upscale_toggles"].change(
+        fn=uifn.toggle_options_ldsr, inputs=[img_lab_ui["upscale_toggles"]], outputs=[ldsr_group]
     )
-
+    img_lab_ui["upscale_toggles"].change(
+        fn=uifn.toggle_options_gobig, inputs=[img_lab_ui["upscale_toggles"]], outputs=[gobig_group]
+    )

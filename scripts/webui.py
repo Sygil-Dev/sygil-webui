@@ -2475,30 +2475,31 @@ def hide_help():
     return [gr.update(visible=True), gr.update(visible=False), gr.update(value="")]
 
 
-demo = draw_gradio_ui(opt,
-                      user_defaults=user_defaults,
-                      txt2img=txt2img,
-                      img2img=img2img,
-                      imgproc=imgproc,
-                      txt2img_defaults=txt2img_defaults,
-                      txt2img_toggles=txt2img_toggles,
-                      txt2img_toggle_defaults=txt2img_toggle_defaults,
-                      show_embeddings=hasattr(model, "embedding_manager"),
-                      img2img_defaults=img2img_defaults,
-                      img2img_toggles=img2img_toggles,
-                      img2img_toggle_defaults=img2img_toggle_defaults,
-                      img2img_mask_modes=img2img_mask_modes,
-                      img2img_resize_modes=img2img_resize_modes,
-                      sample_img2img=sample_img2img,
-                      imgproc_defaults=imgproc_defaults,
-                      imgproc_mode_toggles=imgproc_mode_toggles,
-                      RealESRGAN=RealESRGAN,
-                      GFPGAN=GFPGAN,
-                      LDSR=LDSR,
-                      run_GFPGAN=run_GFPGAN,
-                      run_RealESRGAN=run_RealESRGAN,
-                      job_manager=job_manager
-                        )
+gradio_ui = draw_gradio_ui(
+    opt= opt,
+    user_defaults=user_defaults,
+    txt2img_func=txt2img,
+    img2img_func=img2img,
+    img_lab_func=imgproc,
+    txt2img_defaults=txt2img_defaults,
+    txt2img_toggles=txt2img_toggles,
+    txt2img_toggle_defaults=txt2img_toggle_defaults,
+    show_embeddings=hasattr(model, "embedding_manager"),
+    img2img_defaults=img2img_defaults,
+    img2img_toggles=img2img_toggles,
+    img2img_toggle_defaults=img2img_toggle_defaults,
+    img2img_mask_modes=img2img_mask_modes,
+    img2img_resize_modes=img2img_resize_modes,
+    sample_img2img=sample_img2img,
+    img_lab_defaults=imgproc_defaults,
+    img_lab_mode_toggles=imgproc_mode_toggles,
+    RealESRGAN=RealESRGAN,
+    GFPGAN=GFPGAN,
+    LDSR=LDSR,
+    run_GFPGAN=run_GFPGAN,
+    run_RealESRGAN=run_RealESRGAN,
+    job_manager=job_manager
+)
 
 class ServerLauncher(threading.Thread):
     def __init__(self, demo):
@@ -2517,7 +2518,7 @@ class ServerLauncher(threading.Thread):
             'show_error': True
         }
         if not opt.share:
-            demo.queue(concurrency_count=opt.max_jobs)
+            gradio_ui.queue(concurrency_count=opt.max_jobs)
         if opt.share and opt.share_password:
             gradio_params['auth'] = ('webui', opt.share_password)
 
@@ -2536,7 +2537,7 @@ class ServerLauncher(threading.Thread):
         self.demo.close() # this tends to hang
 
 def launch_server():
-    server_thread = ServerLauncher(demo)
+    server_thread = ServerLauncher(gradio_ui)
     server_thread.start()
 
     try:
