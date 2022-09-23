@@ -5,53 +5,42 @@ from sd_utils import *
 # streamlit imports
 import streamlit.components.v1 as components
 
-#other imports
-
-#from sd_concept_browser import *
-
-# Temp imports
-
-
-# end of imports
-#---------------------------------------------------------------------------------------------------------------
-
-try:
-	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
-	from transformers import logging
-
-	logging.set_verbosity_error()
-except:
-	pass
-
-# parent_dir = os.path.dirname(os.path.abspath(__file__))
-# build_dir = os.path.join(parent_dir, "frontend/dist")
-_component_func = components.declare_component("sd-concepts-browser", "./frontend/dist")
 
 class plugin_info():
 	plugname = "concept_library"
 	description = "Concept Library"
 	displayPriority = 4
 
+
+# Init Vuejs component
+_component_func = components.declare_component(
+	"sd-concepts-browser", "./frontend/dist")
+
+
 def sdConceptsBrowser(concepts, key=None):
 	component_value = _component_func(concepts=concepts, key=key, default="")
 	return component_value
 
+
 @st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
-def getConceptsFromPath(page, conceptPerPage, searchText= ""):
+def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("getConceptsFromPath", "page:", page, "conceptPerPage:", conceptPerPage, "searchText:", searchText)
 	# get the path where the concepts are stored
-	path = os.path.join(os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
+	path = os.path.join(
+		os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
 	acceptedExtensions = ('jpeg', 'jpg', "png")
 	concepts = []
 
 	if os.path.exists(path):
 		# List all folders (concepts) in the path
-		folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+		folders = [f for f in os.listdir(
+			path) if os.path.isdir(os.path.join(path, f))]
 		filteredFolders = folders
 
 		# Filter the folders by the search text
 		if searchText != "":
-			filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
+			filteredFolders = [
+				f for f in folders if searchText.lower() in f.lower()]
 	else:
 		filteredFolders = []
 
@@ -63,7 +52,6 @@ def getConceptsFromPath(page, conceptPerPage, searchText= ""):
 		if conceptIndex <= ((page - 1) * conceptPerPage):
 			conceptIndex += 1
 			continue
-
 
 		concept = {
 			"name": folder,
@@ -84,18 +72,20 @@ def getConceptsFromPath(page, conceptPerPage, searchText= ""):
 			concept["type"] = f.read()
 
 		# List all files in the concept/concept_images folder
-		files = [f for f in os.listdir(os.path.join(path, folder, "concept_images")) if os.path.isfile(os.path.join(path, folder, "concept_images", f))]
+		files = [f for f in os.listdir(os.path.join(path, folder, "concept_images")) if os.path.isfile(
+			os.path.join(path, folder, "concept_images", f))]
 		# Retrieve only the 4 first images
 		for file in files[:4]:
 			if file.endswith(acceptedExtensions):
 				# Add a copy of the image to avoid file locking
-				originalImage = Image.open(os.path.join(path, folder, "concept_images", file))
+				originalImage = Image.open(os.path.join(
+					path, folder, "concept_images", file))
 
 				# Maintain the aspect ratio (max 200x200)
 				resizedImage = originalImage.copy()
 				resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
 
-				#concept["images"].append(resizedImage)
+				# concept["images"].append(resizedImage)
 
 				concept["images"].append(imageToBase64(resizedImage))
 				# Close original image
@@ -107,6 +97,7 @@ def getConceptsFromPath(page, conceptPerPage, searchText= ""):
 	#print("Results:", [c["name"] for c in concepts])
 	return concepts
 
+
 @st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
 def imageToBase64(image):
 	import io
@@ -116,80 +107,120 @@ def imageToBase64(image):
 	img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 	return img_str
 
+
 @st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
-def getTotalNumberOfConcepts(searchText= ""):
+def getTotalNumberOfConcepts(searchText=""):
 	# get the path where the concepts are stored
-	path = os.path.join(os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
+	path = os.path.join(
+		os.getcwd(),  st.session_state['defaults'].general.sd_concepts_library_folder)
 	concepts = []
 
 	if os.path.exists(path):
 		# List all folders (concepts) in the path
-		folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+		folders = [f for f in os.listdir(
+			path) if os.path.isdir(os.path.join(path, f))]
 		filteredFolders = folders
 
 		# Filter the folders by the search text
 		if searchText != "":
-			filteredFolders = [f for f in folders if searchText.lower() in f.lower()]
+			filteredFolders = [
+				f for f in folders if searchText.lower() in f.lower()]
 	else:
 		filteredFolders = []
 	return len(filteredFolders)
 
+
+
 def layout():
-	# Pagination
-	page = 1
-	conceptPerPage = 12
-	totalNumberOfConcepts = getTotalNumberOfConcepts()
-	if not "cl_page" in st.session_state:
-		st.session_state["cl_page"] = page
-	if not "cl_conceptPerPage" in st.session_state:
-		st.session_state["cl_conceptPerPage"] = conceptPerPage
-	#Search for a concept (totalNumberOfConcepts available)
-	searchInput = st.text_input("","", placeholder= f'Search for a concept ({totalNumberOfConcepts} available)')
-	if searchInput != "":
-		st.session_state["cl_page"] = 1
-		totalNumberOfConcepts = getTotalNumberOfConcepts(searchInput)
+	# 2 tabs, one for Concept Library and one for the Download Manager
+	tab_library, tab_downloader = st.tabs(["Library", "Download Manager"])
 
-	# Pagination
-	last_page = math.ceil(getTotalNumberOfConcepts(searchInput) / st.session_state["cl_conceptPerPage"])
-	_prev, _per_page ,_next = st.columns([1, 10, 1])
-	if ("concepts" in st.session_state and len(st.session_state['concepts']) > 0):
-		# The condition doesnt work, it should be fixed
+	# Concept Library
+	with tab_library:
+		print("Concept Library")
+		downloaded_concepts_count = getTotalNumberOfConcepts()
+		concepts_per_page = 12
 
-		with _prev:
-			if st.button("Previous", disabled = st.session_state["cl_page"] == 1):
-				st.session_state["cl_page"] -= 1
-				st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)
+		if not "results" in st.session_state:
+			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, "")
 
-		with _per_page:
-			st.caption("Page " + str(st.session_state["cl_page"]) + " / " + str(last_page))
+		# Pagination controls
+		if not "cl_current_page" in st.session_state:
+			st.session_state["cl_current_page"] = 1
 
-		with _next:
-			if st.button("Next", disabled = st.session_state["cl_page"] == last_page):
-				st.session_state["cl_page"] += 1
-				st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)
+		# Search
+		if not 'cl_search_text' in st.session_state:
+			st.session_state["cl_search_text"] = ""
 
-	placeholder = st.empty()
+		if not 'cl_search_results_count' in st.session_state:
+			st.session_state["cl_search_results_count"] = downloaded_concepts_count
 
-	with placeholder.container():
-		# Init session state
-		if not "concepts" in st.session_state:
-			st.session_state['concepts'] = []
+		# Search bar
+		search_text_input = st.text_input("", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
+		print("search_text_input:", search_text_input, "st.session_state[cl_search_text]:", st.session_state["cl_search_text"])
+		if search_text_input != st.session_state["cl_search_text"]:
+			# Search text has changed
+			print("Search text has changed for:", search_text_input)
+			st.session_state["cl_search_text"] = search_text_input
+			st.session_state["cl_current_page"] = 1
+			st.session_state["cl_search_results_count"] = getTotalNumberOfConcepts(st.session_state["cl_search_text"])
+			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, st.session_state["cl_search_text"])
 
-		# Refresh concepts
-		st.session_state['concepts'] = getConceptsFromPath(st.session_state["cl_page"], st.session_state["cl_conceptPerPage"], searchInput)
-		conceptsLenght = len(st.session_state['concepts'])
+		# Show results
+		results_empty = st.empty()
 
-		if (conceptsLenght == 0):
-			if (searchInput == ""):
-				st.write("You don't have any concepts in your library ")
-				# Propose the user to go to "https://github.com/sd-webui/sd-concepts-library"
-				st.markdown("To add concepts to your library, download some from the [sd-concepts-library](https://github.com/sd-webui/sd-concepts-library) \
-				repository and save the content of `sd-concepts-library` into ```./models/custom/sd-concepts-library``` or just create your own concepts :wink:.", unsafe_allow_html=False)
-			else:
-				st.write("No concepts found in the library matching your search: " + searchInput)
+		# Pagination
+		pagination_empty = st.empty()
 
-		# print("Number of concept matching the query:", conceptsLenght)
-		sdConceptsBrowser(st.session_state['concepts'], key="clipboard")
+		# Layouts
+		with pagination_empty:
+			with st.container():
+				if len(st.session_state["results"]) > 0:
+					last_page = math.ceil(st.session_state["cl_search_results_count"] / concepts_per_page)
+					_1, _2, _3, _4, _previous_page, _current_page, _next_page, _9, _10, _11, _12 = st.columns([1,1,1,1,1,2,1,1,1,1,1])
 
+					# Previous page
+					with _previous_page:
+						if st.button("<", key="cl_previous_page"):
+							st.session_state["cl_current_page"] -= 1
+							if st.session_state["cl_current_page"] <= 0:
+								st.session_state["cl_current_page"] = last_page
+							st.session_state["results"] = getConceptsFromPath(st.session_state["cl_current_page"], concepts_per_page, st.session_state["cl_search_text"])
+
+					# Current page
+					with _current_page:
+						_current_page_container = st.empty()
+
+					# Next page
+					with _next_page:
+						if st.button(">", key="cl_next_page"):
+							st.session_state["cl_current_page"] += 1
+							if st.session_state["cl_current_page"] > last_page:
+								st.session_state["cl_current_page"] = 1
+							st.session_state["results"] = getConceptsFromPath(st.session_state["cl_current_page"], concepts_per_page, st.session_state["cl_search_text"])
+
+					# Current page
+					with _current_page_container:
+						st.markdown(f'<p style="text-align: center">Page {st.session_state["cl_current_page"]} of {last_page}</p>', unsafe_allow_html=True)
+						# st.write(f"Page {st.session_state['cl_current_page']} of {last_page}", key="cl_current_page")
+
+		with results_empty:
+			with st.container():
+				if downloaded_concepts_count == 0:
+					st.write("You don't have any concepts in your library ")
+					st.markdown("To add concepts to your library, download some from the [sd-concepts-library](https://github.com/sd-webui/sd-concepts-library) \
+						repository and save the content of `sd-concepts-library` into ```./models/custom/sd-concepts-library``` or just create your own concepts :wink:.", unsafe_allow_html=False)
+				else:
+					if len(st.session_state["results"]) == 0:
+						st.write("No concept found in the library matching your search: " + st.session_state["cl_search_text"])
+					else:
+						# display number of results
+						if st.session_state["cl_search_text"]:
+							st.write(f"Found {st.session_state['cl_search_results_count']} {'concepts' if st.session_state['cl_search_results_count'] > 1 else 'concept' } matching your search")
+						sdConceptsBrowser(st.session_state['results'], key="results")
+
+
+	with tab_downloader:
+		st.write("Not implemented yet")
 
 	return False
