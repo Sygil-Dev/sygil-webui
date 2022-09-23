@@ -1,19 +1,10 @@
-[data-testid="image"] {min-height: 512px !important}
-* #body>.col:nth-child(2){
-    width:250%;
-    max-width:89vw
+/* Txt2Img text prompt box? */
+input[data-testid="testbox"] {
+    min-width: 380px !important;
 }
 
-#increment_btn_minus {
-    align-self: center;
-    background: none;
-    border: none;
-}
-#increment_btn_plus {
-    align-self: center;
-    background: none;
-    border: none;
-}
+/* ### Prompt Boxes ### */
+
 #prompt_input, #img2img_prompt_input {
     padding: 0px;
     border: none;
@@ -25,49 +16,74 @@
     line-height: 1.6rem;
 }
 
+/* Not sure what this does */
 input[type=number]:disabled { -moz-appearance: textfield; }
 
-#generate, #img2img_mask_btn, #img2img_edit_btn {
-    align-self: stretch;
+#img2img_mask_generate, #img2img_edit_generate, #txt2img_generate {
+    /* Limit the generate button from becoming huge as it shares it's row with prompt text input  */
+    max-width: 150px;
+    width: 150px;
+    height: calc(1.6em + 24px); /* height, set to #prompt_input text size + padding, etc */
 }
 
-#gan_image {
-    width: 512px;
+/* ### txt2img: Output Column ### */
+
+#txt2img_gallery_output, #txt2img_output_column {
+    min-width: 512px;
     height: auto;
 }
 
-#highlight{
- font-size: 1.2rem
- }
-#highlight .uppercase{
+#txt2img_output_column {
+    width: 600px;
+}
+
+/* ### txt2img: Output Parameters ###*/
+
+/* This exists only to allow the copy seed button to work */
+#seed_box_container {
+    visibility: hidden;
+    height: 10px;
+    overflow: hidden;
+}
+
+#output_parameters {
+   font-size: 1.2rem;
+}
+
+#output_parameters .uppercase{
     text-transform: initial;
-
-}
-#highlight .textfield .textspan:nth-child(1){
-    font-size: 1.2rem
 }
 
-/* Mobile fixes and styles */
+#output_parameters .textfield .textspan:nth-child(1) {
+    font-size: 1.2rem;
+}
+
+
+/* ### Mobile Screen Sizes Support ### */
+
 @media only screen and (max-width: 768px) {
-    /* rearrange the columns on mobile */
 
-    #body>.col:nth-child(2){
+    /* rearrange the columns on mobile */
+    #txt2img_output_column {
         width:100%;
         max-width:100vw;
         order: 1;
     }
-    #body>.col:nth-child(1){
+    #txt2img_start_column {
+        width:100%;
+        max-width:100vw;
         order: 2;
     }
-    #body>.col:nth-child(3){
+    #txt2img_end_column {
+        width:100%;
+        max-width:100vw;
         order: 3;
     }
 
+    /* fix buttons layouts */
     #txt2img_actions_row,
-    #txt2img_output_row{
+    #txt2img_output_row {
         flex-direction: row;
         flex-wrap: wrap-reverse;
     }
-    /* fix buttons layouts */
-
 }
