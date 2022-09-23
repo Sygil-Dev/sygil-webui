@@ -27,6 +27,7 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 from slugify import slugify
+import json
 
 logger = get_logger(__name__)
 
@@ -37,7 +38,6 @@ def parse_args():
         "--pretrained_model_name_or_path",
         type=str,
         default=None,
-        required=True,
         help="Path to pretrained model or model identifier from huggingface.co/models.",
     )
     parser.add_argument(
@@ -47,17 +47,16 @@ def parse_args():
         help="Pretrained tokenizer name or path if not the same as model_name",
     )
     parser.add_argument(
-        "--train_data_dir", type=str, default=None, required=True, help="A folder containing the training data."
+        "--train_data_dir", type=str, default=None, help="A folder containing the training data."
     )
     parser.add_argument(
         "--placeholder_token",
         type=str,
         default=None,
-        required=True,
         help="A token to use as a placeholder for the concept.",
     )
     parser.add_argument(
-        "--initializer_token", type=str, default=None, required=True, help="A token to use as initializer word."
+        "--initializer_token", type=str, default=None, help="A token to use as initializer word."
     )
     parser.add_argument("--learnable_property", type=str, default="object", help="Choose between 'object' and 'style'")
     parser.add_argument("--repeats", type=int, default=100, help="How many times to repeat the training data.")
@@ -170,7 +169,7 @@ def parse_args():
     parser.add_argument(
         "--stable_sample_batches",
         type=int,
-        default=1,
+        default=0,
         help="Number of fixed seed sample batches to generate per checkpoint",
     )
     parser.add_argument(
@@ -193,8 +192,27 @@ def parse_args():
             "A comma-delimited list of custom template to use for samples, using {} as a placeholder for the concept."
         ),
     )
+    parser.add_argument(
+        "--resume_from",
+        type=str,
+        default=None,
+        help="Path to a directory to resume training from (ie, logs/token_name/2022-09-22T23-36-27)"
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to a JSON config file specifying the arguments to use. If resume_from is given, it is automatically inferred."
+    )
 
     args = parser.parse_args()
+    if args.config is not None:
+        with open(args.config, 'rt') as f:
+            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)))
+    elif args.resume_from is not None:
+        with open(Path(args.resume_from) / "resume.json", 'rt') as f:
+            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
+
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
         args.local_rank = env_local_rank
@@ -387,13 +405,12 @@ class Checkpointer:
         self.stable_sample_batches = stable_sample_batches
         self.seed = seed
 
-    def checkpoint(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
-        with torch.autocast("cuda"):
 
+    def checkpoint(self, step, text_encoder, save_samples=True):
+        print("Saving checkpoint for step %d..." % step)
+        with torch.autocast("cuda"):
             checkpoints_path = self.output_dir / "checkpoints"
-            samples_path = self.output_dir / "samples"
             checkpoints_path.mkdir(exist_ok=True, parents=True)
-            samples_path.mkdir(exist_ok=True, parents=True)
 
             unwrapped = self.accelerator.unwrap_model(text_encoder)
 
@@ -403,8 +420,16 @@ class Checkpointer:
 
             filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
             torch.save(learned_embeds_dict, checkpoints_path / filename)
+            del unwrapped
 
-            checker = NoCheck()
+
+    def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
+        samples_path = self.output_dir / "samples"
+        samples_path.mkdir(exist_ok=True, parents=True)
+        checker = NoCheck()
+
+        with torch.autocast("cuda"):
+            unwrapped = self.accelerator.unwrap_model(text_encoder)
             # Save a sample image
             pipeline = StableDiffusionPipeline(
                 text_encoder=unwrapped,
@@ -414,43 +439,43 @@ class Checkpointer:
                 scheduler=PNDMScheduler(
                     beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
                 ),
-                # safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
                 safety_checker=NoCheck(),
                 feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
             ).to('cuda')
             pipeline.enable_attention_slicing()
 
-            stable_latents = stable_latent = torch.randn(
-                (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
-                device=pipeline.device,
-                generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
-            )
+            if self.stable_sample_batches > 0:
+                stable_latents = torch.randn(
+                    (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
+                    device=pipeline.device,
+                    generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
+                )
+
+                stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
+
+                # Generate and save stable samples
+                for i in range(0, self.stable_sample_batches):
+                    samples = pipeline(
+                        prompt=stable_prompts,
+                        height=max(512, height),
+                        latents=stable_latents,
+                        width=max(512, width),
+                        guidance_scale=guidance_scale,
+                        eta=eta,
+                        num_inference_steps=num_inference_steps,
+                        output_type='pil'
+                    )["sample"]
+                    for idx, im in enumerate(samples):
+                            filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
+                            im.save(samples_path / filename)
 
             prompts = [choice.format(self.placeholder_token) for choice in random.choices(self.templates, k=self.sample_batch_size)]
-            stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
-
-            # Generate and save stable samples
-            for i in range(0, self.stable_sample_batches):
-                samples = pipeline(
-                    prompt=stable_prompts,
-                    height=height,
-                    latents=stable_latents,
-                    width=width,
-                    guidance_scale=guidance_scale,
-                    eta=eta,
-                    num_inference_steps=num_inference_steps,
-                    output_type='pil'
-                )["sample"]
-                for idx, im in enumerate(samples):
-                        filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
-                        im.save(samples_path / filename)
-
             # Generate and save random samples
             for i in range(0, self.random_sample_batches):
                 samples = pipeline(
                     prompt=prompts,
-                    height=height,
-                    width=width,
+                    height=max(512, height),
+                    width=max(512, width),
                     guidance_scale=guidance_scale,
                     eta=eta,
                     num_inference_steps=num_inference_steps,
@@ -464,8 +489,36 @@ class Checkpointer:
             del pipeline
             del unwrapped
 
+
+def save_resume_state(accelerator, text_encoder, basepath, global_step, args):
+    accelerator.wait_for_everyone()
+    unwrapped_model = accelerator.unwrap_model(text_encoder)
+    accelerator.save(unwrapped_model.state_dict(), basepath / f"resume.ste")
+    info = {
+        "global_step": global_step,
+        "args": vars(args)
+    }
+    with open(basepath / f"resume.json", 'w') as f:
+        json.dump(info, f, indent=4)
+
+
 def main():
     args = parse_args()
+
+    global_step_offset = 0
+    if args.resume_from is not None:
+        basepath = Path(args.resume_from)
+        print("Resuming state from %s" % args.resume_from)
+        with open(basepath / "resume.json", 'r') as f:
+            state = json.load(f)
+        global_step_offset = state["global_step"]
+
+        print("We've trained %d steps so far" % global_step_offset)
+    else:
+        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        basepath = Path(args.logging_dir) / slugify(args.placeholder_token) / now
+        basepath.mkdir(exist_ok=True, parents=True)
+
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -520,38 +573,20 @@ def main():
 
     # Load models and create wrapper for stable diffusion
     text_encoder = CLIPTextModel.from_pretrained(
-        args.pretrained_model_name_or_path + '/text_encoder',  
+        args.pretrained_model_name_or_path + '/text_encoder',
     )
     vae = AutoencoderKL.from_pretrained(
-        args.pretrained_model_name_or_path + '/vae',  
+        args.pretrained_model_name_or_path + '/vae',
     )
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path + '/unet',
     )
-
-    now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-    basepath = Path(args.logging_dir) / slugify(args.placeholder_token) / now
 
     base_templates = imagenet_style_templates_small if args.learnable_property == "style" else imagenet_templates_small
     if args.custom_templates:
         templates = args.custom_templates.split(",")
     else:
         templates = base_templates
-
-    checkpointer = Checkpointer(
-        accelerator=accelerator,
-        vae=vae,
-        unet=unet,
-        tokenizer=tokenizer,
-        placeholder_token=args.placeholder_token,
-        placeholder_token_id=placeholder_token_id,
-        templates=templates,
-        output_dir=basepath,
-        sample_batch_size=args.sample_batch_size,
-        random_sample_batches=args.random_sample_batches,
-        stable_sample_batches=args.stable_sample_batches,
-        seed=args.seed
-    )
 
     slice_size = unet.config.attention_head_dim // 2
     unet.set_attention_slice(slice_size)
@@ -574,6 +609,26 @@ def main():
         text_encoder.text_model.embeddings.position_embedding.parameters(),
     )
     freeze_params(params_to_freeze)
+
+    # Resume from a checkpoint if we're expecting to resume from one
+    if args.resume_from is not None:
+        text_encoder = accelerator.unwrap_model(text_encoder)
+        text_encoder.load_state_dict(torch.load(basepath / "resume.ste"))
+
+    checkpointer = Checkpointer(
+        accelerator=accelerator,
+        vae=vae,
+        unet=unet,
+        tokenizer=tokenizer,
+        placeholder_token=args.placeholder_token,
+        placeholder_token_id=placeholder_token_id,
+        templates=templates,
+        output_dir=basepath,
+        sample_batch_size=args.sample_batch_size,
+        random_sample_batches=args.random_sample_batches,
+        stable_sample_batches=args.stable_sample_batches,
+        seed=args.seed
+    )
 
     if args.scale_lr:
         args.learning_rate = (
@@ -660,92 +715,106 @@ def main():
     progress_bar.set_description("Steps")
     global_step = 0
 
-    for epoch in range(args.num_train_epochs):
-        text_encoder.train()
-        for step, batch in enumerate(train_dataloader):
-            with accelerator.accumulate(text_encoder):
-                # Convert images to latent space
-                latents = vae.encode(batch["pixel_values"]).latent_dist.sample().detach().half()
-                latents = latents * 0.18215
+    try:
+        for epoch in range(args.num_train_epochs):
+            text_encoder.train()
+            for step, batch in enumerate(train_dataloader):
+                with accelerator.accumulate(text_encoder):
+                    # Convert images to latent space
+                    latents = vae.encode(batch["pixel_values"]).latent_dist.sample().detach().half()
+                    latents = latents * 0.18215
 
-                # Sample noise that we'll add to the latents
-                noise = torch.randn(latents.shape).to(latents.device)
-                bsz = latents.shape[0]
-                # Sample a random timestep for each image
-                timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bsz,), device=latents.device).long()
+                    # Sample noise that we'll add to the latents
+                    noise = torch.randn(latents.shape).to(latents.device)
+                    bsz = latents.shape[0]
+                    # Sample a random timestep for each image
+                    timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bsz,), device=latents.device).long()
 
-                # Add noise to the latents according to the noise magnitude at each timestep
-                # (this is the forward diffusion process)
-                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                    # Add noise to the latents according to the noise magnitude at each timestep
+                    # (this is the forward diffusion process)
+                    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
-                # Get the text embedding for conditioning
-                encoder_hidden_states = text_encoder(batch["input_ids"])[0]
+                    # Get the text embedding for conditioning
+                    encoder_hidden_states = text_encoder(batch["input_ids"])[0]
 
-                # Predict the noise residual
-                noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
+                    # Predict the noise residual
+                    noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
-                loss = F.mse_loss(noise_pred, noise, reduction="none").mean([1, 2, 3]).mean()
-                accelerator.backward(loss)
+                    loss = F.mse_loss(noise_pred, noise, reduction="none").mean([1, 2, 3]).mean()
+                    accelerator.backward(loss)
 
-                # Zero out the gradients for all token embeddings except the newly added
-                # embeddings for the concept, as we only want to optimize the concept embeddings
-                if accelerator.num_processes > 1:
-                    grads = text_encoder.module.get_input_embeddings().weight.grad
-                else:
-                    grads = text_encoder.get_input_embeddings().weight.grad
-                # Get the index for tokens that we want to zero the grads for
-                index_grads_to_zero = torch.arange(len(tokenizer)) != placeholder_token_id
-                grads.data[index_grads_to_zero, :] = grads.data[index_grads_to_zero, :].fill_(0)
+                    # Zero out the gradients for all token embeddings except the newly added
+                    # embeddings for the concept, as we only want to optimize the concept embeddings
+                    if accelerator.num_processes > 1:
+                        grads = text_encoder.module.get_input_embeddings().weight.grad
+                    else:
+                        grads = text_encoder.get_input_embeddings().weight.grad
+                    # Get the index for tokens that we want to zero the grads for
+                    index_grads_to_zero = torch.arange(len(tokenizer)) != placeholder_token_id
+                    grads.data[index_grads_to_zero, :] = grads.data[index_grads_to_zero, :].fill_(0)
 
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
+                    optimizer.step()
+                    lr_scheduler.step()
+                    optimizer.zero_grad()
 
-            # Checks if the accelerator has performed an optimization step behind the scenes
-            if accelerator.sync_gradients:
-                progress_bar.update(1)
-                global_step += 1
+                # Checks if the accelerator has performed an optimization step behind the scenes
+                if accelerator.sync_gradients:
+                    progress_bar.update(1)
+                    global_step += 1
 
-                if global_step % args.checkpoint_frequency == 0 and global_step > 0:
-                    print("Saving checkpoint...")
-                    checkpointer.checkpoint(global_step, text_encoder,
-                        args.resolution, args.resolution, 7.5, 0.0, 25)
+                    if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
+                        checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+                        checkpointer.save_samples(global_step + global_step_offset, text_encoder,
+                            args.resolution, args.resolution, 7.5, 0.0, 25)
 
-            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
-            progress_bar.set_postfix(**logs)
-            #accelerator.log(logs, step=global_step)
+                logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+                progress_bar.set_postfix(**logs)
+                #accelerator.log(logs, step=global_step)
 
-            if global_step >= args.max_train_steps:
-                break
+                if global_step >= args.max_train_steps:
+                    break
 
-        accelerator.wait_for_everyone()
+            accelerator.wait_for_everyone()
 
-    # Create the pipeline using using the trained modules and save it.
-    if accelerator.is_main_process:
-        pipeline = StableDiffusionPipeline(
-            text_encoder=accelerator.unwrap_model(text_encoder),
-            vae=vae,
-            unet=unet,
-            tokenizer=tokenizer,
-            scheduler=PNDMScheduler(
-                beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
-            ),
-            safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
-            feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
-        )
-        #pipeline.save_pretrained(args.output_dir)
-        # Also save the newly trained embeddings
-        learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
-        learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
-        torch.save(learned_embeds_dict, basepath / f"learned_embeds.bin")
-
-        if args.push_to_hub:
-            repo.push_to_hub(
-                args, pipeline, repo, commit_message="End of training", blocking=False, auto_lfs_prune=True
+        # Create the pipeline using using the trained modules and save it.
+        if accelerator.is_main_process:
+            pipeline = StableDiffusionPipeline(
+                text_encoder=accelerator.unwrap_model(text_encoder),
+                vae=vae,
+                unet=unet,
+                tokenizer=tokenizer,
+                scheduler=PNDMScheduler(
+                    beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
+                ),
+                safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
+                feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
             )
+            #pipeline.save_pretrained(args.output_dir)
+            # Also save the newly trained embeddings
+            learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
+            learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
+            torch.save(learned_embeds_dict, basepath / f"learned_embeds.bin")
+            if global_step % args.checkpoint_frequency != 0:
+                checkpointer.save_samples(global_step + global_step_offset, text_encoder,
+                                args.resolution, args.resolution, 7.5, 0.0, 25)
 
-    accelerator.end_training()
+            print("Saving resume state")
+            save_resume_state(accelerator, text_encoder, basepath, global_step + global_step_offset, args)
 
+            if args.push_to_hub:
+                repo.push_to_hub(
+                    args, pipeline, repo, commit_message="End of training", blocking=False, auto_lfs_prune=True)
+
+            accelerator.end_training()
+
+    except KeyboardInterrupt:
+        if accelerator.is_main_process:
+            print("Interrupted, saving checkpoint...")
+            checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+
+            print("Interrupted, saving resume state...")
+            save_resume_state(accelerator, text_encoder, basepath, global_step + global_step_offset, args)
+        raise
 
 if __name__ == "__main__":
     main()
