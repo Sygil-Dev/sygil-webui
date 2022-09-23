@@ -29,6 +29,7 @@ parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not
 parser.add_argument("--no-verify-input", action='store_true', help="do not verify input to check if it's too long", default=False)
 parser.add_argument("--optimized-turbo", action='store_true', help="alternative optimization mode that does not save as much VRAM but runs siginificantly faster")
 parser.add_argument("--optimized", action='store_true', help="load the model onto the device piecemeal instead of all at once to reduce VRAM usage at the cost of performance")
+parser.add_argument("--outdir_scn2img", type=str, nargs="?", help="dir to write scn2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write img2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
@@ -755,7 +756,7 @@ def check_prompt_length(prompt, comments):
 
 
 def save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False):
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False, custom_info_dict=None, custom_log_dump=None):
     ''' saves the image according to selected parameters. Expects to find generation parameters on image, set by ImageMetadata.set_on_image() '''
     metadata = ImageMetadata.get_from_image(image)
     if not skip_metadata and metadata is None:
@@ -770,43 +771,48 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
     else:
         image.save(f"{filename_i}.jpg", 'jpeg', quality=100, optimize=True)
     if write_info_files or write_sample_info_to_log_file:
-        # toggles differ for txt2img vs. img2img:
-        offset = 0 if init_img is None else 2
-        toggles = []
-        if prompt_matrix:
-            toggles.append(0)
-        if metadata.normalize_prompt_weights:
-            toggles.append(1)
-        if init_img is not None:
-            if uses_loopback:
-                toggles.append(2)
-            if uses_random_seed_loopback:
-                toggles.append(3)
-        if not skip_save:
-            toggles.append(2 + offset)
-        if not skip_grid:
-            toggles.append(3 + offset)
-        if sort_samples:
-            toggles.append(4 + offset)
-        if write_info_files:
-            toggles.append(5 + offset)
-        if write_sample_info_to_log_file:
-            toggles.append(6+offset)
-        if metadata.GFPGAN:
-            toggles.append(7 + offset)
+        info_dict = None
+        if custom_info_dict is not None:
+            info_dict = custom_info_dict
+        else:
+            # toggles differ for txt2img vs. img2img:
+            offset = 0 if init_img is None else 2
+            toggles = []
+            if prompt_matrix:
+                toggles.append(0)
+            if metadata.normalize_prompt_weights:
+                toggles.append(1)
+            if init_img is not None:
+                if uses_loopback:
+                    toggles.append(2)
+                if uses_random_seed_loopback:
+                    toggles.append(3)
+            if not skip_save:
+                toggles.append(2 + offset)
+            if not skip_grid:
+                toggles.append(3 + offset)
+            if sort_samples:
+                toggles.append(4 + offset)
+            if write_info_files:
+                toggles.append(5 + offset)
+            if write_sample_info_to_log_file:
+                toggles.append(6+offset)
+            if metadata.GFPGAN:
+                toggles.append(7 + offset)
 
-        info_dict = dict(
-            target="txt2img" if init_img is None else "img2img",
-            prompt=metadata.prompt, ddim_steps=metadata.steps, toggles=toggles, sampler_name=sampler_name,
-            ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=metadata.cfg_scale,
-            seed=metadata.seed, width=metadata.width, height=metadata.height
-        )
-        if init_img is not None:
-            # Not yet any use for these, but they bloat up the files:
-            #info_dict["init_img"] = init_img
-            #info_dict["init_mask"] = init_mask
-            info_dict["denoising_strength"] = denoising_strength
-            info_dict["resize_mode"] = resize_mode
+            info_dict = dict(
+                target="txt2img" if init_img is None else "img2img",
+                prompt=metadata.prompt, ddim_steps=metadata.steps, toggles=toggles, sampler_name=sampler_name,
+                ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=metadata.cfg_scale,
+                seed=metadata.seed, width=metadata.width, height=metadata.height
+            )
+            if init_img is not None:
+                # Not yet any use for these, but they bloat up the files:
+                #info_dict["init_img"] = init_img
+                #info_dict["init_mask"] = init_mask
+                info_dict["denoising_strength"] = denoising_strength
+                info_dict["resize_mode"] = resize_mode
+
         if write_info_files:
             with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
                 yaml.dump(info_dict, f, allow_unicode=True, width=10000)
@@ -815,20 +821,24 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
             ignore_list = ["prompt", "target", "toggles", "ddim_eta", "batch_size"]
             rename_dict = {"ddim_steps": "steps", "n_iter": "number", "sampler_name": "sampler"} #changes the name of parameters to match with dynamic parameters
             sample_log_path = os.path.join(sample_path_i, "log.yaml")
-            log_dump = info_dict.get("prompt") # making sure the first item that is listed in the txt is the prompt text
-            for key, value in info_dict.items():
-                if key in ignore_list:
-                    continue
-                found_key = rename_dict.get(key)
+            log_dump = ""
+            if custom_log_dump is not None:
+                log_dump = custom_log_dump
+            else:
+                log_dump = info_dict.get("prompt") # making sure the first item that is listed in the txt is the prompt text
+                for key, value in info_dict.items():
+                    if key in ignore_list:
+                        continue
+                    found_key = rename_dict.get(key)
 
-                if key == "cfg_scale": #adds zeros to to cfg_scale necessary for dynamic params
-                    value = str(value).zfill(2)
+                    if key == "cfg_scale": #adds zeros to to cfg_scale necessary for dynamic params
+                        value = str(value).zfill(2)
 
-                if found_key:
-                    key = found_key
-                log_dump += f" {key} {value}"
+                    if found_key:
+                        key = found_key
+                    log_dump += f" {key} {value}"
+                log_dump = log_dump + " \n" #space at the end for dynamic params to accept the last param
 
-            log_dump = log_dump + " \n" #space at the end for dynamic params to accept the last param
             with open(sample_log_path, "a", encoding="utf8") as log_file:
                 log_file.write(log_dump)
 
@@ -1320,7 +1330,7 @@ def process_images(
                     ImageMetadata.set_on_image( gfpgan_image, gfpgan_metadata )
                     gfpgan_filename = original_filename + '-gfpgan'
                     save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False, custom_info_dict=None, custom_log_dump=None)
                     output_images.append(gfpgan_image) #287
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan" )
@@ -1340,7 +1350,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     )
                     ImageMetadata.set_on_image( esrgan_image, metadata )
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False, custom_info_dict=None, custom_log_dump=None)
                     output_images.append(esrgan_image) #287
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\nesrgan" )
@@ -1362,7 +1372,7 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                     )
                     ImageMetadata.set_on_image(gfpgan_esrgan_image, metadata)
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False)
+skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, skip_metadata=False, custom_info_dict=None, custom_log_dump=None)
                     output_images.append(gfpgan_esrgan_image) #287
                     #if simple_templating:
                     #    grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
@@ -1380,7 +1390,7 @@ skip_save, skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, 
 
                 if not skip_save:
                     save_sample(image, sample_path_i, filename, jpg_sample, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, custom_info_dict=None, custom_log_dump=None)
                 if add_original_image or not simple_templating:
                     output_images.append(image)
                     if simple_templating:
@@ -1397,7 +1407,8 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                         steps_grid_filename = f"{original_filename}_step_grid"
                         save_sample(steps_grid, sample_path_i, steps_grid_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                     normalize_prompt_weights, use_GFPGAN, write_info_files, write_sample_info_to_log_file, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
-                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False)
+                                    skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False,
+                                    custom_info_dict=None, custom_log_dump=None)
 
             if opt.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
@@ -2060,13 +2071,19 @@ def scn2img_define_args():
 
 def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = None, job_info: JobInfo = None):
 
-    outpath = opt.outdir_img2img or opt.outdir or "outputs/scn2img-samples"
+    outpath = opt.outdir_scn2img or opt.outdir or "outputs/scn2img-samples"
     err = False
     seed = seed_to_int(seed)
 
     prompt = prompt or ''
-    output_intermediates = 0 in toggles
-    clear_cache = 1 in toggles
+    clear_cache = 0 in toggles
+    output_intermediates = 1 in toggles
+    skip_save = 2 not in toggles
+    write_info_files = 3 in toggles
+    write_sample_info_to_log_file = 4 in toggles
+    jpg_sample = 5 in toggles
+
+    os.makedirs(outpath, exist_ok=True)
 
     if clear_cache or scn2img_cache["seed"] != seed:
         scn2img_cache["seed"] = seed
@@ -2399,6 +2416,32 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         
         return scene
 
+    def save_sample_scn2img(img, obj):
+        base_count = get_next_sequence_number(outpath)
+        filename = "[SEED]_result"
+        filename = f"{base_count:05}-" + filename
+        filename = filename.replace("[SEED]", str(seed))
+        custom_info_dict = {
+            "prompt": prompt,
+            "scene_object": str(obj),
+            "seed": seed
+        }
+        custom_log_dump=" ".join(
+            map(lambda kv:" ".join(map(str,kv)), custom_info_dict.items())
+        )
+        save_sample(
+            img, 
+            outpath, 
+            filename,
+            jpg_sample, 
+            write_info_files, 
+            write_sample_info_to_log_file,
+            None, None, None, False, None, None, None, None, None, None, None, None, None, False, 
+            custom_info_dict=custom_info_dict,
+            custom_log_dump=custom_log_dump
+        )
+
+
     def render_scene(output_images, scene, seeds):
         def pose(pos, rotation, center):
             cs, sn = math.cos(rotation), math.sin(rotation)
@@ -2659,9 +2702,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             output_image_set.add(img_id)
             output_images.append(img)
 
-        def render_intermediate(img):
+        def render_intermediate(img, obj):
             if output_intermediates:
                 output_img(img)
+            if not skip_save:
+                save_sample_scn2img(img, obj)
             return img
 
         def render_image(seeds, obj):
@@ -2674,7 +2719,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             # if img is None: log_warn(f"result of render_image({obj}) is None")
-            img = render_intermediate(img)
+            img = render_intermediate(img, obj)
             return img
 
         def prepare_img2img_kwargs(seeds, obj, img):
@@ -2790,7 +2835,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img,
                 obj.children
             )
-            img = render_intermediate(img)
+            img = render_intermediate(img, obj)
 
             img2img_kwargs = prepare_img2img_kwargs(seeds, obj, img)
 
@@ -2836,7 +2881,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             if img is None: log_warn(f"result of render_img2img({obj}) is None")
-            img = render_intermediate(img)
+            img = render_intermediate(img, obj)
             return img
 
         def render_txt2img(seeds, obj):
@@ -2884,7 +2929,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             if img is None: log_warn(f"result of render_txt2img({obj}) is None")
-            img = render_intermediate(img)
+            img = render_intermediate(img, obj)
             return img
 
         def render_object(seeds, obj):
@@ -2930,13 +2975,17 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 result.append(render_object(seeds, obj))
             return result
 
-
         for img in render_scn2img(seeds, scene):
             if output_intermediates:
                 # img already in output, do nothing here
                 pass
             else:
                 output_img(img)
+
+            if skip_save:
+                # individual image save was skipped,
+                # we need to save them now
+                save_sample_scn2img(img, scene)
 
         
         return output_images
@@ -3348,7 +3397,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
 
                 if 1 not in imgproc_toggles:
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False, None, None)
             if 1 in imgproc_toggles:
                 if imgproc_upscale_toggles == 0:
                     image = processRealESRGAN(image)
@@ -3358,7 +3407,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False, None, None)
 
                 elif imgproc_upscale_toggles == 1:
                     image = processGoBig(image)
@@ -3368,7 +3417,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False, None, None)
 
                 elif imgproc_upscale_toggles == 2:
                     image = processLDSR(image)
@@ -3378,7 +3427,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     batchNumber = get_next_sequence_number(outpathDir)
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
-                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+                    save_sample(image, outpathDir, outFilename, False, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False, None, None)
 
                 elif imgproc_upscale_toggles == 3:
                     image = processGoBig(image)
@@ -3392,7 +3441,7 @@ def imgproc(image,image_batch,imgproc_prompt,imgproc_toggles, imgproc_upscale_to
                     outFilename = str(batchNumber)+'-'+'result'
                     output.append(image)
 
-                    save_sample(image, outpathDir, outFilename, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False)
+                    save_sample(image, outpathDir, outFilename, None, None, None, None, None, None, False, None, None, None, None, None, None, None, None, None, False, None, None)
 
     #LDSR is always unloaded to avoid memory issues
     #ModelLoader(['LDSR'],False,True)
@@ -3670,14 +3719,22 @@ img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles
 img2img_image_mode = 'sketch'
 
 scn2img_toggles = [
-    "Output intermediate images",
-    "Clear Cache"
+    'Clear Cache',
+    'Output intermediate images',
+    'Save individual images',
+    'Write sample info files',
+    'Write sample info to one file',
+    'jpg samples',
 ]
 scn2img_defaults = {
     'prompt': '',
     'seed': '',
-    'toggles': [0]
+    'toggles': [1, 2, 3]
 }
+
+if 'scn2img' in user_defaults:
+    scn2img_defaults.update(user_defaults['scn2img'])
+
 scn2img_toggle_defaults = [scn2img_toggles[i] for i in scn2img_defaults['toggles']]
 
 help_text = """
