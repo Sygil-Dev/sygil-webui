@@ -3,6 +3,7 @@ import itertools
 import math
 import os
 import random
+import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -19,12 +20,16 @@ from accelerate.utils import set_seed
 from diffusers import AutoencoderKL, DDPMScheduler, PNDMScheduler, StableDiffusionPipeline, UNet2DConditionModel
 from diffusers.optimization import get_scheduler
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from pipelines.stable_diffusion.no_check import NoCheck
 from huggingface_hub import HfFolder, Repository, whoami
 from PIL import Image
 from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
-
+from slugify import slugify
+import json
+import os
+import sys
 
 logger = get_logger(__name__)
 
@@ -55,7 +60,7 @@ def parse_args():
         help="A token to use as a placeholder for the concept.",
     )
     parser.add_argument(
-        "--initializer_token", type=str, default=None, required=True, help="A token to use as initializer word."
+        "--initializer_token", type=str, default=None,  required=True,help="A token to use as initializer word."
     )
     parser.add_argument("--learnable_property", type=str, default="object", help="Choose between 'object' and 'style'")
     parser.add_argument("--repeats", type=int, default=100, help="How many times to repeat the training data.")
@@ -63,6 +68,7 @@ def parse_args():
         "--output_dir",
         type=str,
         default="text-inversion-model",
+        required=True,
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
@@ -122,31 +128,6 @@ def parse_args():
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="The beta2 parameter for the Adam optimizer.")
     parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
-    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
-    parser.add_argument(
-        "--use_auth_token",
-        action="store_true",
-        help=(
-            "Will use the token generated when running `huggingface-cli login` (necessary to use this script with"
-            " private models)."
-        ),
-    )
-    parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
-    parser.add_argument(
-        "--hub_model_id",
-        type=str,
-        default=None,
-        help="The name of the repository to keep in sync with the local `output_dir`.",
-    )
-    parser.add_argument(
-        "--logging_dir",
-        type=str,
-        default="logs",
-        help=(
-            "[TensorBoard](https://www.tensorflow.org/tensorboard) log directory. Will default to"
-            " *output_dir/runs/**CURRENT_DATETIME_HOSTNAME***."
-        ),
-    )
     parser.add_argument(
         "--mixed_precision",
         type=str,
@@ -159,8 +140,47 @@ def parse_args():
         ),
     )
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
+    parser.add_argument(
+        "--checkpoint_frequency",
+        type=int,
+        default=500,
+        help="How often to save a checkpoint",
+    )
+    parser.add_argument(
+        "--custom_templates",
+        type=str,
+        default=None,
+        help=(
+            "A comma-delimited list of custom templates to use"
+        ),
+    )
+    parser.add_argument(
+        "--resume_from",
+        type=str,
+        default=None,
+        help="Path to a directory to resume training from (ie, logs/token_name/2022-09-22T23-36-27)"
+    )
+    parser.add_argument(
+        "--resume_checkpoint",
+        type=str,
+        default=None,
+        help="Path to a specific checkpoint to resume training from (ie, logs/token_name/2022-09-22T23-36-27/checkpoints/something.bin)."
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to a JSON config file specifying the arguments to use. If resume_from is given, it is automatically inferred."
+    )
 
     args = parser.parse_args()
+    if args.config is not None:
+        with open(args.config, 'rt') as f:
+            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)))
+    elif args.resume_from is not None:
+        with open(f"{args.resume_from}/resume.json", 'rt') as f:
+            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
+
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
         args.local_rank = env_local_rank
@@ -237,6 +257,7 @@ class TextualInversionDataset(Dataset):
         set="train",
         placeholder_token="*",
         center_crop=False,
+        templates=None
     ):
 
         self.data_root = data_root
@@ -247,7 +268,7 @@ class TextualInversionDataset(Dataset):
         self.center_crop = center_crop
         self.flip_p = flip_p
 
-        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root)]
+        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root) if file_path.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
         self.num_images = len(self.image_paths)
         self._length = self.num_images
@@ -262,7 +283,7 @@ class TextualInversionDataset(Dataset):
             "lanczos": PIL.Image.LANCZOS,
         }[interpolation]
 
-        self.templates = imagenet_style_templates_small if learnable_property == "style" else imagenet_templates_small
+        self.templates = templates
         self.flip_transform = transforms.RandomHorizontalFlip(p=self.flip_p)
 
     def __len__(self):
@@ -308,24 +329,77 @@ class TextualInversionDataset(Dataset):
         return example
 
 
-def get_full_repo_name(model_id: str, organization: Optional[str] = None, token: Optional[str] = None):
-    if token is None:
-        token = HfFolder.get_token()
-    if organization is None:
-        username = whoami(token)["name"]
-        return f"{username}/{model_id}"
-    else:
-        return f"{organization}/{model_id}"
-
-
 def freeze_params(params):
     for param in params:
         param.requires_grad = False
 
 
+def save_resume_file(basepath, args, extra = {}):
+    info = {"args": vars(args)}
+    info["args"].update(extra)
+    with open(f"{basepath}/resume.json", "w") as f:
+        json.dump(info, f, indent=4)
+
+
+class Checkpointer:
+    def __init__(
+        self,
+        accelerator,
+        vae,
+        unet,
+        tokenizer,
+        placeholder_token,
+        placeholder_token_id,
+        templates,
+        output_dir,
+        seed
+    ):
+        self.accelerator = accelerator
+        self.vae = vae
+        self.unet = unet
+        self.tokenizer = tokenizer
+        self.placeholder_token = placeholder_token
+        self.placeholder_token_id = placeholder_token_id
+        self.templates = templates
+        self.output_dir = output_dir
+        self.seed = seed
+
+
+    def checkpoint(self, step, text_encoder):
+        print("Saving checkpoint for step %d..." % step)
+        with torch.autocast("cuda"):
+            checkpoints_path = f"{self.output_dir}/checkpoints"
+            os.makedirs(checkpoints_path, exist_ok=True)
+
+            unwrapped = self.accelerator.unwrap_model(text_encoder)
+
+            # Save a checkpoint
+            learned_embeds = unwrapped.get_input_embeddings().weight[self.placeholder_token_id]
+            learned_embeds_dict = {self.placeholder_token: learned_embeds.detach().cpu()}
+
+            filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
+            torch.save(learned_embeds_dict, f"{checkpoints_path}/{filename}")
+            torch.save(learned_embeds_dict, f"{checkpoints_path}/last.bin")
+            del unwrapped
+            return f"{checkpoints_path}/last.bin"
+
 def main():
     args = parse_args()
-    #logging_dir = os.path.join(args.output_dir, args.logging_dir)
+
+    global_step_offset = 0
+    if args.resume_from is not None:
+        basepath = f"{args.resume_from}"
+        print("Resuming state from %s" % args.resume_from)
+        with open(f"{basepath}/resume.json", 'r') as f:
+            state = json.load(f)
+        global_step_offset = state["args"]["global_step"]
+
+        print("We've trained %d steps so far" % global_step_offset)
+    else:
+        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        basepath = f"{args.output_dir}/{slugify(args.placeholder_token)}/{now}"
+        os.makedirs(basepath, exist_ok=True)
+
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -335,23 +409,6 @@ def main():
     # If passed along, set the training seed now.
     if args.seed is not None:
         set_seed(args.seed)
-
-    # Handle the repository creation
-    if accelerator.is_main_process:
-        if args.push_to_hub:
-            if args.hub_model_id is None:
-                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
-            else:
-                repo_name = args.hub_model_id
-            repo = Repository(args.output_dir, clone_from=repo_name)
-
-            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
-                if "step_*" not in gitignore:
-                    gitignore.write("step_*\n")
-                if "epoch_*" not in gitignore:
-                    gitignore.write("epoch_*\n")
-        elif args.output_dir is not None:
-            os.makedirs(args.output_dir, exist_ok=True)
 
     # Load the tokenizer and add the placeholder token as a additional special token
     if args.tokenizer_name:
@@ -380,14 +437,21 @@ def main():
 
     # Load models and create wrapper for stable diffusion
     text_encoder = CLIPTextModel.from_pretrained(
-        args.pretrained_model_name_or_path + '/text_encoder',  
+        args.pretrained_model_name_or_path + '/text_encoder',
     )
     vae = AutoencoderKL.from_pretrained(
-        args.pretrained_model_name_or_path + '/vae',  
+        args.pretrained_model_name_or_path + '/vae',
     )
     unet = UNet2DConditionModel.from_pretrained(
-        args.pretrained_model_name_or_path + '/unet',  
+        args.pretrained_model_name_or_path + '/unet',
     )
+
+    base_templates = imagenet_style_templates_small if args.learnable_property == "style" else imagenet_templates_small
+    if args.custom_templates:
+        templates = args.custom_templates.split(",")
+    else:
+        templates = base_templates
+
     slice_size = unet.config.attention_head_dim // 2
     unet.set_attention_slice(slice_size)
 #    vae = vae.to("cuda").half()
@@ -397,7 +461,11 @@ def main():
 
     # Initialise the newly added placeholder token with the embeddings of the initializer token
     token_embeds = text_encoder.get_input_embeddings().weight.data
-    token_embeds[placeholder_token_id] = token_embeds[initializer_token_id]
+
+    if args.resume_checkpoint is not None:
+        token_embeds[placeholder_token_id] = torch.load(args.resume_checkpoint)[args.placeholder_token]
+    else:
+        token_embeds[placeholder_token_id] = token_embeds[initializer_token_id]
 
     # Freeze vae and unet
     freeze_params(vae.parameters())
@@ -409,6 +477,18 @@ def main():
         text_encoder.text_model.embeddings.position_embedding.parameters(),
     )
     freeze_params(params_to_freeze)
+
+    checkpointer = Checkpointer(
+        accelerator=accelerator,
+        vae=vae,
+        unet=unet,
+        tokenizer=tokenizer,
+        placeholder_token=args.placeholder_token,
+        placeholder_token_id=placeholder_token_id,
+        templates=templates,
+        output_dir=basepath,
+        seed=args.seed
+    )
 
     if args.scale_lr:
         args.learning_rate = (
@@ -438,6 +518,7 @@ def main():
         learnable_property=args.learnable_property,
         center_crop=args.center_crop,
         set="train",
+        templates=templates
     )
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
 
@@ -494,87 +575,92 @@ def main():
     progress_bar.set_description("Steps")
     global_step = 0
 
-    for epoch in range(args.num_train_epochs):
-        text_encoder.train()
-        for step, batch in enumerate(train_dataloader):
-            with accelerator.accumulate(text_encoder):
-                # Convert images to latent space
-                latents = vae.encode(batch["pixel_values"]).latent_dist.sample().detach().half()
-                latents = latents * 0.18215
+    try:
+        for epoch in range(args.num_train_epochs):
+            text_encoder.train()
+            for step, batch in enumerate(train_dataloader):
+                with accelerator.accumulate(text_encoder):
+                    # Convert images to latent space
+                    latents = vae.encode(batch["pixel_values"]).latent_dist.sample().detach().half()
+                    latents = latents * 0.18215
 
-                # Sample noise that we'll add to the latents
-                noise = torch.randn(latents.shape).to(latents.device)
-                bsz = latents.shape[0]
-                # Sample a random timestep for each image
-                timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bsz,), device=latents.device).long()
+                    # Sample noise that we'll add to the latents
+                    noise = torch.randn(latents.shape).to(latents.device)
+                    bsz = latents.shape[0]
+                    # Sample a random timestep for each image
+                    timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bsz,), device=latents.device).long()
 
-                # Add noise to the latents according to the noise magnitude at each timestep
-                # (this is the forward diffusion process)
-                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                    # Add noise to the latents according to the noise magnitude at each timestep
+                    # (this is the forward diffusion process)
+                    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
-                # Get the text embedding for conditioning
-                encoder_hidden_states = text_encoder(batch["input_ids"])[0]
+                    # Get the text embedding for conditioning
+                    encoder_hidden_states = text_encoder(batch["input_ids"])[0]
 
-                # Predict the noise residual
-                noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
+                    # Predict the noise residual
+                    noise_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
-                loss = F.mse_loss(noise_pred, noise, reduction="none").mean([1, 2, 3]).mean()
-                accelerator.backward(loss)
+                    loss = F.mse_loss(noise_pred, noise, reduction="none").mean([1, 2, 3]).mean()
+                    accelerator.backward(loss)
 
-                # Zero out the gradients for all token embeddings except the newly added
-                # embeddings for the concept, as we only want to optimize the concept embeddings
-                if accelerator.num_processes > 1:
-                    grads = text_encoder.module.get_input_embeddings().weight.grad
-                else:
-                    grads = text_encoder.get_input_embeddings().weight.grad
-                # Get the index for tokens that we want to zero the grads for
-                index_grads_to_zero = torch.arange(len(tokenizer)) != placeholder_token_id
-                grads.data[index_grads_to_zero, :] = grads.data[index_grads_to_zero, :].fill_(0)
+                    # Zero out the gradients for all token embeddings except the newly added
+                    # embeddings for the concept, as we only want to optimize the concept embeddings
+                    if accelerator.num_processes > 1:
+                        grads = text_encoder.module.get_input_embeddings().weight.grad
+                    else:
+                        grads = text_encoder.get_input_embeddings().weight.grad
+                    # Get the index for tokens that we want to zero the grads for
+                    index_grads_to_zero = torch.arange(len(tokenizer)) != placeholder_token_id
+                    grads.data[index_grads_to_zero, :] = grads.data[index_grads_to_zero, :].fill_(0)
 
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
+                    optimizer.step()
+                    lr_scheduler.step()
+                    optimizer.zero_grad()
 
-            # Checks if the accelerator has performed an optimization step behind the scenes
-            if accelerator.sync_gradients:
-                progress_bar.update(1)
-                global_step += 1
+                # Checks if the accelerator has performed an optimization step behind the scenes
+                if accelerator.sync_gradients:
+                    progress_bar.update(1)
+                    global_step += 1
+                
+                if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
+                    checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+                    save_resume_file(basepath, args, {
+                    "global_step": global_step + global_step_offset,
+                    "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+                    })
+                
+                logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+                progress_bar.set_postfix(**logs)
+                #accelerator.log(logs, step=global_step)
 
-            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
-            progress_bar.set_postfix(**logs)
-            #accelerator.log(logs, step=global_step)
+                if global_step >= args.max_train_steps:
+                    break
 
-            if global_step >= args.max_train_steps:
-                break
+            accelerator.wait_for_everyone()
 
-        accelerator.wait_for_everyone()
+        # Create the pipeline using using the trained modules and save it.
+        if accelerator.is_main_process:
+            learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
+            learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
+            torch.save(learned_embeds_dict, f"{basepath}/learned_embeds.bin")
 
-    # Create the pipeline using using the trained modules and save it.
-    if accelerator.is_main_process:
-        pipeline = StableDiffusionPipeline(
-            text_encoder=accelerator.unwrap_model(text_encoder),
-            vae=vae,
-            unet=unet,
-            tokenizer=tokenizer,
-            scheduler=PNDMScheduler(
-                beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
-            ),
-            safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
-            feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
-        )
-        #pipeline.save_pretrained(args.output_dir)
-        # Also save the newly trained embeddings
-        learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
-        learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
-        torch.save(learned_embeds_dict, os.path.join(args.train_data_dir, f"learned_embeds.bin"))
+            print("Saving resume state")
+            save_resume_file(basepath, args, {
+                "global_step": global_step + global_step_offset,
+                "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
+            })
 
-        if args.push_to_hub:
-            repo.push_to_hub(
-                args, pipeline, repo, commit_message="End of training", blocking=False, auto_lfs_prune=True
-            )
+            accelerator.end_training()
 
-    accelerator.end_training()
-
+    except KeyboardInterrupt:
+        if accelerator.is_main_process:
+            print("Interrupted, saving checkpoint and resume state...")
+            checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+            save_resume_file(basepath, args, {
+                "global_step": global_step + global_step_offset,
+                "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
+            })
+        quit()
 
 if __name__ == "__main__":
     main()
