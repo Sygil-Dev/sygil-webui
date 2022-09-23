@@ -142,7 +142,13 @@ def diffuse(
 
 			if st.session_state['defaults'].txt2vid.update_preview_frequency == step_counter or step_counter == st.session_state.sampling_steps:
 				if st.session_state.dynamic_preview_frequency:
-					st.session_state["current_chunk_speed"], st.session_state["previous_chunk_speed_list"], st.session_state['defaults'].txt2vid.update_preview_frequency, st.session_state["avg_update_preview_frequency"] = optimize_update_preview_frequency(st.session_state["current_chunk_speed"], st.session_state["previous_chunk_speed_list"], st.session_state['defaults'].txt2vid.update_preview_frequency, st.session_state["update_preview_frequency_list"])   
+					st.session_state["current_chunk_speed"], 
+					st.session_state["previous_chunk_speed_list"],
+					st.session_state['defaults'].txt2vid.update_preview_frequency,
+					st.session_state["avg_update_preview_frequency"] = optimize_update_preview_frequency(st.session_state["current_chunk_speed"],
+					                                                                                     st.session_state["previous_chunk_speed_list"], 
+					                                                                                     st.session_state['defaults'].txt2vid.update_preview_frequency, 
+					                                                                                     st.session_state["update_preview_frequency_list"])   
 
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
@@ -154,7 +160,7 @@ def diffuse(
 
 				st.session_state["preview_image"].image(image2)
 
-				step_counter = 0
+				step_counter = 0	
 				
 		duration = timeit.default_timer() - start
 
@@ -183,6 +189,15 @@ def diffuse(
 					f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
 		)
 		st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+		
+	#scale and decode the image latents with vae
+	cond_latents_2 = 1 / 0.18215 * cond_latents
+	image = pipe.vae.decode(cond_latents_2)
+
+	# generate output numpy image as uint8
+	image = torch.clamp((image["sample"] + 1.0) / 2.0, min=0.0, max=1.0)
+	image2 = transforms.ToPILImage()(image.squeeze_(0))
+	
 
 	return image2
 

@@ -410,7 +410,9 @@ def layout():
 						help=""
 					)
 			noise_mode = noise_mode_list.index(noise_mode)
-			find_noise_steps = st.slider("Find Noise Steps", value=100, min_value=1, max_value=500)
+			find_noise_steps = st.slider("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
+										 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value, max_value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
+										 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 			batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].img2img.batch_count.min_value, max_value=st.session_state['defaults'].img2img.batch_count.max_value,
 									value=st.session_state['defaults'].img2img.batch_count.value, step=st.session_state['defaults'].img2img.batch_count.step,
 								help="How many iterations or batches of images to generate in total.")
@@ -462,8 +464,10 @@ def layout():
 								       help="How many images are at once in a batch. It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish \
 									       generation as more images are generated at once.Default: 1")
 	
-				st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength, 
-												   min_value=0.01, max_value=1.0, step=0.01)
+				st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength.value, 
+												   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
+												   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
+												   step=st.session_state['defaults'].img2img.denoising_strength.step)
 	
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].img2img.update_preview,

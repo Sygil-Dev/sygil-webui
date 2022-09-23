@@ -1424,6 +1424,8 @@ skip_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoisin
                 grid_count = get_next_sequence_number(outpath, 'grid-')
                 grid_file = f"grid-{grid_count:05}-{seed}_{prompts[i].replace(' ', '_').translate({ord(x): '' for x in invalid_filename_chars})[:128]}.{grid_ext}"
                 grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
+                if prompt_matrix:
+                    output_images.append(grid)
 
         toc = time.time()
 
