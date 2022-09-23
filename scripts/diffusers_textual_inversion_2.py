@@ -199,6 +199,12 @@ def parse_args():
         help="Path to a directory to resume training from (ie, logs/token_name/2022-09-22T23-36-27)"
     )
     parser.add_argument(
+        "--resume_checkpoint",
+        type=str,
+        default=None,
+        help="Path to a specific checkpoint to resume training from (ie, logs/token_name/2022-09-22T23-36-27/checkpoints/something.bin)."
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=None,
@@ -376,6 +382,13 @@ def freeze_params(params):
         param.requires_grad = False
 
 
+def save_resume_file(basepath, args, extra = {}):
+    info = {"args": vars(args)}
+    info["args"].update(extra)
+    with open(Path(basepath) / "resume.json", "w") as f:
+        json.dump(info, f, indent=4)
+
+
 class Checkpointer:
     def __init__(
         self,
@@ -420,7 +433,9 @@ class Checkpointer:
 
             filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
             torch.save(learned_embeds_dict, checkpoints_path / filename)
+            torch.save(learned_embeds_dict, checkpoints_path / "last.bin")
             del unwrapped
+            return checkpoints_path / "last.bin"
 
 
     def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
@@ -490,18 +505,6 @@ class Checkpointer:
             del unwrapped
 
 
-def save_resume_state(accelerator, text_encoder, basepath, global_step, args):
-    accelerator.wait_for_everyone()
-    unwrapped_model = accelerator.unwrap_model(text_encoder)
-    accelerator.save(unwrapped_model.state_dict(), basepath / f"resume.ste")
-    info = {
-        "global_step": global_step,
-        "args": vars(args)
-    }
-    with open(basepath / f"resume.json", 'w') as f:
-        json.dump(info, f, indent=4)
-
-
 def main():
     args = parse_args()
 
@@ -511,7 +514,7 @@ def main():
         print("Resuming state from %s" % args.resume_from)
         with open(basepath / "resume.json", 'r') as f:
             state = json.load(f)
-        global_step_offset = state["global_step"]
+        global_step_offset = state["args"]["global_step"]
 
         print("We've trained %d steps so far" % global_step_offset)
     else:
@@ -597,7 +600,11 @@ def main():
 
     # Initialise the newly added placeholder token with the embeddings of the initializer token
     token_embeds = text_encoder.get_input_embeddings().weight.data
-    token_embeds[placeholder_token_id] = token_embeds[initializer_token_id]
+
+    if args.resume_checkpoint is not None:
+        token_embeds[placeholder_token_id] = torch.load(args.resume_checkpoint)[args.placeholder_token]
+    else:
+        token_embeds[placeholder_token_id] = token_embeds[initializer_token_id]
 
     # Freeze vae and unet
     freeze_params(vae.parameters())
@@ -609,11 +616,6 @@ def main():
         text_encoder.text_model.embeddings.position_embedding.parameters(),
     )
     freeze_params(params_to_freeze)
-
-    # Resume from a checkpoint if we're expecting to resume from one
-    if args.resume_from is not None:
-        text_encoder = accelerator.unwrap_model(text_encoder)
-        text_encoder.load_state_dict(torch.load(basepath / "resume.ste"))
 
     checkpointer = Checkpointer(
         accelerator=accelerator,
@@ -764,6 +766,10 @@ def main():
 
                     if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
                         checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+                        save_resume_file(basepath, args, {
+                            "global_step": global_step + global_step_offset,
+                            "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+                        })
                         checkpointer.save_samples(global_step + global_step_offset, text_encoder,
                             args.resolution, args.resolution, 7.5, 0.0, 25)
 
@@ -799,7 +805,10 @@ def main():
                                 args.resolution, args.resolution, 7.5, 0.0, 25)
 
             print("Saving resume state")
-            save_resume_state(accelerator, text_encoder, basepath, global_step + global_step_offset, args)
+            save_resume_file(basepath, args, {
+                "global_step": global_step + global_step_offset,
+                "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+            })
 
             if args.push_to_hub:
                 repo.push_to_hub(
@@ -809,12 +818,13 @@ def main():
 
     except KeyboardInterrupt:
         if accelerator.is_main_process:
-            print("Interrupted, saving checkpoint...")
+            print("Interrupted, saving checkpoint and resume state...")
             checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
-
-            print("Interrupted, saving resume state...")
-            save_resume_state(accelerator, text_encoder, basepath, global_step + global_step_offset, args)
-        raise
+            save_resume_file(basepath, args, {
+                "global_step": global_step + global_step_offset,
+                "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+            })
+        quit()
 
 if __name__ == "__main__":
     main()
