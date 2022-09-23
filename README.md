@@ -2,7 +2,7 @@
 
 ## [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
 
-## Installation instructions for [Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.installation.html), [Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/1.linux-installation.html)
+## Installation instructions for [Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.installation.html), [Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.md)
 
 ### Want to ask a question or request a feature?
 
