@@ -4,9 +4,10 @@ services:
   stable-diffusion:
     container_name: sd-webui
     image:  stable-diffusion-webui:dev
-
+    build:
+      context: .
+      dockerfile: Dockerfile
     env_file: .env_docker
-
     volumes:
       - .:/sd
       - ./outputs:/sd/outputs
@@ -15,6 +16,11 @@ services:
     ports:
       - '7860:7860'
       - '8501:8501'
+    healthcheck:
+      test: curl --fail http://localhost:8501 --head || curl --fail http://localhost:7860 --head || echo 1
+      interval: 30s
+      timeout: 1s
+      retries: 10
     deploy:
       resources:
         reservations:
