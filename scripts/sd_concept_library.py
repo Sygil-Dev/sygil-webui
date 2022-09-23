@@ -137,7 +137,6 @@ def layout():
 
 	# Concept Library
 	with tab_library:
-		print("Concept Library")
 		downloaded_concepts_count = getTotalNumberOfConcepts()
 		concepts_per_page = 12
 
@@ -157,10 +156,8 @@ def layout():
 
 		# Search bar
 		search_text_input = st.text_input("", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
-		print("search_text_input:", search_text_input, "st.session_state[cl_search_text]:", st.session_state["cl_search_text"])
 		if search_text_input != st.session_state["cl_search_text"]:
 			# Search text has changed
-			print("Search text has changed for:", search_text_input)
 			st.session_state["cl_search_text"] = search_text_input
 			st.session_state["cl_current_page"] = 1
 			st.session_state["cl_search_results_count"] = getTotalNumberOfConcepts(st.session_state["cl_search_text"])
