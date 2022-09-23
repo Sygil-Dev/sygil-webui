@@ -397,7 +397,9 @@ class Checkpointer:
 
             filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
             torch.save(learned_embeds_dict, checkpoints_path / filename)
+            torch.save(learned_embeds_dict, checkpoints_path / "last.bin")
             del unwrapped
+            return checkpoints_path / "last.bin"
 
 
     def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
@@ -467,18 +469,6 @@ class Checkpointer:
             del unwrapped
 
 
-def save_resume_state(accelerator, text_encoder, basepath, global_step, args):
-    accelerator.wait_for_everyone()
-    unwrapped_model = accelerator.unwrap_model(text_encoder)
-    accelerator.save(unwrapped_model.state_dict(), basepath / f"resume.ste")
-    info = {
-        "global_step": global_step,
-        "args": vars(args)
-    }
-    with open(basepath / f"resume.json", 'w') as f:
-        json.dump(info, f, indent=4)
-
-
 def main():
     args = parse_args()
 
@@ -488,7 +478,7 @@ def main():
         print("Resuming state from %s" % args.resume_from)
         with open(basepath / "resume.json", 'r') as f:
             state = json.load(f)
-        global_step_offset = state["global_step"]
+        global_step_offset = state["args"]["global_step"]
 
         print("We've trained %d steps so far" % global_step_offset)
     else:
@@ -720,14 +710,16 @@ def main():
                 if accelerator.sync_gradients:
                     progress_bar.update(1)
                     global_step += 1
-                
-                if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
-                    checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
-                    save_resume_file(basepath, args, {
-                    "global_step": global_step + global_step_offset,
-                    "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
-                    })
-                
+
+                    if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
+                        checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+                        save_resume_file(basepath, args, {
+                            "global_step": global_step + global_step_offset,
+                            "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+                        })
+                        checkpointer.save_samples(global_step + global_step_offset, text_encoder,
+                            args.resolution, args.resolution, 7.5, 0.0, 25)
+
                 logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
                 progress_bar.set_postfix(**logs)
                 #accelerator.log(logs, step=global_step)
