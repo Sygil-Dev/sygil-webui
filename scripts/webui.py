@@ -2547,17 +2547,23 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img.getchannel("A")
                 if img is not None
                 and input_mask is None 
-                else input_mask
+                else None
             )
+            changed_mask = False
 
             def combine_masks(old_mask, new_mask, mode):
                 return new_mask
 
             combine_mode = 1
 
+            if input_mask is not None:
+                mask = input_mask
+                changed_mask = True
+
             if "mask_value" in obj:
                 new_value = obj["mask_value"]
                 mask.paste( new_value, mask.getbbox() )
+                changed_mask = True
 
             if ("mask_by_color" in obj or "mask_by_color_at" in obj) and img is not None:
                 img_arr = np.asarray(img.convert("RGB"))
@@ -2596,6 +2602,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 dist = np.max(np.abs(img_arr - reference_color),axis=2)
                 mask_arr = (dist < threshold).astype(np.uint8) * 255
                 mask = Image.fromarray(mask_arr)
+                changed_mask = True
 
             if obj["mask_depth"]:
                 mask_depth_min = obj["mask_depth_min"] or 0.2
@@ -2605,34 +2612,57 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 if res is not None:
                     mask = res[0]
                     mask = mask.resize(img.size)
+                    changed_mask = True
 
             if "mask_open" in obj:
                 mask = mask.filter(ImageFilter.MinFilter(obj["mask_open"]))
                 mask = mask.filter(ImageFilter.MaxFilter(obj["mask_open"]))
+                changed_mask = True
 
             if "mask_close" in obj:
                 mask = mask.filter(ImageFilter.MaxFilter(obj["mask_close"]))
                 mask = mask.filter(ImageFilter.MinFilter(obj["mask_close"]))
+                changed_mask = True
 
             if "mask_grow" in obj:
                 mask = mask.filter(ImageFilter.MaxFilter(obj["mask_grow"]))
+                changed_mask = True
 
             if "mask_shrink" in obj:
                 mask = mask.filter(ImageFilter.MinFilter(obj["mask_shrink"]))
+                changed_mask = True
 
             if "mask_blur" in obj:
                 mask = mask.filter(ImageFilter.GaussianBlur(obj["mask_blur"]))
+                changed_mask = True
 
             if obj["mask_invert"]:
                 mask = ImageChops.invert(mask)
+                changed_mask = True
 
-            if img is not None and mask is not None:
+            if changed_mask and img is not None and mask is not None:
                 img.putalpha(mask)
             
             if img is not None:
                 return img
             else:
                 return mask
+
+        # remember output images, to avoid duplicates
+        output_image_set = set()
+
+        def output_img(img):
+            if img is None: return
+            img_id = id(img)
+            if img_id in output_image_set:
+                return img
+            output_image_set.add(img_id)
+            output_images.append(img)
+
+        def render_intermediate(img):
+            if output_intermediates:
+                output_img(img)
+            return img
 
         def render_image(seeds, obj):
             img = create_image(obj["size"], obj["color"])
@@ -2644,6 +2674,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             # if img is None: log_warn(f"result of render_image({obj}) is None")
+            img = render_intermediate(img)
             return img
 
         def prepare_img2img_kwargs(seeds, obj, img):
@@ -2688,8 +2719,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     log_info(f"Using seed variation {v}: {ns}")
                     img2img_kwargs["seed"] = ns
                 
-            # img2img_kwargs["job_info"] = job_info
-            img2img_kwargs["job_info"] = None
+            img2img_kwargs["job_info"] = job_info
+            # img2img_kwargs["job_info"] = None
             img2img_kwargs["fp"] = fp
             img2img_kwargs["init_info"] = img
             if img2img_kwargs["image_editor_mode"] == "Mask":
@@ -2741,8 +2772,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                     log_info(f"Using seed variation {v}: {ns}")
                     txt2img_kwargs["seed"] = ns
 
-            # txt2img_kwargs["job_info"] = job_info
-            txt2img_kwargs["job_info"] = None
+            txt2img_kwargs["job_info"] = job_info
+            # txt2img_kwargs["job_info"] = None
             txt2img_kwargs["fp"] = fp
 
             log_info("txt2img_kwargs")
@@ -2759,6 +2790,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 img,
                 obj.children
             )
+            img = render_intermediate(img)
 
             img2img_kwargs = prepare_img2img_kwargs(seeds, obj, img)
 
@@ -2768,23 +2800,43 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 exclude_args = {"select", "pos", "rotation"}
             )
             if obj_hash not in scn2img_cache["cache"]:
+                if job_info: count_images_before = len(job_info.images)
                 outputs, seed, info, stats = img2img(
                     **img2img_kwargs
                 )
+                if job_info: 
+                    # img2img will output into job_info.images.
+                    # we want to cache only the new images.
+                    # extract new images and remove them from job_info.images.
+                    assert(job_info.images == outputs)
+                    outputs = job_info.images[count_images_before:]
+                    outputs = [img.convert("RGBA") for img in outputs]
+                    num_new = len(outputs)
+                    # use images.pop so that images list is modified inplace and stays the same object.
+                    for k in range(num_new): 
+                        job_info.images.pop()
                 scn2img_cache["cache"][obj_hash] = outputs, seed, info, stats
             
             outputs, seed, info, stats = scn2img_cache["cache"][obj_hash]
 
+            for img in outputs:
+                output_img(img)
+
             log_info("outputs", outputs)
 
+            # select img from outputs
             if len(outputs) > 0:
                 select = obj["select"] or 0
                 img = outputs[select]
-                img = img.convert("RGBA")
+            else:
+                # no outputs, so we just use (the input) img without modifying it
+                # img = img
+                pass
 
             img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             if img is None: log_warn(f"result of render_img2img({obj}) is None")
+            img = render_intermediate(img)
             return img
 
         def render_txt2img(seeds, obj):
@@ -2797,40 +2849,56 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 exclude_args = {"select", "pos", "rotation"}
             )
             if obj_hash not in scn2img_cache["cache"]:
+                if job_info: count_images_before = len(job_info.images)
                 outputs, seed, info, stats = txt2img(
                     **txt2img_kwargs
                 )
+                if job_info: 
+                    # txt2img will output into job_info.images.
+                    # we want to cache only the new images.
+                    # extract new images and remove them from job_info.images.
+                    assert(job_info.images == outputs)
+                    outputs = job_info.images[count_images_before:]
+                    outputs = [img.convert("RGBA") for img in outputs]
+                    num_new = len(outputs)
+                    # use images.pop so that images list is modified inplace and stays the same object.
+                    for k in range(num_new): 
+                        job_info.images.pop()
                 scn2img_cache["cache"][obj_hash] = outputs, seed, info, stats
             
             outputs, seed, info, stats = scn2img_cache["cache"][obj_hash]
 
+            for img in outputs:
+                output_img(img)
+
             log_info("outputs", outputs)
 
+            # select img from outputs
             if len(outputs) > 0:
                 select = obj["select"] or 0
                 img = outputs[select]
-                img = img.convert("RGBA")
+            else:
+                # no outputs, so we use None 
+                img = None
 
             img = render_mask(seeds, obj, img)
             img = resize_image(img, obj["resize"], obj["crop"])
             if img is None: log_warn(f"result of render_txt2img({obj}) is None")
+            img = render_intermediate(img)
             return img
 
-        output_image_set = set()
         def render_object(seeds, obj):
             # log_trace(f"render_object({str(obj)})")
             def result(img):
-                if output_intermediates and img is not None:
-                    img_id = id(img)
-                    if img_id not in output_image_set:
-                        output_images.append(img)
-                        output_image_set.add(img_id)
                 return img
 
             if "initial_seed" in obj:
                 seeds = gen_seeds(obj["initial_seed"])
 
-            if obj.func == "scene" or obj.func == "image":
+            if obj.func == "scene":
+                assert(len(obj.children) == 1)
+                return render_object(seeds, obj.children[0])
+            elif obj.func == "image":
                 return result(render_image(seeds, obj))
             elif obj.func == "img2img":
                 return result(render_img2img(seeds, obj))
@@ -2864,12 +2932,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
 
         for img in render_scn2img(seeds, scene):
-            if img is None: 
-                continue
-            img_id = id(img)
-            if img_id not in output_image_set:
-                output_images.append(img)
-                output_image_set.add(img_id)
+            if output_intermediates:
+                # img already in output, do nothing here
+                pass
+            else:
+                output_img(img)
 
         
         return output_images
