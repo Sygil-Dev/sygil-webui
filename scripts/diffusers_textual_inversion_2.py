@@ -40,7 +40,6 @@ def parse_args():
         "--pretrained_model_name_or_path",
         type=str,
         default=None,
-        required=True,
         help="Path to pretrained model or model identifier from huggingface.co/models.",
     )
     parser.add_argument(
@@ -50,17 +49,16 @@ def parse_args():
         help="Pretrained tokenizer name or path if not the same as model_name",
     )
     parser.add_argument(
-        "--train_data_dir", type=str, default=None, required=True, help="A folder containing the training data."
+        "--train_data_dir", type=str, default=None, help="A folder containing the training data."
     )
     parser.add_argument(
         "--placeholder_token",
         type=str,
         default=None,
-        required=True,
         help="A token to use as a placeholder for the concept.",
     )
     parser.add_argument(
-        "--initializer_token", type=str, default=None,  required=True,help="A token to use as initializer word."
+        "--initializer_token", type=str, default=None, help="A token to use as initializer word."
     )
     parser.add_argument("--learnable_property", type=str, default="object", help="Choose between 'object' and 'style'")
     parser.add_argument("--repeats", type=int, default=100, help="How many times to repeat the training data.")
@@ -149,7 +147,7 @@ def parse_args():
     parser.add_argument(
         "--stable_sample_batches",
         type=int,
-        default=1,
+        default=0,
         help="Number of fixed seed sample batches to generate per checkpoint",
     )
     parser.add_argument(
@@ -399,8 +397,16 @@ class Checkpointer:
 
             filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
             torch.save(learned_embeds_dict, checkpoints_path / filename)
+            del unwrapped
 
-            checker = NoCheck()
+
+    def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
+        samples_path = self.output_dir / "samples"
+        samples_path.mkdir(exist_ok=True, parents=True)
+        checker = NoCheck()
+
+        with torch.autocast("cuda"):
+            unwrapped = self.accelerator.unwrap_model(text_encoder)
             # Save a sample image
             pipeline = StableDiffusionPipeline(
                 text_encoder=unwrapped,
@@ -410,43 +416,43 @@ class Checkpointer:
                 scheduler=PNDMScheduler(
                     beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
                 ),
-                # safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
                 safety_checker=NoCheck(),
                 feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
             ).to('cuda')
             pipeline.enable_attention_slicing()
 
-            stable_latents = stable_latent = torch.randn(
-                (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
-                device=pipeline.device,
-                generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
-            )
+            if self.stable_sample_batches > 0:
+                stable_latents = torch.randn(
+                    (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
+                    device=pipeline.device,
+                    generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
+                )
+
+                stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
+
+                # Generate and save stable samples
+                for i in range(0, self.stable_sample_batches):
+                    samples = pipeline(
+                        prompt=stable_prompts,
+                        height=max(512, height),
+                        latents=stable_latents,
+                        width=max(512, width),
+                        guidance_scale=guidance_scale,
+                        eta=eta,
+                        num_inference_steps=num_inference_steps,
+                        output_type='pil'
+                    )["sample"]
+                    for idx, im in enumerate(samples):
+                            filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
+                            im.save(samples_path / filename)
 
             prompts = [choice.format(self.placeholder_token) for choice in random.choices(self.templates, k=self.sample_batch_size)]
-            stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
-
-            # Generate and save stable samples
-            for i in range(0, self.stable_sample_batches):
-                samples = pipeline(
-                    prompt=stable_prompts,
-                    height=height,
-                    latents=stable_latents,
-                    width=width,
-                    guidance_scale=guidance_scale,
-                    eta=eta,
-                    num_inference_steps=num_inference_steps,
-                    output_type='pil'
-                )["sample"]
-                for idx, im in enumerate(samples):
-                        filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
-                        im.save(samples_path / filename)
-
             # Generate and save random samples
             for i in range(0, self.random_sample_batches):
                 samples = pipeline(
                     prompt=prompts,
-                    height=height,
-                    width=width,
+                    height=max(512, height),
+                    width=max(512, width),
                     guidance_scale=guidance_scale,
                     eta=eta,
                     num_inference_steps=num_inference_steps,
@@ -460,8 +466,36 @@ class Checkpointer:
             del pipeline
             del unwrapped
 
+
+def save_resume_state(accelerator, text_encoder, basepath, global_step, args):
+    accelerator.wait_for_everyone()
+    unwrapped_model = accelerator.unwrap_model(text_encoder)
+    accelerator.save(unwrapped_model.state_dict(), basepath / f"resume.ste")
+    info = {
+        "global_step": global_step,
+        "args": vars(args)
+    }
+    with open(basepath / f"resume.json", 'w') as f:
+        json.dump(info, f, indent=4)
+
+
 def main():
     args = parse_args()
+
+    global_step_offset = 0
+    if args.resume_from is not None:
+        basepath = Path(args.resume_from)
+        print("Resuming state from %s" % args.resume_from)
+        with open(basepath / "resume.json", 'r') as f:
+            state = json.load(f)
+        global_step_offset = state["global_step"]
+
+        print("We've trained %d steps so far" % global_step_offset)
+    else:
+        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        basepath = Path(args.logging_dir) / slugify(args.placeholder_token) / now
+        basepath.mkdir(exist_ok=True, parents=True)
+
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -508,29 +542,11 @@ def main():
         args.pretrained_model_name_or_path + '/unet',
     )
 
-    now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-    basepath = Path(args.logging_dir) / slugify(args.placeholder_token) / now
-
     base_templates = imagenet_style_templates_small if args.learnable_property == "style" else imagenet_templates_small
     if args.custom_templates:
         templates = args.custom_templates.split(",")
     else:
         templates = base_templates
-
-    checkpointer = Checkpointer(
-        accelerator=accelerator,
-        vae=vae,
-        unet=unet,
-        tokenizer=tokenizer,
-        placeholder_token=args.placeholder_token,
-        placeholder_token_id=placeholder_token_id,
-        templates=templates,
-        output_dir=basepath,
-        sample_batch_size=args.sample_batch_size,
-        random_sample_batches=args.random_sample_batches,
-        stable_sample_batches=args.stable_sample_batches,
-        seed=args.seed
-    )
 
     slice_size = unet.config.attention_head_dim // 2
     unet.set_attention_slice(slice_size)
@@ -567,6 +583,9 @@ def main():
         placeholder_token_id=placeholder_token_id,
         templates=templates,
         output_dir=basepath,
+        sample_batch_size=args.sample_batch_size,
+        random_sample_batches=args.random_sample_batches,
+        stable_sample_batches=args.stable_sample_batches,
         seed=args.seed
     )
 
