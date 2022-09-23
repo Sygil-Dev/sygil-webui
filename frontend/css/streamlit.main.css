@@ -55,7 +55,7 @@ button[kind="header"] {
     /* display: none;*/ /*suggested behavior by streamlit hover components*/
     pointer-events: auto; /* enable interaction of the button even if parents intereaction disabled */
   }
-  
+
   /* added to avoid main sectors (all element to the right of sidebar from) moving */
   section[data-testid="stSidebar"] {
     width: 3.5% !important;
@@ -91,7 +91,7 @@ button[kind="header"] {
 }
 
 /***********************************************************
-*  Additional CSS for other elements                    
+*  Additional CSS for other elements
 ************************************************************/
 button[data-baseweb="tab"] {
   font-size: 20px;
@@ -114,4 +114,8 @@ div.gallery:hover {
   text-align: center;
   position: relative;
   top: 6px;
+}
+
+.row-widget.stButton {
+  text-align: center;
 }
