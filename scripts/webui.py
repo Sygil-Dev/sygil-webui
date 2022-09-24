@@ -445,10 +445,6 @@ def try_loading_LDSR(model_name: str,checking=False):
         print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
 try_loading_LDSR('model',checking=True)
 
-
-
-print('Successfully loaded model...')
-
 def load_SD_model():
     if opt.optimized:
         sd = load_sd_from_config(opt.ckpt)
@@ -561,8 +557,6 @@ def seed_to_int(s):
     while n >= 2**32:
         n = n >> 32
     return n
-
-
 
 def draw_prompt_matrix(im, width, height, all_prompts):
     def wrap(text, d, font, line_length):
