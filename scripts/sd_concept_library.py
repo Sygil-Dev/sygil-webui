@@ -1,9 +1,9 @@
 # base webui import and utils.
 from webui_streamlit import st
 from sd_utils import *
-import os, subprocess, shutil
-from huggingface_hub import HfApi
-from git import Repo, RemoteProgress
+# import os, subprocess, shutil
+# from huggingface_hub import HfApi
+# from git import Repo, RemoteProgress
 
 # streamlit imports
 import streamlit.components.v1 as components
@@ -230,11 +230,12 @@ def layout():
 
 
 	with tab_downloader:
-		api = HfApi()
-		models_list = api.list_models(author="sd-concepts-library", sort="alphabetical", direction=-1)
-		models = []
-		for model in models_list:
-			_col_name, _col_description, _col_downloads, _col_likes, _col_last_updated = st.columns([2, 4, 1, 1, 1])
-			st.write(model)
+		# api = HfApi()
+		# models_list = api.list_models(author="sd-concepts-library", sort="alphabetical", direction=-1)
+		# models = []
+		# for model in models_list:
+		# 	_col_name, _col_description, _col_downloads, _col_likes, _col_last_updated = st.columns([2, 4, 1, 1, 1])
+		# 	st.write(model)
+		st.write("Coming soon")
 
 	return False
