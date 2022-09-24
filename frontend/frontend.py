@@ -104,7 +104,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                 txt2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model',
                                                                             choices=['RealESRGAN_x4plus',
                                                                                      'RealESRGAN_x4plus_anime_6B'],
-                                                                            value='RealESRGAN_x4plus',
+                                                                            value=txt2img_defaults['realesrgan_model_name'],
                                                                        visible=False)  # RealESRGAN is not None # invisible until removed)  # TODO: Feels like I shouldnt slot it in here.
 
                                 txt2img_ddim_eta = gr.Slider(minimum=0.0, maximum=1.0, step=0.01, label="DDIM ETA",
@@ -220,7 +220,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                                     img2img_mask_blur_strength = gr.Slider(minimum=1, maximum=100, step=1,
                                                                            label="How much blurry should the mask be? (to avoid hard edges)",
-                                                                           value=3, visible=True)
+                                                                           value=img2img_defaults['mask_blur_strength'], visible=True)
 
                                     img2img_resize = gr.Radio(label="Resize mode",
                                                               choices=["Just resize", "Crop and resize",
@@ -296,7 +296,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         img2img_realesrgan_model_name = gr.Dropdown(label='RealESRGAN model',
                                                                     choices=['RealESRGAN_x4plus',
                                                                              'RealESRGAN_x4plus_anime_6B'],
-                                                                    value='RealESRGAN_x4plus',
+                                                                    value=img2img_defaults['realesrgan_model_name'],
                                                                     visible=RealESRGAN is not None)  # TODO: Feels like I shouldnt slot it in here.
 
                         img2img_embeddings = gr.File(label="Embeddings file for textual inversion",
