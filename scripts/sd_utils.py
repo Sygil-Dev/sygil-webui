@@ -116,6 +116,37 @@ elif save_format[0] == 'webp':
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
+def set_page_title(title):
+    """
+    Simple function to allows us to change the title dynamically.
+    Normally you can use `st.set_page_config` to change the title but it can only be used once per app.
+    """
+
+    st.sidebar.markdown(unsafe_allow_html=True, body=f"""
+                            <iframe height=0 srcdoc="<script>
+                            const title = window.parent.document.querySelector('title') \
+
+                            const oldObserver = window.parent.titleObserver
+                            if (oldObserver) {{
+                            oldObserver.disconnect()
+                            }} \
+
+                            const newObserver = new MutationObserver(function(mutations) {{
+                            const target = mutations[0].target
+                            if (target.text !== '{title}') {{
+                            target.text = '{title}'
+                            }}
+                            }}) \
+
+                            newObserver.observe(title, {{ childList: true }})
+                            window.parent.titleObserver = newObserver \
+
+                            title.text = '{title}'
+                            </script>" />
+                            """)
+
+
+
 @retry(tries=5)
 def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
