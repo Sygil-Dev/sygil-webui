@@ -69,17 +69,26 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                 output_txt2img_to_imglab = gr.Button("Send to Lab", visible=True)
 
                         output_txt2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False,
-                                                                   elem_id='highlight')
+                                                                   elem_id='txt2img_highlight')
                         with gr.Group():
                             with gr.Row(elem_id='txt2img_output_row'):
                                 output_txt2img_copy_params = gr.Button("Copy full parameters").click(
-                                    inputs=[output_txt2img_params], outputs=[],
-                                    _js=js_copy_txt2img_output,
-                                    fn=None, show_progress=False)
+                                    inputs=[output_txt2img_params],
+                                    outputs=[],
+                                    _js=call_JS(
+                                        'copyFullOutput',
+                                        fromId='txt2img_highlight'
+                                    ),
+                                    fn=None, show_progress=False
+                                )
                                 output_txt2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                 output_txt2img_copy_seed = gr.Button("Copy only seed").click(
-                                    inputs=[output_txt2img_seed], outputs=[],
-                                    _js='(x) => navigator.clipboard.writeText(x)', fn=None, show_progress=False)
+                                    inputs=[output_txt2img_seed],
+                                    outputs=[],
+                                    _js=call_JS('gradioInputToClipboard'),
+                                    fn=None,
+                                    show_progress=False
+                                )
                             output_txt2img_stats = gr.HTML(label='Stats')
                     with gr.Column():
                         txt2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
@@ -249,16 +258,25 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             with gr.TabItem("Output info", id="img2img_output_info_tab"):
                                 output_img2img_params = gr.Highlightedtext(
                                     label="Generation parameters", interactive=False,
-                                    elem_id='highlight')
+                                    elem_id='img2img_highlight')
                                 with gr.Row():
                                     output_img2img_copy_params = gr.Button("Copy full parameters").click(
-                                        inputs=output_img2img_params, outputs=[],
-                                        _js='(x) => {navigator.clipboard.writeText(x.replace(": ",":"))}', fn=None,
+                                        inputs=output_img2img_params,
+                                        outputs=[],
+                                        _js=call_JS(
+                                            'copyFullOutput',
+                                            fromId='img2img_highlight'
+                                        ),
+                                        fn=None,
                                         show_progress=False)
                                     output_img2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                     output_img2img_copy_seed = gr.Button("Copy only seed").click(
-                                        inputs=output_img2img_seed, outputs=[],
-                                        _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
+                                        inputs=output_img2img_seed,
+                                        outputs=[],
+                                        _js=call_JS("gradioInputToClipboard"),
+                                        fn=None,
+                                        show_progress=False
+                                    )
                                 output_img2img_stats = gr.HTML(label='Stats')
 
                 gr.Markdown('# img2img settings')
