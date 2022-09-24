@@ -102,7 +102,7 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 					# Close original image
 					originalImage.close()
 				except:
-					print("Error with file", file, "in concept", folder, "skipping (file is probably corrupted)")
+					print("Error with file '", file, "' in concept '", folder, "', skipping. (file is probably corrupted)")
 
 		concepts.append(concept)
 		conceptIndex += 1
