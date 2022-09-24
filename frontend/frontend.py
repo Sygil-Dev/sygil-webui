@@ -247,7 +247,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                                 gr.Markdown("Warning: This will clear your current image and mask settings!")
                             with gr.TabItem("Output info", id="img2img_output_info_tab"):
-                                output_img2img_params = gr.Textbox(label="Generation parameters")
+                                output_img2img_params = gr.Highlightedtext(
+                                    label="Generation parameters", interactive=False,
+                                    elem_id='highlight')
                                 with gr.Row():
                                     output_img2img_copy_params = gr.Button("Copy full parameters").click(
                                         inputs=output_img2img_params, outputs=[],
