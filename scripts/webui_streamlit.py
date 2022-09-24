@@ -1,5 +1,6 @@
 # base webui import and utils.
 import streamlit as st
+from sd_utils import *
 
 # streamlit imports
 import streamlit_nested_layout
@@ -14,7 +15,6 @@ import os
 import k_diffusion as K
 from omegaconf import OmegaConf
 
-from sd_utils import *
 if not "defaults" in st.session_state:
     st.session_state["defaults"] = {}
     
@@ -106,8 +106,12 @@ def layout():
 		tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"], 
                          iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
 		
-	if tabs =='Stable Diffusion':		
-		txt2img_tab, img2img_tab, txt2vid_tab, concept_library_tab = st.tabs(["Text-to-Image Unified", "Image-to-Image Unified", 
+	if tabs =='Stable Diffusion':
+		# set the page url and title
+		st.experimental_set_query_params(page='stable-diffusion')
+		set_page_title("Stable Diffusion Playground")
+		
+		txt2img_tab, img2img_tab, txt2vid_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image", 
 	                                                                                                "Text-to-Video","Concept Library"])
 		#with home_tab:
 			#from home import layout
@@ -131,12 +135,28 @@ def layout():
 		
 	#
 	elif tabs == 'Model Manager':
+		# set the page url and title
+		st.experimental_set_query_params(page='model-manager')
+		set_page_title("Model Manager - Stable Diffusion Playground")
+		
 		from ModelManager import layout
 		layout()
 	
 	elif tabs == 'Textual Inversion':
+		# set the page url and title
+		st.experimental_set_query_params(page='textual-inversion')
+		set_page_title("Textual Inversion - Stable Diffusion Playground")
+		
 		from textual_inversion import layout
-		layout()	
+		layout()
+		
+	elif tabs == 'Settings':
+		# set the page url and title
+		st.experimental_set_query_params(page='settings')
+		set_page_title("Settings - Stable Diffusion Playground")
+		
+		from Settings import layout
+		layout()
 	
 if __name__ == '__main__':
 	layout()     
