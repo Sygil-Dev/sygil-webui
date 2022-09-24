@@ -20,6 +20,8 @@ general:
     esrgan_cpu: False
     extra_models_cpu: False
     extra_models_gpu: False
+    gfpgan_gpu: 0
+    esrgan_gpu: 0
     save_metadata: True
     save_format: "png"
     skip_grid: False
@@ -273,3 +275,6 @@ img2img:
     
 gfpgan:
   strength: 100
+
+textual_inversion:
+    value: 0
