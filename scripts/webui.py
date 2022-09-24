@@ -927,10 +927,12 @@ def process_images(
     if hasattr(model, "embedding_manager"):
         load_embeddings(fp)
 
-    os.makedirs(outpath, exist_ok=True)
+    if not opt.bridge:
+        os.makedirs(outpath, exist_ok=True)
 
     sample_path = os.path.join(outpath, "samples")
-    os.makedirs(sample_path, exist_ok=True)
+    if not opt.bridge:
+        os.makedirs(sample_path, exist_ok=True)
 
     if not ("|" in prompt) and prompt.startswith("@"):
         prompt = prompt[1:]
