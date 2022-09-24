@@ -1,6 +1,9 @@
 # base webui import and utils.
 from webui_streamlit import st
 from sd_utils import *
+import os, subprocess, shutil
+from huggingface_hub import HfApi
+from git import Repo, RemoteProgress
 
 # streamlit imports
 import streamlit.components.v1 as components
@@ -22,7 +25,6 @@ def sdConceptsBrowser(concepts, key=None):
 	return component_value
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
 def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("getConceptsFromPath", "page:", page, "conceptPerPage:", conceptPerPage, "searchText:", searchText)
 	# get the path where the concepts are stored
@@ -75,21 +77,32 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 		files = [f for f in os.listdir(os.path.join(path, folder, "concept_images")) if os.path.isfile(
 			os.path.join(path, folder, "concept_images", f))]
 		# Retrieve only the 4 first images
-		for file in files[:4]:
+
+		for file in files:
+			# skip if we already have 4 images
+			if len(concept["images"]) >= 4:
+				break
+
+
 			if file.endswith(acceptedExtensions):
-				# Add a copy of the image to avoid file locking
-				originalImage = Image.open(os.path.join(
-					path, folder, "concept_images", file))
 
-				# Maintain the aspect ratio (max 200x200)
-				resizedImage = originalImage.copy()
-				resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
+				# Catch the error if the image is corrupted
+				try:
+					# Add a copy of the image to avoid file locking
+					originalImage = Image.open(os.path.join(
+						path, folder, "concept_images", file))
 
-				# concept["images"].append(resizedImage)
+					# Maintain the aspect ratio (max 200x200)
+					resizedImage = originalImage.copy()
+					resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
 
-				concept["images"].append(imageToBase64(resizedImage))
-				# Close original image
-				originalImage.close()
+					# concept["images"].append(resizedImage)
+
+					concept["images"].append(imageToBase64(resizedImage))
+					# Close original image
+					originalImage.close()
+				except:
+					print("Error with file", file, "in concept", folder, "skipping (file is probably corrupted)")
 
 		concepts.append(concept)
 		conceptIndex += 1
@@ -108,7 +121,6 @@ def imageToBase64(image):
 	return img_str
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
 def getTotalNumberOfConcepts(searchText=""):
 	# get the path where the concepts are stored
 	path = os.path.join(
@@ -218,6 +230,11 @@ def layout():
 
 
 	with tab_downloader:
-		st.write("Not implemented yet")
+		api = HfApi()
+		models_list = api.list_models(author="sd-concepts-library", sort="alphabetical", direction=-1)
+		models = []
+		for model in models_list:
+			_col_name, _col_description, _col_downloads, _col_likes, _col_last_updated = st.columns([2, 4, 1, 1, 1])
+			st.write(model)
 
 	return False
