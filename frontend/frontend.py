@@ -1,5 +1,5 @@
 import gradio as gr
-from frontend.css_and_js import css, js, call_JS, js_parse_prompt, js_copy_txt2img_output
+from frontend.css_and_js import css, js, call_JS
 from frontend.job_manager import JobManager
 import frontend.ui_functions as uifn
 import uuid
