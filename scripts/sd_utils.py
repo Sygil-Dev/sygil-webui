@@ -1738,3 +1738,13 @@ def constrain_image(img, max_width, max_height):
     resampler = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
     resized = img.resize((int(img.width / ratio), int(img.height / ratio)), resample=resampler)
     return resized
+
+def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_token):
+    x = torch.load(input_file, map_location=torch.device('cpu'))
+
+    params_dict = {
+        placeholder_token: torch.tensor(list(x['string_to_param'].items())[0][1])
+    }
+    torch.save(params_dict, "learned_embeds.bin")
+    load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
+    print("loaded", placeholder_token)
