@@ -23,6 +23,10 @@ st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yam
 if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
     user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
     st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+else:
+	OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
+	loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+	assert st.session_state.defaults == loaded		
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
@@ -76,33 +80,24 @@ def layout():
 	else:
 		st.session_state["RealESRGAN_available"] = False	
 		
-	# Allow for custom models to be used instead of the default one,
-	# an example would be Waifu-Diffusion or any other fine tune of stable diffusion
-	st.session_state["custom_models"]:sorted = []
-	for root, dirs, files in os.walk(os.path.join("models", "custom")):
-		for file in files:
-			if os.path.splitext(file)[1] == '.ckpt':
-				#fullpath = os.path.join(root, file)
-				#print(fullpath)
-				st.session_state["custom_models"].append(os.path.splitext(file)[0])
-				#print (os.path.splitext(file)[0])
+	## Allow for custom models to be used instead of the default one,
+	## an example would be Waifu-Diffusion or any other fine tune of stable diffusion
+	#st.session_state["custom_models"]:sorted = []
+	#for root, dirs, files in os.walk(os.path.join("models", "custom")):
+		#for file in files:
+			#if os.path.splitext(file)[1] == '.ckpt':
+				##fullpath = os.path.join(root, file)
+				##print(fullpath)
+				#st.session_state["custom_models"].append(os.path.splitext(file)[0])
+				##print (os.path.splitext(file)[0])
 	
-	if len(st.session_state["custom_models"]) > 0:
-		st.session_state["CustomModel_available"] = True
-		st.session_state["custom_models"].append("Stable Diffusion v1.4")
-	else:
-		st.session_state["CustomModel_available"] = False
+	#if len(st.session_state["custom_models"]) > 0:
+		#st.session_state["CustomModel_available"] = True
+		#st.session_state["custom_models"].append("Stable Diffusion v1.4")
+	#else:
+		#st.session_state["CustomModel_available"] = False
 
-	with st.sidebar:
-		# The global settings section will be moved to the Settings page.
-		#with st.expander("Global Settings:"):
-		#st.write("Global Settings:")
-		#defaults.general.update_preview = st.checkbox("Update Image Preview", value=defaults.general.update_preview,
-                                                              #help="If enabled the image preview will be updated during the generation instead of at the end. You can use the Update Preview \
-							      #Frequency option bellow to customize how frequent it's updated. By default this is enabled and the frequency is set to 1 step.")
-		#st.session_state.update_preview_frequency = st.text_input("Update Image Preview Frequency", value=defaults.general.update_preview_frequency,
-                                                                          #help="Frequency in steps at which the the preview image is updated. By default the frequency is set to 1 step.")
-		
+	with st.sidebar:		
 		tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"], 
                          iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
 		
