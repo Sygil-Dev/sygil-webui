@@ -675,12 +675,17 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                                     with gr.TabItem("Output info", id="scn2img_output_info_tab"):
                                         output_scn2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False,
-                                                                   elem_id='highlight')
+                                                                   elem_id='scn2img_highlight')
                                         with gr.Row():
                                             output_scn2img_copy_params = gr.Button("Copy full parameters").click(
-                                                inputs=output_scn2img_params, outputs=[],
-                                                _js="(x) => {navigator.clipboard.writeText(x.map((p) => {return (p[1] === null) ? (p[0]) : (p[0].concat(p[1]))}).join(' ').replace(/\s+/g,' ')); }", fn=None,
-                                                show_progress=False)
+                                                inputs=[output_scn2img_params],
+                                                outputs=[],
+                                                _js=call_JS(
+                                                    'copyFullOutput',
+                                                    fromId='scn2img_highlight'
+                                                ),
+                                                fn=None, show_progress=False
+                                            )
                                             output_scn2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                             output_scn2img_copy_seed = gr.Button("Copy only initial seed").click(
                                                 inputs=output_scn2img_seed, outputs=[],
