@@ -654,18 +654,20 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                         gr.Markdown("Warning: This will clear your current img2img image and mask settings!")
 
                                     with gr.TabItem("Output info", id="scn2img_output_info_tab"):
-                                        output_scn2img_params = gr.Textbox(label="Generation parameters")
+                                        output_scn2img_params = gr.Highlightedtext(label="Generation parameters", interactive=False,
+                                                                   elem_id='highlight')
                                         with gr.Row():
                                             output_scn2img_copy_params = gr.Button("Copy full parameters").click(
                                                 inputs=output_scn2img_params, outputs=[],
-                                                _js='(x) => {navigator.clipboard.writeText(x.replace(": ",":"))}', fn=None,
+                                                _js="(x) => {navigator.clipboard.writeText(x.map((p) => {return (p[1] === null) ? (p[0]) : (p[0].concat(p[1]))}).join(' ').replace(/\s+/g,' ')); }", fn=None,
                                                 show_progress=False)
                                             output_scn2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
-                                            output_scn2img_copy_seed = gr.Button("Copy only seed").click(
+                                            output_scn2img_copy_seed = gr.Button("Copy only initial seed").click(
                                                 inputs=output_scn2img_seed, outputs=[],
                                                 _js=call_JS("gradioInputToClipboard"), fn=None, show_progress=False)
                                         output_scn2img_stats = gr.HTML(label='Stats')
-
+                                    with gr.TabItem("SceneCode", id="scn2img_scncode_tab"):
+                                        output_scn2img_scncode = gr.HTML(label="SceneCode")
                                 scn2img_toggles = gr.CheckboxGroup(label='', choices=scn2img_toggles,
                                                                    value=scn2img_toggle_defaults, type="index")
 
@@ -673,7 +675,6 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                              visible=show_embeddings)
                             with gr.TabItem("Docs", id="scn2img_docs_tab"):
                                 parse_arg, function_args, function_args_ext = scn2img_define_args()
-                                # funcs = list(function_args_ext.keys())
                                 with gr.Tabs():
                                     with gr.TabItem("syntax", id=f"scn2img_docs_syntax_tab"):
                                         lines = [
@@ -752,7 +753,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                     output_scn2img_gallery, 
                     output_scn2img_seed, 
                     output_scn2img_params,
-                    output_scn2img_stats
+                    output_scn2img_stats,
+                    output_scn2img_scncode
                 ]
                 # If a JobManager was passed in then wrap the Generate functions
                 if scn2img_job_ui:

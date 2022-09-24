@@ -2181,14 +2181,16 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 return key < len(self.children)
             else:
                 return str(key) in self.args
-        def __repr__(self):
-            return str(self)
         def __str__(self):
+            return repr(self)
+        def __repr__(self):
             args = collections.OrderedDict()
-            args["title"] = self.title
+            if len(self.title) > 0:
+                args["title"] = self.title
             args.update(self.args)
-            args["children"] = self.children
-            args = ", ".join(map(lambda x: " = ".join(map(str,x)), args.items()))
+            if len(self.children) > 0:
+                args["children"] = self.children
+            args = ", ".join(map(lambda kv: f"{str(kv[0])} = {repr(kv[1])}", args.items()))
             return f"{self.func}({args})"
         def cache_hash(self, seed=None, exclude_args=None, exclude_child_args=None, extra=None, child_extra=None):
             exclude_args = exclude_args or set()
@@ -2417,6 +2419,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
         return scene
 
     def save_sample_scn2img(img, obj):
+        if img is None:
+            return
         base_count = get_next_sequence_number(outpath)
         filename = "[SEED]_result"
         filename = f"{base_count:05}-" + filename
@@ -2723,7 +2727,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             return img
 
         def prepare_img2img_kwargs(seeds, obj, img):
-            log_trace(f"prepare_txt2img_kwargs({obj}, {img})")
+            # log_trace(f"prepare_img2img_kwargs({obj}, {img})")
             img2img_kwargs = {}
             # img2img_kwargs.update(img2img_defaults)
             func_args = function_args["img2img"]
@@ -2779,7 +2783,7 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
             return img2img_kwargs
 
         def prepare_txt2img_kwargs(seeds, obj):
-            log_trace(f"prepare_txt2img_kwargs({obj})")
+            # log_trace(f"prepare_txt2img_kwargs({obj})")
             txt2img_kwargs = {}
             # txt2img_kwargs.update(txt2img_defaults)
             func_args = function_args["txt2img"]
@@ -2839,6 +2843,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             img2img_kwargs = prepare_img2img_kwargs(seeds, obj, img)
 
+            used_kwargs.append(("img2img", img2img_kwargs))
+
             # obj_hash = hash(str((img2img_kwargs["seed"],obj)))
             obj_hash = obj.cache_hash(
                 seed = img2img_kwargs["seed"],
@@ -2888,6 +2894,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
             txt2img_kwargs = prepare_txt2img_kwargs(seeds, obj)
 
+            used_kwargs.append(("txt2img", txt2img_kwargs))
+
             # obj_hash = hash(str((txt2img_kwargs["seed"],obj)))
             obj_hash = obj.cache_hash(
                 seed = txt2img_kwargs["seed"],
@@ -2934,8 +2942,6 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
 
         def render_object(seeds, obj):
             # log_trace(f"render_object({str(obj)})")
-            def result(img):
-                return img
 
             if "initial_seed" in obj:
                 seeds = gen_seeds(obj["initial_seed"])
@@ -2944,11 +2950,11 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
                 assert(len(obj.children) == 1)
                 return render_object(seeds, obj.children[0])
             elif obj.func == "image":
-                return result(render_image(seeds, obj))
+                return render_image(seeds, obj)
             elif obj.func == "img2img":
-                return result(render_img2img(seeds, obj))
+                return render_img2img(seeds, obj)
             elif obj.func == "txt2img":
-                return result(render_txt2img(seeds, obj))
+                return render_txt2img(seeds, obj)
             else:
                 msg = f"Got unexpected SceneObject type {obj.func}"
                 comments.append(msg)
@@ -2996,6 +3002,8 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
     mem_mon = MemUsageMonitor('MemMon')
     mem_mon.start()
 
+    used_kwargs = []
+
     scene = parse_scene(prompt, comments)
     log_info("scene")
     log_info(scene)
@@ -3010,24 +3018,50 @@ def scn2img(prompt: str, toggles: List[int], seed: Union[int, str, None], fp = N
     time_diff = time.time()-start_time
 
 
-    args_and_names = {
-        "seed": seed,
-    }
-    full_string = f"{prompt}\n"+ " ".join([f"{k}:" for k,v in args_and_names.items()])
+    output_infos = []
+    output_infos.append(("initial_seed", seed))
+    excluded_args = set(["job_info", "fp", "init_info", "init_info_mask", "prompt"])
+    if len(used_kwargs) > 0:
+        for func, kwargs in used_kwargs:
+            output_infos.append("\n")
+            output_infos.append(("", func))
+            output_infos.append(kwargs["prompt"])
+            for arg,value in kwargs.items():
+                if arg in excluded_args: continue
+                if value is None: continue
+                if type(value) == dict: continue
+                if type(value) == Image: continue
+                output_infos.append((arg,value))
+
+    full_string = ""
+    entities = []
+    for output_info in output_infos:
+        if type(output_info) == str:
+            full_string += output_info
+        else:
+            assert(type(output_info) is tuple)
+            k,v = output_info
+            label = f" {k}:" if len(k) > 0 else ""
+            entity = {
+                'entity': str(v),
+                'start': len(full_string),
+                'end': len(full_string) + len(label),
+            }
+            entities.append(entity)
+            full_string += label
+
     info = {
         'text': full_string,
-        'entities': [{'entity':str(v), 'start': full_string.find(f"{k}:"),'end': full_string.find(f"{k}:") + len(f"{k} ")} for k,v in args_and_names.items()]
+        'entities': entities
     }
     num_prompts = 1
     stats = " ".join([
         f"Took { round(time_diff, 2) }s total ({ round(time_diff/(num_prompts),2) }s per image)",
-        f"Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'",
+        f"Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%",
     ])
 
-    for comment in comments:
-        info['text'] += "\n\n" + comment
 
-    return output_images, seed, info, stats
+    return output_images, seed, info, stats, repr(scene)
 
 prompt_parser = re.compile("""
     (?P<prompt>     # capture group for 'prompt'
