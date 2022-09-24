@@ -372,6 +372,7 @@ def layout():
 		with col1_img2img_layout:
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+			custom_models_available()
 			if st.session_state["CustomModel_available"]:
 				st.session_state["custom_model"] = st.selectbox("Custom Model:", st.session_state["custom_models"],
 									    index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
