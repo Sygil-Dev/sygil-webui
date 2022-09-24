@@ -25,7 +25,7 @@ def js(opt):
 
 
 # TODO : @altryne fix this to the new JS format
-js_copy_txt2img_output = "(x) => {navigator.clipboard.writeText(document.querySelector('gradio-app').shadowRoot.querySelector('#highlight .textfield').textContent.replace(/\s+/g,' ').replace(/: /g,':'))}"
+js_copy_txt2img_output = "(x) => {navigator.clipboard.writeText(document.querySelector('gradio-app').shadowRoot.querySelector('#highlight .textfield').textContent.replace(/\s+/g,' ').replace(/: /g,':')); return [];}"
 
 
 

@@ -252,8 +252,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                     elem_id='highlight')
                                 with gr.Row():
                                     output_img2img_copy_params = gr.Button("Copy full parameters").click(
-                                        inputs=output_img2img_params, outputs=[],
-                                        _js='(x) => {navigator.clipboard.writeText(x.replace(": ",":"))}', fn=None,
+                                        inputs=[output_img2img_params], outputs=[],
+                                        _js=js_copy_txt2img_output, fn=None,
                                         show_progress=False)
                                     output_img2img_seed = gr.Number(label='Seed', interactive=False, visible=False)
                                     output_img2img_copy_seed = gr.Button("Copy only seed").click(
