@@ -28,8 +28,6 @@ from tqdm.auto import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 from slugify import slugify
 import json
-import os
-import sys
 
 logger = get_logger(__name__)
 
@@ -125,6 +123,31 @@ def parse_args():
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="The beta2 parameter for the Adam optimizer.")
     parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
+    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
+    parser.add_argument(
+        "--use_auth_token",
+        action="store_true",
+        help=(
+            "Will use the token generated when running `huggingface-cli login` (necessary to use this script with"
+            " private models)."
+        ),
+    )
+    parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
+    parser.add_argument(
+        "--hub_model_id",
+        type=str,
+        default=None,
+        help="The name of the repository to keep in sync with the local `output_dir`.",
+    )
+    parser.add_argument(
+        "--logging_dir",
+        type=str,
+        default="logs",
+        help=(
+            "[TensorBoard](https://www.tensorflow.org/tensorboard) log directory. Will default to"
+            " *output_dir/runs/**CURRENT_DATETIME_HOSTNAME***."
+        ),
+    )
     parser.add_argument(
         "--mixed_precision",
         type=str,
@@ -308,10 +331,10 @@ class TextualInversionDataset(Dataset):
             self._length = self.num_images * repeats
 
         self.interpolation = {
-            "linear": PIL.Image.LINEAR,
-            "bilinear": PIL.Image.BILINEAR,
-            "bicubic": PIL.Image.BICUBIC,
-            "lanczos": PIL.Image.LANCZOS,
+            "linear": PIL.Image.Resampling.BILINEAR,
+            "bilinear": PIL.Image.Resampling.BILINEAR,
+            "bicubic": PIL.Image.Resampling.BICUBIC,
+            "lanczos": PIL.Image.Resampling.LANCZOS,
         }[interpolation]
 
         self.templates = templates
@@ -364,6 +387,16 @@ class TextualInversionDataset(Dataset):
         return example
 
 
+def get_full_repo_name(model_id: str, organization: Optional[str] = None, token: Optional[str] = None):
+    if token is None:
+        token = HfFolder.get_token()
+    if organization is None:
+        username = whoami(token)["name"]
+        return f"{username}/{model_id}"
+    else:
+        return f"{organization}/{model_id}"
+
+
 def freeze_params(params):
     for param in params:
         param.requires_grad = False
@@ -372,7 +405,7 @@ def freeze_params(params):
 def save_resume_file(basepath, args, extra = {}):
     info = {"args": vars(args)}
     info["args"].update(extra)
-    with open(f"{basepath}/resume.json", "w") as f:
+    with open(Path(basepath) / "resume.json", "w") as f:
         json.dump(info, f, indent=4)
 
 class Checkpointer:
@@ -399,6 +432,9 @@ class Checkpointer:
         self.placeholder_token_id = placeholder_token_id
         self.templates = templates
         self.output_dir = output_dir
+        self.random_sample_batches = random_sample_batches
+        self.sample_batch_size = sample_batch_size
+        self.stable_sample_batches = stable_sample_batches
         self.seed = seed
         self.random_sample_batches = random_sample_batches
         self.sample_batch_size = sample_batch_size
@@ -503,17 +539,16 @@ def main():
 
     global_step_offset = 0
     if args.resume_from is not None:
-        basepath = f"{args.resume_from}"
+        basepath = Path(args.resume_from)
         print("Resuming state from %s" % args.resume_from)
-        with open(f"{basepath}/resume.json", 'r') as f:
+        with open(basepath / "resume.json", 'r') as f:
             state = json.load(f)
         global_step_offset = state["args"].get("global_step", 0)
 
         print("We've trained %d steps so far" % global_step_offset)
     else:
-        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-        basepath = f"{args.output_dir}/{slugify(args.placeholder_token)}/{now}"
-        os.makedirs(basepath, exist_ok=True)
+        basepath = Path(args.logging_dir) / slugify(args.placeholder_token)
+        basepath.mkdir(exist_ok=True, parents=True)
 
 
     accelerator = Accelerator(
@@ -524,6 +559,23 @@ def main():
     # If passed along, set the training seed now.
     if args.seed is not None:
         set_seed(args.seed)
+
+    # Handle the repository creation
+    if accelerator.is_main_process:
+        if args.push_to_hub:
+            if args.hub_model_id is None:
+                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
+            else:
+                repo_name = args.hub_model_id
+            repo = Repository(args.output_dir, clone_from=repo_name)
+
+            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
+                if "step_*" not in gitignore:
+                    gitignore.write("step_*\n")
+                if "epoch_*" not in gitignore:
+                    gitignore.write("epoch_*\n")
+        elif args.output_dir is not None:
+            os.makedirs(args.output_dir, exist_ok=True)
 
     # Load the tokenizer and add the placeholder token as a additional special token
     if args.tokenizer_name:
@@ -635,7 +687,7 @@ def main():
         learnable_property=args.learnable_property,
         center_crop=args.center_crop,
         set="train",
-        templates=templates
+        templates=base_templates
     )
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
 
@@ -773,8 +825,12 @@ def main():
 
             save_resume_file(basepath, args, {
                 "global_step": global_step + global_step_offset,
-                "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
+                "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
             })
+
+            if args.push_to_hub:
+                repo.push_to_hub(
+                    args, pipeline, repo, commit_message="End of training", blocking=False, auto_lfs_prune=True)
 
             accelerator.end_training()
 
@@ -784,7 +840,7 @@ def main():
             checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
             save_resume_file(basepath, args, {
                 "global_step": global_step + global_step_offset,
-                "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
+                "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
             })
         quit()
 

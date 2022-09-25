@@ -38,10 +38,11 @@ dependencies:
     - python-slugify>=6.1.2
     - pytorch-lightning==1.4.2
     - retry>=0.9.2
-    - streamlit==1.12.2
+    - streamlit==1.13.0
     - streamlit-on-Hover-tabs==1.0.1
     - streamlit-option-menu==0.3.2
     - streamlit_nested_layout
+    - streamlit-server-state==0.14.2
     - test-tube>=0.7.5
     - tensorboard
     - torch-fidelity==0.3.0

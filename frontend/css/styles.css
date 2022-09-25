@@ -36,14 +36,14 @@ input[type=number]:disabled { -moz-appearance: textfield; }
     height: auto;
 }
 
-#highlight{
+[id$="highlight"]{
  font-size: 1.2rem
  }
-#highlight .uppercase{
+[id$="highlight"] .uppercase{
     text-transform: initial;
 
 }
-#highlight .textfield .textspan:nth-child(1){
+[id$="highlight"] .textfield .textspan:nth-child(1){
     font-size: 1.2rem
 }
 

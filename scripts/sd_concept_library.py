@@ -22,7 +22,7 @@ def sdConceptsBrowser(concepts, key=None):
 	return component_value
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("getConceptsFromPath", "page:", page, "conceptPerPage:", conceptPerPage, "searchText:", searchText)
 	# get the path where the concepts are stored
@@ -97,7 +97,6 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("Results:", [c["name"] for c in concepts])
 	return concepts
 
-
 @st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
 def imageToBase64(image):
 	import io
@@ -108,7 +107,7 @@ def imageToBase64(image):
 	return img_str
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def getTotalNumberOfConcepts(searchText=""):
 	# get the path where the concepts are stored
 	path = os.path.join(
@@ -138,7 +137,7 @@ def layout():
 	# Concept Library
 	with tab_library:
 		downloaded_concepts_count = getTotalNumberOfConcepts()
-		concepts_per_page = 12
+		concepts_per_page = st.session_state["defaults"].concepts_library.concepts_per_page
 
 		if not "results" in st.session_state:
 			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, "")
@@ -155,7 +154,7 @@ def layout():
 			st.session_state["cl_search_results_count"] = downloaded_concepts_count
 
 		# Search bar
-		search_text_input = st.text_input("", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
+		search_text_input = st.text_input("Search", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
 		if search_text_input != st.session_state["cl_search_text"]:
 			# Search text has changed
 			st.session_state["cl_search_text"] = search_text_input
@@ -178,7 +177,7 @@ def layout():
 
 					# Previous page
 					with _previous_page:
-						if st.button("<", key="cl_previous_page"):
+						if st.button("Previous", key="cl_previous_page"):
 							st.session_state["cl_current_page"] -= 1
 							if st.session_state["cl_current_page"] <= 0:
 								st.session_state["cl_current_page"] = last_page
@@ -190,7 +189,7 @@ def layout():
 
 					# Next page
 					with _next_page:
-						if st.button(">", key="cl_next_page"):
+						if st.button("Next", key="cl_next_page"):
 							st.session_state["cl_current_page"] += 1
 							if st.session_state["cl_current_page"] > last_page:
 								st.session_state["cl_current_page"] = 1

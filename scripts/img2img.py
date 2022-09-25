@@ -65,21 +65,21 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	#use_RealESRGAN = 11 in toggles
 
 	if sampler_name == 'PLMS':
-		sampler = PLMSSampler(st.session_state["model"])
+		sampler = PLMSSampler(server_state["model"])
 	elif sampler_name == 'DDIM':
-		sampler = DDIMSampler(st.session_state["model"])
+		sampler = DDIMSampler(server_state["model"])
 	elif sampler_name == 'k_dpm_2_a':
-		sampler = KDiffusionSampler(st.session_state["model"],'dpm_2_ancestral')
+		sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
 	elif sampler_name == 'k_dpm_2':
-		sampler = KDiffusionSampler(st.session_state["model"],'dpm_2')
+		sampler = KDiffusionSampler(server_state["model"],'dpm_2')
 	elif sampler_name == 'k_euler_a':
-		sampler = KDiffusionSampler(st.session_state["model"],'euler_ancestral')
+		sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
 	elif sampler_name == 'k_euler':
-		sampler = KDiffusionSampler(st.session_state["model"],'euler')
+		sampler = KDiffusionSampler(server_state["model"],'euler')
 	elif sampler_name == 'k_heun':
-		sampler = KDiffusionSampler(st.session_state["model"],'heun')
+		sampler = KDiffusionSampler(server_state["model"],'heun')
 	elif sampler_name == 'k_lms':
-		sampler = KDiffusionSampler(st.session_state["model"],'lms')
+		sampler = KDiffusionSampler(server_state["model"],'lms')
 	else:
 		raise Exception("Unknown sampler: " + sampler_name)
 
@@ -160,18 +160,18 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			mask = (1 - mask)
 			mask = np.tile(mask, (4, 1, 1))
 			mask = mask[None].transpose(0, 1, 2, 3)
-			mask = torch.from_numpy(mask).to(st.session_state["device"])
+			mask = torch.from_numpy(mask).to(server_state["device"])
 
 		if st.session_state['defaults'].general.optimized:
-			st.session_state.modelFS.to(st.session_state["device"] )
+			server_state["modelFS"].to(server_state["device"] )
 
 		init_image = 2. * image - 1.
-		init_image = init_image.to(st.session_state["device"])
-		init_latent = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).get_first_stage_encoding((st.session_state["model"]  if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
+		init_image = init_image.to(server_state["device"])
+		init_latent = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).get_first_stage_encoding((server_state["model"]  if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
 
 		if st.session_state['defaults'].general.optimized:
 			mem = torch.cuda.memory_allocated()/1e6
-			st.session_state.modelFS.to("cpu")
+			server_state["modelFS"].to("cpu")
 			while(torch.cuda.memory_allocated()/1e6 >= mem):
 				time.sleep(1)
 
@@ -208,7 +208,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			x0, z_mask = init_data
 
 			sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=0.0, verbose=False)
-			z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc_steps]*batch_size).to(st.session_state["device"] ))
+			z_enc = sampler.stochastic_encode(x0, torch.tensor([t_enc_steps]*batch_size).to(server_state["device"] ))
 
 			# Obliterate masked image
 			if z_mask is not None and obliterate:
@@ -240,6 +240,9 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			if do_color_correction and i == 0:
 				correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
 
+			# RealESRGAN can only run on the final iteration
+			is_final_iteration = i == n_iter - 1
+
 			output_images, seed, info, stats = process_images(
 				outpath=outpath,
 				func_init=init,
@@ -256,7 +259,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 				height=height,
 				prompt_matrix=separate_prompts,
 				use_GFPGAN=use_GFPGAN,
-				use_RealESRGAN=use_RealESRGAN, # Forcefully disable upscaling when using loopback
+				use_RealESRGAN=use_RealESRGAN and is_final_iteration, # Forcefully disable upscaling when using loopback
 				realesrgan_model_name=RealESRGAN_model,
 				normalize_prompt_weights=normalize_prompt_weights,
 				save_individual_images=save_individual_images,
@@ -372,9 +375,10 @@ def layout():
 		with col1_img2img_layout:
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+			custom_models_available()
 			if st.session_state["CustomModel_available"]:
-				st.session_state["custom_model"] = st.selectbox("Custom Model:", st.session_state["custom_models"],
-									    index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
+				st.session_state["custom_model"] = st.selectbox("Custom Model:", server_state["custom_models"],
+									    index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
 							    help="Select the model you want to use. This option is only available if you have custom models \
 							    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 							    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
@@ -438,13 +442,13 @@ def layout():
 									       help="Save a file next to the image with informartion about the generation.")						
 				save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].img2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 	
-				if st.session_state["GFPGAN_available"]:
+				if server_state["GFPGAN_available"]:
 					use_GFPGAN = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].img2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
 							This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 				else:
 					use_GFPGAN = False
 	
-				if st.session_state["RealESRGAN_available"]:
+				if server_state["RealESRGAN_available"]:
 					st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].img2img.use_RealESRGAN,
 										     help="Uses the RealESRGAN model to upscale the images after the generation.\
 							This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
@@ -583,7 +587,7 @@ def layout():
 										   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
 										   save_individual_images=save_individual_images, save_grid=save_grid, 
 										   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
-										   use_RealESRGAN=st.session_state["use_RealESRGAN"] if not loopback else False, loopback=loopback
+										   use_RealESRGAN=st.session_state["use_RealESRGAN"], loopback=loopback
 										   )
 	
 					#show a message when the generation is complete.
