@@ -1557,7 +1557,7 @@ def process_images(
             if noise_mode == 1 or noise_mode == 3:
                 # TODO params for find_noise_to_image
                 x = torch.cat(batch_size * [find_noise_for_image(
-                                    server_state["model"], st.session_state["device"],
+                                    server_state["model"], server_state["device"],
                                         init_img.convert('RGB'), '', find_noise_steps, 0.0, normalize=True,
                                         generation_callback=generation_callback,
                                         )], dim=0)
