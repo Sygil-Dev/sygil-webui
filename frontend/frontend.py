@@ -10,15 +10,15 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                    txt2img_toggles={}, txt2img_toggle_defaults='k_euler', show_embeddings=False, img2img_defaults={},
                    img2img_toggles={}, img2img_toggle_defaults={}, sample_img2img=None, img2img_mask_modes=None,
                    img2img_resize_modes=None, imgproc_defaults={}, imgproc_mode_toggles={}, user_defaults={},
-                   run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x,
+                   run_GFPGAN=lambda x: x, run_RealESRGAN=lambda x: x, 
                    job_manager: JobManager = None) -> gr.Blocks:
-    with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI") as demo:
+    with gr.Blocks(css=css(opt), analytics_enabled=False, title="Stable Diffusion WebUI, JTHT instance", thumbnail="https://images.squarespace-cdn.com/content/v1/6213c340453c3f502425776e/0715034d-4044-4c55-9131-e4bfd6dd20ca/2_4x.png") as demo:
         with gr.Tabs(elem_id='tabss') as tabs:
             with gr.TabItem("Text-to-Image", id='txt2img_tab'):
                 with gr.Row(elem_id="prompt_row"):
                     txt2img_prompt = gr.Textbox(label="Prompt",
                                                 elem_id='prompt_input',
-                                                placeholder="A corgi wearing a top hat as an oil painting.",
+                                                placeholder="A stack of cogs next to a cat as an oil painting.",
                                                 lines=1,
                                                 max_lines=1 if txt2img_defaults['submit_on_enter'] == 'Yes' else 25,
                                                 value=txt2img_defaults['prompt'],
@@ -36,7 +36,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                 value=txt2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         txt2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=txt2img_defaults["seed"])
-                        txt2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
+                        txt2img_batch_count = gr.Slider(minimum=1, maximum=20, step=1,
                                                         label='Number of images to generate',
                                                         value=txt2img_defaults['n_iter'])
 
@@ -252,7 +252,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                 value=img2img_defaults['cfg_scale'], elem_id='cfg_slider')
                         img2img_seed = gr.Textbox(label="Seed (blank to randomize)", lines=1, max_lines=1,
                                                   value=img2img_defaults["seed"])
-                        img2img_batch_count = gr.Slider(minimum=1, maximum=50, step=1,
+                        img2img_batch_count = gr.Slider(minimum=1, maximum=9, step=1,
                                                         label='Batch count (how many batches of images to generate)',
                                                         value=img2img_defaults['n_iter'])
                         img2img_dimensions_info_text_box = gr.Textbox(
@@ -497,7 +497,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                         gr.Markdown("<b>GoBig Settings</b>")
                                         imgproc_prompt = gr.Textbox(label="",
                                                                     elem_id='prompt_input',
-                                                                    placeholder="A corgi wearing a top hat as an oil painting.",
+                                                                    placeholder="A stack of cogs next to a cat as an oil painting.",
                                                                     lines=1,
                                                                     max_lines=1,
                                                                     value=imgproc_defaults['prompt'],
@@ -629,6 +629,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
         """
         gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
+        <p>JTHT's Instance</p>
+        <p>For suggestions on prompts, see: <a href="https://lexica.art/" target="_blank">Lexica Art</a></p>
         <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
         <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
         If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
@@ -639,5 +641,5 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
         # See the relevant PR: https://github.com/gradio-app/gradio/pull/2108
         load_detector = gr.Number(value=0, label="Load Detector", visible=False)
         load_detector.change(None, None, None, _js=js(opt))
-        demo.load(lambda x: 42, inputs=load_detector, outputs=load_detector)
+        demo.load(lambda x: 42, inputs=load_detector, outputs=load_detector, description="A Gradio webApp by JTT")
     return demo
