@@ -22,7 +22,7 @@ def sdConceptsBrowser(concepts, key=None):
 	return component_value
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("getConceptsFromPath", "page:", page, "conceptPerPage:", conceptPerPage, "searchText:", searchText)
 	# get the path where the concepts are stored
@@ -97,7 +97,6 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("Results:", [c["name"] for c in concepts])
 	return concepts
 
-
 @st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
 def imageToBase64(image):
 	import io
@@ -108,7 +107,7 @@ def imageToBase64(image):
 	return img_str
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def getTotalNumberOfConcepts(searchText=""):
 	# get the path where the concepts are stored
 	path = os.path.join(

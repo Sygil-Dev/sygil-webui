@@ -28,8 +28,6 @@ from tqdm.auto import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 from slugify import slugify
 import json
-import os
-import sys
 
 logger = get_logger(__name__)
 
@@ -40,7 +38,6 @@ def parse_args():
         "--pretrained_model_name_or_path",
         type=str,
         default=None,
-        required=True,
         help="Path to pretrained model or model identifier from huggingface.co/models.",
     )
     parser.add_argument(
@@ -50,17 +47,16 @@ def parse_args():
         help="Pretrained tokenizer name or path if not the same as model_name",
     )
     parser.add_argument(
-        "--train_data_dir", type=str, default=None, required=True, help="A folder containing the training data."
+        "--train_data_dir", type=str, default=None, help="A folder containing the training data."
     )
     parser.add_argument(
         "--placeholder_token",
         type=str,
         default=None,
-        required=True,
         help="A token to use as a placeholder for the concept.",
     )
     parser.add_argument(
-        "--initializer_token", type=str, default=None,  required=True,help="A token to use as initializer word."
+        "--initializer_token", type=str, default=None, help="A token to use as initializer word."
     )
     parser.add_argument("--learnable_property", type=str, default="object", help="Choose between 'object' and 'style'")
     parser.add_argument("--repeats", type=int, default=100, help="How many times to repeat the training data.")
@@ -68,7 +64,6 @@ def parse_args():
         "--output_dir",
         type=str,
         default="text-inversion-model",
-        required=True,
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
@@ -128,6 +123,31 @@ def parse_args():
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="The beta2 parameter for the Adam optimizer.")
     parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
+    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
+    parser.add_argument(
+        "--use_auth_token",
+        action="store_true",
+        help=(
+            "Will use the token generated when running `huggingface-cli login` (necessary to use this script with"
+            " private models)."
+        ),
+    )
+    parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
+    parser.add_argument(
+        "--hub_model_id",
+        type=str,
+        default=None,
+        help="The name of the repository to keep in sync with the local `output_dir`.",
+    )
+    parser.add_argument(
+        "--logging_dir",
+        type=str,
+        default="logs",
+        help=(
+            "[TensorBoard](https://www.tensorflow.org/tensorboard) log directory. Will default to"
+            " *output_dir/runs/**CURRENT_DATETIME_HOSTNAME***."
+        ),
+    )
     parser.add_argument(
         "--mixed_precision",
         type=str,
@@ -144,14 +164,32 @@ def parse_args():
         "--checkpoint_frequency",
         type=int,
         default=500,
-        help="How often to save a checkpoint",
+        help="How often to save a checkpoint and sample image",
+    )
+    parser.add_argument(
+        "--stable_sample_batches",
+        type=int,
+        default=0,
+        help="Number of fixed seed sample batches to generate per checkpoint",
+    )
+    parser.add_argument(
+        "--random_sample_batches",
+        type=int,
+        default=1,
+        help="Number of random seed sample batches to generate per checkpoint",
+    )
+    parser.add_argument(
+        "--sample_batch_size",
+        type=int,
+        default=1,
+        help="Number of samples to generate per batch",
     )
     parser.add_argument(
         "--custom_templates",
         type=str,
         default=None,
         help=(
-            "A comma-delimited list of custom templates to use"
+            "A comma-delimited list of custom template to use for samples, using {} as a placeholder for the concept."
         ),
     )
     parser.add_argument(
@@ -166,19 +204,10 @@ def parse_args():
         default=None,
         help="Path to a specific checkpoint to resume training from (ie, logs/token_name/2022-09-22T23-36-27/checkpoints/something.bin)."
     )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Path to a JSON config file specifying the arguments to use. If resume_from is given, it is automatically inferred."
-    )
 
     args = parser.parse_args()
-    if args.config is not None:
-        with open(args.config, 'rt') as f:
-            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)))
-    elif args.resume_from is not None:
-        with open(f"{args.resume_from}/resume.json", 'rt') as f:
+    if args.resume_from is not None:
+        with open(Path(args.resume_from) / "resume.json", 'rt') as f:
             args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
 
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
@@ -277,10 +306,10 @@ class TextualInversionDataset(Dataset):
             self._length = self.num_images * repeats
 
         self.interpolation = {
-            "linear": PIL.Image.LINEAR,
-            "bilinear": PIL.Image.BILINEAR,
-            "bicubic": PIL.Image.BICUBIC,
-            "lanczos": PIL.Image.LANCZOS,
+            "linear": PIL.Image.Resampling.BILINEAR,
+            "bilinear": PIL.Image.Resampling.BILINEAR,
+            "bicubic": PIL.Image.Resampling.BICUBIC,
+            "lanczos": PIL.Image.Resampling.LANCZOS,
         }[interpolation]
 
         self.templates = templates
@@ -329,6 +358,16 @@ class TextualInversionDataset(Dataset):
         return example
 
 
+def get_full_repo_name(model_id: str, organization: Optional[str] = None, token: Optional[str] = None):
+    if token is None:
+        token = HfFolder.get_token()
+    if organization is None:
+        username = whoami(token)["name"]
+        return f"{username}/{model_id}"
+    else:
+        return f"{organization}/{model_id}"
+
+
 def freeze_params(params):
     for param in params:
         param.requires_grad = False
@@ -337,7 +376,7 @@ def freeze_params(params):
 def save_resume_file(basepath, args, extra = {}):
     info = {"args": vars(args)}
     info["args"].update(extra)
-    with open(f"{basepath}/resume.json", "w") as f:
+    with open(Path(basepath) / "resume.json", "w") as f:
         json.dump(info, f, indent=4)
 
 
@@ -352,6 +391,9 @@ class Checkpointer:
         placeholder_token_id,
         templates,
         output_dir,
+        random_sample_batches,
+        sample_batch_size,
+        stable_sample_batches,
         seed
     ):
         self.accelerator = accelerator
@@ -362,14 +404,17 @@ class Checkpointer:
         self.placeholder_token_id = placeholder_token_id
         self.templates = templates
         self.output_dir = output_dir
+        self.random_sample_batches = random_sample_batches
+        self.sample_batch_size = sample_batch_size
+        self.stable_sample_batches = stable_sample_batches
         self.seed = seed
 
 
-    def checkpoint(self, step, text_encoder):
+    def checkpoint(self, step, text_encoder, save_samples=True):
         print("Saving checkpoint for step %d..." % step)
         with torch.autocast("cuda"):
-            checkpoints_path = f"{self.output_dir}/checkpoints"
-            os.makedirs(checkpoints_path, exist_ok=True)
+            checkpoints_path = self.output_dir / "checkpoints"
+            checkpoints_path.mkdir(exist_ok=True, parents=True)
 
             unwrapped = self.accelerator.unwrap_model(text_encoder)
 
@@ -378,27 +423,94 @@ class Checkpointer:
             learned_embeds_dict = {self.placeholder_token: learned_embeds.detach().cpu()}
 
             filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
-            torch.save(learned_embeds_dict, f"{checkpoints_path}/{filename}")
-            torch.save(learned_embeds_dict, f"{checkpoints_path}/last.bin")
+            torch.save(learned_embeds_dict, checkpoints_path / filename)
+            torch.save(learned_embeds_dict, checkpoints_path / "last.bin")
             del unwrapped
-            return f"{checkpoints_path}/last.bin"
+            return checkpoints_path / "last.bin"
+
+
+    def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
+        samples_path = self.output_dir / "samples"
+        samples_path.mkdir(exist_ok=True, parents=True)
+        checker = NoCheck()
+
+        with torch.autocast("cuda"):
+            unwrapped = self.accelerator.unwrap_model(text_encoder)
+            # Save a sample image
+            pipeline = StableDiffusionPipeline(
+                text_encoder=unwrapped,
+                vae=self.vae,
+                unet=self.unet,
+                tokenizer=self.tokenizer,
+                scheduler=PNDMScheduler(
+                    beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
+                ),
+                safety_checker=NoCheck(),
+                feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
+            ).to('cuda')
+            pipeline.enable_attention_slicing()
+
+            if self.stable_sample_batches > 0:
+                stable_latents = torch.randn(
+                    (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
+                    device=pipeline.device,
+                    generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
+                )
+
+                stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
+
+                # Generate and save stable samples
+                for i in range(0, self.stable_sample_batches):
+                    samples = pipeline(
+                        prompt=stable_prompts,
+                        height=max(512, height),
+                        latents=stable_latents,
+                        width=max(512, width),
+                        guidance_scale=guidance_scale,
+                        eta=eta,
+                        num_inference_steps=num_inference_steps,
+                        output_type='pil'
+                    )["sample"]
+                    for idx, im in enumerate(samples):
+                            filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
+                            im.save(samples_path / filename)
+
+            prompts = [choice.format(self.placeholder_token) for choice in random.choices(self.templates, k=self.sample_batch_size)]
+            # Generate and save random samples
+            for i in range(0, self.random_sample_batches):
+                samples = pipeline(
+                    prompt=prompts,
+                    height=max(512, height),
+                    width=max(512, width),
+                    guidance_scale=guidance_scale,
+                    eta=eta,
+                    num_inference_steps=num_inference_steps,
+                    output_type='pil'
+                )["sample"]
+                for idx, im in enumerate(samples):
+                    filename = f"step_%d_sample_%d_%d.png" % (step, i+1, idx+1)
+                    im.save(samples_path / filename)
+
+            del im
+            del pipeline
+            del unwrapped
+
 
 def main():
     args = parse_args()
 
     global_step_offset = 0
     if args.resume_from is not None:
-        basepath = f"{args.resume_from}"
+        basepath = Path(args.resume_from)
         print("Resuming state from %s" % args.resume_from)
-        with open(f"{basepath}/resume.json", 'r') as f:
+        with open(basepath / "resume.json", 'r') as f:
             state = json.load(f)
         global_step_offset = state["args"]["global_step"]
 
         print("We've trained %d steps so far" % global_step_offset)
     else:
-        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-        basepath = f"{args.output_dir}/{slugify(args.placeholder_token)}/{now}"
-        os.makedirs(basepath, exist_ok=True)
+        basepath = Path(args.logging_dir) / slugify(args.placeholder_token)
+        basepath.mkdir(exist_ok=True, parents=True)
 
 
     accelerator = Accelerator(
@@ -409,6 +521,23 @@ def main():
     # If passed along, set the training seed now.
     if args.seed is not None:
         set_seed(args.seed)
+
+    # Handle the repository creation
+    if accelerator.is_main_process:
+        if args.push_to_hub:
+            if args.hub_model_id is None:
+                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
+            else:
+                repo_name = args.hub_model_id
+            repo = Repository(args.output_dir, clone_from=repo_name)
+
+            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
+                if "step_*" not in gitignore:
+                    gitignore.write("step_*\n")
+                if "epoch_*" not in gitignore:
+                    gitignore.write("epoch_*\n")
+        elif args.output_dir is not None:
+            os.makedirs(args.output_dir, exist_ok=True)
 
     # Load the tokenizer and add the placeholder token as a additional special token
     if args.tokenizer_name:
@@ -487,6 +616,9 @@ def main():
         placeholder_token_id=placeholder_token_id,
         templates=templates,
         output_dir=basepath,
+        sample_batch_size=args.sample_batch_size,
+        random_sample_batches=args.random_sample_batches,
+        stable_sample_batches=args.stable_sample_batches,
         seed=args.seed
     )
 
@@ -518,7 +650,7 @@ def main():
         learnable_property=args.learnable_property,
         center_crop=args.center_crop,
         set="train",
-        templates=templates
+        templates=base_templates
     )
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
 
@@ -621,14 +753,16 @@ def main():
                 if accelerator.sync_gradients:
                     progress_bar.update(1)
                     global_step += 1
-                
-                if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
-                    checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
-                    save_resume_file(basepath, args, {
-                    "global_step": global_step + global_step_offset,
-                    "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
-                    })
-                
+
+                    if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
+                        checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
+                        save_resume_file(basepath, args, {
+                            "global_step": global_step + global_step_offset,
+                            "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+                        })
+                        checkpointer.save_samples(global_step + global_step_offset, text_encoder,
+                            args.resolution, args.resolution, 7.5, 0.0, 25)
+
                 logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
                 progress_bar.set_postfix(**logs)
                 #accelerator.log(logs, step=global_step)
@@ -640,15 +774,35 @@ def main():
 
         # Create the pipeline using using the trained modules and save it.
         if accelerator.is_main_process:
+            pipeline = StableDiffusionPipeline(
+                text_encoder=accelerator.unwrap_model(text_encoder),
+                vae=vae,
+                unet=unet,
+                tokenizer=tokenizer,
+                scheduler=PNDMScheduler(
+                    beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
+                ),
+                safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
+                feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
+            )
+            #pipeline.save_pretrained(args.output_dir)
+            # Also save the newly trained embeddings
             learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
             learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
-            torch.save(learned_embeds_dict, f"{basepath}/learned_embeds.bin")
+            torch.save(learned_embeds_dict, basepath / f"learned_embeds.bin")
+            if global_step % args.checkpoint_frequency != 0:
+                checkpointer.save_samples(global_step + global_step_offset, text_encoder,
+                                args.resolution, args.resolution, 7.5, 0.0, 25)
 
             print("Saving resume state")
             save_resume_file(basepath, args, {
                 "global_step": global_step + global_step_offset,
-                "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
+                "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
             })
+
+            if args.push_to_hub:
+                repo.push_to_hub(
+                    args, pipeline, repo, commit_message="End of training", blocking=False, auto_lfs_prune=True)
 
             accelerator.end_training()
 
@@ -658,7 +812,7 @@ def main():
             checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
             save_resume_file(basepath, args, {
                 "global_step": global_step + global_step_offset,
-                "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
+                "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
             })
         quit()
 
