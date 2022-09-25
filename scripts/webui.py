@@ -743,6 +743,9 @@ def get_next_sequence_number(path, prefix=''):
 
     The sequence starts at 0.
     """
+    # Because when running in bridge-mode, we do not have a dir
+    if opt.bridge: 
+        return(0)
     result = -1
     for p in Path(path).iterdir():
         if p.name.endswith(('.png', '.jpg')) and p.name.startswith(prefix):
@@ -1172,7 +1175,8 @@ def process_images(
                 if sort_samples:
                     sanitized_prompt = sanitized_prompt[:128] #200 is too long
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
-                    os.makedirs(sample_path_i, exist_ok=True)
+                    if not opt.bridge:
+                        os.makedirs(sample_path_i, exist_ok=True)
                     base_count = get_next_sequence_number(sample_path_i)
                     filename = opt.filename_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]"
                 else:
@@ -2596,16 +2600,16 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
     loop_retry = 0
     while True:
         gen_dict = {
-            "api_key": api_key,
             "name": horde_name,
             "max_pixels": horde_max_pixels,
             "priority_usernames": priority_usernames,
         }
+        headers = {"apikey": api_key}
         if current_id:
             loop_retry += 1
         else:
             try:
-                pop_req = requests.post(horde_url + '/api/v1/generate/pop', json = gen_dict)
+                pop_req = requests.post(horde_url + '/api/v2/generate/pop', json = gen_dict, headers = headers)
             except requests.exceptions.ConnectionError:
                 logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
                 time.sleep(10)
@@ -2614,14 +2618,26 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
                 time.sleep(10)
                 continue
-            if not pop_req.ok:
-                logger.warning(f"During gen pop, server {horde_url} responded: {pop_req.text}. Waiting for 10 seconds...")
-                time.sleep(10)
+            try:
+                pop = pop_req.json()
+            except json.decoder.JSONDecodeError:
+                logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                time.sleep(interval)
                 continue
-            pop = pop_req.json()
             if not pop:
                 logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
                 time.sleep(interval)
+                continue
+            if not pop_req.ok:
+                message = pop['message']
+                logger.warning(f"During gen pop, server {horde_url} responded with status code {pop_req.status_code}: {pop['message']}. Waiting for 10 seconds...")
+                if 'errors' in pop:
+                    logger.warning(f"Detailed Request Errors: {pop['errors']}")
+                time.sleep(10)
+                continue
+            if 'id' not in pop:
+                logger.error(f"Received Bad payload: {pop}")
+                time.sleep(10)
                 continue
             if not pop["id"]:
                 logger.debug(f"Server {horde_url} has no valid generations to do for us. Skipped Info: {pop['skipped']}.")
@@ -2629,6 +2645,13 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 continue
             current_id = pop['id']
             current_payload = pop['payload']
+            if 'toggles' in current_payload and current_payload['toggles'] == None:
+                logger.error(f"Received Bad payload: {pop}")
+                current_id = None
+                current_payload = None
+                current_generation = None
+                time.sleep(10)
+                continue
         images, seed, info, stats = txt2img(**current_payload)
         buffer = BytesIO()
         # We send as WebP to avoid using all the horde bandwidth
@@ -2644,17 +2667,21 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
         current_generation = seed
         while current_id and current_generation:
             try:
-                submit_req = requests.post(horde_url + '/api/v1/generate/submit', json = submit_dict)
+                submit_req = requests.post(horde_url + '/api/v2/generate/submit', json = submit_dict, headers = headers)
                 if submit_req.status_code == 404:
                     logger.warning(f"The generation we were working on got stale. Aborting!")
-                elif not submit_req.ok:
-                    if "already submitted" in submit_req.text:
-                        logger.warning(f'Server think this gen already submitted. Continuing')
-                    else:
-                        logger.error(submit_req.status_code)
-                        logger.warning(f"During gen submit, server {horde_url} responded: {submit_req.text}. Waiting for 10 seconds...")
-                        time.sleep(10)
-                        continue
+                try:
+                    submit = submit_req.json()
+                except json.decoder.JSONDecodeError:
+                    logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!")
+                    time.sleep(interval)
+                    continue
+                if not submit_req.ok:
+                    logger.warning(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...")
+                    if 'errors' in submit:
+                        logger.warning(f"Detailed Request Errors: {submit['errors']}")
+                    time.sleep(10)
+                    continue
                 else:
                     logger.info(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
                 current_id = None
