@@ -4,7 +4,6 @@ from sd_utils import *
 
 # streamlit imports
 from streamlit import StopException
-from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
 from streamlit.elements import image as STImage
 
 #other imports
@@ -37,14 +36,14 @@ class plugin_info():
 
 
 if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-    GFPGAN_available = True
+    server_state["GFPGAN_available"] = True
 else:
-    GFPGAN_available = False
+    server_state["GFPGAN_available"] = False
 
 if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-    RealESRGAN_available = True
+    server_state["RealESRGAN_available"] = True
 else:
-    RealESRGAN_available = False	
+    server_state["RealESRGAN_available"] = False	
 
 #
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_name: str,
@@ -70,21 +69,21 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
     #use_RealESRGAN = 8 in toggles
 
     if sampler_name == 'PLMS':
-        sampler = PLMSSampler(st.session_state["model"])
+        sampler = PLMSSampler(server_state["model"])
     elif sampler_name == 'DDIM':
-        sampler = DDIMSampler(st.session_state["model"])
+        sampler = DDIMSampler(server_state["model"])
     elif sampler_name == 'k_dpm_2_a':
-        sampler = KDiffusionSampler(st.session_state["model"],'dpm_2_ancestral')
+        sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
     elif sampler_name == 'k_dpm_2':
-        sampler = KDiffusionSampler(st.session_state["model"],'dpm_2')
+        sampler = KDiffusionSampler(server_state["model"],'dpm_2')
     elif sampler_name == 'k_euler_a':
-        sampler = KDiffusionSampler(st.session_state["model"],'euler_ancestral')
+        sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
     elif sampler_name == 'k_euler':
-        sampler = KDiffusionSampler(st.session_state["model"],'euler')
+        sampler = KDiffusionSampler(server_state["model"],'euler')
     elif sampler_name == 'k_heun':
-        sampler = KDiffusionSampler(st.session_state["model"],'heun')
+        sampler = KDiffusionSampler(server_state["model"],'heun')
     elif sampler_name == 'k_lms':
-        sampler = KDiffusionSampler(st.session_state["model"],'lms')
+        sampler = KDiffusionSampler(server_state["model"],'lms')
     else:
         raise Exception("Unknown sampler: " + sampler_name)
 
@@ -208,9 +207,10 @@ def layout():
         with col3:
             # If we have custom models available on the "models/custom" 
             #folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+            custom_models_available()
             if st.session_state.CustomModel_available:
-                st.session_state.custom_model = st.selectbox("Custom Model:", st.session_state.custom_models,
-                                                                index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
+                server_state["custom_model"] = st.selectbox("Custom Model:", server_state["custom_models"],
+                                                                index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
                                                                 help="Select the model you want to use. This option is only available if you have custom models \
                                                                 on your 'models/custom' folder. The model name that will be shown here is the same as the name\
                                                                 the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
@@ -243,13 +243,13 @@ def layout():
                 write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2img.write_info_files, help="Save a file next to the image with informartion about the generation.")
                 save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 
-                if st.session_state["GFPGAN_available"]:
+                if server_state["GFPGAN_available"]:
                     st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
                             This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
                 else:
                     st.session_state["use_GFPGAN"] = False
 
-                if st.session_state["RealESRGAN_available"]:
+                if server_state["RealESRGAN_available"]:
                     st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
                                                                      help="Uses the RealESRGAN model to upscale the images after the generation.\
                             This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
@@ -321,48 +321,3 @@ def layout():
                 # use the current col2 first tab to show the preview_img and update it as its generated.
                 #preview_image.image(output_images)
 
-#on import run init
-def createHTMLGallery(images,info):
-    html3 = """
-        <div class="gallery-history" style="
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;">
-        """
-    mkdwn_array = []
-    for i in images:
-        try:
-            seed = info[images.index(i)]
-        except:
-            seed = ' '
-        image_io = BytesIO()
-        i.save(image_io, 'PNG')
-        width, height = i.size
-        #get random number for the id
-        image_id = "%s" % (str(images.index(i)))
-        (data, mimetype) = STImage._normalize_to_bytes(image_io.getvalue(), width, 'auto')
-        this_file = in_memory_file_manager.add(data, mimetype, image_id)
-        img_str = this_file.url
-        #img_str = 'data:image/png;base64,' + b64encode(image_io.getvalue()).decode('ascii')
-        #get image size
-
-        #make sure the image is not bigger then 150px but keep the aspect ratio
-        if width > 150:
-            height = int(height * (150/width))
-            width = 150
-        if height > 150:
-            width = int(width * (150/height))
-            height = 150
-
-        #mkdwn = f"""<img src="{img_str}" alt="Image" with="200" height="200" />"""
-        mkdwn = f'''<div class="gallery" style="margin: 3px;" >
-                <a href="{img_str}">
-                <img src="{img_str}" alt="Image" width="{width}" height="{height}">
-                </a>
-                <div class="desc" style="text-align: center; opacity: 40%;">{seed}</div>
-</div>
-'''
-        mkdwn_array.append(mkdwn)
-    html3 += "".join(mkdwn_array)
-    html3 += '</div>'
-    return html3
