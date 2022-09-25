@@ -2621,10 +2621,10 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             try:
                 pop = pop_req.json()
             except json.decoder.JSONDecodeError:
-                logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                logger.error(f"Could not decode response from {horde_url} as json. Please inform its administrator!")
                 time.sleep(interval)
                 continue
-            if not pop:
+            if pop == None:
                 logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
                 time.sleep(interval)
                 continue
@@ -2635,12 +2635,11 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                     logger.warning(f"Detailed Request Errors: {pop['errors']}")
                 time.sleep(10)
                 continue
-            if 'id' not in pop:
-                logger.error(f"Received Bad payload: {pop}")
-                time.sleep(10)
-                continue
-            if not pop["id"]:
-                logger.debug(f"Server {horde_url} has no valid generations to do for us. Skipped Info: {pop['skipped']}.")
+            if not pop.get("id"):
+                skipped_info = pop.get('skipped')
+                if skipped_info:
+                    skipped_info = f" Skipped Info: {skipped_info}."
+                logger.debug(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
                 time.sleep(interval)
                 continue
             current_id = pop['id']
