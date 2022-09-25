@@ -28,6 +28,7 @@ services:
       - .:/sd
       - ./outputs:/sd/outputs
       - ./model_cache:/sd/model_cache
+      - ~/.huggingface/token:/root/.huggingface/token
       - root_profile:/root
     ports:
       - '7860:7860'
@@ -37,11 +38,6 @@ services:
       interval: 30s
       timeout: 1s
       retries: 10
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [ gpu ]
 
 volumes:
   root_profile:
