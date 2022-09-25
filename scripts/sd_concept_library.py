@@ -75,21 +75,29 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 		files = [f for f in os.listdir(os.path.join(path, folder, "concept_images")) if os.path.isfile(
 			os.path.join(path, folder, "concept_images", f))]
 		# Retrieve only the 4 first images
-		for file in files[:4]:
+		for file in files:
+
+			# Skip if we already have 4 images
+			if len(concept["images"]) >= 4:
+				break
+
 			if file.endswith(acceptedExtensions):
-				# Add a copy of the image to avoid file locking
-				originalImage = Image.open(os.path.join(
-					path, folder, "concept_images", file))
+				try:
+					# Add a copy of the image to avoid file locking
+					originalImage = Image.open(os.path.join(
+						path, folder, "concept_images", file))
 
-				# Maintain the aspect ratio (max 200x200)
-				resizedImage = originalImage.copy()
-				resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
+					# Maintain the aspect ratio (max 200x200)
+					resizedImage = originalImage.copy()
+					resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
 
-				# concept["images"].append(resizedImage)
+					# concept["images"].append(resizedImage)
 
-				concept["images"].append(imageToBase64(resizedImage))
-				# Close original image
-				originalImage.close()
+					concept["images"].append(imageToBase64(resizedImage))
+					# Close original image
+					originalImage.close()
+				except:
+					print("Error while loading image", file, "in concept", folder, "(The file may be corrupted). Skipping it.")
 
 		concepts.append(concept)
 		conceptIndex += 1
