@@ -183,15 +183,19 @@ def layout():
 				
 		with txt2img_tab:
 			st.title("Text To Image")
+			st.info("Under Construction. :construction_worker:")
 			
 		with img2img_tab:
 			st.title("Image To Image")
+			st.info("Under Construction. :construction_worker:")
 			
 		with txt2vid_tab:
 			st.title("Text To Video")
+			st.info("Under Construction. :construction_worker:")
 			
 		with textual_inversion_tab:
 			st.title("Textual Inversion")
+			st.info("Under Construction. :construction_worker:")
 		
 		# add space for the buttons at the bottom	
 		st.markdown("---")

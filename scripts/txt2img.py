@@ -4,7 +4,6 @@ from sd_utils import *
 
 # streamlit imports
 from streamlit import StopException
-from streamlit.runtime.in_memory_file_manager import in_memory_file_manager
 from streamlit.elements import image as STImage
 
 #other imports
@@ -208,6 +207,7 @@ def layout():
         with col3:
             # If we have custom models available on the "models/custom" 
             #folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
+            custom_models_available()
             if st.session_state.CustomModel_available:
                 st.session_state.custom_model = st.selectbox("Custom Model:", st.session_state.custom_models,
                                                                 index=st.session_state["custom_models"].index(st.session_state['defaults'].general.default_model),
@@ -321,48 +321,3 @@ def layout():
                 # use the current col2 first tab to show the preview_img and update it as its generated.
                 #preview_image.image(output_images)
 
-#on import run init
-def createHTMLGallery(images,info):
-    html3 = """
-        <div class="gallery-history" style="
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;">
-        """
-    mkdwn_array = []
-    for i in images:
-        try:
-            seed = info[images.index(i)]
-        except:
-            seed = ' '
-        image_io = BytesIO()
-        i.save(image_io, 'PNG')
-        width, height = i.size
-        #get random number for the id
-        image_id = "%s" % (str(images.index(i)))
-        (data, mimetype) = STImage._normalize_to_bytes(image_io.getvalue(), width, 'auto')
-        this_file = in_memory_file_manager.add(data, mimetype, image_id)
-        img_str = this_file.url
-        #img_str = 'data:image/png;base64,' + b64encode(image_io.getvalue()).decode('ascii')
-        #get image size
-
-        #make sure the image is not bigger then 150px but keep the aspect ratio
-        if width > 150:
-            height = int(height * (150/width))
-            width = 150
-        if height > 150:
-            width = int(width * (150/height))
-            height = 150
-
-        #mkdwn = f"""<img src="{img_str}" alt="Image" with="200" height="200" />"""
-        mkdwn = f'''<div class="gallery" style="margin: 3px;" >
-                <a href="{img_str}">
-                <img src="{img_str}" alt="Image" width="{width}" height="{height}">
-                </a>
-                <div class="desc" style="text-align: center; opacity: 40%;">{seed}</div>
-</div>
-'''
-        mkdwn_array.append(mkdwn)
-    html3 += "".join(mkdwn_array)
-    html3 += '</div>'
-    return html3
