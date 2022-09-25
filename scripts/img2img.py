@@ -240,6 +240,9 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			if do_color_correction and i == 0:
 				correction_target = cv2.cvtColor(np.asarray(init_img.copy()), cv2.COLOR_RGB2LAB)
 
+			# RealESRGAN can only run on the final iteration
+			is_final_iteration = i == n_iter - 1
+
 			output_images, seed, info, stats = process_images(
 				outpath=outpath,
 				func_init=init,
@@ -256,7 +259,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 				height=height,
 				prompt_matrix=separate_prompts,
 				use_GFPGAN=use_GFPGAN,
-				use_RealESRGAN=use_RealESRGAN, # Forcefully disable upscaling when using loopback
+				use_RealESRGAN=use_RealESRGAN and is_final_iteration, # Forcefully disable upscaling when using loopback
 				realesrgan_model_name=RealESRGAN_model,
 				normalize_prompt_weights=normalize_prompt_weights,
 				save_individual_images=save_individual_images,
@@ -583,7 +586,7 @@ def layout():
 										   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
 										   save_individual_images=save_individual_images, save_grid=save_grid, 
 										   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
-										   use_RealESRGAN=st.session_state["use_RealESRGAN"] if not loopback else False, loopback=loopback
+										   use_RealESRGAN=st.session_state["use_RealESRGAN"], loopback=loopback
 										   )
 	
 					#show a message when the generation is complete.
