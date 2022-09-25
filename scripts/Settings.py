@@ -6,6 +6,7 @@ from sd_utils import *
 
 #streamlit components section
 import streamlit_nested_layout
+from streamlit_server_state import server_state, server_state_lock
 
 #other imports
 from omegaconf import OmegaConf
@@ -17,9 +18,11 @@ def layout():
 	st.header("Settings")
 	
 	with st.form("Settings"):
-		general_tab, txt2img_tab, img2img_tab, txt2vid_tab, textual_inversion_tab = st.tabs(['General', "Text-To-Image",
-																							 "Image-To-Image", "Text-To-Video",
-																							 "Textual Inversion"])
+		general_tab, txt2img_tab, img2img_tab, \
+			txt2vid_tab, textual_inversion_tab, concepts_library_tab = st.tabs(['General', "Text-To-Image",
+																				"Image-To-Image", "Text-To-Video",
+																				"Textual Inversion",	
+																				"Concepts Library"])
 		
 		with general_tab:
 			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
@@ -47,8 +50,8 @@ def layout():
 				custom_models_available()
 				
 				if st.session_state.CustomModel_available:
-					st.session_state.default_model = st.selectbox("Default Model:", st.session_state.custom_models,
-																		 index=st.session_state.custom_models.index(st.session_state['defaults'].general.default_model),
+					st.session_state.default_model = st.selectbox("Default Model:", server_state["custom_models"],
+																		 index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
 																			help="Select the model you want to use. If you have placed custom models \
 																			on your 'models/custom' folder they will be shown here as well. The model name that will be shown here \
 																			is the same as the name the file for the model has on said folder, \
@@ -196,6 +199,14 @@ def layout():
 		with textual_inversion_tab:
 			st.title("Textual Inversion")
 			st.info("Under Construction. :construction_worker:")
+		
+		with concepts_library_tab:
+			st.title("Concepts Library")
+			#st.info("Under Construction. :construction_worker:")	
+			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
+			with col1:
+				st.session_state["defaults"].concepts_library.concepts_per_page = int(st.text_input("Concepts Per Page", value=st.session_state['defaults'].concepts_library.concepts_per_page,
+																									help="Number of concepts per page to show on the Concepts Library. Default: '12'"))
 		
 		# add space for the buttons at the bottom	
 		st.markdown("---")

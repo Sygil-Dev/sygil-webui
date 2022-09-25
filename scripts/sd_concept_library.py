@@ -137,7 +137,7 @@ def layout():
 	# Concept Library
 	with tab_library:
 		downloaded_concepts_count = getTotalNumberOfConcepts()
-		concepts_per_page = 12
+		concepts_per_page = st.session_state["defaults"].concepts_library.concepts_per_page
 
 		if not "results" in st.session_state:
 			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, "")
@@ -177,7 +177,7 @@ def layout():
 
 					# Previous page
 					with _previous_page:
-						if st.button("<", key="cl_previous_page"):
+						if st.button("Previous", key="cl_previous_page"):
 							st.session_state["cl_current_page"] -= 1
 							if st.session_state["cl_current_page"] <= 0:
 								st.session_state["cl_current_page"] = last_page
@@ -189,7 +189,7 @@ def layout():
 
 					# Next page
 					with _next_page:
-						if st.button(">", key="cl_next_page"):
+						if st.button("Next", key="cl_next_page"):
 							st.session_state["cl_current_page"] += 1
 							if st.session_state["cl_current_page"] > last_page:
 								st.session_state["cl_current_page"] = 1
