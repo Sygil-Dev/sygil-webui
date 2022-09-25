@@ -10,6 +10,8 @@ import numpy as np
 import cv2
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, ImageChops, ImageColor
 
+import torch
+
 from frontend.job_manager import JobInfo
 
 scn2img_cache = {
@@ -115,6 +117,33 @@ def try_loading_monocular_depth_estimation(monocular_depth_estimation_dir = "./s
     else:
         print(f"monocular_depth_estimation not found at path, please make sure you have cloned \n the repository https://huggingface.co/keras-io/monocular-depth-estimation to {monocular_depth_estimation_dir}")
 
+midas_depth_estimation = None
+midas_transforms = None
+midas_transform = None
+def try_loading_midas_depth_estimation(use_large_model = True):
+    global midas_depth_estimation
+    global midas_transforms
+    global midas_transform
+    try:
+        if use_large_model:
+            midas_depth_estimation = torch.hub.load("intel-isl/MiDaS", "MiDaS")
+        else:
+            midas_depth_estimation = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
+        
+        device = "cpu"
+        midas_depth_estimation.to(device)
+
+        midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
+
+        if use_large_model:
+            midas_transform = midas_transforms.default_transform
+        else:
+            midas_transform = midas_transforms.small_transform
+    except Exception:
+        import traceback
+        print("Error loading midas_depth_estimation:", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)        
+
 def try_many(fs, *args, **kwargs):
     for f in fs:
         try:
@@ -201,7 +230,10 @@ def scn2img_define_args():
             "mask_by_color_space"     : "str",
             "mask_by_color_threshold" : "int",
             "mask_by_color_at"        : "int_tuple",
+            "mask_is_depth"           : "bool",
             "mask_depth"              : "bool",
+            "mask_depth_normalize"    : "bool",
+            "mask_depth_model"        : "int",
             "mask_depth_min"          : "float",
             "mask_depth_max"          : "float",
             "mask_depth_invert"       : "bool",
@@ -813,10 +845,14 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     mask_depth_min = obj["mask_depth_min"] or 0.2
                     mask_depth_max = obj["mask_depth_max"] or 0.8
                     mask_depth_invert = bool(obj["mask_depth_invert"]) or False
-                    res = run_Monocular_Depth_Filter([img], mask_depth_min, mask_depth_max, mask_depth_invert)
+                    mask_is_depth = obj["mask_is_depth"] if "mask_is_depth" in obj else False
+                    mask_depth_normalize = obj["mask_depth_normalize"] if "mask_depth_normalize" in obj else True
+                    mask_depth_model = int(obj["mask_depth_model"]) if "mask_depth_model" in obj else 1
+                    depth_filters = [run_Monocular_Depth_Filter_single, run_midas_depth_filter]
+                    func_depth_filter = depth_filters[mask_depth_model]
+                    res = func_depth_filter(img, mask_depth_min, mask_depth_max, mask_depth_invert, mask_depth_normalize, mask_is_depth)
                     if res is not None:
-                        mask = res[0]
-                        mask = mask.resize(img.size)
+                        mask = res.resize(img.size)
                         changed_mask = True
 
                 if "mask_open" in obj:
@@ -1272,7 +1308,7 @@ def run_monocular_depth_estimation(images, minDepth=10, maxDepth=1000, batch_siz
     depths = np.clip(depth_norm(predictions, maxDepth=maxDepth), minDepth, maxDepth) / maxDepth
     return depths
 
-def run_Monocular_Depth_Filter(images, filter_min_depth=0.2, filter_max_depth=0.8, invert=False, **kwargs):
+def run_Monocular_Depth_Filter_multi(images, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool, **kwargs):
     # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
     depths = run_monocular_depth_estimation(images, **kwargs)
     if depths is None: 
@@ -1281,17 +1317,72 @@ def run_Monocular_Depth_Filter(images, filter_min_depth=0.2, filter_max_depth=0.
     # print("run_Monocular_Depth_Filter n,h,w,c", n,h,w,c)
     outputs = []
     for k in range(n):
-        rescaled = depths[k][:,:,0]
-        rescaled = rescaled - np.min(rescaled)
-        rescaled = rescaled / np.max(rescaled)
-        filt_base = rescaled
-        # filt_base = repeat(filt_base, "h w -> (h 2) (w 2)")
-        filt_arr_min = (filt_base > filter_min_depth)
-        filt_arr_max = (filt_base < filter_max_depth)
-        mask = np.logical_and(filt_arr_min, filt_arr_max).astype(np.uint8) * 255
-        if invert:
-            mask = 255-mask
-        mask = Image.fromarray(mask,"L")
+        depth = depths[k][:,:,0]
+        mask = run_depth_filter(depth, filter_min_depth, filter_max_depth, invert, normalize_depth, mask_is_depth)
         outputs.append(mask)
     return outputs
 
+def run_Monocular_Depth_Filter_single(image, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool, **kwargs):
+    depths = run_Monocular_Depth_Filter_multi([image], filter_min_depth, filter_max_depth, invert, normalize_depth, mask_is_depth, **kwargs)
+    return depths[0]
+
+
+def run_midas_depth_estimation(image):
+    global midas_depth_estimation
+    global midas_transform
+    if image is None:
+        return None
+    if midas_depth_estimation is None or midas_transform is None:
+        try_loading_midas_depth_estimation()
+    if midas_depth_estimation is None or midas_transform is None:
+        return None
+
+    image = image.convert("RGB")
+    image = np.asarray(image) 
+
+    device = "cpu"
+    input_batch = midas_transform(image).to(device)
+    with torch.no_grad():
+        prediction = midas_depth_estimation(input_batch)
+
+        prediction = torch.nn.functional.interpolate(
+            prediction.unsqueeze(1),
+            size=image.shape[:2],
+            mode="bicubic",
+            align_corners=False,
+        ).squeeze()
+
+    output = prediction.cpu().numpy()
+    depth = 1 - output / np.max(output)
+    return depth
+
+def run_midas_depth_filter(image, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool):
+    depth = run_midas_depth_estimation(image)
+
+    return run_depth_filter(depth, filter_min_depth, filter_max_depth, invert, normalize_depth, mask_is_depth)
+
+
+def run_depth_filter(depth, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool):
+    if depth is None:
+        return None
+
+    if normalize_depth:
+        depth = depth - np.min(depth)
+        depth = depth / np.max(depth)
+
+    if mask_is_depth:
+        depth = (depth - filter_min_depth) * (1.0/(filter_max_depth - filter_min_depth))
+        depth[depth < 0] = 0
+        depth[depth > 1] = 1
+        mask = (depth*255).astype(np.uint8)
+    else:
+        filt_arr_min = (depth > filter_min_depth)
+        filt_arr_max = (depth < filter_max_depth)
+        mask = np.logical_and(filt_arr_min, filt_arr_max).astype(np.uint8) * 255
+
+    if invert:
+        mask = 255-mask
+
+    mask = Image.fromarray(mask,"L")
+
+    return mask
