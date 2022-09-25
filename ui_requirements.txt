@@ -16,6 +16,7 @@ streamlit==1.12.2
 streamlit-on-Hover-tabs==1.0.1
 streamlit-option-menu==0.3.2
 streamlit_nested_layout==0.1.1
+streamlit-server-state==0.14.2
 
 
 # Other
