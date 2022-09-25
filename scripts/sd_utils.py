@@ -1595,7 +1595,7 @@ def process_images(
                     full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
 
 
-                    sanitized_prompt = sanitized_prompt[:220-len(full_path)]
+                    sanitized_prompt = sanitized_prompt[:200-len(full_path)]
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
 
                     #print(f"output folder length: {len(os.path.join(os.getcwd(), sample_path_i))}")
@@ -1608,7 +1608,7 @@ def process_images(
                     full_path = os.path.join(os.getcwd(), sample_path)
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:220-len(full_path)] #same as before
+                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:200-len(full_path)] #same as before
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
@@ -1763,7 +1763,7 @@ def process_images(
                 output_images.insert(0, grid)
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
-            grid_file = f"grid-{grid_count:05}-{seed}_{slugify(prompts[i].replace(' ', '_')[:220-len(full_path)])}.{grid_ext}"
+            grid_file = f"grid-{grid_count:05}-{seed}_{slugify(prompts[i].replace(' ', '_')[:200-len(full_path)])}.{grid_ext}"
             grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
         toc = time.time()
