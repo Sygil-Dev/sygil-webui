@@ -7,6 +7,7 @@ import streamlit_nested_layout
 
 #streamlit components section
 from st_on_hover_tabs import on_hover_tabs
+from streamlit_server_state import server_state, server_state_lock
 
 #other imports
 
@@ -40,7 +41,8 @@ except:
 	pass
 
 # remove some annoying deprecation warnings that show every now and then.
-warnings.filterwarnings("ignore", category=DeprecationWarning)     
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)     
 
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 #os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
@@ -70,15 +72,17 @@ def layout():
 		load_css(True, 'frontend/css/streamlit.main.css')
 		
 	# check if the models exist on their respective folders
-	if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-		st.session_state["GFPGAN_available"] = True
-	else:
-		st.session_state["GFPGAN_available"] = False
+	with server_state_lock["GFPGAN_available"]:
+		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+			server_state["GFPGAN_available"] = True
+		else:
+			server_state["GFPGAN_available"] = False
 
-	if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-		st.session_state["RealESRGAN_available"] = True
-	else:
-		st.session_state["RealESRGAN_available"] = False	
+	with server_state_lock["RealESRGAN_available"]:
+		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+			server_state["RealESRGAN_available"] = True 
+		else:
+			server_state["RealESRGAN_available"] = False	
 		
 	## Allow for custom models to be used instead of the default one,
 	## an example would be Waifu-Diffusion or any other fine tune of stable diffusion
