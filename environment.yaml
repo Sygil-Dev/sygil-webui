@@ -2,6 +2,8 @@ name: ldm
 channels:
   - pytorch
   - defaults
+# Psst. If you change a dependency, make sure it's mirrored in the docker requirement
+# files as well.
 dependencies:
   - cudatoolkit=11.3
   - git

@@ -78,7 +78,7 @@ sd_model_loading () {
     else
         printf "\n\n########## MOVE MODEL FILE ##########\n\n"
         printf "Please download the 1.4 AI Model from Huggingface (or another source) and place it inside of the stable-diffusion-webui folder\n\n"
-        read -p "Once you have sd-v1-4.ckpt in , Press Enter...\n\n"
+        read -p "Once you have sd-v1-4.ckpt in the project root, Press Enter...\n\n"
         
         # Check to make sure checksum of models is the original one from HuggingFace and not a fake model set
         printf "fe4efff1e174c627256e44ec2991ba279b3816e364b49f9be2abc0b3ff3f8556 sd-v1-4.ckpt" | sha256sum --check || exit 1

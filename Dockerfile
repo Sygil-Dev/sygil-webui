@@ -15,17 +15,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./sd_requirements.txt /install/
-RUN pip install -r /install/sd_requirements.txt
-
 COPY ./requirements.txt /install/
 RUN pip install -r /install/requirements.txt
-
-COPY ./ext_requirements.txt /install
-RUN pip install -r /install/ext_requirements.txt
-
-COPY ./ui_requirements.txt /install/
-RUN pip install -r /install/ui_requirements.txt
 
 # Install font for prompt matrix
 COPY /data/DejaVuSans.ttf /usr/share/fonts/truetype/

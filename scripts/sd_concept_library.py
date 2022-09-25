@@ -75,21 +75,29 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 		files = [f for f in os.listdir(os.path.join(path, folder, "concept_images")) if os.path.isfile(
 			os.path.join(path, folder, "concept_images", f))]
 		# Retrieve only the 4 first images
-		for file in files[:4]:
+		for file in files:
+
+			# Skip if we already have 4 images
+			if len(concept["images"]) >= 4:
+				break
+
 			if file.endswith(acceptedExtensions):
-				# Add a copy of the image to avoid file locking
-				originalImage = Image.open(os.path.join(
-					path, folder, "concept_images", file))
+				try:
+					# Add a copy of the image to avoid file locking
+					originalImage = Image.open(os.path.join(
+						path, folder, "concept_images", file))
 
-				# Maintain the aspect ratio (max 200x200)
-				resizedImage = originalImage.copy()
-				resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
+					# Maintain the aspect ratio (max 200x200)
+					resizedImage = originalImage.copy()
+					resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
 
-				# concept["images"].append(resizedImage)
+					# concept["images"].append(resizedImage)
 
-				concept["images"].append(imageToBase64(resizedImage))
-				# Close original image
-				originalImage.close()
+					concept["images"].append(imageToBase64(resizedImage))
+					# Close original image
+					originalImage.close()
+				except:
+					print("Error while loading image", file, "in concept", folder, "(The file may be corrupted). Skipping it.")
 
 		concepts.append(concept)
 		conceptIndex += 1
@@ -154,13 +162,25 @@ def layout():
 			st.session_state["cl_search_results_count"] = downloaded_concepts_count
 
 		# Search bar
-		search_text_input = st.text_input("Search", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
-		if search_text_input != st.session_state["cl_search_text"]:
-			# Search text has changed
-			st.session_state["cl_search_text"] = search_text_input
-			st.session_state["cl_current_page"] = 1
-			st.session_state["cl_search_results_count"] = getTotalNumberOfConcepts(st.session_state["cl_search_text"])
-			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, st.session_state["cl_search_text"])
+		_search_col, _refresh_col = st.columns([10, 2])
+		with _search_col:
+			search_text_input = st.text_input("Search", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)', label_visibility="hidden")
+			if search_text_input != st.session_state["cl_search_text"]:
+				# Search text has changed
+				st.session_state["cl_search_text"] = search_text_input
+				st.session_state["cl_current_page"] = 1
+				st.session_state["cl_search_results_count"] = getTotalNumberOfConcepts(st.session_state["cl_search_text"])
+				st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, st.session_state["cl_search_text"])
+
+		with _refresh_col:
+			# Super weird fix to align the refresh button with the search bar ( Please streamlit, add css support..  )
+			_refresh_col.write("")
+			_refresh_col.write("")
+			if st.button("Refresh concepts", key="refresh_concepts", help="Refresh the concepts folders. Use this if you have added new concepts manually or deleted some."):
+				getTotalNumberOfConcepts.clear()
+				getConceptsFromPath.clear()
+				st.experimental_rerun()
+
 
 		# Show results
 		results_empty = st.empty()
