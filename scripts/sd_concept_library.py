@@ -162,7 +162,7 @@ def layout():
 			st.session_state["cl_search_results_count"] = downloaded_concepts_count
 
 		# Search bar
-		search_text_input = st.text_input("Search", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
+		search_text_input = st.text_input("Search", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)', label_visibility="hidden")
 		if search_text_input != st.session_state["cl_search_text"]:
 			# Search text has changed
 			st.session_state["cl_search_text"] = search_text_input
