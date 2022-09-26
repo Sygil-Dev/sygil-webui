@@ -284,4 +284,6 @@ gfpgan:
 textual_inversion:
     value: 0
     
-    
+daisi_app:
+    running_on_daisi_io: False
+  

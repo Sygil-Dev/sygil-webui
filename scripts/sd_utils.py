@@ -85,6 +85,10 @@ else:
 if (os.path.exists(".streamlit/config.toml")):
     st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
 
+if st.session_state["defaults"].daisi_app.running_on_daisi_io:
+    if os.path.exists("scripts/modeldownload.py"):
+        import modeldownload
+        modeldownload.updateModels()
 
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
