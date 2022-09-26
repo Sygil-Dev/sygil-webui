@@ -31,7 +31,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY ./requirements.txt /install/
+
 RUN pip install -r /install/requirements.txt
+# From base image. We need opencv-python-headless so we uninstall here
+RUN pip uninstall -y opencv-python && pip install opencv-python-headless==4.6.0.66
 
 # Install font for prompt matrix
 COPY /data/DejaVuSans.ttf /usr/share/fonts/truetype/
