@@ -4,7 +4,9 @@ import collections
 import yaml
 import math
 import random
-from typing import List, Union, Dict, Callable, Any, Optional, Type 
+from typing import List, Union, Dict, Callable, Any, Optional, Type, Tuple
+
+import numba
 
 import numpy as np
 import cv2
@@ -244,14 +246,30 @@ def scn2img_define_args():
             "mask_shrink"             : "int",
             "mask_invert"             : "bool",
         },
+        "render_3d": {
+            "transform3d"                      : "bool",
+            "transform3d_depth_model"          : "int",
+            "transform3d_depth_scale"          : "float",
+            "transform3d_from_hfov"            : "degrees",
+            "transform3d_from_pose"            : "float_tuple",
+            "transform3d_to_hfov"              : "degrees",
+            "transform3d_to_pose"              : "float_tuple",
+            "transform3d_min_mask"             : "int",
+            "transform3d_max_mask"             : "int",
+            "transform3d_mask_invert"          : "bool",
+            "transform3d_inpaint"              : "bool",
+            "transform3d_inpaint_radius"       : "int",
+            "transform3d_inpaint_method"       : "int",
+            "transform3d_inpaint_restore_mask" : "bool",
+        },
         "object": {
             "initial_seed": "int",
         }
     }
     function_args_ext = {
-        "image": ["image", "render_mask", "object"],
-        "img2img": ["render_img2img", "img2img", "image", "render_mask", "object"],
-        "txt2img": ["render_txt2img", "txt2img", "image", "render_mask", "object"],
+        "image": ["object", "image", "render_mask", "render_3d"],
+        "img2img": ["object", "render_img2img", "img2img", "image", "render_mask", "render_3d"],
+        "txt2img": ["object", "render_txt2img", "txt2img", "image", "render_mask", "render_3d"],
     }
     return parse_arg, function_args, function_args_ext
 
@@ -848,9 +866,8 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     mask_is_depth = obj["mask_is_depth"] if "mask_is_depth" in obj else False
                     mask_depth_normalize = obj["mask_depth_normalize"] if "mask_depth_normalize" in obj else True
                     mask_depth_model = int(obj["mask_depth_model"]) if "mask_depth_model" in obj else 1
-                    depth_filters = [run_Monocular_Depth_Filter_single, run_midas_depth_filter]
-                    func_depth_filter = depth_filters[mask_depth_model]
-                    res = func_depth_filter(img, mask_depth_min, mask_depth_max, mask_depth_invert, mask_depth_normalize, mask_is_depth)
+                    depth = run_depth_estimation(img, mask_depth_model)
+                    res = run_depth_filter(depth, mask_depth_min, mask_depth_max, mask_depth_invert, mask_depth_normalize, mask_is_depth)
                     if res is not None:
                         mask = res.resize(img.size)
                         changed_mask = True
@@ -907,6 +924,49 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     save_sample_scn2img(img, obj)
                 return img
 
+            def render_3d(img, obj):
+                if img is None: 
+                    return img
+                if obj["transform3d"] == True:
+                    d2r = math.pi / 180.0
+                    depth_model    = obj["transform3d_depth_model"]          if "transform3d_depth_model"          in obj else 1
+                    depth_scale    = obj["transform3d_depth_scale"]          if "transform3d_depth_scale"          in obj else 1.0
+                    from_hfov      = obj["transform3d_from_hfov"]            if "transform3d_from_hfov"            in obj else (45*d2r)
+                    from_pose      = obj["transform3d_from_pose"]            if "transform3d_from_pose"            in obj else (0,0,0, 0,0,0)
+                    to_hfov        = obj["transform3d_to_hfov"]              if "transform3d_to_hfov"              in obj else (45*d2r)
+                    to_pose        = obj["transform3d_to_pose"]              if "transform3d_to_pose"              in obj else (0,0,0, 0,0,0)
+                    min_mask       = obj["transform3d_min_mask"]             if "transform3d_min_mask"             in obj else 128
+                    max_mask       = obj["transform3d_max_mask"]             if "transform3d_max_mask"             in obj else 255
+                    mask_invert    = obj["transform3d_mask_invert"]          if "transform3d_mask_invert"          in obj else False
+                    inpaint        = obj["transform3d_inpaint"]              if "transform3d_inpaint"              in obj else True
+                    inpaint_radius = obj["transform3d_inpaint_radius"]       if "transform3d_inpaint_radius"       in obj else 5
+                    inpaint_method = obj["transform3d_inpaint_method"]       if "transform3d_inpaint_method"       in obj else 0
+                    inpaint_rmask  = obj["transform3d_inpaint_restore_mask"] if "transform3d_inpaint_restore_mask" in obj else False
+                    from_pose = list(from_pose)
+                    to_pose = list(to_pose)
+                    while len(from_pose) < 6: from_pose.append(0)
+                    while len(to_pose) < 6: to_pose.append(0)
+                    from_pos, from_rpy = from_pose[:3], from_pose[3:6]
+                    to_pos, to_rpy = to_pose[:3], to_pose[3:6]
+                    hfov0_rad, hfov1_rad = from_hfov, to_hfov
+                    tf_world_cam0 = pose3d_rpy(*from_pos, *(deg*d2r for deg in from_rpy))
+                    tf_world_cam1 = pose3d_rpy(*to_pos, *(deg*d2r for deg in to_rpy))
+
+                    depth = run_depth_estimation(img, depth_model)
+                    img = run_transform_image_3d_simple(img, depth, depth_scale, hfov0_rad, tf_world_cam0, hfov1_rad, tf_world_cam1, min_mask, max_mask, mask_invert)
+                    if inpaint:
+                        mask = img.getchannel("A")
+                        img_inpainted = cv2.inpaint(
+                            np.asarray(img.convert("RGB")), 
+                            255-np.asarray(mask),
+                            inpaint_radius,
+                            [cv2.INPAINT_TELEA, cv2.INPAINT_NS][inpaint_method]
+                        )
+                        img = Image.fromarray(img_inpainted).convert("RGBA")
+                        if inpaint_rmask:
+                            img.putalpha(mask)
+                return img
+
             def render_image(seeds, obj):
                 img = create_image(obj["size"], obj["color"])
                 img = blend_objects(
@@ -917,6 +977,7 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                 img = render_mask(seeds, obj, img)
                 img = resize_image(img, obj["resize"], obj["crop"])
                 # if img is None: log_warn(f"result of render_image({obj}) is None")
+                img = render_3d(img, obj)
                 img = render_intermediate(img, obj)
                 return img
 
@@ -968,9 +1029,10 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                 img2img_kwargs["init_info"] = img
                 if img2img_kwargs["image_editor_mode"] == "Mask":
                     img2img_kwargs["init_info_mask"] = {
-                        "image": img.convert("RGB"),
+                        "image": img.convert("RGB").convert("RGBA"),
                         "mask": img.getchannel("A")
                     }
+                    # render_intermediate(img2img_kwargs["init_info_mask"]["mask"].convert("RGBA"), obj)
                 log_info("img2img_kwargs")
                 log_info(img2img_kwargs)
 
@@ -1034,6 +1096,7 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     img,
                     obj.children
                 )
+                img = render_mask(seeds, obj, img)
                 img = render_intermediate(img, obj)
 
                 img2img_kwargs = prepare_img2img_kwargs(seeds, obj, img)
@@ -1079,9 +1142,10 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     # img = img
                     pass
 
-                img = render_mask(seeds, obj, img)
+                # img = render_mask(seeds, obj, img)
                 img = resize_image(img, obj["resize"], obj["crop"])
                 if img is None: log_warn(f"result of render_img2img({obj}) is None")
+                img = render_3d(img, obj)
                 img = render_intermediate(img, obj)
                 return img
 
@@ -1133,6 +1197,7 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                 img = render_mask(seeds, obj, img)
                 img = resize_image(img, obj["resize"], obj["crop"])
                 if img is None: log_warn(f"result of render_txt2img({obj}) is None")
+                img = render_3d(img, obj)
                 img = render_intermediate(img, obj)
                 return img
 
@@ -1262,7 +1327,7 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
 
     return scn2img
 
-def run_monocular_depth_estimation(images, minDepth=10, maxDepth=1000, batch_size=2):
+def run_monocular_depth_estimation_multi(images, minDepth=10, maxDepth=1000, batch_size=2):
     # https://huggingface.co/keras-io/monocular-depth-estimation
     # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
     global monocular_depth_estimation
@@ -1308,9 +1373,13 @@ def run_monocular_depth_estimation(images, minDepth=10, maxDepth=1000, batch_siz
     depths = np.clip(depth_norm(predictions, maxDepth=maxDepth), minDepth, maxDepth) / maxDepth
     return depths
 
+def run_monocular_depth_estimation_single(image, minDepth=10, maxDepth=1000):
+    depth = run_monocular_depth_estimation_multi([image], minDepth, maxDepth)[0][:,:,0]
+    return depth
+
 def run_Monocular_Depth_Filter_multi(images, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool, **kwargs):
     # https://huggingface.co/spaces/atsantiago/Monocular_Depth_Filter
-    depths = run_monocular_depth_estimation(images, **kwargs)
+    depths = run_monocular_depth_estimation_multi(images, **kwargs)
     if depths is None: 
         return None
     n,h,w,c = depths.shape
@@ -1362,7 +1431,7 @@ def run_midas_depth_filter(image, filter_min_depth:float, filter_max_depth:float
     return run_depth_filter(depth, filter_min_depth, filter_max_depth, invert, normalize_depth, mask_is_depth)
 
 
-def run_depth_filter(depth, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool):
+def run_depth_filter(depth: np.ndarray, filter_min_depth:float, filter_max_depth:float, invert:bool, normalize_depth:bool, mask_is_depth:bool):
     if depth is None:
         return None
 
@@ -1386,3 +1455,218 @@ def run_depth_filter(depth, filter_min_depth:float, filter_max_depth:float, inve
     mask = Image.fromarray(mask,"L")
 
     return mask
+
+def run_depth_estimation(image:Image, model_idx:int):
+    funcs_depth_estimation = [run_monocular_depth_estimation_single, run_midas_depth_estimation]
+    func_depth_estimation = funcs_depth_estimation[model_idx]
+    depth = func_depth_estimation(image)
+    return depth
+
+@numba.jit
+def depth_reprojection(xyz:np.ndarray, depth:np.ndarray, depth_scale:float, fx:float, fy:float, cx:float, cy:float):
+    h,w = depth.shape[:2]
+    for v in range(h):
+        y = fy*(v - cy)
+        for u in range(w):
+            x = fx*(u - cx)
+            z = depth[v,u] * depth_scale
+            xyz[v,u,0] = x*z
+            xyz[v,u,1] = y*z
+            xyz[v,u,2] = z
+
+def run_3d_estimation(depth:np.ndarray, depth_scale:float=1, hfov_rad:float=60*math.pi/180):
+    pass
+    h,w = depth.shape[:2]
+    cam_info = CameraInfo((h,w), hfov_rad)
+    xyz = np.empty(shape=(h, w, 3), dtype=np.float32)
+    depth_reprojection(xyz, depth, depth_scale, cam_info.fx, cam_info.fy, cam_info.cx, cam_info.cy)
+    return xyz
+
+@numba.jit
+def transform_image_3d(img_out:np.ndarray, img_in:np.ndarray, depth:np.ndarray, depth_scale:float,
+        fx0:float, fy0:float, cx0:float, cy0:float,
+        fx1:float, fy1:float, cx1:float, cy1:float, 
+        rot_cam1_cam0: np.ndarray, offset_cam1_cam0: np.ndarray,
+        min_mask:int, max_mask:int):
+    # assert(img_in.shape[2] == 4)
+    # assert(img_out.shape[2] == 4)
+    # assert(len(depth.shape) == 2)
+    # (u0,v0)  : 2d pixel position in img_in
+    # pos_cam0 : 3d pixel position in cam0 coordinate system
+    # pos_cam1 : 3d pixel position in cam1 coordinate system
+    # (u1,v1)  : 2d pixel position in img_out
+    m00 = rot_cam1_cam0[0,0]
+    m01 = rot_cam1_cam0[0,1]
+    m02 = rot_cam1_cam0[0,2]
+    m10 = rot_cam1_cam0[1,0]
+    m11 = rot_cam1_cam0[1,1]
+    m12 = rot_cam1_cam0[1,2]
+    m20 = rot_cam1_cam0[2,0]
+    m21 = rot_cam1_cam0[2,1]
+    m22 = rot_cam1_cam0[2,2]
+    h0 = int(depth.shape[0])
+    w0 = int(depth.shape[1])
+    h1 = int(img_out.shape[0])
+    w1 = int(img_out.shape[1])
+    for v0 in range(h0):
+        y0_ = fy0*(v0 - cy0)
+        for u0 in range(w0):
+            r,g,b,a = img_in[v0,u0]
+            # img_out[v0,u0,0] = r
+            # img_out[v0,u0,1] = g
+            # img_out[v0,u0,2] = b
+            # img_out[v0,u0,3] = a
+            # continue
+            # if not (min_mask <= a <= max_mask): continue
+            x0_ = fx0*(u0 - cx0)
+            z0 = depth[v0,u0] * depth_scale
+            x0 = x0_ * z0
+            y0 = y0_ * z0
+            x1 = offset_cam1_cam0[0] + m00*x0 + m01*y0 + m02*z0
+            y1 = offset_cam1_cam0[1] + m10*x0 + m11*y0 + m12*z0
+            z1 = offset_cam1_cam0[2] + m20*x0 + m21*y0 + m22*z0
+            # pos_cam0 = (x0*z0,y0*z0,z0)
+            # pos_cam1 = offset_cam1_cam0 + rot_cam1_cam0 @ pos_cam0
+            # x1,y1,z1 = pos_cam1
+            if z1 <= 0: continue 
+            u1 = int(0.5 + (x1/(z1*fx1))+cx1)
+            v1 = int(0.5 + (y1/(z1*fy1))+cy1)
+            if u1 < 0: u1 = 0
+            if u1 >= w1: u1 = w1-1
+            if v1 < 0: v1 = 0
+            if v1 >= h1: v1 = h1-1
+            # if not (0 <= u1 < w1): continue
+            # if not (0 <= v1 < h1): continue
+            img_out[v1,u1,0] = r
+            img_out[v1,u1,1] = g
+            img_out[v1,u1,2] = b
+            img_out[v1,u1,3] = a
+
+class CameraInfo:
+    def __init__(self, image_size:Tuple[int,int], hfov_rad:float=60*math.pi/180, pose:np.ndarray=None):
+        self.width = image_size[0]
+        self.height = image_size[1]
+        self.aspect_ratio = self.width * (1.0 / self.height)
+        self.hfov_rad = hfov_rad
+        self.vfov_rad = self.hfov_rad / self.aspect_ratio
+        half_width = self.width * 0.5
+        half_height = self.width * 0.5
+        self.fx = math.tan(self.hfov_rad*0.5) / half_width
+        self.fy = math.tan(self.vfov_rad*0.5) / half_height
+        self.cx = half_width
+        self.cy = half_height
+        self.pose = pose if pose is not None else np.eye(4)
+        assert(self.pose.shape==(4,4))
+        
+def run_transform_image_3d(image:Image, depth:np.ndarray, depth_scale:float, from_caminfo: CameraInfo, to_caminfo: CameraInfo, min_mask:int, max_mask:int, mask_invert:bool):
+    if image is None: return None
+    h,w = image.size
+    image_in = np.asarray(image.convert("RGBA"))
+    image_out = np.zeros(shape=(h,w,4),dtype=np.uint8)
+    tf_world_cam0 = from_caminfo.pose
+    tf_world_cam1 = to_caminfo.pose
+    tf_cam1_world = affine_inv(tf_world_cam1)
+    tf_cam1_cam0 = tf_cam1_world @ tf_world_cam0
+    rot_cam1_cam0 = tf_cam1_cam0[:3,:3]
+    offset_cam1_cam0 = tf_cam1_cam0[:3,3]
+    # print("depth_scale", depth_scale)
+    # print("from_caminfo.fx", from_caminfo.fx)
+    # print("from_caminfo.fy", from_caminfo.fy)
+    # print("from_caminfo.cx", from_caminfo.cx)
+    # print("from_caminfo.cy", from_caminfo.cy)
+    # print("to_caminfo.fx", to_caminfo.fx)
+    # print("to_caminfo.fy", to_caminfo.fy)
+    # print("to_caminfo.cx", to_caminfo.cx)
+    # print("to_caminfo.cy", to_caminfo.cy)
+    # print("rot_cam1_cam0", rot_cam1_cam0)
+    # print("offset_cam1_cam0", offset_cam1_cam0)
+    # print("min_mask", min_mask)
+    # print("max_mask", max_mask)
+    
+    transform_image_3d(
+        image_out, image_in, depth, depth_scale, 
+        from_caminfo.fx, from_caminfo.fy, from_caminfo.cx, from_caminfo.cy, 
+        to_caminfo.fx, to_caminfo.fy, to_caminfo.cx, to_caminfo.cy, 
+        rot_cam1_cam0, offset_cam1_cam0,
+        min_mask, max_mask
+    )
+    if mask_invert:
+        image_out[:,:,3] = 255 - image_out[:,:,3]
+    return Image.fromarray(image_out,"RGBA")
+
+def run_transform_image_3d_simple(image:Image, depth:np.ndarray, depth_scale:float, 
+        hfov0_rad:float, tf_world_cam0: np.ndarray,
+        hfov1_rad:float, tf_world_cam1: np.ndarray,
+        min_mask:int, max_mask:int, mask_invert:bool):
+    from_caminfo = CameraInfo(image.size, hfov0_rad, tf_world_cam0)
+    to_caminfo = CameraInfo(image.size, hfov1_rad, tf_world_cam1)
+    return run_transform_image_3d(image, depth, depth_scale, from_caminfo, to_caminfo, min_mask, max_mask, mask_invert)
+
+def translation3d(x,y,z):
+    return np.array([
+        [1,0,0,x],
+        [0,1,0,y],
+        [0,0,1,z],
+        [0,0,0,1],
+    ])
+
+def rotation3d_x(angle):
+    cs,sn = math.cos(angle), math.sin(angle)
+    return np.array([
+        [1,0,0,0],
+        [0,cs,-sn,0],
+        [0,+sn,cs,0],
+        [0,0,0,1],
+    ])
+def rotation3d_y(angle):
+    cs,sn = math.cos(angle), math.sin(angle)
+    return np.array([
+        [cs,0,+sn,0],
+        [0,1,0,0],
+        [-sn,0,cs,0],
+        [0,0,0,1],
+    ])
+def rotation3d_z(angle):
+    cs,sn = math.cos(angle), math.sin(angle)
+    return np.array([
+        [cs,-sn,0,0],
+        [+sn,cs,0,0],
+        [0,0,1,0],
+        [0,0,0,1],
+    ])
+
+def rotation3d_rpy(roll, pitch, yaw):
+    # Diebel, J. (2006). Representing attitude: Euler angles, unit quaternions, and rotation vectors. Matrix, 58(15-16), 1-35.
+    # (the paper uses inverse transformations to ours, i.e. transformations from world to body)
+    # euler-1-2-3 scheme 
+    
+    # transforms from body to world
+    return rotation3d_z(yaw) @ rotation3d_y(pitch) @ rotation3d_x(roll)
+
+def rpy_from_rotation3d(mat):
+    # Diebel, J. (2006). Representing attitude: Euler angles, unit quaternions, and rotation vectors. Matrix, 58(15-16), 1-35.
+    # (the paper uses inverse transformations to ours, i.e. transformations from world to body)
+    # euler-1-2-3 scheme 
+    matT = mat.T
+    roll = np.arctan2(matT[1,2], matT[2,2])
+    pitch = -np.arcsin(matT[0,2])
+    yaw = np.arctan2(matT[0,1], matT[0,0])
+
+    return np.array([roll,pitch,yaw])
+
+def affine_inv(mat44):
+    rot=mat44[:3,:3]
+    trans=mat44[:3,3]
+    inv_rot=rot.T
+    inv_trans=-inv_rot@trans
+    return pose3d(inv_rot, inv_trans)
+
+def pose3d(rotation, translation):
+    mat44 = np.zeros(shape=(4,4),dtype=rotation.dtype)
+    mat44[:3,:3] = rotation
+    mat44[:3,3] = translation
+    return mat44
+
+def pose3d_rpy(x, y, z, roll, pitch, yaw):
+    """returns transformation matrix which transforms from pose to world"""
+    return translation3d(x,y,z) @ rotation3d_rpy(roll, pitch, yaw)
