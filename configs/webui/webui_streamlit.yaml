@@ -273,8 +273,13 @@ img2img:
     variant_seed: ""
     write_info_files: True
     
+concepts_library:
+    concepts_per_page: 12
+    
 gfpgan:
   strength: 100
 
 textual_inversion:
     value: 0
+    
+    

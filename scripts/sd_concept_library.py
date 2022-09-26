@@ -22,7 +22,7 @@ def sdConceptsBrowser(concepts, key=None):
 	return component_value
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def getConceptsFromPath(page, conceptPerPage, searchText=""):
 	#print("getConceptsFromPath", "page:", page, "conceptPerPage:", conceptPerPage, "searchText:", searchText)
 	# get the path where the concepts are stored
@@ -75,28 +75,35 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 		files = [f for f in os.listdir(os.path.join(path, folder, "concept_images")) if os.path.isfile(
 			os.path.join(path, folder, "concept_images", f))]
 		# Retrieve only the 4 first images
-		for file in files[:4]:
+		for file in files:
+
+			# Skip if we already have 4 images
+			if len(concept["images"]) >= 4:
+				break
+
 			if file.endswith(acceptedExtensions):
-				# Add a copy of the image to avoid file locking
-				originalImage = Image.open(os.path.join(
-					path, folder, "concept_images", file))
+				try:
+					# Add a copy of the image to avoid file locking
+					originalImage = Image.open(os.path.join(
+						path, folder, "concept_images", file))
 
-				# Maintain the aspect ratio (max 200x200)
-				resizedImage = originalImage.copy()
-				resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
+					# Maintain the aspect ratio (max 200x200)
+					resizedImage = originalImage.copy()
+					resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
 
-				# concept["images"].append(resizedImage)
+					# concept["images"].append(resizedImage)
 
-				concept["images"].append(imageToBase64(resizedImage))
-				# Close original image
-				originalImage.close()
+					concept["images"].append(imageToBase64(resizedImage))
+					# Close original image
+					originalImage.close()
+				except:
+					print("Error while loading image", file, "in concept", folder, "(The file may be corrupted). Skipping it.")
 
 		concepts.append(concept)
 		conceptIndex += 1
 	# print all concepts name
 	#print("Results:", [c["name"] for c in concepts])
 	return concepts
-
 
 @st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
 def imageToBase64(image):
@@ -108,7 +115,7 @@ def imageToBase64(image):
 	return img_str
 
 
-@st.cache(persist=True, allow_output_mutation=True, show_spinner=False, suppress_st_warning=True)
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def getTotalNumberOfConcepts(searchText=""):
 	# get the path where the concepts are stored
 	path = os.path.join(
@@ -138,7 +145,7 @@ def layout():
 	# Concept Library
 	with tab_library:
 		downloaded_concepts_count = getTotalNumberOfConcepts()
-		concepts_per_page = 12
+		concepts_per_page = st.session_state["defaults"].concepts_library.concepts_per_page
 
 		if not "results" in st.session_state:
 			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, "")
@@ -155,13 +162,25 @@ def layout():
 			st.session_state["cl_search_results_count"] = downloaded_concepts_count
 
 		# Search bar
-		search_text_input = st.text_input("", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)')
-		if search_text_input != st.session_state["cl_search_text"]:
-			# Search text has changed
-			st.session_state["cl_search_text"] = search_text_input
-			st.session_state["cl_current_page"] = 1
-			st.session_state["cl_search_results_count"] = getTotalNumberOfConcepts(st.session_state["cl_search_text"])
-			st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, st.session_state["cl_search_text"])
+		_search_col, _refresh_col = st.columns([10, 2])
+		with _search_col:
+			search_text_input = st.text_input("Search", "", placeholder=f'Search for a concept ({downloaded_concepts_count} available)', label_visibility="hidden")
+			if search_text_input != st.session_state["cl_search_text"]:
+				# Search text has changed
+				st.session_state["cl_search_text"] = search_text_input
+				st.session_state["cl_current_page"] = 1
+				st.session_state["cl_search_results_count"] = getTotalNumberOfConcepts(st.session_state["cl_search_text"])
+				st.session_state["results"] = getConceptsFromPath(1, concepts_per_page, st.session_state["cl_search_text"])
+
+		with _refresh_col:
+			# Super weird fix to align the refresh button with the search bar ( Please streamlit, add css support..  )
+			_refresh_col.write("")
+			_refresh_col.write("")
+			if st.button("Refresh concepts", key="refresh_concepts", help="Refresh the concepts folders. Use this if you have added new concepts manually or deleted some."):
+				getTotalNumberOfConcepts.clear()
+				getConceptsFromPath.clear()
+				st.experimental_rerun()
+
 
 		# Show results
 		results_empty = st.empty()
@@ -178,7 +197,7 @@ def layout():
 
 					# Previous page
 					with _previous_page:
-						if st.button("<", key="cl_previous_page"):
+						if st.button("Previous", key="cl_previous_page"):
 							st.session_state["cl_current_page"] -= 1
 							if st.session_state["cl_current_page"] <= 0:
 								st.session_state["cl_current_page"] = last_page
@@ -190,7 +209,7 @@ def layout():
 
 					# Next page
 					with _next_page:
-						if st.button(">", key="cl_next_page"):
+						if st.button("Next", key="cl_next_page"):
 							st.session_state["cl_current_page"] += 1
 							if st.session_state["cl_current_page"] > last_page:
 								st.session_state["cl_current_page"] = 1

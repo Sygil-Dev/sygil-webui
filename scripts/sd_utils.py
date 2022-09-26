@@ -4,6 +4,10 @@ from webui_streamlit import st
 
 # streamlit imports
 from streamlit import StopException
+
+#streamlit components section
+from streamlit_server_state import server_state, server_state_lock
+
 #other imports
 
 import warnings
@@ -54,7 +58,8 @@ except:
     pass
 
 # remove some annoying deprecation warnings that show every now and then.
-warnings.filterwarnings("ignore", category=DeprecationWarning)     
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)     
 
 # this is a fix for Windows users. Without it, javascript files will be served with text/html content-type and the bowser will not show any UI
 mimetypes.init()
@@ -153,14 +158,16 @@ def human_readable_size(size, decimal_places=3):
         size /= 1024.0
     return f"{size:.{decimal_places}f}{unit}"
 
-@retry(tries=5)
+
 def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
 
     print ("Loading models.")
 
-    st.session_state["progress_bar_text"].text("Loading models...")
+    if "progress_bar_text" in st.session_state:
+        st.session_state["progress_bar_text"].text("Loading models...")
+    
 
     # Generate random run ID
     # Used to link runs linked w/ continue_prev_run which is not yet implemented
@@ -170,86 +177,98 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
                 ).decode("ascii")
 
     # check what models we want to use and if the they are already loaded.
-
-    if use_GFPGAN:
-        if "GFPGAN" in st.session_state:
-            print("GFPGAN already loaded")
-        else:
-            # Load GFPGAN
-            if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-                try:
-                    st.session_state["GFPGAN"] = load_GFPGAN()
-                    print("Loaded GFPGAN")
-                except Exception:
-                    import traceback
-                    print("Error loading GFPGAN:", file=sys.stderr)
-                    print(traceback.format_exc(), file=sys.stderr)          
-    else:
-        if "GFPGAN" in st.session_state:
-            del st.session_state["GFPGAN"]        
-
-    if use_RealESRGAN:
-        if "RealESRGAN" in st.session_state and st.session_state["RealESRGAN"].model.name == RealESRGAN_model:
-            print("RealESRGAN already loaded")
-        else:
-            #Load RealESRGAN 
-            try:
-                # We first remove the variable in case it has something there,
-                # some errors can load the model incorrectly and leave things in memory.
-                del st.session_state["RealESRGAN"]
-            except KeyError:
-                pass
-
-            if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
-                # st.session_state is used for keeping the models in memory across multiple pages or runs.
-                st.session_state["RealESRGAN"] = load_RealESRGAN(RealESRGAN_model)
-                print("Loaded RealESRGAN with model "+ st.session_state["RealESRGAN"].model.name)
-
-    else:
-        if "RealESRGAN" in st.session_state:
-            del st.session_state["RealESRGAN"]        
-
-    if "model" in st.session_state:
-        if "model" in st.session_state and st.session_state["loaded_model"] == custom_model:
-            # TODO: check if the optimized mode was changed?
-            if "pipe" in st.session_state:
-                del st.session_state.pipe
-                
-            print("Model already loaded")
-
-            return
-        else:
-            try:
-                del st.session_state.model
-                del st.session_state.modelCS
-                del st.session_state.modelFS
-                del st.session_state.loaded_model
-                
-                if "pipe" in st.session_state:
-                    del st.session_state.pipe
-            except KeyError:
-                pass
-
-    # At this point the model is either
-    # is not loaded yet or have been evicted:
-    # load new model into memory
-    st.session_state.custom_model = custom_model
-
-    config, device, model, modelCS, modelFS = load_sd_model(custom_model)
-
-    st.session_state.device = device
-    st.session_state.model = model
-    st.session_state.modelCS = modelCS
-    st.session_state.modelFS = modelFS
-    st.session_state.loaded_model = custom_model
     
-    if st.session_state.defaults.general.enable_attention_slicing:
-        st.session_state.model.enable_attention_slicing()  
-        
-    if st.session_state.defaults.general.enable_minimal_memory_usage:	
-        st.session_state.model.enable_minimal_memory_usage()    
+    with server_state_lock["GFPGAN"]:
+        if use_GFPGAN:
+            if "GFPGAN" in server_state:
+                print("GFPGAN already loaded")
+            else:
+                # Load GFPGAN
+                if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+                    try:
+                        server_state["GFPGAN"] = load_GFPGAN()
+                        print("Loaded GFPGAN")
+                    except Exception:
+                        import traceback
+                        print("Error loading GFPGAN:", file=sys.stderr)
+                        print(traceback.format_exc(), file=sys.stderr)          
+        else:
+            if "GFPGAN" in server_state:
+                del server_state["GFPGAN"]        
 
-    print("Model loaded.")
+    with server_state_lock["RealESRGAN"]:
+        if use_RealESRGAN:
+            if "RealESRGAN" in server_state and server_state["RealESRGAN"].model.name == RealESRGAN_model:
+                print("RealESRGAN already loaded")
+            else:
+                #Load RealESRGAN 
+                try:
+                    # We first remove the variable in case it has something there,
+                    # some errors can load the model incorrectly and leave things in memory.
+                    del server_state["RealESRGAN"]
+                except KeyError:
+                    pass
+    
+                if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
+                    # st.session_state is used for keeping the models in memory across multiple pages or runs.
+                    server_state["RealESRGAN"] = load_RealESRGAN(RealESRGAN_model)
+                    print("Loaded RealESRGAN with model "+ server_state["RealESRGAN"].model.name)
+    
+        else:
+            if "RealESRGAN" in server_state:
+                del server_state["RealESRGAN"]        
+
+    with server_state_lock["model"], server_state_lock["modelCS"], server_state_lock["modelFS"], server_state_lock["loaded_model"]:
+        
+        if "model" in server_state:
+            if "model" in server_state and server_state["loaded_model"] == custom_model:
+                # TODO: check if the optimized mode was changed?                
+                print("Model already loaded")
+    
+                return
+            else:
+                try:
+                    del server_state["model"]
+                    del server_state["modelCS"]
+                    del server_state["modelFS"]
+                    del server_state["loaded_model"]
+                    
+                except KeyError:
+                    pass
+                
+        # if the model from txt2vid is in memory we need to remove it to improve performance.
+        with server_state_lock["pipe"]:
+            if "pipe" in server_state:
+                del server_state["pipe"]    
+        
+        # At this point the model is either
+        # is not loaded yet or have been evicted:
+        # load new model into memory
+        server_state["custom_model"] = custom_model
+    
+        config, device, model, modelCS, modelFS = load_sd_model(custom_model)
+    
+        server_state["device"] = device
+        server_state["model"] = model
+        
+        server_state["modelCS"] = modelCS
+        server_state["modelFS"] = modelFS
+        server_state["loaded_model"] = custom_model
+        
+        #trying to disable multiprocessing as it makes it so streamlit cant stop when the 
+        # model is loaded in memory and you need to kill the process sometimes.
+        try:
+            server_state["model"].args.use_multiprocessing_for_evaluation = False
+        except:
+            pass
+        
+        if st.session_state.defaults.general.enable_attention_slicing:
+            server_state["model"].enable_attention_slicing()  
+            
+        if st.session_state.defaults.general.enable_minimal_memory_usage:	
+            server_state["model"].enable_minimal_memory_usage()    
+    
+        print("Model loaded.")
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -584,6 +603,7 @@ def get_sigmas_vp(n, beta_d=19.9, beta_min=0.1, eps_s=1e-3, device='cpu'):
 def to_d(x, sigma, denoised):
     """Converts a denoiser output to a Karras ODE derivative."""
     return (x - denoised) / append_dims(sigma, x.ndim)
+
 def linear_multistep_coeff(order, t, i, j):
     if order - 1 > i:
         raise ValueError(f'Order {order} too high for step {i}')
@@ -656,6 +676,7 @@ def torch_gc():
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
 
+@retry(tries=5)
 def load_GFPGAN():
     model_name = 'GFPGANv1.3'
     model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
@@ -673,6 +694,7 @@ def load_GFPGAN():
         instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
     return instance
 
+@retry(tries=5)
 def load_RealESRGAN(model_name: str):
     from basicsr.archs.rrdbnet_arch import RRDBNet
     RealESRGAN_models = {
@@ -700,6 +722,7 @@ def load_RealESRGAN(model_name: str):
     return instance
 
 #
+@retry(tries=5)
 def load_LDSR(checking=False):
     model_name = 'model'
     yaml_name = 'project'
@@ -719,6 +742,8 @@ def load_LDSR(checking=False):
 
 #
 LDSR = None
+
+@retry(tries=5)
 def try_loading_LDSR(model_name: str,checking=False):
     global LDSR
     if os.path.exists(st.session_state['defaults'].general.LDSR_dir):
@@ -739,8 +764,10 @@ def try_loading_LDSR(model_name: str,checking=False):
 
 
 # Loads Stable Diffusion model by name
-def load_sd_model(model_name: str) -> [any, any, any, any, any]:
+#@retry(tries=5)
+def load_sd_model(model_name: str) -> [any, any, any, any, any]:    
     ckpt_path = st.session_state.defaults.general.default_model_path
+    
     if model_name != st.session_state.defaults.general.default_model:
         ckpt_path = os.path.join("models", "custom", f"{model_name}.ckpt")
 
@@ -864,12 +891,12 @@ def generation_callback(img, i=0):
         # It can probably be done in a better way for someone who knows what they're doing. I don't.		
         #print (img,isinstance(img, torch.Tensor))
         if isinstance(img, torch.Tensor):
-            x_samples_ddim = (st.session_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else st.session_state.modelFS.to('cuda')
+            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
                               ).decode_first_stage(img).to('cuda')
         else:
             # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
             # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
-            x_samples_ddim = (st.session_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else st.session_state.modelFS.to('cuda')
+            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
                               ).decode_first_stage(img["denoised"]).to('cuda')
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)  
@@ -954,6 +981,7 @@ def slerp(device, t, v0:torch.Tensor, v1:torch.Tensor, DOT_THRESHOLD=0.9995):
     return v2
 
 #
+@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
 def optimize_update_preview_frequency(current_chunk_speed, previous_chunk_speed_list, update_preview_frequency, update_preview_frequency_list):
     """Find the optimal update_preview_frequency value maximizing 
     performance while minimizing the time between updates."""
@@ -989,8 +1017,8 @@ def get_font(fontsize):
     raise Exception(f"No usable font found (tried {', '.join(fonts)})")
 
 def load_embeddings(fp):
-    if fp is not None and hasattr(st.session_state["model"], "embedding_manager"):
-        st.session_state["model"].embedding_manager.load(fp['name'])
+    if fp is not None and hasattr(server_state["model"], "embedding_manager"):
+        server_state["model"].embedding_manager.load(fp['name'])
 
 def load_learned_embed_in_clip(learned_embeds_path, text_encoder, tokenizer, token=None):
     loaded_learned_embeds = torch.load(learned_embeds_path, map_location="cpu")
@@ -1148,10 +1176,10 @@ def enable_minimal_memory_usage(model):
 def check_prompt_length(prompt, comments):
     """this function tests if prompt is too long, and if so, adds a message to comments"""
 
-    tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer
-    max_length = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.max_length
+    tokenizer = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.tokenizer
+    max_length = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.max_length
 
-    info = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
+    info = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
                                                                                                                      return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
     ovf = info['overflowing_tokens'][0]
     overflowing_count = ovf.shape[0]
@@ -1169,17 +1197,17 @@ def custom_models_available():
     #
     # Allow for custom models to be used instead of the default one,
     # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
-    st.session_state["custom_models"]:sorted = []
+    server_state["custom_models"]:sorted = []
 
     for root, dirs, files in os.walk(os.path.join("models", "custom")):
         for file in files:
             if os.path.splitext(file)[1] == '.ckpt':						
-                st.session_state["custom_models"].append(os.path.splitext(file)[0])
+                server_state["custom_models"].append(os.path.splitext(file)[0])
 
 
-    if len(st.session_state["custom_models"]) > 0:
+    if len(server_state["custom_models"]) > 0:
         st.session_state["CustomModel_available"] = True
-        st.session_state["custom_models"].append("Stable Diffusion v1.4")
+        server_state["custom_models"].append("Stable Diffusion v1.4")
     else:
         st.session_state["CustomModel_available"] = False	
 
@@ -1217,7 +1245,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
                             target="txt2img" if init_img is None else "img2img",
                                 prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
                                 ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=st.session_state["loaded_model"])
+                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=server_state["loaded_model"])
         # Not yet any use for these, but they bloat up the files:
         # info_dict["init_img"] = init_img
         # info_dict["init_mask"] = init_mask
@@ -1386,8 +1414,8 @@ def process_images(
 
         if prompt_tokens:
             # compviz
-            tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer
-            text_encoder = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.transformer
+            tokenizer = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.tokenizer
+            text_encoder = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.transformer
     
             # diffusers
             #tokenizer = pipe.tokenizer
@@ -1471,7 +1499,7 @@ def process_images(
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (st.session_state["model"].ema_scope() if not st.session_state['defaults'].general.optimized else nullcontext()):
+    with torch.no_grad(), precision_scope("cuda"), (server_state["model"].ema_scope() if not st.session_state['defaults'].general.optimized else nullcontext()):
         init_data = func_init()
         tic = time.time()
 
@@ -1497,9 +1525,9 @@ def process_images(
             print(prompt)
 
             if st.session_state['defaults'].general.optimized:
-                st.session_state.modelCS.to(st.session_state['defaults'].general.gpu)
+                server_state["modelCS"].to(st.session_state['defaults'].general.gpu)
 
-            uc = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(len(prompts) * [negprompt])
+            uc = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(len(prompts) * [negprompt])
 
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
@@ -1513,23 +1541,23 @@ def process_images(
                 c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
                 for i in range(0, len(weighted_subprompts)):
                     # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                    c = torch.add(c, (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
             else: # just behave like usual
-                c = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).get_learned_conditioning(prompts)
+                c = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(prompts)
 
 
             shape = [opt_C, height // opt_f, width // opt_f]
 
             if st.session_state['defaults'].general.optimized:
                 mem = torch.cuda.memory_allocated()/1e6
-                st.session_state.modelCS.to("cpu")
+                server_state["modelCS"].to("cpu")
                 while(torch.cuda.memory_allocated()/1e6 >= mem):
                     time.sleep(1)
 
             if noise_mode == 1 or noise_mode == 3:
                 # TODO params for find_noise_to_image
                 x = torch.cat(batch_size * [find_noise_for_image(
-                                    st.session_state["model"], st.session_state["device"],
+                                    server_state["model"], server_state["device"],
                                         init_img.convert('RGB'), '', find_noise_steps, 0.0, normalize=True,
                                         generation_callback=generation_callback,
                                         )], dim=0)
@@ -1551,9 +1579,9 @@ def process_images(
             samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
             if st.session_state['defaults'].general.optimized:
-                st.session_state.modelFS.to(st.session_state['defaults'].general.gpu)
+                server_state["modelFS"].to(st.session_state['defaults'].general.gpu)
 
-            x_samples_ddim = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelFS).decode_first_stage(samples_ddim)
+            x_samples_ddim = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
             run_images = []
@@ -1567,7 +1595,7 @@ def process_images(
                     full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
 
 
-                    sanitized_prompt = sanitized_prompt[:220-len(full_path)]
+                    sanitized_prompt = sanitized_prompt[:200-len(full_path)]
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
 
                     #print(f"output folder length: {len(os.path.join(os.getcwd(), sample_path_i))}")
@@ -1580,7 +1608,7 @@ def process_images(
                     full_path = os.path.join(os.getcwd(), sample_path)
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:220-len(full_path)] #same as before
+                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:200-len(full_path)] #same as before
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
@@ -1590,11 +1618,11 @@ def process_images(
 
                 st.session_state["preview_image"].image(image)
 
-                if use_GFPGAN and st.session_state["GFPGAN"] is not None and not use_RealESRGAN:
+                if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN:
                     st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
-                    cropped_faces, restored_faces, restored_img = st.session_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
@@ -1602,7 +1630,7 @@ def process_images(
                     save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback,
                                                     uses_random_seed_loopback, save_grid, sort_samples, sampler_name, ddim_eta,
-                                                    n_iter, batch_size, i, denoising_strength, resize_mode, False, st.session_state["loaded_model"])
+                                                    n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
 
                     output_images.append(gfpgan_image) #287
                     run_images.append(gfpgan_image)
@@ -1610,16 +1638,16 @@ def process_images(
                     if simple_templating:
                         grid_captions.append( captions[i] + "\ngfpgan" )
 
-                elif use_RealESRGAN and st.session_state["RealESRGAN"] is not None and not use_GFPGAN:
+                elif use_RealESRGAN and server_state["RealESRGAN"] is not None and not use_GFPGAN:
                     st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
 
-                    if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
+                    if server_state["RealESRGAN"].model.name != realesrgan_model_name:
                         #try_loading_RealESRGAN(realesrgan_model_name)
                         load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
-                    output, img_mode = st.session_state["RealESRGAN"].enhance(x_sample[:,:,::-1])
+                    output, img_mode = server_state["RealESRGAN"].enhance(x_sample[:,:,::-1])
                     esrgan_filename = original_filename + '-esrgan4x'
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
@@ -1630,7 +1658,7 @@ def process_images(
 
                     save_sample(esrgan_image, sample_path_i, esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, st.session_state["loaded_model"])
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
 
                     output_images.append(esrgan_image) #287
                     run_images.append(esrgan_image)
@@ -1638,25 +1666,25 @@ def process_images(
                     if simple_templating:
                         grid_captions.append( captions[i] + "\nesrgan" )
 
-                elif use_RealESRGAN and st.session_state["RealESRGAN"] is not None and use_GFPGAN and st.session_state["GFPGAN"] is not None:
+                elif use_RealESRGAN and server_state["RealESRGAN"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
                     st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
-                    cropped_faces, restored_faces, restored_img = st.session_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
 
-                    if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
+                    if server_state["RealESRGAN"].model.name != realesrgan_model_name:
                         #try_loading_RealESRGAN(realesrgan_model_name)
                         load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
-                    output, img_mode = st.session_state["RealESRGAN"].enhance(gfpgan_sample[:,:,::-1])
+                    output, img_mode = server_state["RealESRGAN"].enhance(gfpgan_sample[:,:,::-1])
                     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
                     gfpgan_esrgan_sample = output[:,:,::-1]
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
 
                     save_sample(gfpgan_esrgan_image, sample_path_i, gfpgan_esrgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, False, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, st.session_state["loaded_model"])
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
 
                     output_images.append(gfpgan_esrgan_image) #287
                     run_images.append(gfpgan_esrgan_image)
@@ -1674,16 +1702,16 @@ def process_images(
                     init_img = init_img.convert('RGB')
                     image = image.convert('RGB')
 
-                    if use_RealESRGAN and st.session_state["RealESRGAN"] is not None:
-                        if st.session_state["RealESRGAN"].model.name != realesrgan_model_name:
+                    if use_RealESRGAN and server_state["RealESRGAN"] is not None:
+                        if server_state["RealESRGAN"].model.name != realesrgan_model_name:
                             #try_loading_RealESRGAN(realesrgan_model_name)
                             load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
-                        output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_img, dtype=np.uint8))
+                        output, img_mode = server_state["RealESRGAN"].enhance(np.array(init_img, dtype=np.uint8))
                         init_img = Image.fromarray(output)
                         init_img = init_img.convert('RGB')
 
-                        output, img_mode = st.session_state["RealESRGAN"].enhance(np.array(init_mask, dtype=np.uint8))
+                        output, img_mode = server_state["RealESRGAN"].enhance(np.array(init_mask, dtype=np.uint8))
                         init_mask = Image.fromarray(output)
                         init_mask = init_mask.convert('L')
 
@@ -1692,7 +1720,7 @@ def process_images(
                 if save_individual_images:
                     save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images, st.session_state["loaded_model"])
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images, server_state["loaded_model"])
 
                     #if add_original_image or not simple_templating:
                         #output_images.append(image)
@@ -1701,7 +1729,7 @@ def process_images(
 
                 if st.session_state['defaults'].general.optimized:
                     mem = torch.cuda.memory_allocated()/1e6
-                    st.session_state.modelFS.to("cpu")
+                    server_state["modelFS"].to("cpu")
                     while(torch.cuda.memory_allocated()/1e6 >= mem):
                         time.sleep(1)
 
@@ -1735,7 +1763,7 @@ def process_images(
                 output_images.insert(0, grid)
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
-            grid_file = f"grid-{grid_count:05}-{seed}_{slugify(prompts[i].replace(' ', '_')[:220-len(full_path)])}.{grid_ext}"
+            grid_file = f"grid-{grid_count:05}-{seed}_{slugify(prompts[i].replace(' ', '_')[:200-len(full_path)])}.{grid_ext}"
             grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
         toc = time.time()
@@ -1745,7 +1773,7 @@ def process_images(
 
     info = f"""
             {prompt}
-            Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and st.session_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and st.session_state["RealESRGAN"] is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+            Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and server_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and server_state["RealESRGAN"] is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
     stats = f'''
             Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
             Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''

@@ -2,6 +2,8 @@ name: ldm
 channels:
   - pytorch
   - defaults
+# Psst. If you change a dependency, make sure it's mirrored in the docker requirement
+# files as well.
 dependencies:
   - cudatoolkit=11.3
   - git
@@ -38,10 +40,11 @@ dependencies:
     - python-slugify>=6.1.2
     - pytorch-lightning==1.4.2
     - retry>=0.9.2
-    - streamlit==1.12.2
+    - streamlit==1.13.0
     - streamlit-on-Hover-tabs==1.0.1
     - streamlit-option-menu==0.3.2
     - streamlit_nested_layout
+    - streamlit-server-state==0.14.2
     - timm==0.6.7
     - test-tube>=0.7.5
     - tensorboard
