@@ -216,7 +216,13 @@ def layout():
 																					help="Defaut theme to use as base for streamlit. Default: dark")
 				st.session_state["streamlit_config"]["theme"]["base"] = st.session_state["defaults"].general.default_theme				
 				
-				
+			with col5:
+				st.title("Huggingface")
+				st.session_state["defaults"].general.huggingface_token = st.text_input("Huggingface Token", value=st.session_state['defaults'].general.huggingface_token, type="password",
+																							help="Your Huggingface Token, it's used to download the model for the diffusers library which \
+																							is used on the Text To Video tab. This token will be saved to your user config file\
+																							and WILL NOT be share with us or anyone. You can get your access token \
+																							at https://huggingface.co/settings/tokens. Default: None")
 				
 		with txt2img_tab:
 			st.title("Text To Image")
