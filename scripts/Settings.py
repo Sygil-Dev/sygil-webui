@@ -149,6 +149,7 @@ def layout():
 																						negative effect updating the preview image has on performance. Default: 10"))					
 				
 			with col3:
+				st.title("Others")
 				st.session_state["defaults"].general.use_sd_concepts_library = st.checkbox("Use the Concepts Library", value=st.session_state['defaults'].general.use_sd_concepts_library,
 																									   help="Use the embeds Concepts Library, if checked, once the settings are saved an option will\
 																									  appear to specify the directory where the concepts are stored. Default: True)")				
@@ -182,6 +183,13 @@ def layout():
 			
 				st.session_state["defaults"].general.no_verify_input = st.checkbox("Do not Verify Input", value=st.session_state['defaults'].general.no_verify_input,
 																									   help="Do not verify input to check if it's too long. Default: False")
+				
+			with col4:
+				st.title("Streamlit Config")
+				st.session_state["defaults"].general.streamlit_telemetry = st.checkbox("Enable Telemetry", value=st.session_state['defaults'].general.streamlit_telemetry,
+																					help="Enables or Disables streamlit telemetry. Default: False")
+				
+				st.session_state["streamlit_config"]["browser"]["gatherUsageStats"] = st.session_state["defaults"].general.streamlit_telemetry
 				
 				
 		with txt2img_tab:
@@ -221,12 +229,14 @@ def layout():
 			reset_button = st.form_submit_button("Reset")
 			
 		if save_button:
-			#userconfig_streamlit = OmegaConf.to_yaml(st.session_state.defaults)
-			#OmegaConf.save("configs/webui/userconfig_streamlit.yaml")
-					
 			OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
 			loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-			assert st.session_state.defaults == loaded			
+			assert st.session_state.defaults == loaded	
+						
+			#
+			if (os.path.exists(".streamlit/config.toml")):
+				with open(".streamlit/config.toml", "w") as toml_file:				
+					toml.dump(st.session_state["streamlit_config"], toml_file)
 			
 		if reset_button:
 			st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
