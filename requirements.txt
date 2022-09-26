@@ -70,3 +70,10 @@ realesrgan==0.2.8  # RealESRGAN brings in GFPGAN as a requirement
 #pudb
 #test-tube
 #torch-fidelity
+
+
+# scn2img 
+## for MiDaS depth estimation 
+timm==0.6.7
+## for monocular depth estimation 
+tensorflow==2.10.0
