@@ -221,9 +221,9 @@ def load_diffusers_model(weights_path,torch_device):
 				server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 					    weights_path,
 					    use_local_file=True,
-					        use_auth_token=True,
-					                torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-					                revision="fp16" if not st.session_state['defaults'].general.no_half else None
+				        use_auth_token=st.session_state["defaults"].general.huggingface_token,
+				        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+				        revision="fp16" if not st.session_state['defaults'].general.no_half else None
 					)
 		
 				server_state["pipe"].unet.to(torch_device)
@@ -248,7 +248,7 @@ def load_diffusers_model(weights_path,torch_device):
 			server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 				    weights_path,
 				    use_local_file=True,
-				    use_auth_token=True,
+				    use_auth_token=st.session_state["defaults"].general.huggingface_token,
 				    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
 				    revision="fp16" if not st.session_state['defaults'].general.no_half else None
 				)
