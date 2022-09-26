@@ -4,6 +4,7 @@
 # of the properties below.
 general:
     streamlit_telemetry: False
+    default_theme: dark
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.4" 
