@@ -275,51 +275,51 @@ def layout():
                         st.session_state["custom_model"])  
             
 
-            #try:
+            try:
                 #
-            output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
-                                                        cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                        save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
-                                                        variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-            
-            message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
-    
-            #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
-    
-            #if 'latestImages' in st.session_state:
-                #for i in output_images:
-                    ##push the new image to the list of latest images and remove the oldest one
-                    ##remove the last index from the list\
-                    #st.session_state['latestImages'].pop()
-                    ##add the new image to the start of the list
-                    #st.session_state['latestImages'].insert(0, i)
-                #PlaceHolder.empty()
-                #with PlaceHolder.container():
-                    #col1, col2, col3 = st.columns(3)
-                    #col1_cont = st.container()
-                    #col2_cont = st.container()
-                    #col3_cont = st.container()
-                    #images = st.session_state['latestImages']
-                    #with col1_cont:
-                        #with col1:
-                            #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                    #with col2_cont:
-                        #with col2:
-                            #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                    #with col3_cont:
-                        #with col3:
-                            #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                    #historyGallery = st.empty()
-            
-                ## check if output_images length is the same as seeds length
-                #with gallery_tab:
-                    #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
+                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
+                                                            cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
+                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
                 
+                message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+        
+                #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+        
+                #if 'latestImages' in st.session_state:
+                    #for i in output_images:
+                        ##push the new image to the list of latest images and remove the oldest one
+                        ##remove the last index from the list\
+                        #st.session_state['latestImages'].pop()
+                        ##add the new image to the start of the list
+                        #st.session_state['latestImages'].insert(0, i)
+                    #PlaceHolder.empty()
+                    #with PlaceHolder.container():
+                        #col1, col2, col3 = st.columns(3)
+                        #col1_cont = st.container()
+                        #col2_cont = st.container()
+                        #col3_cont = st.container()
+                        #images = st.session_state['latestImages']
+                        #with col1_cont:
+                            #with col1:
+                                #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
+                        #with col2_cont:
+                            #with col2:
+                                #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
+                        #with col3_cont:
+                            #with col3:
+                                #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
+                        #historyGallery = st.empty()
                 
-                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                    ## check if output_images length is the same as seeds length
+                    #with gallery_tab:
+                        #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
+                    
+                    
+                        #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
                 
-            #except (StopException, KeyError):
-                #print(f"Received Streamlit StopException")
+            except (StopException, KeyError):
+                print(f"Received Streamlit StopException")
             
                 # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
                 # use the current col2 first tab to show the preview_img and update it as its generated.
