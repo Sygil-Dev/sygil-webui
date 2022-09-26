@@ -686,13 +686,15 @@ def load_GFPGAN():
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.GFPGAN_dir))
     from gfpgan import GFPGANer
 
-    if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
-    elif st.session_state['defaults'].general.extra_models_gpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
-    else:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-    return instance
+    with server_state_lock['GFPGAN']:
+        if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
+        elif st.session_state['defaults'].general.extra_models_gpu:
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
+        else:
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+    
+    return server_state['GFPGAN']
 
 @retry(tries=5)
 def load_RealESRGAN(model_name: str):
@@ -709,17 +711,18 @@ def load_RealESRGAN(model_name: str):
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.RealESRGAN_dir))
     from realesrgan import RealESRGANer
 
-    if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
-        instance.device = torch.device('cpu')
-        instance.model.to('cpu')
-    elif st.session_state['defaults'].general.extra_models_gpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
-    else:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-    instance.model.name = model_name
+    with server_state_lock['RealESRGAN']:
+        if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
+            server_state['RealESRGAN'].device = torch.device('cpu')
+            server_state['RealESRGAN'].model.to('cpu')
+        elif st.session_state['defaults'].general.extra_models_gpu:
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
+        else:
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+        server_state['RealESRGAN'].model.name = model_name
 
-    return instance
+    return server_state['RealESRGAN']
 
 #
 @retry(tries=5)
@@ -728,6 +731,7 @@ def load_LDSR(checking=False):
     yaml_name = 'project'
     model_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
     yaml_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
+    
     if not os.path.isfile(model_path):
         raise Exception("LDSR model not found at path "+model_path)
     if not os.path.isfile(yaml_path):
@@ -738,6 +742,7 @@ def load_LDSR(checking=False):
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.LDSR_dir))
     from LDSR import LDSR
     LDSRObject = LDSR(model_path, yaml_path)
+    
     return LDSRObject
 
 #
