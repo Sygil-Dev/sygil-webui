@@ -250,6 +250,7 @@ def scn2img_define_args():
         "render_3d": {
             "transform3d"                      : "bool",
             "transform3d_depth_model"          : "int",
+            "transform3d_depth_near"           : "float",
             "transform3d_depth_scale"          : "float",
             "transform3d_from_hfov"            : "degrees",
             "transform3d_from_pose"            : "float_tuple",
@@ -943,6 +944,7 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                 if obj["transform3d"] == True:
                     d2r = math.pi / 180.0
                     depth_model    = obj["transform3d_depth_model"]          if "transform3d_depth_model"          in obj else 1
+                    depth_near     = obj["transform3d_depth_near"]           if "transform3d_depth_near"            in obj else 0.1
                     depth_scale    = obj["transform3d_depth_scale"]          if "transform3d_depth_scale"          in obj else 1.0
                     from_hfov      = obj["transform3d_from_hfov"]            if "transform3d_from_hfov"            in obj else (45*d2r)
                     from_pose      = obj["transform3d_from_pose"]            if "transform3d_from_pose"            in obj else (0,0,0, 0,0,0)
@@ -966,7 +968,7 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     tf_world_cam1 = pose3d_rpy(*to_pos, *(deg*d2r for deg in to_rpy))
 
                     depth = run_depth_estimation(img, depth_model)
-                    img = run_transform_image_3d_simple(img, depth, depth_scale, hfov0_rad, tf_world_cam0, hfov1_rad, tf_world_cam1, min_mask, max_mask, mask_invert)
+                    img = run_transform_image_3d_simple(img, depth, depth_near, depth_scale, hfov0_rad, tf_world_cam0, hfov1_rad, tf_world_cam1, min_mask, max_mask, mask_invert)
                     if inpaint:
                         mask = img.getchannel("A")
                         img_inpainted = cv2.inpaint(
@@ -1496,7 +1498,7 @@ def run_3d_estimation(depth:np.ndarray, depth_scale:float=1, hfov_rad:float=60*m
     return xyz
 
 @numba.jit
-def transform_image_3d(img_out:np.ndarray, img_in:np.ndarray, depth:np.ndarray, depth_scale:float,
+def transform_image_3d(img_out:np.ndarray, img_in:np.ndarray, depth:np.ndarray, depth_near:float, depth_scale:float,
         fx0:float, fy0:float, cx0:float, cy0:float,
         fx1:float, fy1:float, cx1:float, cy1:float, 
         rot_cam1_cam0: np.ndarray, offset_cam1_cam0: np.ndarray,
@@ -1532,7 +1534,7 @@ def transform_image_3d(img_out:np.ndarray, img_in:np.ndarray, depth:np.ndarray, 
             # continue
             # if not (min_mask <= a <= max_mask): continue
             x0_ = fx0*(u0 - cx0)
-            z0 = depth[v0,u0] * depth_scale
+            z0 = depth_near + depth[v0,u0] * depth_scale
             x0 = x0_ * z0
             y0 = y0_ * z0
             x1 = offset_cam1_cam0[0] + m00*x0 + m01*y0 + m02*z0
@@ -1571,7 +1573,7 @@ class CameraInfo:
         self.pose = pose if pose is not None else np.eye(4)
         assert(self.pose.shape==(4,4))
         
-def run_transform_image_3d(image:Image, depth:np.ndarray, depth_scale:float, from_caminfo: CameraInfo, to_caminfo: CameraInfo, min_mask:int, max_mask:int, mask_invert:bool):
+def run_transform_image_3d(image:Image, depth:np.ndarray, depth_near:float, depth_scale:float, from_caminfo: CameraInfo, to_caminfo: CameraInfo, min_mask:int, max_mask:int, mask_invert:bool):
     if image is None: return None
     h,w = image.size
     image_in = np.asarray(image.convert("RGBA"))
@@ -1597,7 +1599,7 @@ def run_transform_image_3d(image:Image, depth:np.ndarray, depth_scale:float, fro
     # print("max_mask", max_mask)
     
     transform_image_3d(
-        image_out, image_in, depth, depth_scale, 
+        image_out, image_in, depth, depth_near, depth_scale, 
         from_caminfo.fx, from_caminfo.fy, from_caminfo.cx, from_caminfo.cy, 
         to_caminfo.fx, to_caminfo.fy, to_caminfo.cx, to_caminfo.cy, 
         rot_cam1_cam0, offset_cam1_cam0,
@@ -1607,13 +1609,13 @@ def run_transform_image_3d(image:Image, depth:np.ndarray, depth_scale:float, fro
         image_out[:,:,3] = 255 - image_out[:,:,3]
     return Image.fromarray(image_out,"RGBA")
 
-def run_transform_image_3d_simple(image:Image, depth:np.ndarray, depth_scale:float, 
+def run_transform_image_3d_simple(image:Image, depth:np.ndarray, depth_near:float, depth_scale:float, 
         hfov0_rad:float, tf_world_cam0: np.ndarray,
         hfov1_rad:float, tf_world_cam1: np.ndarray,
         min_mask:int, max_mask:int, mask_invert:bool):
     from_caminfo = CameraInfo(image.size, hfov0_rad, tf_world_cam0)
     to_caminfo = CameraInfo(image.size, hfov1_rad, tf_world_cam1)
-    return run_transform_image_3d(image, depth, depth_scale, from_caminfo, to_caminfo, min_mask, max_mask, mask_invert)
+    return run_transform_image_3d(image, depth, depth_near, depth_scale, from_caminfo, to_caminfo, min_mask, max_mask, mask_invert)
 
 def translation3d(x,y,z):
     return np.array([

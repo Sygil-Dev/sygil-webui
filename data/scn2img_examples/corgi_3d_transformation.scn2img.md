@@ -16,6 +16,7 @@ image_editor_mode:Mask
 
 # estimate depth and transform the corgi in 3d
 transform3d: True
+transform3d_depth_near: 0.5
 transform3d_depth_scale: 10
 transform3d_from_hfov: 45
 transform3d_to_hfov: 45
