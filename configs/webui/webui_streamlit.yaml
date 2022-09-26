@@ -3,6 +3,7 @@
 # You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
 # of the properties below.
 general:
+    streamlit_telemetry: False
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.4" 

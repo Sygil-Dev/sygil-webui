@@ -12,7 +12,7 @@ from streamlit_server_state import server_state, server_state_lock
 #other imports
 
 import warnings
-import os
+import os, toml
 import k_diffusion as K
 from omegaconf import OmegaConf
 
@@ -28,6 +28,9 @@ else:
 	OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
 	loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
 	assert st.session_state.defaults == loaded		
+
+if (os.path.exists(".streamlit/config.toml")):
+	st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------

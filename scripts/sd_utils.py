@@ -14,7 +14,7 @@ import warnings
 import json
 
 import base64
-import os, sys, re, random, datetime, time, math, glob
+import os, sys, re, random, datetime, time, math, glob, toml
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
 from PIL.PngImagePlugin import PngInfo
 from scipy import integrate
@@ -77,6 +77,13 @@ st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yam
 if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
     user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
     st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+else:
+    OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
+    loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+    assert st.session_state.defaults == loaded	
+
+if (os.path.exists(".streamlit/config.toml")):
+    st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
 
 
 # should and will be moved to a settings menu in the UI at some point
