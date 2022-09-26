@@ -184,6 +184,11 @@ def layout():
 				st.session_state["defaults"].general.no_verify_input = st.checkbox("Do not Verify Input", value=st.session_state['defaults'].general.no_verify_input,
 																									   help="Do not verify input to check if it's too long. Default: False")
 				
+				st.session_state["defaults"].daisi_app.running_on_daisi_io = st.checkbox("Running on Daisi.io?", value=st.session_state['defaults'].daisi_app.running_on_daisi_io,
+																							   help="Specify if we are running on app.Daisi.io . Default: False")
+				
+				
+				
 			with col4:
 				st.title("Streamlit Config")
 				
