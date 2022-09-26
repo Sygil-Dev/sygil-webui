@@ -164,15 +164,17 @@ def layout():
                                   value=st.session_state['defaults'].txt2img.cfg_scale.value, step=st.session_state['defaults'].txt2img.cfg_scale.step, 
                                   help="How strongly the image should follow the prompt.")
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-            batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
-                                    value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
-                                    help="How many iterations or batches of images to generate in total.")
-
-            batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
-                                   value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
-                                   help="How many images are at once in a batch.\
-                                   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                   Default: 1")
+            
+            with st.expander("Batch Options"):
+                batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
+                                        value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
+                                        help="How many iterations or batches of images to generate in total.")
+    
+                batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
+                                       value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
+                                       help="How many images are at once in a batch.\
+                                       It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+                                       Default: 1")
 
             with st.expander("Preview Settings"):
                 st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
@@ -257,12 +259,14 @@ def layout():
                 else:
                     st.session_state["use_RealESRGAN"] = False
                     st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
-
-                variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
-                                           min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
-                                           step=st.session_state['defaults'].txt2img.variant_amount.step)
-                variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-        galleryCont = st.empty()
+                    
+                with st.expander("Variant"):
+                    variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
+                                               min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
+                                               step=st.session_state['defaults'].txt2img.variant_amount.step)
+                    variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+            
+            #galleryCont = st.empty()
 
         if generate_button:
             #print("Loading models")
@@ -271,51 +275,51 @@ def layout():
                         st.session_state["custom_model"])  
             
 
-            try:
+            #try:
                 #
-                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
-                                                            cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
-                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+            output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
+                                                        cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+                                                        save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
+                                                        variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+            
+            message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+    
+            #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+    
+            #if 'latestImages' in st.session_state:
+                #for i in output_images:
+                    ##push the new image to the list of latest images and remove the oldest one
+                    ##remove the last index from the list\
+                    #st.session_state['latestImages'].pop()
+                    ##add the new image to the start of the list
+                    #st.session_state['latestImages'].insert(0, i)
+                #PlaceHolder.empty()
+                #with PlaceHolder.container():
+                    #col1, col2, col3 = st.columns(3)
+                    #col1_cont = st.container()
+                    #col2_cont = st.container()
+                    #col3_cont = st.container()
+                    #images = st.session_state['latestImages']
+                    #with col1_cont:
+                        #with col1:
+                            #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
+                    #with col2_cont:
+                        #with col2:
+                            #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
+                    #with col3_cont:
+                        #with col3:
+                            #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
+                    #historyGallery = st.empty()
+            
+                ## check if output_images length is the same as seeds length
+                #with gallery_tab:
+                    #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
                 
-                message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
-        
-                #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
-        
-                #if 'latestImages' in st.session_state:
-                    #for i in output_images:
-                        ##push the new image to the list of latest images and remove the oldest one
-                        ##remove the last index from the list\
-                        #st.session_state['latestImages'].pop()
-                        ##add the new image to the start of the list
-                        #st.session_state['latestImages'].insert(0, i)
-                    #PlaceHolder.empty()
-                    #with PlaceHolder.container():
-                        #col1, col2, col3 = st.columns(3)
-                        #col1_cont = st.container()
-                        #col2_cont = st.container()
-                        #col3_cont = st.container()
-                        #images = st.session_state['latestImages']
-                        #with col1_cont:
-                            #with col1:
-                                #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                        #with col2_cont:
-                            #with col2:
-                                #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                        #with col3_cont:
-                            #with col3:
-                                #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                        #historyGallery = st.empty()
                 
-                    ## check if output_images length is the same as seeds length
-                    #with gallery_tab:
-                        #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
-                    
-                    
-                        #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
                 
-            except (StopException, KeyError):
-                print(f"Received Streamlit StopException")
+            #except (StopException, KeyError):
+                #print(f"Received Streamlit StopException")
             
                 # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
                 # use the current col2 first tab to show the preview_img and update it as its generated.
