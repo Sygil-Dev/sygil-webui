@@ -225,6 +225,7 @@ def scn2img_define_args():
             "resize"   : "int_tuple",
             "rotation" : "degrees",
             "color"    : "color",
+            "blend"    : "str",
         },
         "render_mask": {
             "mask_value"              : "int",
@@ -706,9 +707,11 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                 # todo: upscale with realesrgan
                 return img.resize(size, box=crop)
             
-            def blend_image_at(dst, img, pos, rotation, center):
+            def blend_image_at(dst, img, pos, rotation, center, blend_mode):
                 if img is None: 
                     return dst
+                assert(blend_mode.lower() in ["alpha","mask","add","add_modulo","darker","difference","lighter","logical_and","logical_or","logical_xor","multiply","soft_light","hard_light","overlay","screen","subtract","subtract_modulo"])
+                blend_mode = blend_mode.lower()
                 # log_debug(f"blend_image_at({dst}, {img}, {pos}, {rotation}, {center})")
                 center = center or (img.size[0]*0.5, img.size[1]*0.5)
                 pos = pos or ((dst.size[0]*0.5, dst.size[1]*0.5) if dst is not None else None)
@@ -762,7 +765,16 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                     dx = max(0, dx)
                     dy = max(0, dy)
                     # log_debug(f"dest=({dx},{dy}), source=({sx},{sy})")
-                    dst.alpha_composite(img, dest=(dx,dy), source=(sx,sy))
+                    if blend_mode in ["alpha","mask"]:
+                        dst.alpha_composite(img, dest=(dx,dy), source=(sx,sy))
+                    else:
+                        w,h = img.size
+                        img_crop = img.crop(box=(sx,sy,w-1,h-1))
+                        w,h = img_crop.size
+                        dst_crop = dst.crop(box=(dx,dy,dx+w,dy+h))
+                        blend_func = getattr(ImageChops, blend_mode)
+                        blended = blend_func(dst_crop, img_crop)
+                        dst.paste(blended,box=(dx,dy))
                 return dst
 
             def blend_objects(seeds, dst, objects):
@@ -781,7 +793,8 @@ def get_scn2img(MemUsageMonitor:Type, save_sample:Callable, get_next_sequence_nu
                             img = img, 
                             pos = obj["pos"] or obj["position"] or None, 
                             rotation = obj["rotation"] or obj["rotate"] or obj["angle"] or 0, 
-                            center = obj["center"] or None
+                            center = obj["center"] or None,
+                            blend_mode = obj["blend"] if "blend" in obj else "alpha",
                         )
                     except Exception as e:
                         # log_debug("")
