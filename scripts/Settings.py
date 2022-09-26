@@ -186,10 +186,16 @@ def layout():
 				
 			with col4:
 				st.title("Streamlit Config")
+				
 				st.session_state["defaults"].general.streamlit_telemetry = st.checkbox("Enable Telemetry", value=st.session_state['defaults'].general.streamlit_telemetry,
 																					help="Enables or Disables streamlit telemetry. Default: False")
-				
 				st.session_state["streamlit_config"]["browser"]["gatherUsageStats"] = st.session_state["defaults"].general.streamlit_telemetry
+				
+				default_theme_list = ["light", "dark"]
+				st.session_state["defaults"].general.default_theme = st.selectbox("Default Theme", default_theme_list, index=default_theme_list.index(st.session_state['defaults'].general.default_theme),
+																					help="Defaut theme to use as base for streamlit. Default: dark")
+				st.session_state["streamlit_config"]["theme"]["base"] = st.session_state["defaults"].general.default_theme				
+				
 				
 				
 		with txt2img_tab:
