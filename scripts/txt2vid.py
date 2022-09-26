@@ -726,12 +726,16 @@ def layout():
 			else:
 				st.session_state["use_RealESRGAN"] = False
 				st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
-
-			st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
-														   min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
-														   max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
-														   step=st.session_state['defaults'].txt2vid.variant_amount.step)
-			st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+				
+			with st.expander("Variant"):
+				st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
+					                                           min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
+					                                           max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
+					                                           step=st.session_state['defaults'].txt2vid.variant_amount.step)
+				
+				st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, 
+				                                                 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+			
 			#st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start.value,
 													   #min_value=st.session_state['defaults'].txt2vid.beta_start.min_value,
 													   #max_value=st.session_state['defaults'].txt2vid.beta_start.max_value,
