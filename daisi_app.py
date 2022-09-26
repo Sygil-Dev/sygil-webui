@@ -1,4 +1,4 @@
-import os
+import os, subprocess
 import yaml
 
 print (os.getcwd)
@@ -20,9 +20,7 @@ try:
 except:
 	pass
 
-#try:
-	#subprocess.run(['python', '-m', 'streamlit', "run" ,os.path.join("..","scripts/webui_streamlit.py"), "--theme.base dark"], stdout=subprocess.DEVNULL) 
-#except FileExistsError:
-	#subprocess.run(['python', '-m', 'streamlit', "run" ,"scripts/webui_streamlit.py", "--theme.base dark"], stdout=subprocess.DEVNULL) 
-	
-import scripts.webui_streamlit
+try:
+	subprocess.run(['python', '-m', 'streamlit', "run" ,os.path.join("..","scripts/webui_streamlit.py"), "--theme.base dark"], stdout=subprocess.DEVNULL) 
+except FileExistsError:
+	subprocess.run(['python', '-m', 'streamlit', "run" ,"scripts/webui_streamlit.py", "--theme.base dark"], stdout=subprocess.DEVNULL) 
