@@ -4,6 +4,9 @@
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
+- name: branch-deploy
+    uses: github/branch-deploy@v3.0.1
+
 updates:
   - package-ecosystem: "pip" # See documentation for possible values
     directory: "/" # Location of package manifests
@@ -11,6 +14,3 @@ updates:
 
     schedule:
       interval: "daily"
-
-  - name: branch-deploy
-      uses: github/branch-deploy@v3.0.1
