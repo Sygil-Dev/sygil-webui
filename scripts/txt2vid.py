@@ -1,3 +1,18 @@
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 from webui_streamlit import st
 from sd_utils import *
@@ -221,9 +236,9 @@ def load_diffusers_model(weights_path,torch_device):
 				server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 					    weights_path,
 					    use_local_file=True,
-					        use_auth_token=True,
-					                torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-					                revision="fp16" if not st.session_state['defaults'].general.no_half else None
+				        use_auth_token=st.session_state["defaults"].general.huggingface_token,
+				        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+				        revision="fp16" if not st.session_state['defaults'].general.no_half else None
 					)
 		
 				server_state["pipe"].unet.to(torch_device)
@@ -248,7 +263,7 @@ def load_diffusers_model(weights_path,torch_device):
 			server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 				    weights_path,
 				    use_local_file=True,
-				    use_auth_token=True,
+				    use_auth_token=st.session_state["defaults"].general.huggingface_token,
 				    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
 				    revision="fp16" if not st.session_state['defaults'].general.no_half else None
 				)
@@ -726,12 +741,16 @@ def layout():
 			else:
 				st.session_state["use_RealESRGAN"] = False
 				st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
-
-			st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
-														   min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
-														   max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
-														   step=st.session_state['defaults'].txt2vid.variant_amount.step)
-			st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+				
+			with st.expander("Variant"):
+				st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
+					                                           min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
+					                                           max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
+					                                           step=st.session_state['defaults'].txt2vid.variant_amount.step)
+				
+				st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, 
+				                                                 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+			
 			#st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start.value,
 													   #min_value=st.session_state['defaults'].txt2vid.beta_start.min_value,
 													   #max_value=st.session_state['defaults'].txt2vid.beta_start.max_value,

@@ -1,3 +1,18 @@
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 import streamlit as st
 from sd_utils import *
@@ -12,7 +27,7 @@ from streamlit_server_state import server_state, server_state_lock
 #other imports
 
 import warnings
-import os
+import os, toml
 import k_diffusion as K
 from omegaconf import OmegaConf
 
@@ -28,6 +43,9 @@ else:
 	OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
 	loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
 	assert st.session_state.defaults == loaded		
+
+if (os.path.exists(".streamlit/config.toml")):
+	st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
