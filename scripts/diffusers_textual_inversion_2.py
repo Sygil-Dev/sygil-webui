@@ -215,7 +215,7 @@ def parse_args():
             args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
     elif args.config is not None:
         with open(args.config, 'rt') as f:
-            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)))
+            args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
 
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
