@@ -11,3 +11,5 @@ updates:
 
     schedule:
       interval: "daily"
+  - name: branch-deploy
+    uses: github/branch-deploy@v3.0.1
