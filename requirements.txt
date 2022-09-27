@@ -61,7 +61,7 @@ piexif==1.1.3  # used by sdutils
 # Upscalers
 basicsr==1.4.2  # required by RealESRGAN
 gfpgan==1.3.8  # GFPGAN
-realesrgan==0.2.8  # RealESRGAN brings in GFPGAN as a requirement
+realesrgan==0.3.0  # RealESRGAN brings in GFPGAN as a requirement
 -e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion  #ldsr
 
 # Orphaned Packages:  No usage found
