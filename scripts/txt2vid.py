@@ -225,6 +225,9 @@ def load_diffusers_model(weights_path,torch_device):
 	with server_state_lock["model"]:
 		if "model" in server_state:
 			del server_state["model"]
+			
+	if "textual_inversion" in st.session_state:
+		del st.session_state['textual_inversion']	
 	
 	try:
 		with server_state_lock["pipe"]:

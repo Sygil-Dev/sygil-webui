@@ -18,7 +18,7 @@ from webui_streamlit import st
 
 
 # streamlit imports
-from streamlit import StopException
+from streamlit import StopException, StreamlitAPIException
 
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
@@ -267,8 +267,11 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             if "pipe" in server_state:
                 del server_state["pipe"]    
         
+        if "textual_inversion" in st.session_state:
+            del st.session_state['textual_inversion']
+        
         # At this point the model is either
-        # is not loaded yet or have been evicted:
+        # not loaded yet or have been evicted:
         # load new model into memory
         server_state["custom_model"] = custom_model
     
@@ -611,6 +614,52 @@ def find_noise_for_image(model, device, init_image, prompt, steps=200, cond_scal
         x = x + d * dt
 
     return x / sigmas[-1]
+
+#
+def folder_picker(label="Select:", value="", help="", folder_button_label="Select", folder_button_help="", folder_button_key=""):
+    """A folder picker that has a text_input field next to it and a button to select the folder. 
+    Returns the text_input field with the folder path."""
+    import tkinter as tk
+    from tkinter import filedialog
+    import string    
+
+    # Set up tkinter
+    root = tk.Tk()
+    root.withdraw()
+
+    # Make folder picker dialog appear on top of other windows
+    root.wm_attributes('-topmost', 1)
+
+    col1, col2 = st.columns([2,1], gap="small")
+
+    with col1:
+        dirname = st.empty()
+    with col2:
+        st.write("")
+        st.write("")
+        folder_picker = st.empty()
+
+    # Folder picker button
+    #st.title('Folder Picker')
+    #st.write('Please select a folder:')
+    
+    # Create a label and add a random number of invisible characters
+    # to it so no two buttons inside a form are the same.
+    #folder_button_label = ''.join(random.choice(f"{folder_button_label}") for _ in range(5))
+    folder_button_label = f"{str(folder_button_label)}{'‎' * random.randint(1, 500)}"
+    clicked = folder_button_key + '‎' * random.randint(5, 500)
+    
+    #try:
+    #clicked = folder_picker.button(folder_button_label, help=folder_button_help, key=folder_button_key)
+    #except StreamlitAPIException:
+    clicked = folder_picker.form_submit_button(folder_button_label, help=folder_button_help)
+
+    if clicked:
+        dirname = dirname.text_input(label, filedialog.askdirectory(master=root), help=help)	
+    else:
+        dirname = dirname.text_input(label, value, help=help)	
+
+    return dirname
 
 
 def get_sigmas_exponential(n, sigma_min, sigma_max, device='cpu'):

@@ -60,8 +60,10 @@ dependencies:
     - streamlit-option-menu==0.3.2
     - streamlit_nested_layout
     - streamlit-server-state==0.14.2
+    - streamlit-tensorboard==0.0.2
     - test-tube>=0.7.5
-    - tensorboard
+    - tensorboard==2.10.1
     - torch-fidelity==0.3.0
     - torchmetrics==0.6.0
     - transformers==4.19.2
+    - wxPython==4.2.0
