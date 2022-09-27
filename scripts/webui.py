@@ -2668,15 +2668,15 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
         while current_id and current_generation:
             try:
                 submit_req = requests.post(horde_url + '/api/v2/generate/submit', json = submit_dict, headers = headers)
-                if submit_req.status_code == 404:
-                    logger.warning(f"The generation we were working on got stale. Aborting!")
                 try:
                     submit = submit_req.json()
                 except json.decoder.JSONDecodeError:
                     logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!")
                     time.sleep(interval)
                     continue
-                if not submit_req.ok:
+                if submit_req.status_code == 404:
+                    logger.warning(f"The generation we were working on got stale. Aborting!")
+                elif not submit_req.ok:
                     logger.warning(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...")
                     if 'errors' in submit:
                         logger.warning(f"Detailed Request Errors: {submit['errors']}")
