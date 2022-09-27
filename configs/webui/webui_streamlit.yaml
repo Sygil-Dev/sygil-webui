@@ -122,7 +122,7 @@ txt2img:
     
 txt2vid:
     default_model: "CompVis/stable-diffusion-v1-4"
-    custom_models_list: ["CompVis/stable-diffusion-v1-4", "naclbit/trinart_stable_diffusion_v2", "hakurei/waifu-diffusion", "osanseviero/BigGAN-deep-128"]
+    custom_models_list: ["CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
     prompt:
     width:
         value:      512
