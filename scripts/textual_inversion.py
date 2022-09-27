@@ -348,9 +348,14 @@ class Checkpointer:
 		del server_state['textual_inversion']["pipeline"]
 		torch.cuda.empty_cache()
 
+@retry(RuntimeError, tries=5)
 def textual_inversion():
 	print ("Running textual inversion.")
-
+	if "pipeline" in server_state["textual_inversion"]:
+		del server_state['textual_inversion']["checker"]
+		del server_state['textual_inversion']["unwrapped"]
+		del server_state['textual_inversion']["pipeline"]		
+		
 	global_step_offset = 0
 	if st.session_state['textual_inversion']['args']["resume_from"]:
 		basepath = f"{st.session_state['textual_inversion']['args']['resume_from']}"
@@ -815,7 +820,9 @@ def layout():
 						textual_inversion()	
 					except RuntimeError:
 						if "pipeline" in server_state["textual_inversion"]:
-							del server_state["textual_inversion"]["pipeline"]
+							del server_state['textual_inversion']["checker"]
+							del server_state['textual_inversion']["unwrapped"]
+							del server_state['textual_inversion']["pipeline"]									
 						
 						textual_inversion()	
 				
