@@ -7,7 +7,7 @@
 
 
 # Stable Diffusion (see: https://github.com/CompVis/stable-diffusion)
-transformers==4.21.1
+transformers==4.22.1
 diffusers==0.3.0
 invisible-watermark==0.1.5
 pytorch_lightning==1.7.6
