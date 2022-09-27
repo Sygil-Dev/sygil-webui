@@ -41,6 +41,14 @@ COPY /data/DejaVuSans.ttf /usr/share/fonts/truetype/
 
 ENV PYTHONPATH=/sd
 
+COPY ./models /sd/models
+COPY ./configs /sd/configs
+COPY ./frontend /sd/frontend
+COPY ./ldm /sd/ldm
+# COPY ./gfpgan/ /sd/
+COPY ./optimizedSD /sd/optimizedSD
+COPY ./scripts /sd/scripts
+
 EXPOSE 7860 8501
 
 COPY ./entrypoint.sh /sd/
