@@ -13,8 +13,13 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+
 # base webui import and utils.
-import streamlit as st
+#import streamlit as st
+
+# We import hydralit like this to replace the previous stuff
+# we had with native streamlit as it lets ur replace things 1:1
+#import hydralit as st 
 from sd_utils import *
 
 # streamlit imports
@@ -50,6 +55,7 @@ if (os.path.exists(".streamlit/config.toml")):
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
+
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
 	from transformers import logging
@@ -65,6 +71,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # this should force GFPGAN and RealESRGAN onto the selected gpu as well
 #os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
+
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
 # TODO, maybe look into async loading the file especially for remote fetching 
@@ -83,7 +90,9 @@ def load_css(isLocal, nameOrURL):
 
 def layout():
 	"""Layout functions to define all the streamlit layout here."""
-	st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
+	#st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
+	app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded",
+	                  hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
 
 	with st.empty():
 		# load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
@@ -121,15 +130,23 @@ def layout():
 
 	with st.sidebar:		
 		tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"], 
-                         iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
+                        iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
+		
+		# need to see how to get the icons to show for the hydralit option_bar				
+		#tabs = hc.option_bar([{'icon':'grid-outline','label':'Stable Diffusion'}, {'label':"Textual Inversion"},
+		                      #{'label':"Model Manager"},{'label':"Settings"}],
+		                     #horizontal_orientation=False,
+		                     #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
+                        #iconName=['dashboard','model_training' ,'cloud_download', 'settings'])
 		
 	if tabs =='Stable Diffusion':
 		# set the page url and title
 		st.experimental_set_query_params(page='stable-diffusion')
 		set_page_title("Stable Diffusion Playground")
 		
-		txt2img_tab, img2img_tab, txt2vid_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image", 
-	                                                                                                "Text-to-Video","Concept Library"])
+		txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image", 
+		                                                                      "Text-to-Video", "Image-To-Text",
+		                                                                      "Concept Library"])
 		#with home_tab:
 			#from home import layout
 			#layout()		
@@ -146,6 +163,10 @@ def layout():
 			from txt2vid import layout
 			layout()
 			
+		with img2txt_tab:
+			from img2txt import layout
+			layout()	
+			
 		with concept_library_tab:
 			from sd_concept_library import layout
 			layout()			
@@ -153,7 +174,7 @@ def layout():
 	#
 	elif tabs == 'Model Manager':
 		# set the page url and title
-		st.experimental_set_query_params(page='model-manager')
+		#st.experimental_set_query_params(page='model-manager')
 		set_page_title("Model Manager - Stable Diffusion Playground")
 		
 		from ModelManager import layout
@@ -161,14 +182,14 @@ def layout():
 	
 	elif tabs == 'Textual Inversion':
 		# set the page url and title
-		st.experimental_set_query_params(page='textual-inversion')
+		#st.experimental_set_query_params(page='textual-inversion')
 		
 		from textual_inversion import layout
 		layout()
 		
 	elif tabs == 'Settings':
 		# set the page url and title
-		st.experimental_set_query_params(page='settings')
+		#st.experimental_set_query_params(page='settings')
 		set_page_title("Settings - Stable Diffusion Playground")
 		
 		from Settings import layout

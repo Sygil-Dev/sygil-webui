@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
@@ -416,17 +415,18 @@ def txt2vid(
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
 	# ------------------------------------------------------------------------------
-	st.session_state["progress_bar_text"].text("Loading models...")	
-	
-	try:
-		if "model" in st.session_state:
-			del st.session_state["model"]
-	except:
-		pass
-
-	#print (st.session_state["weights_path"] != weights_path)
-
-	load_diffusers_model(weights_path, torch_device)
+	#st.session_state["progress_bar_text"].text("Loading models...")	
+	with st.session_state["progress_bar_text"]:
+		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+			try:
+				if "model" in st.session_state:
+					del st.session_state["model"]
+			except:
+				pass
+		
+			#print (st.session_state["weights_path"] != weights_path)
+		
+			load_diffusers_model(weights_path, torch_device)	
 	
 	server_state["pipe"].scheduler = SCHEDULERS[scheduler]
 	
@@ -773,20 +773,22 @@ def layout():
 		#print("Loading models")
 		# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 		#load_models(False, st.session_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
-
+		
 		if st.session_state["use_GFPGAN"]:
 			if "GFPGAN" in st.session_state:
 				print("GFPGAN already loaded")
 			else:
-				# Load GFPGAN
-				if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-					try:
-						server_state["GFPGAN"] = load_GFPGAN()
-						print("Loaded GFPGAN")
-					except Exception:
-						import traceback
-						print("Error loading GFPGAN:", file=sys.stderr)
-						print(traceback.format_exc(), file=sys.stderr)          
+				with col2:
+					with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+						# Load GFPGAN
+						if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+							try:
+								server_state["GFPGAN"] = load_GFPGAN()
+								print("Loaded GFPGAN")
+							except Exception:
+								import traceback
+								print("Error loading GFPGAN:", file=sys.stderr)
+								print(traceback.format_exc(), file=sys.stderr)          
 		else:
 			if "GFPGAN" in st.session_state:
 				del server_state["GFPGAN"] 		

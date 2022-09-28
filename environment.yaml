@@ -42,6 +42,8 @@ dependencies:
     - einops==0.3.0
     - facexlib>=0.2.3
     - gradio==3.1.6
+    - hydralit==1.0.14
+    - hydralit_components==1.0.10
     - imageio-ffmpeg==0.4.2
     - imageio==2.9.0
     - kornia==0.6
