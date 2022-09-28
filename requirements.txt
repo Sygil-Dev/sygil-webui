@@ -7,7 +7,7 @@
 
 
 # Stable Diffusion (see: https://github.com/CompVis/stable-diffusion)
-transformers==4.22.1
+transformers==4.22.2
 diffusers==0.3.0
 invisible-watermark==0.1.5
 pytorch_lightning==1.7.7
@@ -39,7 +39,7 @@ Jinja2==3.1.2  # Jinja2 is required by Gradio
 
 
 # Environment Dependencies for WebUI (gradio)
-gradio==3.3.1
+gradio==3.4
 
 
 # Environment Dependencies for WebUI (streamlit)
