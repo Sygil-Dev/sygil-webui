@@ -91,7 +91,8 @@ Please see the [Streamlit Documentation](docs/4.streamlit-interface.md) to learn
 - Includes quick and easy ways to send generations to Image2Image or the Image Lab for upscaling.
 - *Note, the Gradio interface is no longer being actively developed and is only receiving bug fixes.*
 
-Please see the [Gradio Documentation](docs/4.gradio-interface.md) to learn more.
+Please see the [Gradio Documentation](docs/5.gradio-interface.md) to learn more.
+
 
 ## Image Upscalers
 
