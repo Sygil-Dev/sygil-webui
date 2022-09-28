@@ -1,3 +1,5 @@
+![](images/sd-wui_logo.png)
+
 # Web based UI for Stable Diffusion by [sd-webui](https://github.com/sd-webui)
 
 ## [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
