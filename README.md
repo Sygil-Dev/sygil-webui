@@ -1,11 +1,11 @@
-![](images/sd-wui_logo.png)
+# <center>Web-based UI for Stable Diffusion</center>
 
-# <center>Web-based UI for Stable Diffusion by [sd-webui](https://github.com/sd-webui)</center>
+## Created by [sd-webui](https://github.com/sd-webui)
 
 ## [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
 
 ## Installation instructions for:
-- **[Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.installation.html)** 
+- **[Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.windows-installation.html)** 
 - **[Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.html)**
 
 
