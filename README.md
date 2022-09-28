@@ -77,7 +77,8 @@ A fully-integrated and easy way to work with Stable Diffusion right from a brows
 - Streamlit is now the new primary UI for the project moving forward.
 - *Currently in active development and still missing some of the features present in the Gradio Interface.*
 
-Please see the [Streamlit Documentation](docs/3.streamlit-interface.md) to learn more.
+Please see the [Streamlit Documentation](docs/4.streamlit-interface.md) to learn more.
+
 
 ## Gradio
 
