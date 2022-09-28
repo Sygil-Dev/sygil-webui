@@ -39,7 +39,7 @@ Jinja2==3.1.2  # Jinja2 is required by Gradio
 
 
 # Environment Dependencies for WebUI (gradio)
-gradio==3.3.1
+gradio==3.4
 
 
 # Environment Dependencies for WebUI (streamlit)
