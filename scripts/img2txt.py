@@ -39,44 +39,230 @@ from sd_utils import *
 import streamlit_nested_layout
 
 #streamlit components section
-from streamlit_server_state import server_state, server_state_lock
 
 #other imports
-import hydralit_components as hc
-
+import clip
+import gc
+import os
+import pandas as pd
+import requests
+import torch
+from IPython.display import display
+from PIL import Image
+#from torch import nn
+#from torch.nn import functional as F
+from torchvision import transforms
+from torchvision.transforms.functional import InterpolationMode
+from ldm.models.blip import blip_decoder
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+blip_image_eval_size = 384
+#blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'        
+
+def generate_caption(pil_image):
+	blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth", image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
+	blip_model.eval()
+	blip_model = blip_model.to(device)
+	
+	gpu_image = transforms.Compose([
+	    transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),
+	    transforms.ToTensor(),
+	    transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+	    ])(image).unsqueeze(0).to(device)
+
+	with torch.no_grad():
+		caption = blip_model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
+	return caption[0]
+
+def load_list(filename):
+	with open(filename, 'r', encoding='utf-8', errors='replace') as f:
+		items = [line.strip() for line in f.readlines()]
+	return items
+
+def rank(model, image_features, text_array, top_count=1):
+	top_count = min(top_count, len(text_array))
+	text_tokens = clip.tokenize([text for text in text_array]).cuda()
+	with torch.no_grad():
+		text_features = model.encode_text(text_tokens).float()
+	text_features /= text_features.norm(dim=-1, keepdim=True)
+
+	similarity = torch.zeros((1, len(text_array))).to(device)
+	for i in range(image_features.shape[0]):
+		similarity += (100.0 * image_features[i].unsqueeze(0) @ text_features.T).softmax(dim=-1)
+	similarity /= image_features.shape[0]
+
+	top_probs, top_labels = similarity.cpu().topk(top_count, dim=-1)  
+	return [(text_array[top_labels[0][i].numpy()], (top_probs[0][i].numpy()*100)) for i in range(top_count)]
+
+def interrogate(image, models):
+	caption = generate_caption(image)
+	if len(models) == 0:
+		print(f"\n\n{caption}")
+		return
+
+	table = []
+	bests = [[('',0)]]*5
+	for model_name in models:
+		print(f"Interrogating with {model_name}...")
+		model, preprocess = clip.load(model_name)
+		model.cuda().eval()
+
+		images = preprocess(image).unsqueeze(0).cuda()
+		with torch.no_grad():
+			image_features = model.encode_image(images).float()
+		image_features /= image_features.norm(dim=-1, keepdim=True)
+
+		ranks = [
+		    rank(model, image_features, mediums),
+		    rank(model, image_features, ["by "+artist for artist in artists]),
+		    rank(model, image_features, trending_list),
+		    rank(model, image_features, movements),
+		    rank(model, image_features, flavors, top_count=3)
+		]
+
+		for i in range(len(ranks)):
+			confidence_sum = 0
+			for ci in range(len(ranks[i])):
+				confidence_sum += ranks[i][ci][1]
+			if confidence_sum > sum(bests[i][t][1] for t in range(len(bests[i]))):
+				bests[i] = ranks[i]
+
+		row = [model_name]
+		for r in ranks:
+			row.append(', '.join([f"{x[0]} ({x[1]:0.1f}%)" for x in r]))
+
+		table.append(row)
+
+		del model
+		gc.collect()
+		
+	display(pd.DataFrame(table, columns=["Model", "Medium", "Artist", "Trending", "Movement", "Flavors"]))
+
+	flaves = ', '.join([f"{x[0]}" for x in bests[4]])
+	medium = bests[0][0][0]
+	if caption.startswith(medium):
+		print(f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}")
+	else:
+		print(f"\n\n{caption}, {medium} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}")
+
+#
+
+def img2txt():
+	data_path = "data/"
+	
+	artists = load_list(os.path.join(data_path, 'artists.txt'))
+	flavors = load_list(os.path.join(data_path, 'flavors.txt'))
+	mediums = load_list(os.path.join(data_path, 'mediums.txt'))
+	movements = load_list(os.path.join(data_path, 'movements.txt'))
+	
+	sites = ['Artstation', 'behance', 'cg society', 'cgsociety', 'deviantart', 'dribble', 'flickr', 'instagram', 'pexels', 'pinterest', 'pixabay', 'pixiv', 'polycount', 'reddit', 'shutterstock', 'tumblr', 'unsplash', 'zbrush central']
+	trending_list = [site for site in sites]
+	trending_list.extend(["trending on "+site for site in sites])
+	trending_list.extend(["featured on "+site for site in sites])
+	trending_list.extend([site+" contest winner" for site in sites])
+	
+	image_path_or_url = "https://i.redd.it/e2e8gimigjq91.jpg" #@param {type:"string"}
+	
+	models = []
+	
+	if st.session_state["ViTB32"]:
+		models.append('ViT-B/32')
+	if st.session_state['ViTB16']:
+		models.append('ViT-B/16')
+	if st.session_state["ViTL14"]: 
+		models.append('ViT-L/14')
+	if st.session_state["ViTL14_336px"]:
+		models.append('ViT-L/14@336px')
+	if st.session_state["RN101"]:
+		models.append('RN101')
+	if st.session_state["RN50"]:
+		models.append('RN50')
+	if st.session_state["RN50x4"]:
+		models.append('RN50x4')
+	if st.session_state["RN50x16"]:
+		models.append('RN50x16')
+	if st.session_state["RN50x64"]:
+		models.append('RN50x64')
+	
+	if str(image_path_or_url).startswith('http://') or str(image_path_or_url).startswith('https://'):
+		image = Image.open(requests.get(image_path_or_url, stream=True).raw).convert('RGB')
+	else:
+		image = Image.open(image_path_or_url).convert('RGB')
+	
+	thumb = image.copy()
+	thumb.thumbnail([blip_image_eval_size, blip_image_eval_size])
+	#display(thumb)
+	
+	interrogate(image, models=models)
+
 #
 def layout():
 	#set_page_title("Image-to-Text - Stable Diffusion WebUI")
-	st.info("Under Construction. :construction_worker:")
+	#st.info("Under Construction. :construction_worker:")	
 	
-	#theme_neutral = {'bgcolor': '#f9f9f9','title_color': 'black','content_color': 'black','icon_color': 'orange', 'icon': 'fa fa-question-circle'}
-	#hc.info_card(title='Some heading GOOD', content='All good!', sentiment='good',bar_value=77)
-	
-	#hc.nav_bar([{'icon': "far fa-copy", 'label':"Left End"}, {'id':'Copy','icon':"🐙",'label':"Copy"},
-				#{'icon': "fa-solid fa-radar",'label':"Dropdown1",
-				 #' submenu':[{'id':' subid11','icon': "fa fa-paperclip", 'label':"Sub-item 1"},
-							 #{'id':'subid12','icon': "💀", 'label':"Sub-item 2"},
-							 #{'id':'subid13','icon': "fa fa-database", 'label':"Sub-item 3"}]}],
-			   #override_theme=theme_neutral, hide_streamlit_markers=False)
-	
-	
-	#with st.form("img2txt-inputs"):
-		#st.session_state["generation_mode"] = "txt2img"
+	with st.form("img2txt-inputs"):
+		st.session_state["generation_mode"] = "img2txt"
 
-		#input_col1, generate_col1 = st.columns([10,1])
+		input_col1, generate_col1 = st.columns([10,1])
 
-		#with input_col1:
-			##prompt = st.text_area("Input Text","")
+		with input_col1:
+			#prompt = st.text_area("Input Text","")
 			#prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+			uploaded_image = st.file_uploader('Input Image')
 
-		## Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
-		#generate_col1.write("")
-		#generate_col1.write("")
-		#generate_button = generate_col1.form_submit_button("Generate")
+		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
+		generate_col1.write("")
+		generate_col1.write("")
+		generate_button = generate_col1.form_submit_button("Generate")
+		
+		st.session_state["text_result"] = st.empty()
 
-		## creating the page layout using columns
-		#col1, col2, col3 = st.columns([1,2,1], gap="large")   	
+		# creating the page layout using columns
+		col1, col2, col3 = st.columns([1,2,1], gap="large")   	
+		
+		with col1:
+			"""
+			CLIP models:
+			For StableDiffusion you can just use ViTL14
+			For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images
+
+			ViTB32:
+			ViTB16:
+			ViTL14:
+			ViTL14_336px:
+			RN101:
+			RN50:
+			RN50x4:
+			RN50x16:
+			RN50x64:
+			"""			
+			st.title("CLIP models")
+			
+			st.session_state["ViTB32"] = st.checkbox("ViTB32", value=False, help="ViTB32 model.")
+			
+			st.session_state["ViTB16"] = st.checkbox("ViTB16", value=False, help="ViTB16 model.")
+			
+			st.session_state["ViTL14"] = st.checkbox("ViTL14", value=True, help="ViTL14 model.")
+			
+			st.session_state["ViTL14_336px"] = st.checkbox("ViTL14_336px", value=False, help="ViTL14_336px model.")
+			
+			st.session_state["RN101"] = st.checkbox("RN101", value=False, help="RN101 model.")
+			
+			st.session_state["RN50"] = st.checkbox("RN50", value=False, help="RN50 model.")
+			
+			st.session_state["RN50x4"] = st.checkbox("RN50x4", value=False, help="RN50x4 model.")
+			
+			st.session_state["RN50x16"] = st.checkbox("RN50x16", value=False, help="RN50x16 model.")
+			
+			st.session_state["RN50x64"] = st.checkbox("RN50x64", value=False, help="RN50x64 model.")
+			
+			with col2:
+				st.session_state["input_image_preview"] = st.empty()
+				
+			with col3:
+				st.session_state["text_message"] = st.empty()				
+				
