@@ -4,7 +4,8 @@
 
 ## Installation instructions for:
 - **[Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.installation.html)** 
-- **[Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/1.linux-installation.html)**
+- **[Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.html)**
+
 
 ### Want to ask a question or request a feature?
 
