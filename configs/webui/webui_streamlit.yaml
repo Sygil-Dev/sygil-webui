@@ -55,7 +55,7 @@ general:
     optimized_turbo: False
     optimized_config: "optimizedSD/v1-inference.yaml"
     enable_attention_slicing: False
-    enable_minimal_memory_usage : False
+    enable_minimal_memory_usage: False
     update_preview: True
     update_preview_frequency: 10
 
