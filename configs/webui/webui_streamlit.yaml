@@ -299,7 +299,9 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    value: 0
+    pretrained_model_name_or_path: "models/ldm/stable-diffusion-v1-4"
+    tokenizer_name: ""
+    
     
 daisi_app:
     running_on_daisi_io: False

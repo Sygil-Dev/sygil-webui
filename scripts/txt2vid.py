@@ -225,60 +225,70 @@ def load_diffusers_model(weights_path,torch_device):
 	with server_state_lock["model"]:
 		if "model" in server_state:
 			del server_state["model"]
+			
+	if "textual_inversion" in st.session_state:
+		del st.session_state['textual_inversion']	
 	
-	with server_state_lock["pipe"]:
-		try:
-			if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
-				if st.session_state["weights_path"] != weights_path:
-					del st.session_state["weights_path"]
+	try:
+		with server_state_lock["pipe"]:
+			try:
+				if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
+					if st.session_state["weights_path"] != weights_path:
+						del st.session_state["weights_path"]
+			
+					st.session_state["weights_path"] = weights_path
+					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+						    weights_path,
+						    use_local_file=True,
+						    use_auth_token=st.session_state["defaults"].general.huggingface_token,
+						    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+						    revision="fp16" if not st.session_state['defaults'].general.no_half else None
+						)
+			
+					server_state["pipe"].unet.to(torch_device)
+					server_state["pipe"].vae.to(torch_device)
+					server_state["pipe"].text_encoder.to(torch_device)
+			
+					if st.session_state.defaults.general.enable_attention_slicing:
+						server_state["pipe"].enable_attention_slicing()
+						
+					if st.session_state.defaults.general.enable_minimal_memory_usage:	
+						server_state["pipe"].enable_minimal_memory_usage()
+			
+					print("Tx2Vid Model Loaded")
+				else:
+					print("Tx2Vid Model already Loaded")
 		
+			except:
+				#del st.session_state["weights_path"]
+				#del server_state["pipe"]
+			
 				st.session_state["weights_path"] = weights_path
 				server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 					    weights_path,
 					    use_local_file=True,
-				        use_auth_token=st.session_state["defaults"].general.huggingface_token,
-				        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-				        revision="fp16" if not st.session_state['defaults'].general.no_half else None
+					    use_auth_token=st.session_state["defaults"].general.huggingface_token,
+					    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+					    revision="fp16" if not st.session_state['defaults'].general.no_half else None
 					)
-		
+			
 				server_state["pipe"].unet.to(torch_device)
 				server_state["pipe"].vae.to(torch_device)
 				server_state["pipe"].text_encoder.to(torch_device)
-		
+			
 				if st.session_state.defaults.general.enable_attention_slicing:
 					server_state["pipe"].enable_attention_slicing()
-					
-				if st.session_state.defaults.general.enable_minimal_memory_usage:	
+			
+				if st.session_state.defaults.general.enable_minimal_memory_usage:
 					server_state["pipe"].enable_minimal_memory_usage()
+			
+				print("Tx2Vid Model Loaded")	
+	except (EnvironmentError, OSError):
+		st.session_state["progress_bar_text"].error(
+		    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
+		)
+		raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
 		
-				print("Tx2Vid Model Loaded")
-			else:
-				print("Tx2Vid Model already Loaded")
-	
-		except:
-			#del st.session_state["weights_path"]
-			#del server_state["pipe"]
-		
-			st.session_state["weights_path"] = weights_path
-			server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-				    weights_path,
-				    use_local_file=True,
-				    use_auth_token=st.session_state["defaults"].general.huggingface_token,
-				    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-				    revision="fp16" if not st.session_state['defaults'].general.no_half else None
-				)
-		
-			server_state["pipe"].unet.to(torch_device)
-			server_state["pipe"].vae.to(torch_device)
-			server_state["pipe"].text_encoder.to(torch_device)
-		
-			if st.session_state.defaults.general.enable_attention_slicing:
-				server_state["pipe"].enable_attention_slicing()
-		
-			if st.session_state.defaults.general.enable_minimal_memory_usage:
-				server_state["pipe"].enable_minimal_memory_usage()
-		
-			print("Tx2Vid Model Loaded")	
 #
 def txt2vid(
 	# --------------------------------------
@@ -417,7 +427,7 @@ def txt2vid(
 	#print (st.session_state["weights_path"] != weights_path)
 
 	load_diffusers_model(weights_path, torch_device)
-
+	
 	server_state["pipe"].scheduler = SCHEDULERS[scheduler]
 	
 	server_state["pipe"].use_multiprocessing_for_evaluation = False

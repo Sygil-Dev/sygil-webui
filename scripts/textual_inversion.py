@@ -18,10 +18,11 @@ from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
-
+from streamlit import StopException
+from streamlit_tensorboard import st_tensorboard
 
 #other imports
-#from transformers import CLIPTextModel, CLIPTokenizer
+from transformers import CLIPTextModel, CLIPTokenizer
 
 # Temp imports
 
@@ -30,8 +31,9 @@ import itertools
 import math
 import os
 import random
-from pathlib import Path
-from typing import Optional
+#import datetime
+#from pathlib import Path
+#from typing import Optional
 
 import numpy as np
 import torch
@@ -43,207 +45,26 @@ import PIL
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
-from diffusers import AutoencoderKL, DDPMScheduler, PNDMScheduler, StableDiffusionPipeline, UNet2DConditionModel
+from diffusers import AutoencoderKL, DDPMScheduler, LMSDiscreteScheduler, StableDiffusionPipeline, UNet2DConditionModel#, PNDMScheduler
 from diffusers.optimization import get_scheduler
 #from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
-from huggingface_hub import HfFolder, Repository, whoami
+from pipelines.stable_diffusion.no_check import NoCheck
+from huggingface_hub import HfFolder, whoami#, Repository
 from PIL import Image
 from torchvision import transforms
 from tqdm.auto import tqdm
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
+from slugify import slugify
+import json
+import os, subprocess
+from io import StringIO
+import sys
+
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
 logger = get_logger(__name__)
-
-def parse_args():
-	parser = argparse.ArgumentParser(description="Simple example of a training script.")
-	parser.add_argument(
-	    "--pretrained_model_name_or_path",
-	    type=str,
-	    default=None,
-	    help="Path to pretrained model or model identifier from huggingface.co/models.",
-	)
-	parser.add_argument(
-	    "--tokenizer_name",
-	    type=str,
-	    default=None,
-	    help="Pretrained tokenizer name or path if not the same as model_name",
-	)
-	parser.add_argument(
-	    "--train_data_dir", type=str, default=None, help="A folder containing the training data."
-	)
-	parser.add_argument(
-	    "--placeholder_token",
-	    type=str,
-	    default=None,
-	    help="A token to use as a placeholder for the concept.",
-	)
-	parser.add_argument(
-	    "--initializer_token", type=str, default=None, help="A token to use as initializer word."
-	)
-	parser.add_argument("--learnable_property", type=str, default="object", help="Choose between 'object' and 'style'")
-	parser.add_argument("--repeats", type=int, default=100, help="How many times to repeat the training data.")
-	parser.add_argument(
-	    "--output_dir",
-	    type=str,
-	    default="text-inversion-model",
-	    help="The output directory where the model predictions and checkpoints will be written.",
-	)
-	parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
-	parser.add_argument(
-	    "--resolution",
-	    type=int,
-	    default=512,
-	    help=(
-	        "The resolution for input images, all the images in the train/validation dataset will be resized to this"
-	        " resolution"
-	        ),
-	)
-	parser.add_argument(
-	    "--center_crop", action="store_true", help="Whether to center crop images before resizing to resolution"
-	)
-	parser.add_argument(
-	    "--train_batch_size", type=int, default=1, help="Batch size (per device) for the training dataloader."
-	)
-	parser.add_argument("--num_train_epochs", type=int, default=100)
-	parser.add_argument(
-	    "--max_train_steps",
-	    type=int,
-	    default=5000,
-	    help="Total number of training steps to perform.  If provided, overrides num_train_epochs.",
-	)
-	parser.add_argument(
-	    "--gradient_accumulation_steps",
-	    type=int,
-	    default=1,
-	    help="Number of updates steps to accumulate before performing a backward/update pass.",
-	)
-	parser.add_argument(
-	    "--learning_rate",
-	    type=float,
-	    default=1e-4,
-	    help="Initial learning rate (after the potential warmup period) to use.",
-	)
-	parser.add_argument(
-	    "--scale_lr",
-	    action="store_true",
-	    default=True,
-	    help="Scale the learning rate by the number of GPUs, gradient accumulation steps, and batch size.",
-	)
-	parser.add_argument(
-	    "--lr_scheduler",
-	    type=str,
-	    default="constant",
-	    help=(
-	        'The scheduler type to use. Choose between ["linear", "cosine", "cosine_with_restarts", "polynomial",'
-	        ' "constant", "constant_with_warmup"]'
-	        ),
-	)
-	parser.add_argument(
-	    "--lr_warmup_steps", type=int, default=500, help="Number of steps for the warmup in the lr scheduler."
-	)
-	parser.add_argument("--adam_beta1", type=float, default=0.9, help="The beta1 parameter for the Adam optimizer.")
-	parser.add_argument("--adam_beta2", type=float, default=0.999, help="The beta2 parameter for the Adam optimizer.")
-	parser.add_argument("--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use.")
-	parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
-	parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
-	parser.add_argument(
-	    "--use_auth_token",
-	    action="store_true",
-	    help=(
-	        "Will use the token generated when running `huggingface-cli login` (necessary to use this script with"
-	        " private models)."
-	        ),
-	)
-	parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
-	parser.add_argument(
-	    "--hub_model_id",
-	    type=str,
-	    default=None,
-	    help="The name of the repository to keep in sync with the local `output_dir`.",
-	)
-	parser.add_argument(
-	    "--logging_dir",
-	    type=str,
-	    default="logs",
-	    help=(
-	        "[TensorBoard](https://www.tensorflow.org/tensorboard) log directory. Will default to"
-	        " *output_dir/runs/**CURRENT_DATETIME_HOSTNAME***."
-	        ),
-	)
-	parser.add_argument(
-	    "--mixed_precision",
-	    type=str,
-	    default="no",
-	    choices=["no", "fp16", "bf16"],
-	    help=(
-	        "Whether to use mixed precision. Choose"
-	        "between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >= 1.10."
-	        "and an Nvidia Ampere GPU."
-	        ),
-	)
-	parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
-	parser.add_argument(
-	    "--checkpoint_frequency",
-	    type=int,
-	    default=500,
-	    help="How often to save a checkpoint and sample image",
-	)
-	parser.add_argument(
-	    "--stable_sample_batches",
-	    type=int,
-	    default=0,
-	    help="Number of fixed seed sample batches to generate per checkpoint",
-	)
-	parser.add_argument(
-	    "--random_sample_batches",
-	    type=int,
-	    default=1,
-	    help="Number of random seed sample batches to generate per checkpoint",
-	)
-	parser.add_argument(
-	    "--sample_batch_size",
-	    type=int,
-	    default=1,
-	    help="Number of samples to generate per batch",
-	)
-	parser.add_argument(
-	    "--custom_templates",
-	    type=str,
-	    default=None,
-	    help=(
-	        "A comma-delimited list of custom template to use for samples, using {} as a placeholder for the concept."
-	        ),
-	)
-	parser.add_argument(
-	    "--resume_from",
-	    type=str,
-	    default=None,
-	    help="Path to a directory to resume training from (ie, logs/token_name/2022-09-22T23-36-27)"
-	)
-	parser.add_argument(
-	    "--resume_checkpoint",
-	    type=str,
-	    default=None,
-	    help="Path to a specific checkpoint to resume training from (ie, logs/token_name/2022-09-22T23-36-27/checkpoints/something.bin)."
-	)
-
-	args = parser.parse_args()
-	if args.resume_from is not None:
-		with open(Path(args.resume_from) / "resume.json", 'rt') as f:
-			args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
-
-	env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
-	if env_local_rank != -1 and env_local_rank != args.local_rank:
-		args.local_rank = env_local_rank
-
-	if args.train_data_dir is None:
-		raise ValueError("You must specify a train data directory.")
-
-	return args
-
 
 imagenet_templates_small = [
     "a photo of a {}",
@@ -297,7 +118,6 @@ imagenet_style_templates_small = [
     "a large painting in the style of {}",
 ]
 
-
 class TextualInversionDataset(Dataset):
 	def __init__(
 	    self,
@@ -307,7 +127,6 @@ class TextualInversionDataset(Dataset):
 	    size=512,
 	    repeats=100,
 	    interpolation="bicubic",
-	    flip_p=0.5,
 	    set="train",
 	    placeholder_token="*",
 	    center_crop=False,
@@ -320,7 +139,6 @@ class TextualInversionDataset(Dataset):
 		self.size = size
 		self.placeholder_token = placeholder_token
 		self.center_crop = center_crop
-		self.flip_p = flip_p
 
 		self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root) if file_path.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
@@ -331,39 +149,37 @@ class TextualInversionDataset(Dataset):
 			self._length = self.num_images * repeats
 
 		self.interpolation = {
-		    "linear": PIL.Image.Resampling.BILINEAR,
+		    "linear": PIL.Image.LINEAR,
 		    "bilinear": PIL.Image.Resampling.BILINEAR,
 		    "bicubic": PIL.Image.Resampling.BICUBIC,
 		    "lanczos": PIL.Image.Resampling.LANCZOS,
 		    }[interpolation]
 
 		self.templates = templates
-		self.flip_transform = transforms.RandomHorizontalFlip(p=self.flip_p)
+		self.cache = {}
+		self.tokenized_templates = [self.tokenizer(
+		    text.format(self.placeholder_token),
+		        padding="max_length",
+		        truncation=True,
+		        max_length=self.tokenizer.model_max_length,
+		        return_tensors="pt",
+		        ).input_ids[0] for text in self.templates]
 
 	def __len__(self):
 		return self._length
 
-	def __getitem__(self, i):
+	def get_example(self, image_path, flipped):
+		if image_path in self.cache:
+			return self.cache[image_path]
+
 		example = {}
-		image = Image.open(self.image_paths[i % self.num_images])
+		image = Image.open(image_path)
 
 		if not image.mode == "RGB":
 			image = image.convert("RGB")
 
-		placeholder_string = self.placeholder_token
-		text = random.choice(self.templates).format(placeholder_string)
-
-		example["input_ids"] = self.tokenizer(
-		    text,
-		    padding="max_length",
-		    truncation=True,
-		    max_length=self.tokenizer.model_max_length,
-		    return_tensors="pt",
-		    ).input_ids[0]
-
 		# default to score-sde preprocessing
 		img = np.array(image).astype(np.uint8)
-
 		if self.center_crop:
 			crop = min(img.shape[0], img.shape[1])
 			h, w, = (
@@ -371,26 +187,22 @@ class TextualInversionDataset(Dataset):
 			    img.shape[1],
 			)
 			img = img[(h - crop) // 2 : (h + crop) // 2, (w - crop) // 2 : (w + crop) // 2]
-
 		image = Image.fromarray(img)
 		image = image.resize((self.size, self.size), resample=self.interpolation)
-
-		image = self.flip_transform(image)
+		image = transforms.RandomHorizontalFlip(p=1 if flipped else 0)(image)
 		image = np.array(image).astype(np.uint8)
 		image = (image / 127.5 - 1.0).astype(np.float32)
-
+		example["key"] = "-".join([image_path, "-", str(flipped)])
 		example["pixel_values"] = torch.from_numpy(image).permute(2, 0, 1)
+
+		self.cache[image_path] = example
 		return example
 
-
-def get_full_repo_name(model_id: str, organization: Optional[str] = None, token: Optional[str] = None):
-	if token is None:
-		token = HfFolder.get_token()
-	if organization is None:
-		username = whoami(token)["name"]
-		return f"{username}/{model_id}"
-	else:
-		return f"{organization}/{model_id}"
+	def __getitem__(self, i):
+		flipped = random.choice([False, True])
+		example = self.get_example(self.image_paths[i % self.num_images], flipped)
+		example["input_ids"] = random.choice(self.tokenized_templates)
+		return example
 
 
 def freeze_params(params):
@@ -399,11 +211,10 @@ def freeze_params(params):
 
 
 def save_resume_file(basepath, args, extra = {}):
-	info = {"args": vars(args)}
+	info = {"args": st.session_state['textual_inversion']["args"]}
 	info["args"].update(extra)
-	with open(Path(basepath) / "resume.json", "w") as f:
+	with open(f"{basepath}/resume.json", "w") as f:
 		json.dump(info, f, indent=4)
-
 
 class Checkpointer:
 	def __init__(
@@ -429,17 +240,18 @@ class Checkpointer:
 		self.placeholder_token_id = placeholder_token_id
 		self.templates = templates
 		self.output_dir = output_dir
+		self.seed = seed
 		self.random_sample_batches = random_sample_batches
 		self.sample_batch_size = sample_batch_size
 		self.stable_sample_batches = stable_sample_batches
-		self.seed = seed
 
-
-	def checkpoint(self, step, text_encoder, save_samples=True):
+	@torch.no_grad()
+	def checkpoint(self, step, text_encoder, save_samples=True, path=None):
 		print("Saving checkpoint for step %d..." % step)
 		with torch.autocast("cuda"):
-			checkpoints_path = self.output_dir / "checkpoints"
-			checkpoints_path.mkdir(exist_ok=True, parents=True)
+			if path is None:
+				checkpoints_path = f"{self.output_dir}/checkpoints"
+				os.makedirs(checkpoints_path, exist_ok=True)
 
 			unwrapped = self.accelerator.unwrap_model(text_encoder)
 
@@ -447,178 +259,182 @@ class Checkpointer:
 			learned_embeds = unwrapped.get_input_embeddings().weight[self.placeholder_token_id]
 			learned_embeds_dict = {self.placeholder_token: learned_embeds.detach().cpu()}
 
-			filename = f"learned_embeds_%s_%d.bin" % (slugify(self.placeholder_token), step)
-			torch.save(learned_embeds_dict, checkpoints_path / filename)
-			torch.save(learned_embeds_dict, checkpoints_path / "last.bin")
+			filename = f"%s_%d.bin" % (slugify(self.placeholder_token), step)
+			if path is not None:
+				torch.save(learned_embeds_dict, path)
+			else:
+				torch.save(learned_embeds_dict, f"{checkpoints_path}/{filename}")
+				torch.save(learned_embeds_dict, f"{checkpoints_path}/last.bin")
 			del unwrapped
-			return checkpoints_path / "last.bin"
+			del learned_embeds
 
 
+	@torch.no_grad()
 	def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
-		samples_path = self.output_dir / "samples"
-		samples_path.mkdir(exist_ok=True, parents=True)
-		checker = NoCheck()
+		samples_path = f"{self.output_dir}/samples"
+		os.makedirs(samples_path, exist_ok=True)
+		
+		#if "checker" not in server_state['textual_inversion']:
+		#with server_state_lock['textual_inversion']["checker"]:
+		server_state['textual_inversion']["checker"] = NoCheck()
+				
+		#if "unwrapped" not in server_state['textual_inversion']:
+		#	with server_state_lock['textual_inversion']["unwrapped"]:
+		server_state['textual_inversion']["unwrapped"] = self.accelerator.unwrap_model(text_encoder)
+		
+		#if "pipeline" not in server_state['textual_inversion']:
+		#	with server_state_lock['textual_inversion']["pipeline"]:
+		# Save a sample image
+		server_state['textual_inversion']["pipeline"] = StableDiffusionPipeline(
+			text_encoder=server_state['textual_inversion']["unwrapped"],
+			vae=self.vae,
+			unet=self.unet,
+			tokenizer=self.tokenizer,
+			scheduler=LMSDiscreteScheduler(
+				beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear"
+				),
+			safety_checker=NoCheck(),
+			feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
+			).to("cuda")
+	
+		server_state['textual_inversion']["pipeline"].enable_attention_slicing()
 
-		with torch.autocast("cuda"):
-			unwrapped = self.accelerator.unwrap_model(text_encoder)
-			# Save a sample image
-			pipeline = StableDiffusionPipeline(
-			    text_encoder=unwrapped,
-			    vae=self.vae,
-			    unet=self.unet,
-			    tokenizer=self.tokenizer,
-			    scheduler=PNDMScheduler(
-			        beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
-			        ),
-			    safety_checker=NoCheck(),
-			    feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
-			    ).to('cuda')
-			pipeline.enable_attention_slicing()
+		if self.stable_sample_batches > 0:
+			stable_latents = torch.randn(
+			    (self.sample_batch_size, server_state['textual_inversion']["pipeline"].unet.in_channels, height // 8, width // 8),
+			    device=server_state['textual_inversion']["pipeline"].device,
+			    generator=torch.Generator(device=server_state['textual_inversion']["pipeline"].device).manual_seed(self.seed),
+			)
 
-			if self.stable_sample_batches > 0:
-				stable_latents = torch.randn(
-				    (self.sample_batch_size, pipeline.unet.in_channels, height // 8, width // 8),
-				    device=pipeline.device,
-				    generator=torch.Generator(device=pipeline.device).manual_seed(self.seed),
-				)
+			stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
 
-				stable_prompts = [choice.format(self.placeholder_token) for choice in (self.templates * self.sample_batch_size)[:self.sample_batch_size]]
-
-				# Generate and save stable samples
-				for i in range(0, self.stable_sample_batches):
-					samples = pipeline(
-					    prompt=stable_prompts,
-					    height=max(512, height),
-					    latents=stable_latents,
-					    width=max(512, width),
-					    guidance_scale=guidance_scale,
-					    eta=eta,
-					    num_inference_steps=num_inference_steps,
-					    output_type='pil'
-					    )["sample"]
-					for idx, im in enumerate(samples):
-						filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
-						im.save(samples_path / filename)
-
-			prompts = [choice.format(self.placeholder_token) for choice in random.choices(self.templates, k=self.sample_batch_size)]
-			# Generate and save random samples
-			for i in range(0, self.random_sample_batches):
-				samples = pipeline(
-				    prompt=prompts,
-				    height=max(512, height),
-				    width=max(512, width),
+			# Generate and save stable samples
+			for i in range(0, self.stable_sample_batches):
+				samples = server_state['textual_inversion']["pipeline"](
+				    prompt=stable_prompts,
+				    height=384,
+				    latents=stable_latents,
+				    width=384,
 				    guidance_scale=guidance_scale,
 				    eta=eta,
 				    num_inference_steps=num_inference_steps,
 				    output_type='pil'
 				    )["sample"]
 				for idx, im in enumerate(samples):
-					filename = f"step_%d_sample_%d_%d.png" % (step, i+1, idx+1)
-					im.save(samples_path / filename)
+					filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
+					im.save(f"{samples_path}/{filename}")
+				del samples
+			del stable_latents
 
-			del im
-			del pipeline
-			del unwrapped
+		prompts = [choice.format(self.placeholder_token) for choice in random.choices(self.templates, k=self.sample_batch_size)]
+		# Generate and save random samples
+		for i in range(0, self.random_sample_batches):
+			samples = server_state['textual_inversion']["pipeline"](
+			    prompt=prompts,
+			    height=384,
+			    width=384,
+			    guidance_scale=guidance_scale,
+			    eta=eta,
+			    num_inference_steps=num_inference_steps,
+			    output_type='pil'
+			    )["sample"]
+			for idx, im in enumerate(samples):
+				filename = f"step_%d_sample_%d_%d.png" % (step, i+1, idx+1)
+				im.save(f"{samples_path}/{filename}")
+			del samples
 
+		del server_state['textual_inversion']["checker"]
+		del server_state['textual_inversion']["unwrapped"]
+		del server_state['textual_inversion']["pipeline"]
+		torch.cuda.empty_cache()
 
-def main():
-	args = parse_args()
-
+@retry(RuntimeError, tries=5)
+def textual_inversion():
+	print ("Running textual inversion.")
+	if "pipeline" in server_state["textual_inversion"]:
+		del server_state['textual_inversion']["checker"]
+		del server_state['textual_inversion']["unwrapped"]
+		del server_state['textual_inversion']["pipeline"]		
+		
 	global_step_offset = 0
-	if args.resume_from is not None:
-		basepath = Path(args.resume_from)
-		print("Resuming state from %s" % args.resume_from)
-		with open(basepath / "resume.json", 'r') as f:
+	if st.session_state['textual_inversion']['args']["resume_from"]:
+		basepath = f"{st.session_state['textual_inversion']['args']['resume_from']}"
+		print("Resuming state from %s" % st.session_state['textual_inversion']['args']['resume_from'])
+		with open(f"{basepath}/resume.json", 'r') as f:
 			state = json.load(f)
-		global_step_offset = state["args"]["global_step"]
+		global_step_offset = state["args"].get("global_step", 0)
 
 		print("We've trained %d steps so far" % global_step_offset)
 	else:
-		now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-		basepath = Path(args.logging_dir) / slugify(args.placeholder_token) / now
-		basepath.mkdir(exist_ok=True, parents=True)
+		basepath = f"{st.session_state['textual_inversion']['args']['output_dir']}/{slugify(st.session_state['textual_inversion']['args']['placeholder_token'])}"
+		os.makedirs(basepath, exist_ok=True)
 
 
 	accelerator = Accelerator(
-	    gradient_accumulation_steps=args.gradient_accumulation_steps,
-	    mixed_precision=args.mixed_precision
+	    gradient_accumulation_steps=st.session_state['textual_inversion']['args']['gradient_accumulation_steps'],
+	    mixed_precision=st.session_state['textual_inversion']['args']['mixed_precision']
 	)
 
-	# If passed along, set the training seed now.
-	if args.seed is not None:
-		set_seed(args.seed)
+	# If passed along, set the training seed.
+	if st.session_state['textual_inversion']['args']['seed']:
+		set_seed(st.session_state['textual_inversion']['args']['seed'])
 
-	# Handle the repository creation
-	if accelerator.is_main_process:
-		if args.push_to_hub:
-			if args.hub_model_id is None:
-				repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
-			else:
-				repo_name = args.hub_model_id
-			repo = Repository(args.output_dir, clone_from=repo_name)
-
-			with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
-				if "step_*" not in gitignore:
-					gitignore.write("step_*\n")
-				if "epoch_*" not in gitignore:
-					gitignore.write("epoch_*\n")
-		elif args.output_dir is not None:
-			os.makedirs(args.output_dir, exist_ok=True)
-
-	# Load the tokenizer and add the placeholder token as a additional special token
-	if args.tokenizer_name:
-		tokenizer = CLIPTokenizer.from_pretrained(args.tokenizer_name)
-	elif args.pretrained_model_name_or_path:
-		tokenizer = CLIPTokenizer.from_pretrained(
-		    args.pretrained_model_name_or_path + '/tokenizer'
+	#if "tokenizer" not in server_state["textual_inversion"]:
+		# Load the tokenizer and add the placeholder token as a additional special token
+		#with server_state_lock['textual_inversion']["tokenizer"]:
+	if st.session_state['textual_inversion']['args']['tokenizer_name']:
+		server_state['textual_inversion']["tokenizer"] = CLIPTokenizer.from_pretrained(st.session_state['textual_inversion']['args']['tokenizer_name'])
+	elif st.session_state['textual_inversion']['args']['pretrained_model_name_or_path']:
+		server_state['textual_inversion']["tokenizer"] = CLIPTokenizer.from_pretrained(
+			st.session_state['textual_inversion']['args']['pretrained_model_name_or_path'] + '/tokenizer'
 		)
 
 	# Add the placeholder token in tokenizer
-	num_added_tokens = tokenizer.add_tokens(args.placeholder_token)
+	num_added_tokens = server_state['textual_inversion']["tokenizer"].add_tokens(st.session_state['textual_inversion']['args']['placeholder_token'])
 	if num_added_tokens == 0:
-		raise ValueError(
-		    f"The tokenizer already contains the token {args.placeholder_token}. Please pass a different"
+		st.error(
+		    f"The tokenizer already contains the token {st.session_state['textual_inversion']['args']['placeholder_token']}. Please pass a different"
 		    " `placeholder_token` that is not already in the tokenizer."
 		)
 
 	# Convert the initializer_token, placeholder_token to ids
-	token_ids = tokenizer.encode(args.initializer_token, add_special_tokens=False)
+	token_ids = server_state['textual_inversion']["tokenizer"].encode(st.session_state['textual_inversion']['args']['initializer_token'], add_special_tokens=False)
 	# Check if initializer_token is a single token or a sequence of tokens
 	if len(token_ids) > 1:
-		raise ValueError("The initializer token must be a single token.")
+		st.error("The initializer token must be a single token.")
 
 	initializer_token_id = token_ids[0]
-	placeholder_token_id = tokenizer.convert_tokens_to_ids(args.placeholder_token)
+	placeholder_token_id = server_state['textual_inversion']["tokenizer"].convert_tokens_to_ids(st.session_state['textual_inversion']['args']['placeholder_token'])
 
 	# Load models and create wrapper for stable diffusion
 	text_encoder = CLIPTextModel.from_pretrained(
-	    args.pretrained_model_name_or_path + '/text_encoder',
+	    st.session_state['textual_inversion']['args']['pretrained_model_name_or_path'] + '/text_encoder',
 	)
 	vae = AutoencoderKL.from_pretrained(
-	    args.pretrained_model_name_or_path + '/vae',
+	    st.session_state['textual_inversion']['args']['pretrained_model_name_or_path'] + '/vae',
 	)
 	unet = UNet2DConditionModel.from_pretrained(
-	    args.pretrained_model_name_or_path + '/unet',
+	    st.session_state['textual_inversion']['args']['pretrained_model_name_or_path'] + '/unet',
 	)
 
-	base_templates = imagenet_style_templates_small if args.learnable_property == "style" else imagenet_templates_small
-	if args.custom_templates:
-		templates = args.custom_templates.split(",")
+	base_templates = imagenet_style_templates_small if st.session_state['textual_inversion']['args']['learnable_property'] == "style" else imagenet_templates_small
+	if st.session_state['textual_inversion']['args']['custom_templates']:
+		templates = st.session_state['textual_inversion']['args']['custom_templates'].split(";")
 	else:
 		templates = base_templates
 
 	slice_size = unet.config.attention_head_dim // 2
 	unet.set_attention_slice(slice_size)
-#    vae = vae.to("cuda").half()
-#unet = unet.to("cuda").half()
+
 	# Resize the token embeddings as we are adding new special tokens to the tokenizer
-	text_encoder.resize_token_embeddings(len(tokenizer))
+	text_encoder.resize_token_embeddings(len(server_state['textual_inversion']["tokenizer"]))
 
 	# Initialise the newly added placeholder token with the embeddings of the initializer token
 	token_embeds = text_encoder.get_input_embeddings().weight.data
 
-	if args.resume_checkpoint is not None:
-		token_embeds[placeholder_token_id] = torch.load(args.resume_checkpoint)[args.placeholder_token]
+	if "resume_checkpoint" in st.session_state['textual_inversion']['args']:
+		if st.session_state['textual_inversion']['args']['resume_checkpoint'] is not None:
+			token_embeds[placeholder_token_id] = torch.load(st.session_state['textual_inversion']['args']['resume_checkpoint'])[st.session_state['textual_inversion']['args']['placeholder_token']]
 	else:
 		token_embeds[placeholder_token_id] = token_embeds[initializer_token_id]
 
@@ -637,29 +453,30 @@ def main():
 	    accelerator=accelerator,
 	    vae=vae,
 	    unet=unet,
-	    tokenizer=tokenizer,
-	    placeholder_token=args.placeholder_token,
+	    tokenizer=server_state['textual_inversion']["tokenizer"],
+	    placeholder_token=st.session_state['textual_inversion']['args']['placeholder_token'],
 	    placeholder_token_id=placeholder_token_id,
 	    templates=templates,
 	    output_dir=basepath,
-	    sample_batch_size=args.sample_batch_size,
-	    random_sample_batches=args.random_sample_batches,
-	    stable_sample_batches=args.stable_sample_batches,
-	    seed=args.seed
+	    sample_batch_size=st.session_state['textual_inversion']['args']['sample_batch_size'],
+	    random_sample_batches=st.session_state['textual_inversion']['args']['random_sample_batches'],
+	    stable_sample_batches=st.session_state['textual_inversion']['args']['stable_sample_batches'],
+	    seed=st.session_state['textual_inversion']['args']['seed']
 	)
 
-	if args.scale_lr:
-		args.learning_rate = (
-		    args.learning_rate * args.gradient_accumulation_steps * args.train_batch_size * accelerator.num_processes
+	if st.session_state['textual_inversion']['args']['scale_lr']:
+		st.session_state['textual_inversion']['args']['learning_rate'] = (
+		    st.session_state['textual_inversion']['args']['learning_rate'] * st.session_state['textual_inversion'][
+				'args']['gradient_accumulation_steps'] * st.session_state['textual_inversion']['args']['train_batch_size'] * accelerator.num_processes
 		)
 
 	# Initialize the optimizer
 	optimizer = torch.optim.AdamW(
 	    text_encoder.get_input_embeddings().parameters(),  # only optimize the embeddings
-	    lr=args.learning_rate,
-	    betas=(args.adam_beta1, args.adam_beta2),
-	    weight_decay=args.adam_weight_decay,
-	    eps=args.adam_epsilon,
+	    lr=st.session_state['textual_inversion']['args']['learning_rate'],
+	    betas=(st.session_state['textual_inversion']['args']['adam_beta1'], st.session_state['textual_inversion']['args']['adam_beta2']),
+	    weight_decay=st.session_state['textual_inversion']['args']['adam_weight_decay'],
+	    eps=st.session_state['textual_inversion']['args']['adam_epsilon'],
 	)
 
 	# TODO (patil-suraj): laod scheduler using args
@@ -668,30 +485,30 @@ def main():
 	)
 
 	train_dataset = TextualInversionDataset(
-	    data_root=args.train_data_dir,
-	    tokenizer=tokenizer,
-	    size=args.resolution,
-	    placeholder_token=args.placeholder_token,
-	    repeats=args.repeats,
-	    learnable_property=args.learnable_property,
-	    center_crop=args.center_crop,
+	    data_root=st.session_state['textual_inversion']['args']['train_data_dir'],
+	    tokenizer=server_state['textual_inversion']["tokenizer"],
+	    size=st.session_state['textual_inversion']['args']['resolution'],
+	    placeholder_token=st.session_state['textual_inversion']['args']['placeholder_token'],
+	    repeats=st.session_state['textual_inversion']['args']['repeats'],
+	    learnable_property=st.session_state['textual_inversion']['args']['learnable_property'],
+	    center_crop=st.session_state['textual_inversion']['args']['center_crop'],
 	    set="train",
-	    templates=base_templates
+	    templates=templates
 	)
-	train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
+	train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=st.session_state['textual_inversion']['args']['train_batch_size'], shuffle=True)
 
 	# Scheduler and math around the number of training steps.
 	overrode_max_train_steps = False
-	num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
-	if args.max_train_steps is None:
-		args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
+	num_update_steps_per_epoch = math.ceil(len(train_dataloader) / st.session_state['textual_inversion']['args']['gradient_accumulation_steps'])
+	if st.session_state['textual_inversion']['args']['max_train_steps'] is None:
+		st.session_state['textual_inversion']['args']['max_train_steps'] = st.session_state['textual_inversion']['args']['num_train_epochs'] * num_update_steps_per_epoch
 		overrode_max_train_steps = True
 
 	lr_scheduler = get_scheduler(
-	    args.lr_scheduler,
+	    st.session_state['textual_inversion']['args']['lr_scheduler'],
 	    optimizer=optimizer,
-	    num_warmup_steps=args.lr_warmup_steps * args.gradient_accumulation_steps,
-	    num_training_steps=args.max_train_steps * args.gradient_accumulation_steps,
+	    num_warmup_steps=st.session_state['textual_inversion']['args']['lr_warmup_steps'] * st.session_state['textual_inversion']['args']['gradient_accumulation_steps'],
+	    num_training_steps=st.session_state['textual_inversion']['args']['max_train_steps'] * st.session_state['textual_inversion']['args']['gradient_accumulation_steps'],
 	)
 
 	text_encoder, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
@@ -702,45 +519,49 @@ def main():
 	vae.to(accelerator.device)
 	unet.to(accelerator.device)
 
-	# Keep vae and unet in eval model as we don't train these
+	# Keep vae and unet in eval mode as we don't train these
 	vae.eval()
 	unet.eval()
 
 	# We need to recalculate our total training steps as the size of the training dataloader may have changed.
-	num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+	num_update_steps_per_epoch = math.ceil(len(train_dataloader) / st.session_state['textual_inversion']['args']['gradient_accumulation_steps'])
 	if overrode_max_train_steps:
-		args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
+		st.session_state['textual_inversion']['args']['max_train_steps'] = st.session_state['textual_inversion']['args']['num_train_epochs'] * num_update_steps_per_epoch
 	# Afterwards we recalculate our number of training epochs
-	args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
+	st.session_state['textual_inversion']['args']['num_train_epochs'] = math.ceil(st.session_state['textual_inversion']['args']['max_train_steps'] / num_update_steps_per_epoch)
 
 	# We need to initialize the trackers we use, and also store our configuration.
 	# The trackers initializes automatically on the main process.
 	if accelerator.is_main_process:
-		accelerator.init_trackers("textual_inversion", config=vars(args))
+		accelerator.init_trackers("textual_inversion", config=st.session_state['textual_inversion']['args'])
 
 	# Train!
-	total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+	total_batch_size = st.session_state['textual_inversion']['args']['train_batch_size'] * accelerator.num_processes * st.session_state[
+		'textual_inversion']['args']['gradient_accumulation_steps']
 
 	logger.info("***** Running training *****")
 	logger.info(f"  Num examples = {len(train_dataset)}")
-	logger.info(f"  Num Epochs = {args.num_train_epochs}")
-	logger.info(f"  Instantaneous batch size per device = {args.train_batch_size}")
+	logger.info(f"  Num Epochs = {st.session_state['textual_inversion']['args']['num_train_epochs']}")
+	logger.info(f"  Instantaneous batch size per device = {st.session_state['textual_inversion']['args']['train_batch_size']}")
 	logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-	logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-	logger.info(f"  Total optimization steps = {args.max_train_steps}")
+	logger.info(f"  Gradient Accumulation steps = {st.session_state['textual_inversion']['args']['gradient_accumulation_steps']}")
+	logger.info(f"  Total optimization steps = {st.session_state['textual_inversion']['args']['max_train_steps']}")
 	# Only show the progress bar once on each machine.
-	progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
+	progress_bar = tqdm(range(st.session_state['textual_inversion']['args']['max_train_steps']), disable=not accelerator.is_local_main_process)
 	progress_bar.set_description("Steps")
 	global_step = 0
+	encoded_pixel_values_cache = {}
 
 	try:
-		for epoch in range(args.num_train_epochs):
+		for epoch in range(st.session_state['textual_inversion']['args']['num_train_epochs']):
 			text_encoder.train()
 			for step, batch in enumerate(train_dataloader):
 				with accelerator.accumulate(text_encoder):
 					# Convert images to latent space
-					latents = vae.encode(batch["pixel_values"]).latent_dist.sample().detach().half()
-					latents = latents * 0.18215
+					key = "|".join(batch["key"])
+					if encoded_pixel_values_cache.get(key, None) is None:
+						encoded_pixel_values_cache[key] = vae.encode(batch["pixel_values"]).latent_dist
+					latents = encoded_pixel_values_cache[key].sample().detach().half() * 0.18215
 
 					# Sample noise that we'll add to the latents
 					noise = torch.randn(latents.shape).to(latents.device)
@@ -768,7 +589,7 @@ def main():
 					else:
 						grads = text_encoder.get_input_embeddings().weight.grad
 					# Get the index for tokens that we want to zero the grads for
-					index_grads_to_zero = torch.arange(len(tokenizer)) != placeholder_token_id
+					index_grads_to_zero = torch.arange(len(server_state['textual_inversion']["tokenizer"])) != placeholder_token_id
 					grads.data[index_grads_to_zero, :] = grads.data[index_grads_to_zero, :].fill_(0)
 
 					optimizer.step()
@@ -780,55 +601,40 @@ def main():
 					progress_bar.update(1)
 					global_step += 1
 
-					if global_step % args.checkpoint_frequency == 0 and global_step > 0 and accelerator.is_main_process:
+					if global_step % st.session_state['textual_inversion']['args']['checkpoint_frequency'] == 0 and global_step > 0 and accelerator.is_main_process:
 						checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
-						save_resume_file(basepath, args, {
+						save_resume_file(basepath, st.session_state['textual_inversion']['args'], {
 						    "global_step": global_step + global_step_offset,
-						    "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+						    "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
 						})
-						checkpointer.save_samples(global_step + global_step_offset, text_encoder,
-						                          args.resolution, args.resolution, 7.5, 0.0, 25)
+						checkpointer.save_samples(
+						    global_step + global_step_offset,
+						    text_encoder,
+						    st.session_state['textual_inversion']['args']['resolution'], st.session_state['textual_inversion']['args'][
+								'resolution'], 7.5, 0.0, st.session_state['textual_inversion']['args']['sample_steps'])
 
 				logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
 				progress_bar.set_postfix(**logs)
-				#accelerator.log(logs, step=global_step)
+				accelerator.log(logs, step=global_step)
 
-				if global_step >= args.max_train_steps:
+				if global_step >= st.session_state['textual_inversion']['args']['max_train_steps']:
 					break
 
 			accelerator.wait_for_everyone()
 
 		# Create the pipeline using using the trained modules and save it.
 		if accelerator.is_main_process:
-			pipeline = StableDiffusionPipeline(
-			    text_encoder=accelerator.unwrap_model(text_encoder),
-			    vae=vae,
-			    unet=unet,
-			    tokenizer=tokenizer,
-			    scheduler=PNDMScheduler(
-			        beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", skip_prk_steps=True
-			        ),
-			    safety_checker=StableDiffusionSafetyChecker.from_pretrained("CompVis/stable-diffusion-safety-checker"),
-			    feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
+			print("Finished! Saving final checkpoint and resume state.")
+			checkpointer.checkpoint(
+			    global_step + global_step_offset,
+			    text_encoder,
+			    path=f"{basepath}/learned_embeds.bin"
 			)
-			#pipeline.save_pretrained(args.output_dir)
-			# Also save the newly trained embeddings
-			learned_embeds = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[placeholder_token_id]
-			learned_embeds_dict = {args.placeholder_token: learned_embeds.detach().cpu()}
-			torch.save(learned_embeds_dict, basepath / f"learned_embeds.bin")
-			if global_step % args.checkpoint_frequency != 0:
-				checkpointer.save_samples(global_step + global_step_offset, text_encoder,
-				                          args.resolution, args.resolution, 7.5, 0.0, 25)
 
-			print("Saving resume state")
-			save_resume_file(basepath, args, {
+			save_resume_file(basepath, st.session_state['textual_inversion']['args'], {
 			    "global_step": global_step + global_step_offset,
-			    "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+			    "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
 			})
-
-			if args.push_to_hub:
-				repo.push_to_hub(
-				    args, pipeline, repo, commit_message="End of training", blocking=False, auto_lfs_prune=True)
 
 			accelerator.end_training()
 
@@ -836,13 +642,199 @@ def main():
 		if accelerator.is_main_process:
 			print("Interrupted, saving checkpoint and resume state...")
 			checkpointer.checkpoint(global_step + global_step_offset, text_encoder)
-			save_resume_file(basepath, args, {
+			save_resume_file(basepath, st.session_state['textual_inversion']['args'], {
 			    "global_step": global_step + global_step_offset,
-			    "resume_checkpoint": str(Path(basepath) / "checkpoints" / "last.bin")
+			    "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
 			})
 		quit()
 
 
 def layout():
-	st.write("Textual Inversion")
-	st.info("Under Construction. :construction_worker:")
+	
+	with st.form("textual-inversion"):
+		#st.info("Under Construction. :construction_worker:")
+		#parser = argparse.ArgumentParser(description="Simple example of a training script.")
+		
+		set_page_title("Textual Inversion - Stable Diffusion Playground")
+		
+		config_tab, output_tab = st.tabs(["Textual Inversion Config", "Ouput"])
+		
+		with config_tab:
+			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
+			
+			if "textual_inversion" not in st.session_state:
+				st.session_state['textual_inversion'] = {}
+				
+			if "textual_inversion" not in server_state:
+				server_state["textual_inversion"] = {}
+			
+			if "args" not in st.session_state['textual_inversion']:
+				st.session_state['textual_inversion']["args"] = {}
+			
+			
+			with col1:
+				st.session_state['textual_inversion']["args"]["pretrained_model_name_or_path"] = st.text_input("Pretrained Model Path",
+																									  value=st.session_state["defaults"].textual_inversion.pretrained_model_name_or_path,
+																									  help="Path to pretrained model or model identifier from huggingface.co/models.")
+				
+				st.session_state['textual_inversion']["args"]["tokenizer_name"] = st.text_input("Tokenizer Name", 
+																					   value=st.session_state["defaults"].textual_inversion.tokenizer_name, 
+																					   help="Pretrained tokenizer name or path if not the same as model_name")
+				
+				st.session_state['textual_inversion']["args"]["train_data_dir"] = st.text_input("train_data_dir", value="", help="A folder containing the training data.")
+				
+				st.session_state['textual_inversion']["args"]["placeholder_token"] = st.text_input("Placeholder Token", value="", help="A token to use as a placeholder for the concept.")
+				
+				st.session_state['textual_inversion']["args"]["initializer_token"] = st.text_input("Initializer Token", value="", help="A token to use as initializer word.")
+				
+				st.session_state['textual_inversion']["args"]["learnable_property"] = st.selectbox("Learnable Property", ["object", "style"], index=0, help="Choose between 'object' and 'style'")
+				
+				st.session_state['textual_inversion']["args"]["repeats"] = int(st.text_input("Number of times to Repeat", value=100, help="How many times to repeat the training data."))
+				
+				with col2:
+					st.session_state['textual_inversion']["args"]["output_dir"] = st.text_input("Output Directory",
+																		   value=str(os.path.join("outputs", "textual_inversion")),
+																		   help="The output directory where the model predictions and checkpoints will be written.")
+					
+					st.session_state['textual_inversion']["args"]["seed"] = seed_to_int(st.text_input("Seed", help="A seed for reproducible training."))
+					
+					st.session_state['textual_inversion']["args"]["resolution"] = int(st.text_input("Resolution",  value=512,
+																   help="The resolution for input images, all the images in the train/validation dataset will be resized to this resolution"))
+					
+					st.session_state['textual_inversion']["args"]["center_crop"] = st.checkbox("Center Image", value=True, help="Whether to center crop images before resizing to resolution")
+					
+					st.session_state['textual_inversion']["args"]["train_batch_size"] = int(st.text_input("Train Batch Size",  value=1, help="Batch size (per device) for the training dataloader."))
+					
+					st.session_state['textual_inversion']["args"]["num_train_epochs"] = int(st.text_input("Number of Steps to Train",  value=100, help="Number of steps to train."))
+					
+					st.session_state['textual_inversion']["args"]["max_train_steps"] = int(st.text_input("Max Number of Steps to Train", value=5000,
+																	help="Total number of training steps to perform.  If provided, overrides 'Number of Steps to Train'."))
+					
+					with col3:
+						st.session_state['textual_inversion']["args"]["gradient_accumulation_steps"] = int(st.text_input("Gradient Accumulation Steps",  value=1,
+																						help="Number of updates steps to accumulate before performing a backward/update pass."))
+						
+						st.session_state['textual_inversion']["args"]["learning_rate"] = float(st.text_input("Learning Rate", value=5.0e-04,
+																		  help="Initial learning rate (after the potential warmup period) to use."))
+						
+						st.session_state['textual_inversion']["args"]["scale_lr"] = st.checkbox("Scale Learning Rate", value=True,
+																   help="Scale the learning rate by the number of GPUs, gradient accumulation steps, and batch size.")
+						
+						st.session_state['textual_inversion']["args"]["lr_scheduler"] = st.text_input("Learning Rate Scheduler",  value="constant",
+																		 help=("The scheduler type to use. Choose between ['linear', 'cosine', 'cosine_with_restarts', 'polynomial',"
+																			   " 'constant', 'constant_with_warmup']" ))
+						
+						st.session_state['textual_inversion']["args"]["lr_warmup_steps"] = int(st.text_input("Learning Rate Warmup Steps", value=500, help="Number of steps for the warmup in the lr scheduler."))
+						
+						st.session_state['textual_inversion']["args"]["adam_beta1"] = float(st.text_input("Adam Beta 1",  value=0.9, help="The beta1 parameter for the Adam optimizer."))
+						
+						st.session_state['textual_inversion']["args"]["adam_beta2"] = float(st.text_input("Adam Beta 2", value=0.999, help="The beta2 parameter for the Adam optimizer."))
+						
+						st.session_state['textual_inversion']["args"]["adam_weight_decay"] = float(st.text_input("Adam Weight Decay",  value=1e-2, help="Weight decay to use."))
+						
+						st.session_state['textual_inversion']["args"]["adam_epsilon"] = float(st.text_input("Adam Epsilon",  value=1e-08, help="Epsilon value for the Adam optimizer"))
+						
+						with col4:
+							st.session_state['textual_inversion']["args"]["mixed_precision"] = st.selectbox("Mixed Precision", ["no", "fp16", "bf16"], index=1,
+																			   help="Whether to use mixed precision. Choose" "between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >= 1.10."
+																			   "and an Nvidia Ampere GPU.")
+							
+							st.session_state['textual_inversion']["args"]["local_rank"] = int(st.text_input("Local Rank",  value=1, help="For distributed training: local_rank"))
+							
+							st.session_state['textual_inversion']["args"]["checkpoint_frequency"] = int(st.text_input("Checkpoint Frequency",  value=500, help="How often to save a checkpoint and sample image"))
+							
+							# stable_sample_batches is crashing when saving the samples so for now I will disable it util its fixed.
+							#st.session_state['textual_inversion']["args"]["stable_sample_batches"] = int(st.text_input("Stable Sample Batches",  value=0,
+																						  #help="Number of fixed seed sample batches to generate per checkpoint"))
+																						  
+							st.session_state['textual_inversion']["args"]["stable_sample_batches"] = 0															  
+							
+							st.session_state['textual_inversion']["args"]["random_sample_batches"] = int(st.text_input("Random Sample Batches",  value=2,
+																						  help="Number of random seed sample batches to generate per checkpoint"))
+							
+							st.session_state['textual_inversion']["args"]["sample_batch_size"] = int(st.text_input("Sample Batch Size",  value=1, help="Number of samples to generate per batch"))
+							
+							st.session_state['textual_inversion']["args"]["sample_steps"] = int(st.text_input("Sample Steps",  value=100,
+																			 help="Number of steps for sample generation. Higher values will result in more detailed samples, but longer runtimes."))
+							
+							st.session_state['textual_inversion']["args"]["custom_templates"] = st.text_input("Custom Templates",  value="",
+																				 help="A semicolon-delimited list of custom template to use for samples, using {} as a placeholder for the concept.")
+							with col5:										 
+								st.session_state['textual_inversion']["args"]["resume_from"] = st.text_input(label="Resume From", help="Path to a directory to resume training from (ie, logs/token_name)")
+								
+								#st.session_state['textual_inversion']["args"]["resume_checkpoint"] = st.file_uploader("Resume Checkpoint", type=["bin"],
+																					  #help="Path to a specific checkpoint to resume training from (ie, logs/token_name/checkpoints/something.bin).")
+								
+								#st.session_state['textual_inversion']["args"]["config"] = st.file_uploader("Config File",  type=["json"],
+																		#help="Path to a JSON configuration file containing arguments for invoking this script."
+																		#"If resume_from is given, its resume.json takes priority over this.")
+			#				
+			if "resume_from" in st.session_state['textual_inversion']["args"]:
+				if st.session_state['textual_inversion']["args"]["resume_from"]:
+					if os.path.exists(os.path.join(st.session_state['textual_inversion']['args']['resume_from'], "resume.json")): 
+						with open(os.path.join(st.session_state['textual_inversion']['args']['resume_from'], "resume.json"), 'rt') as f:
+							st.session_state['textual_inversion']["args"] = json.load(f)["args"]
+							#print(st.session_state['textual_inversion']["args"])
+						
+			#elif st.session_state['textual_inversion']["args"]["config"] is not None:
+				#with open(st.session_state['textual_inversion']["args"]["config"], 'rt') as f:
+					#args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
+		
+			env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
+			if env_local_rank != -1 and env_local_rank != st.session_state['textual_inversion']["args"]["local_rank"]:
+				st.session_state['textual_inversion']["args"]["local_rank"] = env_local_rank
+		
+			if st.session_state['textual_inversion']["args"]["train_data_dir"] is None:
+				st.error("You must specify --train_data_dir")
+		
+			if st.session_state['textual_inversion']["args"]["pretrained_model_name_or_path"] is None:
+				st.error("You must specify --pretrained_model_name_or_path")
+		
+			if st.session_state['textual_inversion']["args"]["placeholder_token"] is None:
+				st.error("You must specify --placeholder_token")
+		
+			if st.session_state['textual_inversion']["args"]["initializer_token"] is None:
+				st.error("You must specify --initializer_token")
+		
+			if st.session_state['textual_inversion']["args"]["output_dir"] is None:
+				st.error("You must specify --output_dir")
+		
+			# add a spacer and the submit button for the form.
+			
+			st.session_state["textual_inversion"]["message"] = st.empty()
+			st.session_state["textual_inversion"]["progress_bar"] = st.empty()
+			
+			st.write("---")
+		
+			submit = st.form_submit_button(help="")
+			if submit:
+				if "pipe" in st.session_state:
+					del st.session_state["pipe"]
+				if "model" in st.session_state:
+					del st.session_state["model"]
+				
+				st.session_state["textual_inversion"]["message"].info("Textual Inversion Running. For more info check the progress on your console or the Ouput Tab.")
+				
+				try:
+					try:
+						textual_inversion()	
+					except RuntimeError:
+						if "pipeline" in server_state["textual_inversion"]:
+							del server_state['textual_inversion']["checker"]
+							del server_state['textual_inversion']["unwrapped"]
+							del server_state['textual_inversion']["pipeline"]									
+						
+						textual_inversion()	
+				
+				except StopException:
+					print(f"Received Streamlit StopException")
+				
+				st.session_state["textual_inversion"]["message"].empty()
+		
+		with output_tab:
+			#st.info("Under Construction. :construction_worker:")
+			
+			# Start TensorBoard
+			st_tensorboard(logdir=os.path.join("outputs", "textual_inversion"), port=8888)
+			
+		

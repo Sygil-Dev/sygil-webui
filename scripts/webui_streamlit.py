@@ -162,7 +162,6 @@ def layout():
 	elif tabs == 'Textual Inversion':
 		# set the page url and title
 		st.experimental_set_query_params(page='textual-inversion')
-		set_page_title("Textual Inversion - Stable Diffusion Playground")
 		
 		from textual_inversion import layout
 		layout()
