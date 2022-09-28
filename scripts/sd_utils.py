@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
+#from webui_streamlit import st
+import hydralit as st
 
 
 # streamlit imports
@@ -22,6 +23,7 @@ from streamlit import StopException, StreamlitAPIException
 
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
+import hydralit_components as hc
 
 #other imports
 
@@ -188,11 +190,11 @@ def human_readable_size(size, decimal_places=3):
 def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
-
+        
     print ("Loading models.")
 
-    if "progress_bar_text" in st.session_state:
-        st.session_state["progress_bar_text"].text("Loading models...")
+    #if "progress_bar_text" in st.session_state:
+    #    st.session_state["progress_bar_text"].text("Loading models...")
     
 
     # Generate random run ID
@@ -298,6 +300,8 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             server_state["model"].enable_minimal_memory_usage()    
     
         print("Model loaded.")
+        
+        st.session_state['progress_bar_text'].hc.info_card(title='Model Loaded', content='Ready to roll!', sentiment='good',bar_value=77)
 
 
 def load_model_from_config(config, ckpt, verbose=False):

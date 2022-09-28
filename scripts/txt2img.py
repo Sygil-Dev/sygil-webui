@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
@@ -285,9 +284,11 @@ def layout():
 
         if generate_button:
             #print("Loading models")
-            # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.	
-            load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
-                        st.session_state["custom_model"])  
+            # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
+            with col2:
+                with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                    load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
+                                st.session_state["custom_model"])   
             
 
             try:

@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
@@ -367,8 +366,6 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	return output_images, seed, info, stats
 	
 #
-
-
 def layout():
 	with st.form("img2img-inputs"):
 		st.session_state["generation_mode"] = "img2img"
@@ -589,8 +586,9 @@ def layout():
 		if generate_button:
 			#print("Loading models")
 			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-			load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
-				    st.session_state["custom_model"])                
+			with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+				load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
+						st.session_state["custom_model"])                
 			
 			if uploaded_images:
 				image = Image.open(uploaded_images).convert('RGBA')
