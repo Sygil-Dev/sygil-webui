@@ -388,7 +388,7 @@ def layout():
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 			custom_models_available()
-			if st.session_state["CustomModel_available"]:
+			if server_state["CustomModel_available"]:
 				st.session_state["custom_model"] = st.selectbox("Custom Model:", server_state["custom_models"],
 									    index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
 							    help="Select the model you want to use. This option is only available if you have custom models \
@@ -586,9 +586,10 @@ def layout():
 		if generate_button:
 			#print("Loading models")
 			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-			with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-				load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
-						st.session_state["custom_model"])                
+			with col3_img2img_layout:
+				with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+					load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
+							st.session_state["custom_model"])                
 			
 			if uploaded_images:
 				image = Image.open(uploaded_images).convert('RGBA')
