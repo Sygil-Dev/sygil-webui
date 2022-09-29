@@ -300,8 +300,6 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             server_state["model"].enable_minimal_memory_usage()    
     
         print("Model loaded.")
-        
-        st.session_state['progress_bar_text'].hc.info_card(title='Model Loaded', content='Ready to roll!', sentiment='good',bar_value=77)
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -1278,22 +1276,23 @@ def check_prompt_length(prompt, comments):
 
 #
 def custom_models_available():
-    #
-    # Allow for custom models to be used instead of the default one,
-    # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
-    server_state["custom_models"]:sorted = []
-
-    for root, dirs, files in os.walk(os.path.join("models", "custom")):
-        for file in files:
-            if os.path.splitext(file)[1] == '.ckpt':						
-                server_state["custom_models"].append(os.path.splitext(file)[0])
-
-
-    if len(server_state["custom_models"]) > 0:
-        st.session_state["CustomModel_available"] = True
-        server_state["custom_models"].append("Stable Diffusion v1.4")
-    else:
-        st.session_state["CustomModel_available"] = False	
+    with server_state_lock["custom_models"]:
+        #
+        # Allow for custom models to be used instead of the default one,
+        # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
+        server_state["custom_models"]:sorted = []
+    
+        for root, dirs, files in os.walk(os.path.join("models", "custom")):
+            for file in files:
+                if os.path.splitext(file)[1] == '.ckpt':						
+                    server_state["custom_models"].append(os.path.splitext(file)[0])
+    
+        with server_state_lock["CustomModel_available"]:
+            if len(server_state["custom_models"]) > 0:
+                server_state["CustomModel_available"] = True
+                server_state["custom_models"].append("Stable Diffusion v1.4")
+            else:
+                server_state["CustomModel_available"] = False	
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
@@ -1481,7 +1480,6 @@ def process_images(
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
-    assert prompt is not None
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
