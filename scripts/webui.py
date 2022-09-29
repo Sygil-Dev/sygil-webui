@@ -1265,9 +1265,8 @@ def process_images(
                     image = perform_color_correction(image, correction_target)
                 ImageMetadata.set_on_image(image, metadata)
 
-                original_sample = x_sample
+                processed_samples = x_sample
                 original_filename = filename
-                processed_samples = x_sample[:, :, ::-1]
                 processed_metadata: ImageMetadata = copy.copy(metadata)
 
                 if use_RealESRGAN:
