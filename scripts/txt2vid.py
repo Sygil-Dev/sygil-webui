@@ -416,7 +416,7 @@ def txt2vid(
 
 	# ------------------------------------------------------------------------------
 	#st.session_state["progress_bar_text"].text("Loading models...")	
-	with st.session_state["progress_bar_text"]:
+	with st.session_state["progress_bar_text"].container():
 		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
 			try:
 				if "model" in st.session_state:
