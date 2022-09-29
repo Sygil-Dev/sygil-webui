@@ -184,6 +184,7 @@ Thanks for open-sourcing!
       eprint={2112.10752},
       archivePrefix={arXiv},
       primaryClass={cs.CV}
+      new line
 }
 
 ```
