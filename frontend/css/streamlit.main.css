@@ -137,3 +137,16 @@ div.gallery:hover {
 .row-widget.stButton {
   text-align: center;
 }
+
+/********************************************************************
+    Hide anchor links on titles
+*********************************************************************/
+.css-15zrgzn {
+	display: none
+	}
+.css-eczf16 {
+	display: none
+	}
+.css-jn99sy {
+	display: none
+	}
