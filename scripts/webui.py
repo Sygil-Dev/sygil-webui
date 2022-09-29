@@ -66,6 +66,7 @@ parser.add_argument("--skip-save", action='store_true', help="do not save indivi
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
 parser.add_argument("--tiling", action='store_true', help="Generate tiling images", default=False)
+parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging", default=False)
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -114,6 +115,7 @@ from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageOps, ImageChops
 from io import BytesIO
 import base64
 import re
+import logging
 from torch import autocast
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
@@ -131,11 +133,16 @@ if opt.tiling:
     patch_conv(padding_mode='circular')
     print("patched for tiling")
 
+
+logging.basicConfig(stream=sys.stdout)
+if opt.verbose:
+    logging.getLogger().setLevel(logging.DEBUG)
+
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
 
-    from transformers import logging
-    logging.set_verbosity_error()
+    from transformers import logging as transformers_logging
+    transformers_logging.set_verbosity_error()
 except:
     pass
 
