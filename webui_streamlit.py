@@ -19,6 +19,12 @@
 
 # We import hydralit like this to replace the previous stuff
 # we had with native streamlit as it lets ur replace things 1:1
+
+# GPU Hardware setting
+import torch
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+device = torch.device("cuda:0")
+
 #import hydralit as st 
 from scripts.sd_utils import *
 from scripts.modeldownload import updateModels
