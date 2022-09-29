@@ -72,7 +72,7 @@ def generate_caption(pil_image):
 	    transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),
 	    transforms.ToTensor(),
 	    transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-	    ])(image).unsqueeze(0).to(device)
+	    ])(pil_image).unsqueeze(0).to(device)
 
 	with torch.no_grad():
 		caption = blip_model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
@@ -117,11 +117,11 @@ def interrogate(image, models):
 		image_features /= image_features.norm(dim=-1, keepdim=True)
 
 		ranks = [
-		    rank(model, image_features, mediums),
-		    rank(model, image_features, ["by "+artist for artist in artists]),
-		    rank(model, image_features, trending_list),
-		    rank(model, image_features, movements),
-		    rank(model, image_features, flavors, top_count=3)
+		    rank(model, image_features, server_state["mediums"]),
+		    rank(model, image_features, ["by "+artist for artist in server_state["artists"]]),
+		    rank(model, image_features, server_state["trending_list"]),
+		    rank(model, image_features, server_state["movements"]),
+		    rank(model, image_features, server_state["flavors"], top_count=3)
 		]
 
 		for i in range(len(ranks)):
@@ -154,39 +154,39 @@ def interrogate(image, models):
 def img2txt():
 	data_path = "data/"
 	
-	artists = load_list(os.path.join(data_path, 'artists.txt'))
-	flavors = load_list(os.path.join(data_path, 'flavors.txt'))
-	mediums = load_list(os.path.join(data_path, 'mediums.txt'))
-	movements = load_list(os.path.join(data_path, 'movements.txt'))
+	server_state["artists"] = load_list(os.path.join(data_path, 'img2txt', 'artists.txt'))
+	server_state["flavors"] = load_list(os.path.join(data_path, 'img2txt', 'flavors.txt'))
+	server_state["mediums"] = load_list(os.path.join(data_path, 'img2txt', 'mediums.txt'))
+	server_state["movements"] = load_list(os.path.join(data_path, 'img2txt', 'movements.txt'))
+	server_state["sites"] = load_list(os.path.join(data_path, 'img2txt', 'sites.txt'))
 	
-	sites = ['Artstation', 'behance', 'cg society', 'cgsociety', 'deviantart', 'dribble', 'flickr', 'instagram', 'pexels', 'pinterest', 'pixabay', 'pixiv', 'polycount', 'reddit', 'shutterstock', 'tumblr', 'unsplash', 'zbrush central']
-	trending_list = [site for site in sites]
-	trending_list.extend(["trending on "+site for site in sites])
-	trending_list.extend(["featured on "+site for site in sites])
-	trending_list.extend([site+" contest winner" for site in sites])
+	trending_list = [site for site in server_state["sites"]]
+	trending_list.extend(["trending on "+site for site in server_state["sites"]])
+	trending_list.extend(["featured on "+site for site in server_state["sites"]])
+	trending_list.extend([site+" contest winner" for site in server_state["sites"]])
 	
-	image_path_or_url = "https://i.redd.it/e2e8gimigjq91.jpg" #@param {type:"string"}
+	image_path_or_url = "https://i.redd.it/e2e8gimigjq91.jpg"
 	
-	models = []
+	st.session_state["models"] = []
 	
 	if st.session_state["ViTB32"]:
-		models.append('ViT-B/32')
+		st.session_state["models"].append('ViT-B/32')
 	if st.session_state['ViTB16']:
-		models.append('ViT-B/16')
+		st.session_state["models"].append('ViT-B/16')
 	if st.session_state["ViTL14"]: 
-		models.append('ViT-L/14')
+		st.session_state["models"].append('ViT-L/14')
 	if st.session_state["ViTL14_336px"]:
-		models.append('ViT-L/14@336px')
+		st.session_state["models"].append('ViT-L/14@336px')
 	if st.session_state["RN101"]:
-		models.append('RN101')
+		st.session_state["models"].append('RN101')
 	if st.session_state["RN50"]:
-		models.append('RN50')
+		st.session_state["models"].append('RN50')
 	if st.session_state["RN50x4"]:
-		models.append('RN50x4')
+		st.session_state["models"].append('RN50x4')
 	if st.session_state["RN50x16"]:
-		models.append('RN50x16')
+		st.session_state["models"].append('RN50x16')
 	if st.session_state["RN50x64"]:
-		models.append('RN50x64')
+		st.session_state["models"].append('RN50x64')
 	
 	if str(image_path_or_url).startswith('http://') or str(image_path_or_url).startswith('https://'):
 		image = Image.open(requests.get(image_path_or_url, stream=True).raw).convert('RGB')
@@ -197,7 +197,7 @@ def img2txt():
 	thumb.thumbnail([blip_image_eval_size, blip_image_eval_size])
 	#display(thumb)
 	
-	interrogate(image, models=models)
+	interrogate(image, models=st.session_state["models"])
 
 #
 def layout():
@@ -207,62 +207,72 @@ def layout():
 	with st.form("img2txt-inputs"):
 		st.session_state["generation_mode"] = "img2txt"
 
-		input_col1, generate_col1 = st.columns([10,1])
-
-		with input_col1:
-			#prompt = st.text_area("Input Text","")
-			#prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
-			uploaded_image = st.file_uploader('Input Image')
-
-		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
-		generate_col1.write("")
-		generate_col1.write("")
-		generate_button = generate_col1.form_submit_button("Generate")
-		
-		st.session_state["text_result"] = st.empty()
-
+		#st.write("---")
 		# creating the page layout using columns
 		col1, col2, col3 = st.columns([1,2,1], gap="large")   	
 		
 		with col1:
-			"""
-			CLIP models:
-			For StableDiffusion you can just use ViTL14
-			For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images
-
-			ViTB32:
-			ViTB16:
-			ViTL14:
-			ViTL14_336px:
-			RN101:
-			RN50:
-			RN50x4:
-			RN50x16:
-			RN50x64:
-			"""			
-			st.title("CLIP models")
+			#url = st.text_area("Input Text","")
+			#url = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+			#st.subheader("Input Image")
+			st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg'])
+					
+			st.subheader("CLIP models")	
+			with st.expander("Stable Diffusion", expanded=True):
+				st.session_state["ViTL14"] = st.checkbox("ViTL14", value=True, help="For StableDiffusion you can just use ViTL14.")
 			
-			st.session_state["ViTB32"] = st.checkbox("ViTB32", value=False, help="ViTB32 model.")
-			
-			st.session_state["ViTB16"] = st.checkbox("ViTB16", value=False, help="ViTB16 model.")
-			
-			st.session_state["ViTL14"] = st.checkbox("ViTL14", value=True, help="ViTL14 model.")
-			
-			st.session_state["ViTL14_336px"] = st.checkbox("ViTL14_336px", value=False, help="ViTL14_336px model.")
-			
-			st.session_state["RN101"] = st.checkbox("RN101", value=False, help="RN101 model.")
-			
-			st.session_state["RN50"] = st.checkbox("RN50", value=False, help="RN50 model.")
-			
-			st.session_state["RN50x4"] = st.checkbox("RN50x4", value=False, help="RN50x4 model.")
-			
-			st.session_state["RN50x16"] = st.checkbox("RN50x16", value=False, help="RN50x16 model.")
-			
-			st.session_state["RN50x64"] = st.checkbox("RN50x64", value=False, help="RN50x64 model.")
+			with st.expander("Others"):
+				st.info("For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images.")
+				st.session_state["ViTL14_336px"] = st.checkbox("ViTL14_336px", value=False, help="ViTL14_336px model.")			
+				st.session_state["ViTB16"] = st.checkbox("ViTB16", value=False, help="ViTB16 model.")			
+				st.session_state["ViTB32"] = st.checkbox("ViTB32", value=False, help="ViTB32 model.")
+				st.session_state["RN50"] = st.checkbox("RN50", value=False, help="RN50 model.")			
+				st.session_state["RN50x4"] = st.checkbox("RN50x4", value=False, help="RN50x4 model.")			
+				st.session_state["RN50x16"] = st.checkbox("RN50x16", value=False, help="RN50x16 model.")			
+				st.session_state["RN50x64"] = st.checkbox("RN50x64", value=False, help="RN50x64 model.")
+				st.session_state["RN101"] = st.checkbox("RN101", value=False, help="RN101 model.")			
+				
 			
 			with col2:
+				st.subheader("Image")
+				
+				st.form_submit_button("Refresh",
+									  help='Refresh the image preview to show your uploaded image instead of the default placeholder.')
 				st.session_state["input_image_preview"] = st.empty()
 				
-			with col3:
-				st.session_state["text_message"] = st.empty()				
+				if st.session_state["uploaded_image"]:				
+					st.session_state["uploaded_image"].image = Image.open(st.session_state["uploaded_image"]).convert('RGBA')
+					#new_img = image.resize((width, height))
+					st.session_state["input_image_preview"].image(st.session_state["uploaded_image"].image, clamp=True)	
+				else:
+					#st.session_state["input_image_preview"].code('', language="")
+					st.image("images/streamlit/img2txt_placeholder.png", clamp=True)
 				
+			with col3:
+				st.subheader("Logs:")
+				
+				st.session_state["log_message"] = st.empty()
+				st.session_state["log_message"].code('', language="")
+		
+		#
+		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
+		#generate_col1.title("")
+		#generate_col1.title("")
+		generate_button = st.form_submit_button("Generate!")		
+				
+		#
+		st.write("---")
+		
+		with st.container():
+			st.subheader("Image To Text Result")		
+			
+			st.session_state["prediction_table"] = st.empty()
+			st.session_state["prediction_table"].table()
+			
+			st.session_state["text_result"] = st.empty()
+			st.session_state["text_result"].code('', language="")
+
+	
+	if generate_button:		
+		# run clip interrogator
+		img2txt()
