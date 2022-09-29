@@ -1,12 +1,29 @@
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
+#from webui_streamlit import st
+import hydralit as st
 
 
 # streamlit imports
-from streamlit import StopException
+from streamlit import StopException, StreamlitAPIException
 
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
+import hydralit_components as hc
 
 #other imports
 
@@ -14,7 +31,7 @@ import warnings
 import json
 
 import base64
-import os, sys, re, random, datetime, time, math, glob
+import os, sys, re, random, datetime, time, math, glob, toml
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
 from PIL.PngImagePlugin import PngInfo
 from scipy import integrate
@@ -77,7 +94,18 @@ st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yam
 if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
     user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
     st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+else:
+    OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
+    loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+    assert st.session_state.defaults == loaded	
 
+if (os.path.exists(".streamlit/config.toml")):
+    st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
+
+if st.session_state["defaults"].daisi_app.running_on_daisi_io:
+    if os.path.exists("scripts/modeldownload.py"):
+        import modeldownload
+        modeldownload.updateModels()
 
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
@@ -162,11 +190,11 @@ def human_readable_size(size, decimal_places=3):
 def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
-
+        
     print ("Loading models.")
 
-    if "progress_bar_text" in st.session_state:
-        st.session_state["progress_bar_text"].text("Loading models...")
+    #if "progress_bar_text" in st.session_state:
+    #    st.session_state["progress_bar_text"].text("Loading models...")
     
 
     # Generate random run ID
@@ -241,8 +269,11 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             if "pipe" in server_state:
                 del server_state["pipe"]    
         
+        if "textual_inversion" in st.session_state:
+            del st.session_state['textual_inversion']
+        
         # At this point the model is either
-        # is not loaded yet or have been evicted:
+        # not loaded yet or have been evicted:
         # load new model into memory
         server_state["custom_model"] = custom_model
     
@@ -269,6 +300,8 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             server_state["model"].enable_minimal_memory_usage()    
     
         print("Model loaded.")
+        
+        st.session_state['progress_bar_text'].hc.info_card(title='Model Loaded', content='Ready to roll!', sentiment='good',bar_value=77)
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -586,6 +619,52 @@ def find_noise_for_image(model, device, init_image, prompt, steps=200, cond_scal
 
     return x / sigmas[-1]
 
+#
+def folder_picker(label="Select:", value="", help="", folder_button_label="Select", folder_button_help="", folder_button_key=""):
+    """A folder picker that has a text_input field next to it and a button to select the folder. 
+    Returns the text_input field with the folder path."""
+    import tkinter as tk
+    from tkinter import filedialog
+    import string    
+
+    # Set up tkinter
+    root = tk.Tk()
+    root.withdraw()
+
+    # Make folder picker dialog appear on top of other windows
+    root.wm_attributes('-topmost', 1)
+
+    col1, col2 = st.columns([2,1], gap="small")
+
+    with col1:
+        dirname = st.empty()
+    with col2:
+        st.write("")
+        st.write("")
+        folder_picker = st.empty()
+
+    # Folder picker button
+    #st.title('Folder Picker')
+    #st.write('Please select a folder:')
+    
+    # Create a label and add a random number of invisible characters
+    # to it so no two buttons inside a form are the same.
+    #folder_button_label = ''.join(random.choice(f"{folder_button_label}") for _ in range(5))
+    folder_button_label = f"{str(folder_button_label)}{'‎' * random.randint(1, 500)}"
+    clicked = folder_button_key + '‎' * random.randint(5, 500)
+    
+    #try:
+    #clicked = folder_picker.button(folder_button_label, help=folder_button_help, key=folder_button_key)
+    #except StreamlitAPIException:
+    clicked = folder_picker.form_submit_button(folder_button_label, help=folder_button_help)
+
+    if clicked:
+        dirname = dirname.text_input(label, filedialog.askdirectory(master=root), help=help)	
+    else:
+        dirname = dirname.text_input(label, value, help=help)	
+
+    return dirname
+
 
 def get_sigmas_exponential(n, sigma_min, sigma_max, device='cpu'):
     """Constructs an exponential noise schedule."""
@@ -686,13 +765,15 @@ def load_GFPGAN():
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.GFPGAN_dir))
     from gfpgan import GFPGANer
 
-    if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
-    elif st.session_state['defaults'].general.extra_models_gpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
-    else:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-    return instance
+    with server_state_lock['GFPGAN']:
+        if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
+        elif st.session_state['defaults'].general.extra_models_gpu:
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
+        else:
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+    
+    return server_state['GFPGAN']
 
 @retry(tries=5)
 def load_RealESRGAN(model_name: str):
@@ -709,17 +790,18 @@ def load_RealESRGAN(model_name: str):
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.RealESRGAN_dir))
     from realesrgan import RealESRGANer
 
-    if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
-        instance.device = torch.device('cpu')
-        instance.model.to('cpu')
-    elif st.session_state['defaults'].general.extra_models_gpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
-    else:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-    instance.model.name = model_name
+    with server_state_lock['RealESRGAN']:
+        if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
+            server_state['RealESRGAN'].device = torch.device('cpu')
+            server_state['RealESRGAN'].model.to('cpu')
+        elif st.session_state['defaults'].general.extra_models_gpu:
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
+        else:
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+        server_state['RealESRGAN'].model.name = model_name
 
-    return instance
+    return server_state['RealESRGAN']
 
 #
 @retry(tries=5)
@@ -728,6 +810,7 @@ def load_LDSR(checking=False):
     yaml_name = 'project'
     model_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
     yaml_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
+    
     if not os.path.isfile(model_path):
         raise Exception("LDSR model not found at path "+model_path)
     if not os.path.isfile(yaml_path):
@@ -738,6 +821,7 @@ def load_LDSR(checking=False):
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.LDSR_dir))
     from LDSR import LDSR
     LDSRObject = LDSR(model_path, yaml_path)
+    
     return LDSRObject
 
 #
