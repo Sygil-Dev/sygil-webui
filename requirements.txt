@@ -1,9 +1,10 @@
 # Core Stable Diffusion Dependencies
 
 # Minimum Environment Dependencies for Stable Diffusion
-#torch  # already satisfied as 1.12.1 from base image
-#torchvision  # already satisfied as 0.13.1 from base image
-#numpy==1.19.2  # already satisfied as 1.21.5 from base image
+--find-links https://download.pytorch.org/whl/torch
+torch==1.11.0+cu113  # already satisfied as 1.12.1 from base image
+torchvision==0.12.0 # already satisfied as 0.13.1 from base image
+numpy==1.19.2  # already satisfied as 1.21.5 from base image
 
 
 # Stable Diffusion (see: https://github.com/CompVis/stable-diffusion)
@@ -15,19 +16,19 @@ pytorch_lightning==1.7.7
 # Additional Stable Diffusion Requirements
 # TODO: Pin external dependency versions
 
-#opencv-python==4.6.0.66  # Opencv python already satisfied upstream
-#opencv-python-headless==4.6.0.66  # Needed to operate opencv in headless/server mode
+opencv-python==4.6.0.66  # Opencv python already satisfied upstream
+opencv-python-headless==4.6.0.66  # Needed to operate opencv in headless/server mode
 
 
 taming-transformers-rom1504==0.0.6  # required by ldm
 # See: https://github.com/CompVis/taming-transformers/issues/176
-# -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers # required by ldm
+-e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers # required by ldm
 # Note: taming package needs to be installed with -e option
 
 
 git+https://github.com/crowsonkb/k-diffusion.git
 # Note: K-diffusion brings in CLIP 1.0 as a dependency automatically; will create a dependency resolution conflict when explicitly specified together
-# git+https://github.com/openai/CLIP.git@main#egg=clip
+git+https://github.com/openai/CLIP.git@main#egg=clip
 
 # Dependencies required for Stable Diffusion UI
 pynvml==11.4.1
@@ -39,7 +40,7 @@ Jinja2==3.1.2  # Jinja2 is required by Gradio
 
 
 # Environment Dependencies for WebUI (gradio)
-gradio==3.4
+# gradio==3.4
 
 
 # Environment Dependencies for WebUI (streamlit)
@@ -65,8 +66,8 @@ realesrgan==0.3.0  # RealESRGAN brings in GFPGAN as a requirement
 -e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion  #ldsr
 
 # Orphaned Packages:  No usage found
-#albumentations
-#imageio-ffmpeg
-#pudb
-#test-tube
-#torch-fidelity
+albumentations
+imageio-ffmpeg
+pudb
+test-tube
+torch-fidelity

@@ -20,8 +20,8 @@
 # We import hydralit like this to replace the previous stuff
 # we had with native streamlit as it lets ur replace things 1:1
 #import hydralit as st 
-from sd_utils import *
-
+from scripts.sd_utils import *
+from scripts.modeldownload import updateModels
 # streamlit imports
 import streamlit_nested_layout
 
@@ -144,31 +144,31 @@ def layout():
 		st.experimental_set_query_params(page='stable-diffusion')
 		set_page_title("Stable Diffusion Playground")
 		
-		txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image", 
-		                                                                      "Text-to-Video", "Image-To-Text",
-		                                                                      "Concept Library"])
+		txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Txt2Img", "Img2Img", 
+		                                                                      "Txt2Vid", "Img2Txt",
+		                                                                      "Concept Lib"])
 		#with home_tab:
 			#from home import layout
 			#layout()		
 		
 		with txt2img_tab:
-			from txt2img import layout
+			from scripts.txt2img import layout
 			layout()
 		
 		with img2img_tab:
-			from img2img import layout
+			from scripts.img2img import layout
 			layout()
 		
 		with txt2vid_tab:
-			from txt2vid import layout
+			from scripts.txt2vid import layout
 			layout()
 			
 		with img2txt_tab:
-			from img2txt import layout
+			from scripts.img2txt import layout
 			layout()	
 			
 		with concept_library_tab:
-			from sd_concept_library import layout
+			from scripts.sd_concept_library import layout
 			layout()			
 		
 	#
@@ -177,14 +177,14 @@ def layout():
 		#st.experimental_set_query_params(page='model-manager')
 		set_page_title("Model Manager - Stable Diffusion Playground")
 		
-		from ModelManager import layout
+		from scripts.ModelManager import layout
 		layout()
 	
 	elif tabs == 'Textual Inversion':
 		# set the page url and title
 		#st.experimental_set_query_params(page='textual-inversion')
 		
-		from textual_inversion import layout
+		from scripts.textual_inversion import layout
 		layout()
 		
 	elif tabs == 'Settings':
@@ -192,7 +192,7 @@ def layout():
 		#st.experimental_set_query_params(page='settings')
 		set_page_title("Settings - Stable Diffusion Playground")
 		
-		from Settings import layout
+		from scripts.Settings import layout
 		layout()
 	
 if __name__ == '__main__':

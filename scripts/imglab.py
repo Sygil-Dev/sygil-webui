@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from sd_utils import *
+from scripts.sd_utils import *
 
 #home plugin
 import os

@@ -20,11 +20,14 @@ def updateModels():
     if op.exists('models/ldm/stable-diffusion-v1/model.ckpt'):
         pass
     else:
-        os.system('wget https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media -o models/ldm/stable-diffusion-v1/model.ckpt')
+        # For 4GB model
+        # os.system('wget  -O models/ldm/stable-diffusion-v1/model.ckpt https://cdn-lfs.huggingface.co/repos/ab/41/ab41ccb635cd5bd124c8eac1b5796b4f64049c9453c4e50d51819468ca69ceb8/fe4efff1e174c627256e44ec2991ba279b3816e364b49f9be2abc0b3ff3f8556?response-content-disposition=attachment%3B%20filename%3D%22model.ckpt%22')
         # os.rename('models/ldm/stable-diffusion-v1/sd-v1-4.ckpt?alt=media','models/ldm/stable-diffusion-v1/model.ckpt')
-        # os.system('wget https://cdn-lfs.huggingface.co/repos/ab/41/ab41ccb635cd5bd124c8eac1b5796b4f64049c9453c4e50d51819468ca69ceb8/14749efc0ae8ef0329391ad4436feb781b402f4fece4883c7ad8d10556d8a36a?response-content-disposition=attachment%3B%20filename%3D%22modelfull.ckpt%22 -o models/ldm/stable-diffusion-v1/model.ckpt')
+        # For 7.2GB model
+        os.system('wget -O models/ldm/stable-diffusion-v1/model.ckpt https://cdn-lfs.huggingface.co/repos/ab/41/ab41ccb635cd5bd124c8eac1b5796b4f64049c9453c4e50d51819468ca69ceb8/14749efc0ae8ef0329391ad4436feb781b402f4fece4883c7ad8d10556d8a36a?response-content-disposition=attachment%3B%20filename%3D%22modelfull.ckpt%22')
         # os.rename('models/ldm/stable-diffusion-v1/modelfull.ckpt','models/ldm/stable-diffusion-v1/model.ckpt')
     
+    # RealESRGAN_x4plus & RealESRGAN_x4plus_anime_6B
     if op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth') and op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth'):
         pass
     else:
@@ -36,6 +39,7 @@ def updateModels():
     else:
         os.system('wget https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth -P src/gfpgan/experiments/pretrained_models')
     
+    # Latent Diffusion 
     if op.exists('src/latent-diffusion'):
         pass
     else:
@@ -47,8 +51,38 @@ def updateModels():
     else:
         os.mkdir('src/latent-diffusion/experiments')
         os.mkdir('src/latent-diffusion/experiments/pretrained_models')
-        os.system('wget https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1 -o src/latent-diffusion/experiments/pretrained_models/project.yaml')
+        os.system('wget -O src/latent-diffusion/experiments/pretrained_models/project.yaml https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1')
         # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
-        os.system('wget https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1 -o src/latent-diffusion/experiments/pretrained_models/model.ckpt')
+        os.system('wget -O src/latent-diffusion/experiments/pretrained_models/model.ckpt https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1')
         # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
+
+    # Blip Model
+    if op.exists('models/custom/blip/model*_base_caption.pth'):
+        pass
+    else:
+        os.system("wget -O models/custom/blip/model*_base_caption.pth https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth")
     
+    if op.exists('models/custom/sd-concepts-library'):
+        pass
+    else:
+        os.system('git clone https://github.com/sd-webui/sd-concepts-library models/custom/')
+
+    # Waifu Diffusion v1.2
+    if op.exists("models/custom/waifu-diffusion"):
+        pass
+    else:
+        os.system("git clone https://huggingface.co/hakurei/waifu-diffusion models/custom/waifu-diffusion")
+    
+    # Waifu Diffusion v1.2 Pruned
+    if op.exists("models/custom/pruned-waifu-diffusion"):
+        pass
+    else:
+        os.system("git clone https://huggingface.co/crumb/pruned-waifu-diffusion models/custom/pruned-waifu-diffusion")
+
+    # TrinArt Stable Diffusion v2
+    if op.exists("models/custom/trinart_stable_diffusion_v2"):
+        pass
+    else:
+        os.system("git clone https://huggingface.co/naclbit/trinart_stable_diffusion_v2 models/custom/trinart_stable_diffusion_v2")
+
+updateModels()

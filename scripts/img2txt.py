@@ -33,7 +33,7 @@ And if you're looking for more Ai art tools check out my [Ai generative art tool
 
 #
 # base webui import and utils.
-from sd_utils import *
+from scripts.sd_utils import *
 
 # streamlit imports
 import streamlit_nested_layout
