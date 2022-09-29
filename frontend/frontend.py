@@ -496,7 +496,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                             if 'gfpgan' in user_defaults:
                                 gfpgan_defaults.update(user_defaults['gfpgan'])
-                            if has_gfpgan:
+                            if not has_gfpgan:
                                 gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
         <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
@@ -621,7 +621,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                 fromId="txt2img_gallery_output",
                                                 toId="imglab_input")
                                 )
-                                if has_real_esrgan:
+                                if not has_real_esrgan:
                                     with gr.Row():
                                         with gr.Column():
                                             # seperator
