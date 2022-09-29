@@ -57,7 +57,7 @@ def updateModels():
         # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
 
     # Blip Model
-    if op.exists('models/custom/blip/model*_base_caption.pth'):
+    if op.exists('models/custom/blip/model__base_caption.pth'):
         pass
     else:
         os.system("wget -O models/custom/blip/model*_base_caption.pth https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth")

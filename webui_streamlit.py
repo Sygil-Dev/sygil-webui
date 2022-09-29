@@ -21,7 +21,7 @@
 # we had with native streamlit as it lets ur replace things 1:1
 
 # GPU Hardware setting
-import torch
+import torch,os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 device = torch.device("cuda:0")
 
