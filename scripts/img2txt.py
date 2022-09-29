@@ -60,7 +60,22 @@ from ldm.models.blip import blip_decoder
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 blip_image_eval_size = 256
-#blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'        
+#blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'   
+
+def load_blip_model():
+	blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth", image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
+	blip_model.eval()
+
+	return blip_model
+
+def load_clip_model(clip_model_name):
+	import clip
+
+	model, preprocess = clip.load(clip_model_name)
+	model.eval()
+	model = model.to(device)
+
+	return model, preprocess
 
 def generate_caption(pil_image):
 	blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth", image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
@@ -109,8 +124,8 @@ def interrogate(image, models):
 	table = []
 	bests = [[('',0)]]*5
 	for model_name in models:
-		print(f"Interrogating with {model_name}...")
-		model, preprocess = clip.load(model_name)
+		st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
+		model, preprocess = load_clip_model(model_name)
 		model.cuda().eval()
 
 		images = preprocess(image).unsqueeze(0).cuda()
@@ -147,10 +162,11 @@ def interrogate(image, models):
 	flaves = ', '.join([f"{x[0]}" for x in bests[4]])
 	medium = bests[0][0][0]
 	if caption.startswith(medium):
-		print(f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}")
+		st.session_state["text_result"].code(f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
 	else:
-		print(f"\n\n{caption}, {medium} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}")
-
+		st.session_state["text_result"].code(f"\n\n{caption}, {medium} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
+	
+	st.session_state["log_message"].code("Finished Interrogating.", language="")
 #
 
 def img2txt():
@@ -162,10 +178,10 @@ def img2txt():
 	server_state["movements"] = load_list(os.path.join(data_path, 'img2txt', 'movements.txt'))
 	server_state["sites"] = load_list(os.path.join(data_path, 'img2txt', 'sites.txt'))
 	
-	trending_list = [site for site in server_state["sites"]]
-	trending_list.extend(["trending on "+site for site in server_state["sites"]])
-	trending_list.extend(["featured on "+site for site in server_state["sites"]])
-	trending_list.extend([site+" contest winner" for site in server_state["sites"]])
+	server_state["trending_list"] = [site for site in server_state["sites"]]
+	server_state["trending_list"].extend(["trending on "+site for site in server_state["sites"]])
+	server_state["trending_list"].extend(["featured on "+site for site in server_state["sites"]])
+	server_state["trending_list"].extend([site+" contest winner" for site in server_state["sites"]])
 	
 	#image_path_or_url = "https://i.redd.it/e2e8gimigjq91.jpg"
 	
