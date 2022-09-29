@@ -50,7 +50,7 @@ class Manager:
         self._model_infos: Dict[str, ModelInfo] = {}
         self._model_info_lock: rwlock.RWLockWrite = rwlock.RWLockWrite()
         self._executor = ThreadPoolExecutor(Manager.NUM_WORKERS)
-        self._scheduler: Scheduler = OneAtATimeScheduler()
+        self._scheduler: Scheduler = scheduler
 
     def register_model(
             self, name: str, load_func: Callable, exists_func: Callable, preload: bool = False, max_depth: int = 1,
