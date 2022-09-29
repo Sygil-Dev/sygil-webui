@@ -151,7 +151,8 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                     txt2img_func, txt2img_inputs, txt2img_outputs = txt2img_job_ui.wrap_func(
                         func=txt2img_func,
                         inputs=txt2img_inputs,
-                        outputs=txt2img_outputs
+                        outputs=txt2img_outputs,
+                        start_btn=txt2img_btn
                     )
                     use_queue = False
                 else:
@@ -400,6 +401,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                         func=img2img_func,
                         inputs=img2img_inputs,
                         outputs=img2img_outputs,
+                        start_btn=img2img_btn_editor
                     )
                     use_queue = False
                 else:

@@ -85,7 +85,8 @@ class JobManagerUi:
             self,
             func: Callable,
             inputs: List[Component],
-            outputs: List[Component]) -> Tuple[Callable, List[Component], List[Component]]:
+            outputs: List[Component],
+            start_btn: Optional[gr.Button] = None) -> Tuple[Callable, List[Component], List[Component]]:
         ''' Takes a gradio event listener function and its input/outputs and returns wrapped replacements which will
             be managed by JobManager
         Parameters:
@@ -94,9 +95,7 @@ class JobManagerUi:
                         be used by the function to check for stop events and to store intermediate image results
         inputs (List[Component]) the original inputs
         outputs (List[Component]) the original outputs. The first gallery, if any, will be used for refreshing images
-        refresh_btn: (gr.Button, optional) a button to use for updating the gallery with intermediate results
-        stop_btn: (gr.Button, optional) a button to use for stopping the function
-        status_text: (gr.Textbox) a textbox to display job status updates
+        start_btn (gr.Button, optional) the button that triggers this UI. Will be greyed when a job is active
 
         Returns:
         Tuple(newFunc (Callable), newInputs (List[Component]), newOutputs (List[Component]), which should be used as
@@ -104,7 +103,8 @@ class JobManagerUi:
         '''
         return self._job_manager._wrap_func(
             func=func, inputs=inputs, outputs=outputs,
-            job_ui=self
+            job_ui=self,
+            start_btn=start_btn
         )
 
     _refresh_btn: gr.Button
@@ -284,7 +284,7 @@ class JobManager:
     def _pre_call_func(
             self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
             status_text: gr.Textbox, active_image: gr.Image, active_refresh_btn: gr.Button, active_stop_btn: gr.Button,
-            session_key: str) -> List[Component]:
+            start_btn: gr.Button, session_key: str) -> List[Component]:
         ''' Called when a job is about to start '''
         session_info, job_info = self._get_call_info(func_key, session_key)
 
@@ -293,13 +293,17 @@ class JobManager:
             job_info.job_token = self._get_job_token(block=True)
 
         # Buttons don't seem to update unless value is set on them as well...
-        return {output_dummy_obj: triggerChangeEvent(),
-                refresh_btn: gr.Button.update(variant="primary", value=refresh_btn.value),
-                stop_btn: gr.Button.update(variant="primary", value=stop_btn.value),
-                status_text: gr.Textbox.update(value="Generation has started. Click 'Refresh' to see finished images, 'View Batch Progress' for active images"),
-                active_refresh_btn: gr.Button.update(variant="primary", value=active_refresh_btn.value),
-                active_stop_btn: gr.Button.update(variant="primary", value=active_stop_btn.value),
-                }
+        ret = {
+            output_dummy_obj: triggerChangeEvent(),
+            refresh_btn: gr.Button.update(variant="primary", value=refresh_btn.value if refresh_btn else None),
+            stop_btn: gr.Button.update(variant="primary", value=stop_btn.value if stop_btn else None),
+            status_text: gr.Textbox.update(
+                value="Generation has started. Click 'Refresh' to see finished images, 'View Batch Progress' for active images"),
+            active_refresh_btn: gr.Button.update(variant="primary", value=active_refresh_btn.value if active_refresh_btn else None),
+            active_stop_btn: gr.Button.update(variant="primary", value=active_stop_btn.value if active_stop_btn else None),
+            start_btn: gr.Button.update(variant="secondary", value=start_btn.value if start_btn else None)}
+        ret.pop(None, None)  # remove any 'none' components
+        return ret
 
     def _call_func(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Runs the real function with job management. '''
@@ -336,16 +340,19 @@ class JobManager:
     def _post_call_func(
             self, func_key: FuncKey, output_dummy_obj: Component, refresh_btn: gr.Button, stop_btn: gr.Button,
             status_text: gr.Textbox, active_image: gr.Image, active_refresh_btn: gr.Button, active_stop_btn: gr.Button,
-            session_key: str) -> List[Component]:
+            start_btn: gr.Button, session_key: str) -> List[Component]:
         ''' Called when a job completes '''
-        return {output_dummy_obj: triggerChangeEvent(),
-                refresh_btn: gr.Button.update(variant="secondary", value=refresh_btn.value),
-                stop_btn: gr.Button.update(variant="secondary", value=stop_btn.value),
-                status_text: gr.Textbox.update(value="Generation has finished!"),
-                active_refresh_btn: gr.Button.update(variant="secondary", value=active_refresh_btn.value),
-                active_stop_btn: gr.Button.update(variant="secondary", value=active_stop_btn.value),
-                active_image: gr.Image.update(visible=False)
-                }
+        ret = {output_dummy_obj: triggerChangeEvent(),
+               refresh_btn: gr.Button.update(variant="secondary", value=refresh_btn.value if refresh_btn else None),
+               stop_btn: gr.Button.update(variant="secondary", value=stop_btn.value if stop_btn else None),
+               status_text: gr.Textbox.update(value="Generation has finished!"),
+               active_refresh_btn: gr.Button.update(variant="secondary", value=active_refresh_btn.value if active_refresh_btn else None),
+               active_stop_btn: gr.Button.update(variant="secondary", value=active_stop_btn.value if active_stop_btn else None),
+               active_image: gr.Image.update(visible=False),
+               start_btn: gr.Button.update(variant="primary", value=start_btn.value if start_btn else None)
+               }
+        ret.pop(None, None)  # remove any 'none' components
+        return ret
 
     def _update_gallery_event(self, func_key: FuncKey, session_key: str) -> List[Component]:
         ''' Updates the gallery with results from the given job.
@@ -359,7 +366,8 @@ class JobManager:
 
     def _wrap_func(self, func: Callable, inputs: List[Component],
                    outputs: List[Component],
-                   job_ui: JobManagerUi) -> Tuple[Callable, List[Component]]:
+                   job_ui: JobManagerUi,
+                   start_btn: Optional[gr.Button] = None) -> Tuple[Callable, List[Component]]:
         ''' handles JobManageUI's wrap_func'''
 
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
@@ -453,7 +461,8 @@ class JobManager:
         # the Component as a key... so group together the UI components that the event listeners are going to update
         # to make it easy to append to function calls and outputs
         job_ui_params = [job_ui._refresh_btn, job_ui._stop_btn, job_ui._status_text,
-                         job_ui._active_image, job_ui._active_image_refresh_btn, job_ui._active_image_stop_btn]
+                         job_ui._active_image, job_ui._active_image_refresh_btn, job_ui._active_image_stop_btn,
+                         start_btn]
         job_ui_outputs = [comp for comp in job_ui_params if comp is not None]
 
         # Here a chain is constructed that will make a 'pre' call, a 'run' call, and a 'post' call,
