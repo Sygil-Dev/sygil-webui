@@ -37,18 +37,16 @@ class TaskInfo:
 
 
 @dataclass
-class DeviceCmd:
+class LoadModelCmd:
     task_info: TaskInfo
 
 
-class AggressiveScheduler:
+class Scheduler:
     def __init__(self):
         self._tasks: Dict[str, TaskInfo] = {}
         self._thread = threading.Thread(name="ModelRepo Model Mover", target=self._model_thread)
-        self._device_queue: queue.Queue[DeviceCmd] = queue.Queue()
+        self._device_queue: queue.Queue[LoadModelCmd] = queue.Queue()
         self._tls: threading.local = threading.local()
-
-        self._param_allow_family: bool = True
         self._thread.start()
 
     def register(self, model: Model) -> str:
@@ -65,6 +63,15 @@ class AggressiveScheduler:
         new_task = TaskInfo(model=model)
         self._tasks[key] = new_task
         return key
+
+    def prepare_for_task(self, task: TaskInfo):
+        """ Perform any actions necessary to prepare for the task
+
+        Args:
+            task_info (TaskInfo): the task to be loaded onto the device
+        """
+
+        raise NotImplementedError("Policy must be implemented in a derived class")
 
     @contextmanager
     def on_device_context(self, token: str) -> Generator[None, None, None]:
@@ -112,22 +119,15 @@ class AggressiveScheduler:
                     waiting_tasks = [task for task in self._tasks.values() if task.waiters_cnt > 0]
                     for task in waiting_tasks:
                         logger.info(f"Re-queuing waiting task {task}")
-                        self._device_queue.put(DeviceCmd(task_info=task))
+                        self._device_queue.put(LoadModelCmd(task_info=task))
                     continue
 
                 logger.debug(f"ModelLoader woke up for {cmd}")
                 if task.on_device:
                     continue
 
-                # Policy: One model at a time
-                for key, iter_task in self._tasks.copy().items():
-                    if iter_task is not task:
-                        # Optimization: Don't unload same 'family'
-                        iter_is_parent = task.model._name.startswith(iter_task.model._name)
-                        iter_is_child = iter_task.model._name.startswith(task.model._name)
-                        if not (self._param_allow_family and (iter_is_parent or iter_is_child)):
-                            self._move_off_device(iter_task)
-                torch_gc()
+                # Run scheduling policy
+                self.prepare_for_task(task)
 
                 self._move_to_device(task)
             except Exception as e:
@@ -138,7 +138,7 @@ class AggressiveScheduler:
         logger.info("Current models:")
         for key, task in self._tasks.items():
             if task.on_device:
-                logger.debug(f"{key}: {task}")
+                logger.info(f"{key}: {task}")
 
     def _move_off_device(self, task: TaskInfo) -> None:
         """ Moves a task off the device, blocking until complete """
@@ -173,10 +173,32 @@ class AggressiveScheduler:
         # Immediately acquire the lock if already on device, or else block until loading is done
         if not rlock.acquire(blocking=False):
             task_info.waiters_cnt += 1
-            self._device_queue.put(DeviceCmd(task_info=task_info))
+            self._device_queue.put(LoadModelCmd(task_info=task_info))
             rlock.acquire(blocking=True)
             task_info.waiters_cnt -= 1
         return rlock
+
+
+class OneAtATimeScheduler(Scheduler):
+    def __init__(self, keep_family: bool = True):
+        """Initialize the One-at-a-Time scheduler, which only allows one
+        model to be loaded at a time
+
+        Args:
+            keep_family (bool, optional): Allow children/parent models to be loaded together. Defaults to True.
+        """
+        super().__init__()
+        self._keep_family = keep_family
+
+    def prepare_for_task(self, task: TaskInfo):
+        for key, iter_task in self._tasks.copy().items():
+            if iter_task is not task:
+                # Optimization: Don't unload same 'family'
+                iter_is_parent = task.model._name.startswith(iter_task.model._name)
+                iter_is_child = iter_task.model._name.startswith(task.model._name)
+                if not (self._keep_family and (iter_is_parent or iter_is_child)):
+                    self._move_off_device(iter_task)
+        torch_gc()
 
 
 def torch_gc():

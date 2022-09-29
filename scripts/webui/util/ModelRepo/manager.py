@@ -17,7 +17,7 @@ import torch
 from readerwriterlock import rwlock
 
 from .model import Model
-from .schedulers import AggressiveScheduler
+from .schedulers import Scheduler, OneAtATimeScheduler
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger("ModelRepo.Manager")
@@ -37,17 +37,20 @@ class ModelInfo:
 class Manager:
     NUM_WORKERS: int = 5
 
-    def __init__(self, device: torch.device):
+    def __init__(self, device: torch.device, scheduler: Optional[Scheduler] = None):
         """Construct a new ModelRepo Manager
 
         Args:
             device (torch.device): device to use
+            scheduler (Optional[Scheduler]): Scheduler instance to use to  manage memory policy
         """
+        if scheduler is None:
+            scheduler = OneAtATimeScheduler()
         self._device = device
         self._model_infos: Dict[str, ModelInfo] = {}
         self._model_info_lock: rwlock.RWLockWrite = rwlock.RWLockWrite()
         self._executor = ThreadPoolExecutor(Manager.NUM_WORKERS)
-        self._scheduler: AggressiveScheduler = AggressiveScheduler()
+        self._scheduler: Scheduler = OneAtATimeScheduler()
 
     def register_model(
             self, name: str, load_func: Callable, exists_func: Callable, preload: bool = False, max_depth: int = 1,
