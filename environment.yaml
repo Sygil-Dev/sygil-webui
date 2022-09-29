@@ -59,6 +59,7 @@ dependencies:
     - pynvml==11.4.1
     - python-slugify>=6.1.2
     - pytorch-lightning==1.4.2
+    - readerwriterlock==1.0.9
     - retry>=0.9.2
     - regex
     - realesrgan==0.3.0
