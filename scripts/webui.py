@@ -472,7 +472,6 @@ def load_SD_model_optimized(stage: int):
         _, _ = model.load_state_dict(sd, strict=False)
         model.cuda()
         model.eval()
-        model.turbo = opt.optimized_turbo
     elif stage == 2:
         model = instantiate_from_config(config.modelCondStage)
         _, _ = model.load_state_dict(sd, strict=False)
@@ -533,7 +532,8 @@ model_params: Dict[str, ModelParams] = {
         ModelParams(load_func=load_SD_model_optimized,
                     load_kwargs={"stage": 1},
                     exists_func=sd_model_exists,
-                    reg_kwargs={"preload": opt.optimized}),
+                    reg_kwargs={"preload": opt.optimized,
+                                "max_depth": 0 if opt.optimized_turbo else 1 }),
 
     ModelNames.SD_opt_cs:
         ModelParams(load_func=load_SD_model_optimized,
@@ -557,10 +557,9 @@ model_params: Dict[str, ModelParams] = {
 # Register every model in model_params above
 model_manager = ModelRepo.Manager(device=device)
 for name, params in model_params.items():
-    preload = params.reg_kwargs.get("preload", False)
     if callable(params.load_func):
         model_manager.register_model(name=name, load_func=params.load_func, exists_func=params.exists_func,
-                                     load_kwargs=params.load_kwargs, preload=preload)
+                                     load_kwargs=params.load_kwargs, **params.reg_kwargs)
 
 
 # Set the default esrgan model

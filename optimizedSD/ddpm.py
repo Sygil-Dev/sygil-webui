@@ -364,7 +364,6 @@ class UNet(DDPM):
         self.model2 = DiffusionWrapperOut(self.unetConfigDecode)
         self.model1.eval()
         self.model2.eval()
-        self.turbo = False
         self.unet_bs = unet_bs
         self.restarted_from_ckpt = False
         if ckpt_path is not None:
@@ -395,10 +394,6 @@ class UNet(DDPM):
 
 
     def apply_model(self, x_noisy, t, cond, return_ids=False):
-          
-        if(not self.turbo):
-            self.model1.to(self.cdevice)
-
         step = self.unet_bs
         h,emb,hs = self.model1(x_noisy[0:step], t[:step], cond[:step])
         bs = cond.shape[0]
@@ -412,12 +407,7 @@ class UNet(DDPM):
             emb = torch.cat((emb,emb_temp))
             for j in range(lenhs):
                 hs[j] = torch.cat((hs[j], hs_temp[j]))
-        
 
-        if(not self.turbo):
-            self.model1.to("cpu")
-            self.model2.to(self.cdevice)
-        
         hs_temp = [hs[j][:step] for j in range(lenhs)]
         x_recon = self.model2(h[:step],emb[:step],x_noisy.dtype,hs_temp,cond[:step])
 
@@ -426,9 +416,6 @@ class UNet(DDPM):
             hs_temp = [hs[j][i:i+step] for j in range(lenhs)]
             x_recon1 = self.model2(h[i:i+step],emb[i:i+step],x_noisy.dtype,hs_temp,cond[i:i+step])
             x_recon = torch.cat((x_recon, x_recon1))
-
-        if(not self.turbo):
-            self.model2.to("cpu")
 
         if isinstance(x_recon, tuple) and not return_ids:
             return x_recon[0]
@@ -508,10 +495,6 @@ class UNet(DDPM):
         size = (batch_size, C, H, W)
         print(f'Data shape for PLMS sampling is {size}')
 
-        if(self.turbo):
-            self.model1.to(self.cdevice)
-            self.model2.to(self.cdevice)
-
         samples = self.plms_sampling(conditioning, size, seed,
                                                     callback=callback,
                                                     img_callback=img_callback,
@@ -527,10 +510,6 @@ class UNet(DDPM):
                                                     unconditional_guidance_scale=unconditional_guidance_scale,
                                                     unconditional_conditioning=unconditional_conditioning,
                                                     )
-
-        if(self.turbo):
-            self.model1.to("cpu")
-            self.model2.to("cpu")
 
         return samples
 
@@ -697,10 +676,6 @@ class UNet(DDPM):
                mask = None,use_original_steps=False):
 
         
-        if(self.turbo):
-            self.model1.to(self.cdevice)
-            self.model2.to(self.cdevice)
-
         timesteps = np.arange(self.ddpm_num_timesteps) if use_original_steps else self.ddim_timesteps
         timesteps = timesteps[:t_start]
 
@@ -725,10 +700,6 @@ class UNet(DDPM):
         # if mask is not None:
         #     return x0 * mask + (1. - mask) * x_dec
         
-        if(self.turbo):
-            self.model1.to("cpu")
-            self.model2.to("cpu")
-
         return x_dec
 
     @torch.no_grad()
