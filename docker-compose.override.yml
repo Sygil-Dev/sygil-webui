@@ -1,0 +1,10 @@
+# Nvidia specific config
+version: '3.3'
+
+services:
+  stable-diffusion:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [ gpu ]
