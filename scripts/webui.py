@@ -25,6 +25,7 @@ from frontend.job_manager import JobManager, JobInfo
 from frontend.image_metadata import ImageMetadata
 from frontend.ui_functions import resize_image
 import scripts.util.ModelRepo as ModelRepo
+import scripts.util.Models as Models
 
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -165,10 +166,6 @@ opt_f = 8
 LANCZOS = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
 invalid_filename_chars = '<>:"/\|?*\n'
 
-GFPGAN_dir = opt.gfpgan_dir
-RealESRGAN_dir = opt.realesrgan_dir
-LDSR_dir = opt.ldsr_dir
-
 if opt.optimized_turbo:
     opt.optimized = True
 
@@ -202,35 +199,6 @@ def chunk(it, size):
     it = iter(it)
     return iter(lambda: tuple(islice(it, size)), ())
 
-
-def load_model_from_config(config, ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(sd, strict=False)
-    if len(m) > 0 and verbose:
-        print("missing keys:")
-        print(m)
-    if len(u) > 0 and verbose:
-        print("unexpected keys:")
-        print(u)
-
-    model.cuda()
-    model.eval()
-    return model
-
-
-@lru_cache(maxsize=1)
-def load_sd_from_config(ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    return sd
 
 def crash(e, s):
     global model
@@ -368,123 +336,6 @@ def create_random_tensors(shape, seeds):
 def torch_gc():
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
-def load_LDSR(checking=False):
-    model_name = 'model'
-    yaml_name = 'project'
-    model_path = os.path.join(LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
-    yaml_path = os.path.join(LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
-    if not os.path.isfile(model_path):
-        raise Exception("LDSR model not found at path "+model_path)
-    if not os.path.isfile(yaml_path):
-        raise Exception("LDSR model not found at path "+yaml_path)
-    if checking == True:
-        return True
-
-    sys.path.append(os.path.abspath(LDSR_dir))
-    from LDSR import LDSR
-    LDSRObject = LDSR(model_path, yaml_path)
-    return LDSRObject
-def load_GFPGAN(checking=False):
-    model_name = 'GFPGANv1.3'
-    model_path = os.path.join(GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.isfile(model_path):
-        raise Exception("GFPGAN model not found at path "+model_path)
-    if checking == True:
-        return True
-    sys.path.append(os.path.abspath(GFPGAN_dir))
-    from gfpgan import GFPGANer
-
-    if opt.gfpgan_cpu or opt.extra_models_cpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
-    elif opt.extra_models_gpu:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f'cuda:{opt.gfpgan_gpu}'))
-    else:
-        instance = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f'cuda:{opt.gpu}'))
-    return instance
-
-def load_RealESRGAN(model_name: str, checking = False):
-    from basicsr.archs.rrdbnet_arch import RRDBNet
-    RealESRGAN_models = {
-        'RealESRGAN_x4plus': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4),
-        'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
-    }
-
-    model_path = os.path.join(RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.isfile(model_path):
-        raise Exception(model_name+".pth not found at path "+model_path)
-    if checking == True:
-        return True
-    sys.path.append(os.path.abspath(RealESRGAN_dir))
-    from realesrgan import RealESRGANer
-
-    if opt.esrgan_cpu or opt.extra_models_cpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
-        instance.device = torch.device('cpu')
-        instance.model.to('cpu')
-    elif opt.extra_models_gpu:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not opt.no_half, gpu_id=opt.esrgan_gpu)
-    else:
-        instance = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not opt.no_half)
-    instance.model.name = model_name
-    return instance
-
-
-def sd_model_exists(*args, **kwargs):
-    return os.path.exists(opt.ckpt)
-
-
-def load_SD_model():
-    config = OmegaConf.load(opt.config)
-    model = load_model_from_config(config, opt.ckpt)
-    if not opt.no_half:
-        model.half()
-    return model
-
-
-def load_SD_model_optimized(stage: int):
-    """ Returns optimized SD model stage
-    Stage 1 - UNet
-    Stage 2 - CondStage
-    Stage 3 - First Stage """
-    sd = load_sd_from_config(opt.ckpt)
-    li, lo = [], []
-    for key, v_ in sd.items():
-        sp = key.split('.')
-        if (sp[0]) == 'model':
-            if ('input_blocks' in sp):
-                li.append(key)
-            elif ('middle_block' in sp):
-                li.append(key)
-            elif ('time_embed' in sp):
-                li.append(key)
-            else:
-                lo.append(key)
-    for key in li:
-        sd['model1.' + key[6:]] = sd.pop(key)
-    for key in lo:
-        sd['model2.' + key[6:]] = sd.pop(key)
-
-    config = OmegaConf.load("optimizedSD/v1-inference.yaml")
-
-    model = None
-    if stage == 1:
-        model = instantiate_from_config(config.modelUNet)
-        _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
-        model.eval()
-    elif stage == 2:
-        model = instantiate_from_config(config.modelCondStage)
-        _, _ = model.load_state_dict(sd, strict=False)
-        model.cond_stage_model.device = device
-        model.eval()
-    elif stage == 3:
-        model = instantiate_from_config(config.modelFirstStage)
-        _, _ = model.load_state_dict(sd, strict=False)
-        model.eval()
-
-    if not opt.no_half:
-        model = model.half()
-    return model
 
 device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -510,56 +361,36 @@ class ModelNames:
     RealESRGAN = "RealESRGAN_x4plus"
 
 
-@dataclass
-class ModelParams:
-    load_func: Callable = None
-    exists_func: Callable = None
-    load_kwargs: Dict = field(default_factory=dict)
-    reg_kwargs: Dict = field(default_factory=dict)
-
-
-model_params: Dict[str, ModelParams] = {
+model_loaders: Dict[str, ModelRepo.ModelLoader] = {
     ModelNames.RealESRGANx4Plus:
-        ModelParams(load_func=load_RealESRGAN,
-                    load_kwargs={"model_name": "RealESRGAN_x4plus"},
-                    exists_func=partial(load_RealESRGAN, checking=True)),
-
-    ModelNames.LDSR:
-        ModelParams(load_func=load_LDSR,
-                    exists_func=partial(load_LDSR, checking=True)),
-
-    ModelNames.SD_opt_unet:
-        ModelParams(load_func=load_SD_model_optimized,
-                    load_kwargs={"stage": 1},
-                    exists_func=sd_model_exists,
-                    reg_kwargs={"preload": opt.optimized,
-                                "max_depth": 0 if opt.optimized_turbo else 1 }),
-
-    ModelNames.SD_opt_cs:
-        ModelParams(load_func=load_SD_model_optimized,
-                    load_kwargs={"stage": 2},
-                    exists_func=sd_model_exists),
-
-    ModelNames.SD_opt_fs:
-        ModelParams(load_func=load_SD_model_optimized,
-                    load_kwargs={"stage": 3},
-                    exists_func=sd_model_exists),
-
-    ModelNames.SD_full:
-        ModelParams(load_func=load_SD_model,
-                    exists_func=sd_model_exists,
-                    reg_kwargs={"preload": not opt.optimized}),
+        Models.RealESRGAN( esrgan_dir = opt.realesrgan_dir, model_name=opt.realesrgan_model, half_precision=not opt.no_half ),
 
     ModelNames.GFPGAN:
-        ModelParams(load_func=load_GFPGAN, exists_func=partial(load_GFPGAN, checking=True))
-}
+        Models.GFPGAN( gfpgan_dir = opt.gfpgan_dir),
 
-# Register every model in model_params above
+    ModelNames.LDSR:
+        Models.LDSR( ldsr_dir=opt.ldsr_dir ),
+
+    ModelNames.SD_full:
+        Models.SD( checkpoint=opt.ckpt, config_yaml=opt.config, half_precision=not opt.no_half ),
+
+    ModelNames.SD_opt_cs:
+        Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.COND_STAGE,
+                             half_precision=not opt.no_half, max_depth = 0 if opt.optimized_turbo else 1 ),
+
+    ModelNames.SD_opt_unet:
+        Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.UNET,
+                             half_precision=not opt.no_half),
+
+    ModelNames.SD_opt_fs:
+        Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.FIRST_STAGE,
+                             half_precision=not opt.no_half)
+}
+# Register every model in model_loaders above
 model_manager = ModelRepo.Manager(device=device)
-for name, params in model_params.items():
-    if callable(params.load_func):
-        model_manager.register_model(name=name, load_func=params.load_func, exists_func=params.exists_func,
-                                     load_kwargs=params.load_kwargs, **params.reg_kwargs)
+for name, loader in model_loaders.items():
+    model_manager.register_model_loader(name=name, loader=loader)
+
 
 
 # Set the default esrgan model

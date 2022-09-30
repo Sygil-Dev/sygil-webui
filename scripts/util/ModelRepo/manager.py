@@ -17,6 +17,7 @@ import torch
 from readerwriterlock import rwlock
 
 from .model import Model
+from .model_loader import ModelLoader
 from .schedulers import Scheduler, OneAtATimeScheduler
 
 logging.basicConfig(stream=sys.stdout)
@@ -51,6 +52,17 @@ class Manager:
         self._model_info_lock: rwlock.RWLockWrite = rwlock.RWLockWrite()
         self._executor = ThreadPoolExecutor(Manager.NUM_WORKERS)
         self._scheduler: Scheduler = scheduler
+
+    def register_model_loader(self, name: str, loader: ModelLoader, **reg_kwargs):
+        """Register a model via a ModelLoader
+        Additional keyword arguments are passed on to register_model
+
+        Args:
+            name (str): name to register model as
+            loader (ModelLoader): _description_
+
+        """
+        self.register_model(name=name, load_func=loader.load, exists_func=loader.exists, **reg_kwargs)
 
     def register_model(
             self, name: str, load_func: Callable, exists_func: Callable, preload: bool = False, max_depth: int = 1,
