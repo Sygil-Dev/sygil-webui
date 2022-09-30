@@ -47,9 +47,11 @@ import os
 import pandas as pd
 #import requests
 import torch
+import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 from PIL import Image
-#from torch import nn
-#from torch.nn import functional as F
+from torch import nn
+from torch.nn import functional as F
 from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 from ldm.models.blip import blip_decoder
@@ -58,39 +60,28 @@ from ldm.models.blip import blip_decoder
 #---------------------------------------------------------------------------------------------------------------
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
 blip_image_eval_size = 256
+blip_model = None
 #blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'   
 
 def load_blip_model():
 	blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth", image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
 	blip_model.eval()
+	blip_model = blip_model.to(device).half()
 
 	return blip_model
 
-def load_clip_model(clip_model_name):
-	import clip
-
-	model, preprocess = clip.load(clip_model_name)
-	model.eval()
-	model = model.to(device)
-
-	return model, preprocess
-
 def generate_caption(pil_image):
-	blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth", image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
-	blip_model.eval()
-	blip_model = blip_model.to(device)
-	
-	gpu_image = transforms.Compose([
-	    transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),
-	    transforms.ToTensor(),
-	    transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-	    ])(pil_image).unsqueeze(0).to(device)
+    global blip_model
+    gpu_image = transforms.Compose([
+        transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+    ])(pil_image).unsqueeze(0).to(device).half()
 
-	with torch.no_grad():
-		caption = blip_model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
-	return caption[0]
+    with torch.no_grad():
+        caption = blip_model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
+    return caption[0]
 
 def load_list(filename):
 	with open(filename, 'r', encoding='utf-8', errors='replace') as f:
@@ -98,24 +89,33 @@ def load_list(filename):
 	return items
 
 def rank(model, image_features, text_array, top_count=1):
-	top_count = min(top_count, len(text_array))
-	text_tokens = clip.tokenize([text for text in text_array]).cuda()
-	with torch.no_grad():
-		text_features = model.encode_text(text_tokens).float()
-	text_features /= text_features.norm(dim=-1, keepdim=True)
+    top_count = min(top_count, len(text_array))
+    text_tokens = clip.tokenize([text for text in text_array]).cuda()
+    with torch.no_grad():
+        text_features = model.encode_text(text_tokens).float()
+    text_features /= text_features.norm(dim=-1, keepdim=True)
 
-	similarity = torch.zeros((1, len(text_array))).to(device)
-	for i in range(image_features.shape[0]):
-		similarity += (100.0 * image_features[i].unsqueeze(0) @ text_features.T).softmax(dim=-1)
-	similarity /= image_features.shape[0]
+    similarity = torch.zeros((1, len(text_array))).to(device)
+    for i in range(image_features.shape[0]):
+        similarity += (100.0 * image_features[i].unsqueeze(0) @ text_features.T).softmax(dim=-1)
+    similarity /= image_features.shape[0]
 
-	top_probs, top_labels = similarity.cpu().topk(top_count, dim=-1)  
-	return [(text_array[top_labels[0][i].numpy()], (top_probs[0][i].numpy()*100)) for i in range(top_count)]
+    top_probs, top_labels = similarity.cpu().topk(top_count, dim=-1)  
+    return [(text_array[top_labels[0][i].numpy()], (top_probs[0][i].numpy()*100)) for i in range(top_count)]
+
+def clear_cuda():
+	torch.cuda.empty_cache()
+	gc.collect()
 
 def interrogate(image, models):
+	global blip_model
+	blip_model = load_blip_model()
 	print ("Generating Caption")
 	st.session_state["log_message"].code("Generating Caption", language='')
 	caption = generate_caption(image)
+	del blip_model
+	clear_cuda()
+	print ("Caption Generated")
 	
 	if len(models) == 0:
 		print(f"\n\n{caption}")
@@ -124,22 +124,33 @@ def interrogate(image, models):
 	table = []
 	bests = [[('',0)]]*5
 	for model_name in models:
+		print(f"Interrogating {model_name}")
 		st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
-		model, preprocess = load_clip_model(model_name)
+		model, preprocess = clip.load(model_name)
 		model.cuda().eval()
 
 		images = preprocess(image).unsqueeze(0).cuda()
 		with torch.no_grad():
 			image_features = model.encode_image(images).float()
 		image_features /= image_features.norm(dim=-1, keepdim=True)
+		clear_cuda()
+		
+		ranks = []
+		ranks.append(rank(model, image_features, server_state["mediums"]))
+		clear_cuda()
+		artists = []
+		for batch in range(int(len(server_state["artists"])/1000)):
+			artist_rank = rank(model, image_features, server_state["artists"][batch*1000:(batch+1)*1000])
+			artists.extend(artist_rank)
+			clear_cuda()
+		ranks.append(artists)
+		ranks.append(rank(model, image_features, server_state["trending_list"]))
+		clear_cuda()
+		ranks.append(rank(model, image_features, server_state["movements"]))
+		clear_cuda()
+		ranks.append(rank(model, image_features, server_state["flavors"], top_count=3))
+		clear_cuda()
 
-		ranks = [
-		    rank(model, image_features, server_state["mediums"]),
-		    rank(model, image_features, ["by "+artist for artist in server_state["artists"]]),
-		    rank(model, image_features, server_state["trending_list"]),
-		    rank(model, image_features, server_state["movements"]),
-		    rank(model, image_features, server_state["flavors"], top_count=3)
-		]
 
 		for i in range(len(ranks)):
 			confidence_sum = 0
@@ -258,7 +269,7 @@ def layout():
 									  help='Refresh the image preview to show your uploaded image instead of the default placeholder.')
 				st.session_state["input_image_preview"] = st.empty()
 				
-				if st.session_state["uploaded_image"]:				
+				if st.session_state["uploaded_image"]:
 					st.session_state["uploaded_image"].pil_image = Image.open(st.session_state["uploaded_image"])#.convert('RGBA')
 					#new_img = image.resize((width, height))
 					st.session_state["input_image_preview"].image(st.session_state["uploaded_image"].pil_image, clamp=True)	
