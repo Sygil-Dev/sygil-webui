@@ -870,7 +870,7 @@ def try_loading_LDSR(model_name: str,checking=False):
 
 # Loads Stable Diffusion model by name
 #@retry(tries=5)
-def load_sd_model(model_name: str) -> [any, any, any, any, any]:    
+def load_sd_model(model_name: str):    
     ckpt_path = st.session_state.defaults.general.default_model_path
     
     if model_name != st.session_state.defaults.general.default_model:
