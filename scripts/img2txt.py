@@ -69,10 +69,14 @@ def load_blip_model():
 
     with server_state_lock['blip_model']:
         if "blip_model" not in server_state:
-            blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth",
+            server_state["blip_model"] = blip_decoder(pretrained="models/blip/model__base_caption.pth",
              image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
             blip_model.eval()
-            blip_model = blip_model.to(device).half() 
+            if not st.session_state["defaults"].general.optimized:
+                blip_model = blip_model.to(device).half()
+            else:
+                blip_model = blip_model.to("cpu")
+                
     
             print ("BLIP Model Loaded")
             st.session_state["log_message"].code("BLIP Model Loaded", language='')
