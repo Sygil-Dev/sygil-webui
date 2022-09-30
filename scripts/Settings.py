@@ -63,7 +63,7 @@ def layout():
 				# folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 				custom_models_available()
 				
-				if st.session_state.CustomModel_available:
+				if server_state["CustomModel_available"]:
 					st.session_state.default_model = st.selectbox("Default Model:", server_state["custom_models"],
 																		 index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
 																			help="Select the model you want to use. If you have placed custom models \

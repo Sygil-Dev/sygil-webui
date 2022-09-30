@@ -75,13 +75,13 @@ else:
 
 @torch.no_grad()
 def diffuse(
-	pipe,
-		cond_embeddings, # text conditioning, should be (1, 77, 768)
-	cond_latents,    # image conditioning, should be (1, 4, 64, 64)
-	num_inference_steps,
-	cfg_scale,
-	eta,
-	):
+    pipe,
+    cond_embeddings, # text conditioning, should be (1, 77, 768)
+    cond_latents,    # image conditioning, should be (1, 4, 64, 64)
+    num_inference_steps,
+    cfg_scale,
+    eta,
+    ):
 
 	torch_device = cond_latents.get_device()
 
@@ -416,7 +416,7 @@ def txt2vid(
 
 	# ------------------------------------------------------------------------------
 	#st.session_state["progress_bar_text"].text("Loading models...")	
-	with st.session_state["progress_bar_text"]:
+	with st.session_state["progress_bar_text"].container():
 		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
 			try:
 				if "model" in st.session_state:
@@ -676,7 +676,7 @@ def layout():
 		# If we have custom models available on the "models/custom"
 		#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 		custom_models_available()
-		if st.session_state["CustomModel_available"]:
+		if server_state["CustomModel_available"]:
 			custom_model = st.selectbox("Custom Model:", st.session_state["defaults"].txt2vid.custom_models_list,
 										index=st.session_state["defaults"].txt2vid.custom_models_list.index(st.session_state["defaults"].txt2vid.default_model),
 											help="Select the model you want to use. This option is only available if you have custom models \

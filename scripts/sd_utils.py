@@ -106,6 +106,11 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
     if os.path.exists("scripts/modeldownload.py"):
         import modeldownload
         modeldownload.updateModels()
+        
+#
+#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded",
+                  #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
+
 
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
@@ -149,6 +154,24 @@ elif save_format[0] == 'webp':
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
+
+#
+
+# functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
+# TODO, maybe look into async loading the file especially for remote fetching 
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+def remote_css(url):
+    st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
+
+def load_css(isLocal, nameOrURL):
+    if(isLocal):
+        local_css(nameOrURL)
+    else:
+        remote_css(nameOrURL)
+        
 def set_page_title(title):
     """
     Simple function to allows us to change the title dynamically.
@@ -300,8 +323,6 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
             server_state["model"].enable_minimal_memory_usage()    
     
         print("Model loaded.")
-        
-        st.session_state['progress_bar_text'].hc.info_card(title='Model Loaded', content='Ready to roll!', sentiment='good',bar_value=77)
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -849,7 +870,7 @@ def try_loading_LDSR(model_name: str,checking=False):
 
 # Loads Stable Diffusion model by name
 #@retry(tries=5)
-def load_sd_model(model_name: str) -> [any, any, any, any, any]:    
+def load_sd_model(model_name: str):    
     ckpt_path = st.session_state.defaults.general.default_model_path
     
     if model_name != st.session_state.defaults.general.default_model:
@@ -1278,22 +1299,23 @@ def check_prompt_length(prompt, comments):
 
 #
 def custom_models_available():
-    #
-    # Allow for custom models to be used instead of the default one,
-    # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
-    server_state["custom_models"]:sorted = []
-
-    for root, dirs, files in os.walk(os.path.join("models", "custom")):
-        for file in files:
-            if os.path.splitext(file)[1] == '.ckpt':						
-                server_state["custom_models"].append(os.path.splitext(file)[0])
-
-
-    if len(server_state["custom_models"]) > 0:
-        st.session_state["CustomModel_available"] = True
-        server_state["custom_models"].append("Stable Diffusion v1.4")
-    else:
-        st.session_state["CustomModel_available"] = False	
+    with server_state_lock["custom_models"]:
+        #
+        # Allow for custom models to be used instead of the default one,
+        # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
+        server_state["custom_models"]:sorted = []
+    
+        for root, dirs, files in os.walk(os.path.join("models", "custom")):
+            for file in files:
+                if os.path.splitext(file)[1] == '.ckpt':						
+                    server_state["custom_models"].append(os.path.splitext(file)[0])
+    
+        with server_state_lock["CustomModel_available"]:
+            if len(server_state["custom_models"]) > 0:
+                server_state["CustomModel_available"] = True
+                server_state["custom_models"].append("Stable Diffusion v1.4")
+            else:
+                server_state["CustomModel_available"] = False	
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
@@ -1481,7 +1503,6 @@ def process_images(
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
-    assert prompt is not None
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -1925,3 +1946,4 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     torch.save(params_dict, "learned_embeds.bin")
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
     print("loaded", placeholder_token)
+    
