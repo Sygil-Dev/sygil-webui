@@ -64,6 +64,7 @@ blip_model = None
 #blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'   
 
 def load_blip_model():
+    print ("Loading BLIP Model")
     st.session_state["log_message"].code("Loading BLIP Model", language='')
 
     with server_state_lock['blip_model']:
@@ -72,9 +73,11 @@ def load_blip_model():
              image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
             blip_model.eval()
             blip_model = blip_model.to(device).half() 
-
+    
+            print ("BLIP Model Loaded")
             st.session_state["log_message"].code("BLIP Model Loaded", language='')
         else:
+            print ("BLIP Model already loaded")
             st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
 
     return blip_model
@@ -130,6 +133,7 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
 
 def interrogate(image, models):
     global blip_model
+    
     blip_model = load_blip_model()
     print ("Generating Caption")
     st.session_state["log_message"].code("Generating Caption", language='')
@@ -148,7 +152,8 @@ def interrogate(image, models):
 
     table = []
     bests = [[('',0)]]*5
-
+    
+    print ("Ranking Text")
     for model_name in models:
         print(f"Interrogating with {model_name}...")
         st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
