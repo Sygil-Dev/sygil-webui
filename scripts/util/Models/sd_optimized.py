@@ -47,7 +47,7 @@ class SD_Optimized(SD):
             _, _ = model.load_state_dict(sd, strict=False)
         elif self._stage == SD_Optimized.Stage.COND_STAGE:
             model = instantiate_from_config(config.modelCondStage)
-            model.cond_stage_model.device = torch.device('cuda')  # FIXME: necessary on turbo since repo won't recurse
+            model.cond_stage_model.device = torch.device('cuda')  # FIXME: necessary on turbo since repo won't recurse?
             _, _ = model.load_state_dict(sd, strict=False)
         elif self._stage == SD_Optimized.Stage.FIRST_STAGE:
             model = instantiate_from_config(config.modelFirstStage)

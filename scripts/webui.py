@@ -376,11 +376,11 @@ model_loaders: Dict[str, ModelRepo.ModelLoader] = {
 
     ModelNames.SD_opt_cs:
         Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.COND_STAGE,
-                             half_precision=not opt.no_half, max_depth = 0 if opt.optimized_turbo else 1 ),
+                             half_precision=not opt.no_half),
 
     ModelNames.SD_opt_unet:
         Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.UNET,
-                             half_precision=not opt.no_half),
+                             half_precision=not opt.no_half, max_depth = 0 if opt.optimized_turbo else 1),
 
     ModelNames.SD_opt_fs:
         Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.FIRST_STAGE,

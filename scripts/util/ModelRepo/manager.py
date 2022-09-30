@@ -62,7 +62,8 @@ class Manager:
             loader (ModelLoader): _description_
 
         """
-        self.register_model(name=name, load_func=loader.load, exists_func=loader.exists, **reg_kwargs)
+        self.register_model(name=name, load_func=loader.load, exists_func=loader.exists,
+                            max_depth=loader.max_depth, **reg_kwargs)
 
     def register_model(
             self, name: str, load_func: Callable, exists_func: Callable, preload: bool = False, max_depth: int = 1,
@@ -254,7 +255,7 @@ class Manager:
             ret = scheduler_wrapped_func
 
         if isinstance(ret, torch.Tensor) and ret.device.type == 'cpu':
-            logger.warning(f"Wrapper moved tensor returned by {attr} on {model_info.model._instance} to device")
+            logger.debug(f"Wrapper moved tensor returned by {attr} on {model_info.model._name} to device")
             ret = ret.cuda()  # Don't go around returning cpu tensors
         return ret
 
