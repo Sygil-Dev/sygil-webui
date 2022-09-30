@@ -24,7 +24,7 @@ from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
 from frontend.image_metadata import ImageMetadata
 from frontend.ui_functions import resize_image
-import scripts.webui.util.ModelRepo as ModelRepo
+import scripts.util.ModelRepo as ModelRepo
 
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
