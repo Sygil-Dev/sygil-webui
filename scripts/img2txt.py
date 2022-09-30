@@ -68,7 +68,7 @@ blip_model = None
 def load_blip_model():
 	blip_model = blip_decoder(pretrained="models/blip/model__base_caption.pth", image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
 	blip_model.eval()
-	blip_model = blip_model.to('cpu')
+	blip_model = blip_model.to(device).half()
 
 	return blip_model
 
@@ -78,7 +78,7 @@ def generate_caption(pil_image):
         transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),
         transforms.ToTensor(),
         transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-    ])(pil_image).unsqueeze(0).to('cpu')
+    ])(pil_image).unsqueeze(0).to(device).half()
 
     with torch.no_grad():
         caption = blip_model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
@@ -123,7 +123,7 @@ def interrogate(image, models):
 	print ("Generating Caption")
 	st.session_state["log_message"].code("Generating Caption", language='')
 	caption = generate_caption(image)
-	del blip_model
+	blip_model.to('cpu')
 	clear_cuda()
 	print ("Caption Generated")
 	
