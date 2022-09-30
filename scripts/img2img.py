@@ -1,5 +1,19 @@
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
@@ -352,8 +366,6 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	return output_images, seed, info, stats
 	
 #
-
-
 def layout():
 	with st.form("img2img-inputs"):
 		st.session_state["generation_mode"] = "img2img"
@@ -376,7 +388,7 @@ def layout():
 			# If we have custom models available on the "models/custom" 
 			#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 			custom_models_available()
-			if st.session_state["CustomModel_available"]:
+			if server_state["CustomModel_available"]:
 				st.session_state["custom_model"] = st.selectbox("Custom Model:", server_state["custom_models"],
 									    index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
 							    help="Select the model you want to use. This option is only available if you have custom models \
@@ -394,33 +406,63 @@ def layout():
 			
 			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
 			st.session_state["sampler_name"] = st.selectbox("Sampling method",sampler_name_list, 
-									index=sampler_name_list.index(st.session_state['defaults'].img2img.sampler_name), help="Sampling method to use.")
-	
-			mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
-			mask_mode = st.selectbox("Mask Mode", mask_mode_list,
-								 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
-								 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
-								 )
-			mask_mode = mask_mode_list.index(mask_mode)
-	
+									index=sampler_name_list.index(st.session_state['defaults'].img2img.sampler_name), help="Sampling method to use.")			
+			
 			width = st.slider("Width:", min_value=st.session_state['defaults'].img2img.width.min_value, max_value=st.session_state['defaults'].img2img.width.max_value,
-							  value=st.session_state['defaults'].img2img.width.value, step=st.session_state['defaults'].img2img.width.step)
+									  value=st.session_state['defaults'].img2img.width.value, step=st.session_state['defaults'].img2img.width.step)
 			height = st.slider("Height:", min_value=st.session_state['defaults'].img2img.height.min_value, max_value=st.session_state['defaults'].img2img.height.max_value,
-							   value=st.session_state['defaults'].img2img.height.value, step=st.session_state['defaults'].img2img.height.step)
-			seed = st.text_input("Seed:", value=st.session_state['defaults'].img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-			noise_mode_list = ["Seed", "Find Noise", "Matched Noise", "Find+Matched Noise"]
-			noise_mode = st.selectbox(
-						"Noise Mode", noise_mode_list,
-						help=""
-					)
-			noise_mode = noise_mode_list.index(noise_mode)
-			find_noise_steps = st.slider("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
-										 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value, max_value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
-										 step=st.session_state['defaults'].img2img.find_noise_steps.step)
-			batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].img2img.batch_count.min_value, max_value=st.session_state['defaults'].img2img.batch_count.max_value,
-									value=st.session_state['defaults'].img2img.batch_count.value, step=st.session_state['defaults'].img2img.batch_count.step,
-								help="How many iterations or batches of images to generate in total.")
+									   value=st.session_state['defaults'].img2img.height.value, step=st.session_state['defaults'].img2img.height.step)
+			seed = st.text_input("Seed:", value=st.session_state['defaults'].img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")	
+			
+			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
+											  max_value=st.session_state['defaults'].img2img.cfg_scale.max_value, value=st.session_state['defaults'].img2img.cfg_scale.value,
+											  step=st.session_state['defaults'].img2img.cfg_scale.step, help="How strongly the image should follow the prompt.")
+		
+			st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength.value, 
+																		   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
+														   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
+														   step=st.session_state['defaults'].img2img.denoising_strength.step)			
+			
+			
+			mask_expander = st.empty()
+			with mask_expander.expander("Mask"):
+				mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
+				mask_mode = st.selectbox("Mask Mode", mask_mode_list,
+									 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
+									 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
+									 )
+				mask_mode = mask_mode_list.index(mask_mode)
 	
+			
+				noise_mode_list = ["Seed", "Find Noise", "Matched Noise", "Find+Matched Noise"]
+				noise_mode = st.selectbox(
+							"Noise Mode", noise_mode_list,
+							help=""
+						)
+				noise_mode = noise_mode_list.index(noise_mode)
+				find_noise_steps = st.slider("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
+											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value, max_value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
+											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
+			
+			with st.expander("Batch Options"):
+				batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].img2img.batch_count.min_value, max_value=st.session_state['defaults'].img2img.batch_count.max_value,
+										value=st.session_state['defaults'].img2img.batch_count.value, step=st.session_state['defaults'].img2img.batch_count.step,
+									help="How many iterations or batches of images to generate in total.")
+				
+				batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].img2img.batch_size.min_value, max_value=st.session_state['defaults'].img2img.batch_size.max_value,
+												   value=st.session_state['defaults'].img2img.batch_size.value, step=st.session_state['defaults'].img2img.batch_size.step,
+												   help="How many images are at once in a batch. It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish \
+													   generation as more images are generated at once.Default: 1")		
+				
+			with st.expander("Preview Settings"):
+				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].img2img.update_preview,
+																		 help="If enabled the image preview will be updated during the generation instead of at the end. \
+														 You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
+														 By default this is enabled and the frequency is set to 1 step.")
+		
+				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].img2img.update_preview_frequency,
+																					 help="Frequency in steps at which the the preview image is updated. By default the frequency \
+															  is set to 1 step.")					
 			#			
 			with st.expander("Advanced"):
 				separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].img2img.separate_prompts,
@@ -457,31 +499,11 @@ def layout():
 					st.session_state["use_RealESRGAN"] = False
 					st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 	
-				variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].img2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
-				variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].img2img.variant_seed,
-									     help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-				cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
-									  max_value=st.session_state['defaults'].img2img.cfg_scale.max_value, value=st.session_state['defaults'].img2img.cfg_scale.value,
-									  step=st.session_state['defaults'].img2img.cfg_scale.step, help="How strongly the image should follow the prompt.")
-				batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].img2img.batch_size.min_value, max_value=st.session_state['defaults'].img2img.batch_size.max_value,
-									   value=st.session_state['defaults'].img2img.batch_size.value, step=st.session_state['defaults'].img2img.batch_size.step,
-								       help="How many images are at once in a batch. It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish \
-									       generation as more images are generated at once.Default: 1")
-	
-				st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength.value, 
-												   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
-												   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
-												   step=st.session_state['defaults'].img2img.denoising_strength.step)
-	
-			with st.expander("Preview Settings"):
-				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].img2img.update_preview,
-												 help="If enabled the image preview will be updated during the generation instead of at the end. \
-												 You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-												 By default this is enabled and the frequency is set to 1 step.")
-	
-				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].img2img.update_preview_frequency,
-													     help="Frequency in steps at which the the preview image is updated. By default the frequency \
-													  is set to 1 step.")						
+				with st.expander("Variant"):
+					variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].img2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
+					variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].img2img.variant_seed,
+											 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+						
 	
 		with col2_img2img_layout:
 			editor_tab = st.tabs(["Editor"])
@@ -510,6 +532,7 @@ def layout():
 						help="Upload an mask image which will be used for masking the image to image generation.",
 					)
 			if uploaded_masks:
+				mask_expander.expander("Mask", expanded=True)
 				mask = Image.open(uploaded_masks)
 				if mask.mode == "RGBA":
 					mask = mask.convert('RGBA')
@@ -563,8 +586,10 @@ def layout():
 		if generate_button:
 			#print("Loading models")
 			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-			load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], st.session_state["CustomModel_available"],
-				    st.session_state["custom_model"])                
+			with col3_img2img_layout:
+				with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+					load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
+							st.session_state["custom_model"])                
 			
 			if uploaded_images:
 				image = Image.open(uploaded_images).convert('RGBA')

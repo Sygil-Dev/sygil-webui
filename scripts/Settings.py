@@ -1,5 +1,19 @@
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
@@ -49,7 +63,7 @@ def layout():
 				# folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 				custom_models_available()
 				
-				if st.session_state.CustomModel_available:
+				if server_state["CustomModel_available"]:
 					st.session_state.default_model = st.selectbox("Default Model:", server_state["custom_models"],
 																		 index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
 																			help="Select the model you want to use. If you have placed custom models \
@@ -149,6 +163,7 @@ def layout():
 																						negative effect updating the preview image has on performance. Default: 10"))					
 				
 			with col3:
+				st.title("Others")
 				st.session_state["defaults"].general.use_sd_concepts_library = st.checkbox("Use the Concepts Library", value=st.session_state['defaults'].general.use_sd_concepts_library,
 																									   help="Use the embeds Concepts Library, if checked, once the settings are saved an option will\
 																									  appear to specify the directory where the concepts are stored. Default: True)")				
@@ -183,6 +198,30 @@ def layout():
 				st.session_state["defaults"].general.no_verify_input = st.checkbox("Do not Verify Input", value=st.session_state['defaults'].general.no_verify_input,
 																									   help="Do not verify input to check if it's too long. Default: False")
 				
+				st.session_state["defaults"].daisi_app.running_on_daisi_io = st.checkbox("Running on Daisi.io?", value=st.session_state['defaults'].daisi_app.running_on_daisi_io,
+																							   help="Specify if we are running on app.Daisi.io . Default: False")
+				
+				
+				
+			with col4:
+				st.title("Streamlit Config")
+				
+				st.session_state["defaults"].general.streamlit_telemetry = st.checkbox("Enable Telemetry", value=st.session_state['defaults'].general.streamlit_telemetry,
+																					help="Enables or Disables streamlit telemetry. Default: False")
+				st.session_state["streamlit_config"]["browser"]["gatherUsageStats"] = st.session_state["defaults"].general.streamlit_telemetry
+				
+				default_theme_list = ["light", "dark"]
+				st.session_state["defaults"].general.default_theme = st.selectbox("Default Theme", default_theme_list, index=default_theme_list.index(st.session_state['defaults'].general.default_theme),
+																					help="Defaut theme to use as base for streamlit. Default: dark")
+				st.session_state["streamlit_config"]["theme"]["base"] = st.session_state["defaults"].general.default_theme				
+				
+			with col5:
+				st.title("Huggingface")
+				st.session_state["defaults"].general.huggingface_token = st.text_input("Huggingface Token", value=st.session_state['defaults'].general.huggingface_token, type="password",
+																							help="Your Huggingface Token, it's used to download the model for the diffusers library which \
+																							is used on the Text To Video tab. This token will be saved to your user config file\
+																							and WILL NOT be share with us or anyone. You can get your access token \
+																							at https://huggingface.co/settings/tokens. Default: None")
 				
 		with txt2img_tab:
 			st.title("Text To Image")
@@ -221,12 +260,14 @@ def layout():
 			reset_button = st.form_submit_button("Reset")
 			
 		if save_button:
-			#userconfig_streamlit = OmegaConf.to_yaml(st.session_state.defaults)
-			#OmegaConf.save("configs/webui/userconfig_streamlit.yaml")
-					
 			OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
 			loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-			assert st.session_state.defaults == loaded			
+			assert st.session_state.defaults == loaded	
+						
+			#
+			if (os.path.exists(".streamlit/config.toml")):
+				with open(".streamlit/config.toml", "w") as toml_file:				
+					toml.dump(st.session_state["streamlit_config"], toml_file)
 			
 		if reset_button:
 			st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")

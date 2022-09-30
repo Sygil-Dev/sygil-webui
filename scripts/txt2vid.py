@@ -1,5 +1,19 @@
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
-from webui_streamlit import st
 from sd_utils import *
 
 # streamlit imports
@@ -47,27 +61,27 @@ class plugin_info():
 
 
 if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-	GFPGAN_available = True
+	server_state["GFPGAN_available"] = True
 else:
-	GFPGAN_available = False
+	server_state["GFPGAN_available"] = False
 
 if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].txt2vid.RealESRGAN_model}.pth")):
-	RealESRGAN_available = True
+	server_state["RealESRGAN_available"] = True
 else:
-	RealESRGAN_available = False
+	server_state["RealESRGAN_available"] = False
 
 #
 # -----------------------------------------------------------------------------
 
 @torch.no_grad()
 def diffuse(
-	pipe,
-		cond_embeddings, # text conditioning, should be (1, 77, 768)
-	cond_latents,    # image conditioning, should be (1, 4, 64, 64)
-	num_inference_steps,
-	cfg_scale,
-	eta,
-	):
+    pipe,
+    cond_embeddings, # text conditioning, should be (1, 77, 768)
+    cond_latents,    # image conditioning, should be (1, 4, 64, 64)
+    num_inference_steps,
+    cfg_scale,
+    eta,
+    ):
 
 	torch_device = cond_latents.get_device()
 
@@ -210,60 +224,70 @@ def load_diffusers_model(weights_path,torch_device):
 	with server_state_lock["model"]:
 		if "model" in server_state:
 			del server_state["model"]
+			
+	if "textual_inversion" in st.session_state:
+		del st.session_state['textual_inversion']	
 	
-	with server_state_lock["pipe"]:
-		try:
-			if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
-				if st.session_state["weights_path"] != weights_path:
-					del st.session_state["weights_path"]
+	try:
+		with server_state_lock["pipe"]:
+			try:
+				if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
+					if st.session_state["weights_path"] != weights_path:
+						del st.session_state["weights_path"]
+			
+					st.session_state["weights_path"] = weights_path
+					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+						    weights_path,
+						    use_local_file=True,
+						    use_auth_token=st.session_state["defaults"].general.huggingface_token,
+						    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+						    revision="fp16" if not st.session_state['defaults'].general.no_half else None
+						)
+			
+					server_state["pipe"].unet.to(torch_device)
+					server_state["pipe"].vae.to(torch_device)
+					server_state["pipe"].text_encoder.to(torch_device)
+			
+					if st.session_state.defaults.general.enable_attention_slicing:
+						server_state["pipe"].enable_attention_slicing()
+						
+					if st.session_state.defaults.general.enable_minimal_memory_usage:	
+						server_state["pipe"].enable_minimal_memory_usage()
+			
+					print("Tx2Vid Model Loaded")
+				else:
+					print("Tx2Vid Model already Loaded")
 		
+			except:
+				#del st.session_state["weights_path"]
+				#del server_state["pipe"]
+			
 				st.session_state["weights_path"] = weights_path
 				server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 					    weights_path,
 					    use_local_file=True,
-					        use_auth_token=True,
-					                torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-					                revision="fp16" if not st.session_state['defaults'].general.no_half else None
+					    use_auth_token=st.session_state["defaults"].general.huggingface_token,
+					    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+					    revision="fp16" if not st.session_state['defaults'].general.no_half else None
 					)
-		
+			
 				server_state["pipe"].unet.to(torch_device)
 				server_state["pipe"].vae.to(torch_device)
 				server_state["pipe"].text_encoder.to(torch_device)
-		
+			
 				if st.session_state.defaults.general.enable_attention_slicing:
 					server_state["pipe"].enable_attention_slicing()
-					
-				if st.session_state.defaults.general.enable_minimal_memory_usage:	
+			
+				if st.session_state.defaults.general.enable_minimal_memory_usage:
 					server_state["pipe"].enable_minimal_memory_usage()
+			
+				print("Tx2Vid Model Loaded")	
+	except (EnvironmentError, OSError):
+		st.session_state["progress_bar_text"].error(
+		    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
+		)
+		raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
 		
-				print("Tx2Vid Model Loaded")
-			else:
-				print("Tx2Vid Model already Loaded")
-	
-		except:
-			#del st.session_state["weights_path"]
-			#del server_state["pipe"]
-		
-			st.session_state["weights_path"] = weights_path
-			server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-				    weights_path,
-				    use_local_file=True,
-				    use_auth_token=True,
-				    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-				    revision="fp16" if not st.session_state['defaults'].general.no_half else None
-				)
-		
-			server_state["pipe"].unet.to(torch_device)
-			server_state["pipe"].vae.to(torch_device)
-			server_state["pipe"].text_encoder.to(torch_device)
-		
-			if st.session_state.defaults.general.enable_attention_slicing:
-				server_state["pipe"].enable_attention_slicing()
-		
-			if st.session_state.defaults.general.enable_minimal_memory_usage:
-				server_state["pipe"].enable_minimal_memory_usage()
-		
-			print("Tx2Vid Model Loaded")	
 #
 def txt2vid(
 	# --------------------------------------
@@ -391,18 +415,19 @@ def txt2vid(
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
 	# ------------------------------------------------------------------------------
-	st.session_state["progress_bar_text"].text("Loading models...")	
+	#st.session_state["progress_bar_text"].text("Loading models...")	
+	with st.session_state["progress_bar_text"].container():
+		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+			try:
+				if "model" in st.session_state:
+					del st.session_state["model"]
+			except:
+				pass
+		
+			#print (st.session_state["weights_path"] != weights_path)
+		
+			load_diffusers_model(weights_path, torch_device)	
 	
-	try:
-		if "model" in st.session_state:
-			del st.session_state["model"]
-	except:
-		pass
-
-	#print (st.session_state["weights_path"] != weights_path)
-
-	load_diffusers_model(weights_path, torch_device)
-
 	server_state["pipe"].scheduler = SCHEDULERS[scheduler]
 	
 	server_state["pipe"].use_multiprocessing_for_evaluation = False
@@ -484,7 +509,7 @@ def txt2vid(
 				with autocast("cuda"):
 					image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
 					
-				if st.session_state["save_individual_images"] and not server_state["use_GFPGAN"] and not st.session_state["use_RealESRGAN"]:
+				if st.session_state["save_individual_images"] and not st.session_state["use_GFPGAN"] and not st.session_state["use_RealESRGAN"]:
 					#im = Image.fromarray(image)
 					outpath = os.path.join(full_path, 'frame%06d.png' % frame_index)
 					image.save(outpath, quality=quality)
@@ -498,8 +523,8 @@ def txt2vid(
 				
 				#
 				#try:
-				#if server_state["use_GFPGAN"] and server_state["GFPGAN"] is not None and not st.session_state["use_RealESRGAN"]:
-				if server_state["use_GFPGAN"] and server_state["GFPGAN"] is not None:
+				#if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None and not st.session_state["use_RealESRGAN"]:
+				if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None:
 					#print("Running GFPGAN on image ...")
 					st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
 					#skip_save = True # #287 >_>
@@ -651,7 +676,7 @@ def layout():
 		# If we have custom models available on the "models/custom"
 		#folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
 		custom_models_available()
-		if st.session_state["CustomModel_available"]:
+		if server_state["CustomModel_available"]:
 			custom_model = st.selectbox("Custom Model:", st.session_state["defaults"].txt2vid.custom_models_list,
 										index=st.session_state["defaults"].txt2vid.custom_models_list.index(st.session_state["defaults"].txt2vid.default_model),
 											help="Select the model you want to use. This option is only available if you have custom models \
@@ -714,24 +739,28 @@ def layout():
 													  help="Do loop")
 			st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
-			if GFPGAN_available:
-				server_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+			if server_state["GFPGAN_available"]:
+				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 			else:
-				server_state["use_GFPGAN"] = False
+				st.session_state["use_GFPGAN"] = False
 
-			if RealESRGAN_available:
+			if server_state["RealESRGAN_available"]:
 				st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
 																 help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
 				st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)
 			else:
 				st.session_state["use_RealESRGAN"] = False
 				st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
-
-			st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
-														   min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
-														   max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
-														   step=st.session_state['defaults'].txt2vid.variant_amount.step)
-			st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+				
+			with st.expander("Variant"):
+				st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
+					                                           min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
+					                                           max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
+					                                           step=st.session_state['defaults'].txt2vid.variant_amount.step)
+				
+				st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed, 
+				                                                 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+			
 			#st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start.value,
 													   #min_value=st.session_state['defaults'].txt2vid.beta_start.min_value,
 													   #max_value=st.session_state['defaults'].txt2vid.beta_start.max_value,
@@ -743,82 +772,84 @@ def layout():
 	if generate_button:
 		#print("Loading models")
 		# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-		#load_models(False, server_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
-
-		if server_state["use_GFPGAN"]:
+		#load_models(False, st.session_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
+		
+		if st.session_state["use_GFPGAN"]:
 			if "GFPGAN" in st.session_state:
 				print("GFPGAN already loaded")
 			else:
-				# Load GFPGAN
-				if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-					try:
-						server_state["GFPGAN"] = load_GFPGAN()
-						print("Loaded GFPGAN")
-					except Exception:
-						import traceback
-						print("Error loading GFPGAN:", file=sys.stderr)
-						print(traceback.format_exc(), file=sys.stderr)          
+				with col2:
+					with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+						# Load GFPGAN
+						if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+							try:
+								server_state["GFPGAN"] = load_GFPGAN()
+								print("Loaded GFPGAN")
+							except Exception:
+								import traceback
+								print("Error loading GFPGAN:", file=sys.stderr)
+								print(traceback.format_exc(), file=sys.stderr)          
 		else:
 			if "GFPGAN" in st.session_state:
 				del server_state["GFPGAN"] 		
 
-		try:
-			# run video generation
-			video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
-				                               num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
-				               num_inference_steps=st.session_state.num_inference_steps,
-				               cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
-				               seeds=seed, quality=100, eta=0.0, width=width,
-				               height=height, weights_path=custom_model, scheduler=scheduler_name,
-				               disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
-				               beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
-				               beta_schedule=beta_scheduler_type, starting_image=None)
-	
-			#message.success('Done!', icon="✅")
-			message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
-	
-			#history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
-	
-			#if 'latestVideos' in st.session_state:
-				#for i in video:
-					##push the new image to the list of latest images and remove the oldest one
-					##remove the last index from the list\
-					#st.session_state['latestVideos'].pop()
-					##add the new image to the start of the list
-					#st.session_state['latestVideos'].insert(0, i)
-				#PlaceHolder.empty()
-	
-				#with PlaceHolder.container():
-					#col1, col2, col3 = st.columns(3)
-					#col1_cont = st.container()
-					#col2_cont = st.container()
-					#col3_cont = st.container()
-	
-					#with col1_cont:
-						#with col1:
-							#st.image(st.session_state['latestVideos'][0])
-							#st.image(st.session_state['latestVideos'][3])
-							#st.image(st.session_state['latestVideos'][6])
-					#with col2_cont:
-						#with col2:
-							#st.image(st.session_state['latestVideos'][1])
-							#st.image(st.session_state['latestVideos'][4])
-							#st.image(st.session_state['latestVideos'][7])
-					#with col3_cont:
-						#with col3:
-							#st.image(st.session_state['latestVideos'][2])
-							#st.image(st.session_state['latestVideos'][5])
-							#st.image(st.session_state['latestVideos'][8])
-					#historyGallery = st.empty()
-	
-				## check if output_images length is the same as seeds length
-				#with gallery_tab:
-					#st.markdown(createHTMLGallery(video,seed), unsafe_allow_html=True)
-	
-	
-				#st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+		#try:
+		# run video generation
+		video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
+	                                       num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
+	                       num_inference_steps=st.session_state.num_inference_steps,
+	                       cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
+	                       seeds=seed, quality=100, eta=0.0, width=width,
+	                       height=height, weights_path=custom_model, scheduler=scheduler_name,
+	                       disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
+	                       beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
+	                       beta_schedule=beta_scheduler_type, starting_image=None)
 
-		except (StopException, KeyError):
-			print(f"Received Streamlit StopException")
+		#message.success('Done!', icon="✅")
+		message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+
+		#history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+
+		#if 'latestVideos' in st.session_state:
+			#for i in video:
+				##push the new image to the list of latest images and remove the oldest one
+				##remove the last index from the list\
+				#st.session_state['latestVideos'].pop()
+				##add the new image to the start of the list
+				#st.session_state['latestVideos'].insert(0, i)
+			#PlaceHolder.empty()
+
+			#with PlaceHolder.container():
+				#col1, col2, col3 = st.columns(3)
+				#col1_cont = st.container()
+				#col2_cont = st.container()
+				#col3_cont = st.container()
+
+				#with col1_cont:
+					#with col1:
+						#st.image(st.session_state['latestVideos'][0])
+						#st.image(st.session_state['latestVideos'][3])
+						#st.image(st.session_state['latestVideos'][6])
+				#with col2_cont:
+					#with col2:
+						#st.image(st.session_state['latestVideos'][1])
+						#st.image(st.session_state['latestVideos'][4])
+						#st.image(st.session_state['latestVideos'][7])
+				#with col3_cont:
+					#with col3:
+						#st.image(st.session_state['latestVideos'][2])
+						#st.image(st.session_state['latestVideos'][5])
+						#st.image(st.session_state['latestVideos'][8])
+				#historyGallery = st.empty()
+
+			## check if output_images length is the same as seeds length
+			#with gallery_tab:
+				#st.markdown(createHTMLGallery(video,seed), unsafe_allow_html=True)
+
+
+			#st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+
+		#except (StopException, KeyError):
+			#print(f"Received Streamlit StopException")
 
 

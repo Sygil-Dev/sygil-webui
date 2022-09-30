@@ -1,15 +1,33 @@
+/*
+This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+
+Copyright 2022 sd-webui team.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 /***********************************************************
 * Additional CSS for streamlit builtin components          *
 ************************************************************/
 
-/* Tab name (e.g. Text-to-Image) */
+/* Tab name (e.g. Text-to-Image) //improve legibility*/
 button[data-baseweb="tab"] {
-  font-size: 25px; //improve legibility
+  font-size: 25px;
 }
 
-/* Image Container (only appear after run finished) */
+/* Image Container (only appear after run finished)//center the image, especially better looks in wide screen */
 .css-du1fp8 {
-  justify-content: center; //center the image, especially better looks in wide screen
+  justify-content: center;
 }
 
 /* Streamlit header */
@@ -17,16 +35,16 @@ button[data-baseweb="tab"] {
   background-color: transparent;
 }
 
-/* Main streamlit container (below header) */
+/* Main streamlit container (below header) //reduce the empty spaces*/
 .css-18e3th9 {
-  padding-top: 2rem; //reduce the empty spaces
+  padding-top: 2rem;
 }
 
 /* @media only for widescreen, to ensure enough space to see all */
 @media (min-width: 1024px) {
-  /* Main streamlit container (below header) */
+  /* Main streamlit container (below header) //reduce the empty spaces, can go fully to the top on widescreen devices*/
   .css-18e3th9 {
-    padding-top: 0px; //reduce the empty spaces, can go fully to the top on widescreen devices
+    padding-top: 0px;
   }
 }
 
@@ -119,3 +137,16 @@ div.gallery:hover {
 .row-widget.stButton {
   text-align: center;
 }
+
+/********************************************************************
+    Hide anchor links on titles
+*********************************************************************/
+.css-15zrgzn {
+	display: none
+	}
+.css-eczf16 {
+	display: none
+	}
+.css-jn99sy {
+	display: none
+	}
