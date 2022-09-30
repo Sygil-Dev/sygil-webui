@@ -37,7 +37,7 @@ class ModelInfo:
 class Manager:
     NUM_WORKERS: int = 5
 
-    def __init__(self, device: torch.device, scheduler: Optional[Scheduler] = None):
+    def __init__(self, device: torch.device = torch.device("cuda"), scheduler: Optional[Scheduler] = None):
         """Construct a new ModelRepo Manager
 
         Args:
