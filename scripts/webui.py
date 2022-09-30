@@ -2638,12 +2638,15 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 continue
             if not pop.get("id"):
                 skipped_info = pop.get('skipped')
-                if skipped_info:
+                if skipped_info and len(skipped_info):
                     skipped_info = f" Skipped Info: {skipped_info}."
+                else:
+                    skipped_info = ''
                 logger.debug(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
                 time.sleep(interval)
                 continue
             current_id = pop['id']
+            logger.debug(f"Request with id {current_id} picked up. Initiating work...")
             current_payload = pop['payload']
             if 'toggles' in current_payload and current_payload['toggles'] == None:
                 logger.error(f"Received Bad payload: {pop}")
