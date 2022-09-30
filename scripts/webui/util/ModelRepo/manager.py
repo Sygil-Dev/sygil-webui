@@ -219,18 +219,30 @@ class Manager:
             wrapped_func = ret
 
             def scheduler_wrapped_func(*args, **kwargs):
-                with self._scheduler.on_device_context(model_info.scheduler_token):
-                    try:
-                        wrapped_ret = wrapped_func(*args, **kwargs)
-                    except RuntimeError as e:
-                        logger.error(f"Exception running wrapped function {attr} on {model_info.model._instance}")
-                        logger.error(traceback.format_exc())
-                        # Out of memory. Ask the scheduler to free some and try repeating the command?
-                return wrapped_ret
+                initial_retry_cnt = 10
+                retries_left = initial_retry_cnt
+                while True:
+                    with self._scheduler.on_device_context(model_info.scheduler_token):
+                        try:
+                            wrapped_ret = wrapped_func(*args, **kwargs)
+                        except RuntimeError as e:
+                            # Attempt to retry after an out of memory error
+                            if retries_left == initial_retry_cnt:
+                                logger.error(
+                                    f"Exception running wrapped function {attr} on {model_info.model._instance}")
+                                logger.error(traceback.format_exc())
+                            if retries_left > 0:
+                                logger.warning(
+                                    f"Retrying function call [{attr} on {model_info.model._instance}]. This may produce unexpected results. Retries left: {retries_left}")
+                                retries_left -= 1
+                                continue
+                            raise
+
+                    return wrapped_ret
             ret = scheduler_wrapped_func
 
         if isinstance(ret, torch.Tensor) and ret.device.type == 'cpu':
-            logger.debug(f"Wrapper moved tensor returned by {attr} on {model_info.model._instance} to device")
+            logger.warning(f"Wrapper moved tensor returned by {attr} on {model_info.model._instance} to device")
             ret = ret.cuda()  # Don't go around returning cpu tensors
         return ret
 
