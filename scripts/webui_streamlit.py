@@ -110,23 +110,6 @@ def layout():
 			server_state["RealESRGAN_available"] = True 
 		else:
 			server_state["RealESRGAN_available"] = False	
-		
-	## Allow for custom models to be used instead of the default one,
-	## an example would be Waifu-Diffusion or any other fine tune of stable diffusion
-	#st.session_state["custom_models"]:sorted = []
-	#for root, dirs, files in os.walk(os.path.join("models", "custom")):
-		#for file in files:
-			#if os.path.splitext(file)[1] == '.ckpt':
-				##fullpath = os.path.join(root, file)
-				##print(fullpath)
-				#st.session_state["custom_models"].append(os.path.splitext(file)[0])
-				##print (os.path.splitext(file)[0])
-	
-	#if len(st.session_state["custom_models"]) > 0:
-		#st.session_state["CustomModel_available"] = True
-		#st.session_state["custom_models"].append("Stable Diffusion v1.4")
-	#else:
-		#st.session_state["CustomModel_available"] = False
 
 	with st.sidebar:		
 		tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"], 
@@ -137,7 +120,6 @@ def layout():
 		                      #{'label':"Model Manager"},{'label':"Settings"}],
 		                     #horizontal_orientation=False,
 		                     #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
-                        #iconName=['dashboard','model_training' ,'cloud_download', 'settings'])
 		
 	if tabs =='Stable Diffusion':
 		# set the page url and title
@@ -173,23 +155,16 @@ def layout():
 		
 	#
 	elif tabs == 'Model Manager':
-		# set the page url and title
-		#st.experimental_set_query_params(page='model-manager')
 		set_page_title("Model Manager - Stable Diffusion Playground")
 		
 		from ModelManager import layout
 		layout()
 	
-	elif tabs == 'Textual Inversion':
-		# set the page url and title
-		#st.experimental_set_query_params(page='textual-inversion')
-		
+	elif tabs == 'Textual Inversion':		
 		from textual_inversion import layout
 		layout()
 		
 	elif tabs == 'Settings':
-		# set the page url and title
-		#st.experimental_set_query_params(page='settings')
 		set_page_title("Settings - Stable Diffusion Playground")
 		
 		from Settings import layout

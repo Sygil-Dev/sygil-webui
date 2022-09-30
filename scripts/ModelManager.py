@@ -41,7 +41,7 @@ def layout():
                     ,Waifu Diffusion v1.2 Pruned      , ./models/custom                                , https://huggingface.co/crumb/pruned-waifu-diffusion
                     ,TrinArt Stable Diffusion v2      , ./models/custom                                , https://huggingface.co/naclbit/trinart_stable_diffusion_v2
                     ,Stable Diffusion Concept Library , ./models/custom/sd-concepts-library            , https://github.com/sd-webui/sd-concepts-library
-                    ,Blip Model                       , ./models/custom/blip                           , https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth
+                    ,Blip Model                       , ./models/blip                                  , https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth
                     """
     colms = st.columns((1, 3, 5, 5))
     columns = ["№",'Model Name','Save Location','Download Link']
