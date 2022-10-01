@@ -18,7 +18,7 @@
 """
 CLIP Interrogator made by @pharmapsychotic modified to work with our WebUI.
 
-# CLIP Interrogator by @pharmapsychotic 
+# CLIP Interrogator by @pharmapsychotic
 Twitter: https://twitter.com/pharmapsychotic
 Github: https://github.com/pharmapsychotic/clip-interrogator
 
@@ -71,25 +71,25 @@ def load_blip_model():
         with server_state_lock['blip_model']:
             server_state["blip_model"] = blip_decoder(pretrained="models/blip/model__base_caption.pth",
                                                         image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
-            
+
             server_state["blip_model"] = server_state["blip_model"].eval()
-            
-            #if not st.session_state["defaults"].general.optimized:
+
+            # if not st.session_state["defaults"].general.optimized:
             server_state["blip_model"] = server_state["blip_model"].to(device).half()
-            
+
             print("BLIP Model Loaded")
             st.session_state["log_message"].code("BLIP Model Loaded", language='')
     else:
         print("BLIP Model already loaded")
         st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
 
-    #return server_state["blip_model"]
+    # return server_state["blip_model"]
 
 
 def generate_caption(pil_image):
 
     load_blip_model()
-    
+
     gpu_image = transforms.Compose([  # type: ignore
         transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),  # type: ignore
         transforms.ToTensor(),  # type: ignore
@@ -141,9 +141,9 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
 
 def interrogate(image, models):
 
-    #server_state["blip_model"] = 
+    # server_state["blip_model"] =
     load_blip_model()
-    
+
     print("Generating Caption")
     st.session_state["log_message"].code("Generating Caption", language='')
     caption = generate_caption(image)
@@ -166,9 +166,9 @@ def interrogate(image, models):
     for model_name in models:
         print(f"Interrogating with {model_name}...")
         st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
-        
+
         if "clip_model" not in server_state:
-            #with server_state_lock[server_state["clip_model"]]:
+            # with server_state_lock[server_state["clip_model"]]:
             if model_name == 'ViT-H-14':
                 server_state["clip_model"], _, server_state["preprocess"] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k')
             elif model_name == 'ViT-g-14':
@@ -177,17 +177,17 @@ def interrogate(image, models):
                 server_state["clip_model"], server_state["preprocess"] = clip.load(model_name, device=device)
 
         server_state["clip_model"] = server_state["clip_model"].cuda().eval()
-        
+
         images = server_state["preprocess"](image).unsqueeze(0).cuda()
-                
+
         with torch.no_grad():
             image_features = server_state["clip_model"].encode_image(images).float()
-            
+
         image_features /= image_features.norm(dim=-1, keepdim=True)
 
         if st.session_state["defaults"].general.optimized:
             clear_cuda()
-            
+
         ranks = []
         ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["mediums"]))
         ranks.append(batch_rank(server_state["clip_model"], image_features, ["by "+artist for artist in server_state["artists"]]))
