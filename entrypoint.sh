@@ -115,11 +115,10 @@ else
     ln -fs ${SCRIPT_DIR}/models/clip-vit-large-patch14 ${MODEL_DIR}/waifu-diffusion/tokenizer
 fi
 
-cd ${MODEL_DIR}
 if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
     cd ${MODEL_DIR}/sd-concepts-library
     git pull
-    cd ..
+    cd $SCRIPT_DIR
 else
     git clone https://github.com/sd-webui/sd-concepts-library
 fi
