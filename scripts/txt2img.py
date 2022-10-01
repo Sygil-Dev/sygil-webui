@@ -49,15 +49,15 @@ class plugin_info():
     displayPriority = 1
 
 
-if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-    server_state["GFPGAN_available"] = True
-else:
-    server_state["GFPGAN_available"] = False
+#if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+    #server_state["GFPGAN_available"] = True
+#else:
+    #server_state["GFPGAN_available"] = False
 
-if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-    server_state["RealESRGAN_available"] = True
-else:
-    server_state["RealESRGAN_available"] = False	
+#if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+    #server_state["RealESRGAN_available"] = True
+#else:
+    #server_state["RealESRGAN_available"] = False	
 
 #
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_name: str,
@@ -228,29 +228,51 @@ def layout():
                                         index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
 
             with st.expander("Advanced"):
-                separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts, help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-                normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].txt2img.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
-                save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].txt2img.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
+                separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
+                                               help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+                
+                normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].txt2img.normalize_prompt_weights,
+                                                       help="Ensure the sum of all weights add up to 1.0")
+                
+                save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].txt2img.save_individual_images,
+                                                     help="Save each image generated before any filter or enhancement is applied.")
+                
                 save_grid = st.checkbox("Save grid",value=st.session_state['defaults'].txt2img.save_grid, help="Save a grid with all the images generated into a single image.")
                 group_by_prompt = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2img.group_by_prompt,
                                               help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-                write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2img.write_info_files, help="Save a file next to the image with informartion about the generation.")
+                
+                write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2img.write_info_files,
+                                               help="Save a file next to the image with informartion about the generation.")
+                
                 save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
-
-                if server_state["GFPGAN_available"]:
-                    st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
-                            This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
-                else:
-                    st.session_state["use_GFPGAN"] = False
-
-                if server_state["RealESRGAN_available"]:
-                    st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
-                                                                     help="Uses the RealESRGAN model to upscale the images after the generation.\
-                            This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-                    st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
-                else:
-                    st.session_state["use_RealESRGAN"] = False
-                    st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+                
+                # check if GFPGAN, RealESRGAN and LDSR are available.
+                GFPGAN_available()
+                
+                if server_state["GFPGAN_available"] or server_state["RealESRGAN_available"]:
+                    with st.expander("Post-Processing"):
+                        # GFPGAN used for face restoration
+                        if server_state["GFPGAN_available"]:
+                            with st.expander("Face Restoration"):
+                                st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN,
+                                                                             help="Uses the GFPGAN model to improve faces after the generation.\
+                                                                             This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+                                
+                                st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", server_state["GFPGAN_models"],
+                                                                                index=server_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
+                        else:
+                            st.session_state["use_GFPGAN"] = False
+                        
+                        with st.expander("Upscaling"): 
+                            # RealESRGAN used for upscaling.     
+                            if server_state["RealESRGAN_available"]:
+                                st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
+                                                                                 help="Uses the RealESRGAN model to upscale the images after the generation.\
+                                        This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+                                st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+                            else:
+                                st.session_state["use_RealESRGAN"] = False
+                                st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
                     
                 with st.expander("Variant"):
                     variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
