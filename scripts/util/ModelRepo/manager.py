@@ -228,31 +228,7 @@ class Manager:
         # If it is a function then call it via the scheduler, otherwise just return it
         ret = getattr(model_info.model._instance, attr)
         if not isinstance(ret, ModelHndl) and callable(ret):
-
-            wrapped_func = ret
-
-            def scheduler_wrapped_func(*args, **kwargs):
-                initial_retry_cnt = 10
-                retries_left = initial_retry_cnt
-                while True:
-                    with self._scheduler.on_device_context(model_info.scheduler_token):
-                        try:
-                            wrapped_ret = wrapped_func(*args, **kwargs)
-                        except RuntimeError as e:
-                            # Attempt to retry after an out of memory error
-                            if retries_left == initial_retry_cnt:
-                                logger.error(
-                                    f"Exception running wrapped function {attr} on {model_info.model._instance}")
-                                logger.error(traceback.format_exc())
-                            if retries_left > 0:
-                                logger.warning(
-                                    f"Retrying function call [{attr} on {model_info.model._instance}]. This may produce unexpected results. Retries left: {retries_left}")
-                                retries_left -= 1
-                                continue
-                            raise
-
-                    return wrapped_ret
-            ret = scheduler_wrapped_func
+            ret = FuncWrapper(name=attr, func=ret, model_info=model_info, scheduler=self._scheduler)
 
         if isinstance(ret, torch.Tensor) and ret.device.type == 'cpu':
             logger.debug(f"Wrapper moved tensor returned by {attr} on {model_info.model._name} to device")
@@ -260,7 +236,45 @@ class Manager:
         return ret
 
 
-class ModelHndl(object):
+class FuncWrapper:
+    def __init__(self, name: str, func: Callable, model_info: ModelInfo, scheduler: Scheduler):
+        self._func: Callable = func
+        self._model_info: ModelInfo = model_info
+        self._scheduler = scheduler
+        self._name = name
+
+    def __getattr__(self, attr: str):
+        with self._scheduler.on_device_context(self._model_info.scheduler_token):
+            try:
+                ret = getattr(self._func, attr)
+            except Exception as e:
+                print(e)
+        return ret
+
+    def __call__(self, *args, **kwargs):
+        initial_retry_cnt = 10
+        retries_left = initial_retry_cnt
+        while True:
+            with self._scheduler.on_device_context(self._model_info.scheduler_token):
+                try:
+                    ret = self._func(*args, **kwargs)
+                except RuntimeError:
+                    # Attempt to retry after an out of memory error
+                    if retries_left == initial_retry_cnt:
+                        logger.error(
+                            f"Exception running wrapped function {self._name} on {self._model_info.model._instance}")
+                        logger.error(traceback.format_exc())
+                    if retries_left > 0:
+                        logger.warning(
+                            f"Retrying function call [{self._name} on {self._model_info.model._instance}]. This may produce unexpected results. Retries left: {retries_left}")
+                        retries_left -= 1
+                        continue
+                    raise
+
+            return ret
+
+
+class ModelHndl:
     """ Handle to a Model which can be returned to clients"""
 
     def __init__(self, model: Model, del_callback: Optional[Callable] = None, call_filter: Optional[Callable] = None):
