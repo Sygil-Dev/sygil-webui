@@ -30,6 +30,7 @@ general:
     use_sd_concepts_library: True
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./src/gfpgan"
+    GFPGAN_model: "GFPGANv1.3"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
     LDSR_dir: "./src/latent-diffusion"
@@ -295,6 +296,7 @@ img2img:
 img2txt:
     batch_size: 100
     blip_image_eval_size: 512
+    
 concepts_library:
     concepts_per_page: 12
     
