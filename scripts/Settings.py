@@ -287,8 +287,7 @@ def layout():
     
 				st.session_state['defaults'].txt2img.seed = st.text_input("Default Seed", value=st.session_state['defaults'].txt2img.seed, help="Default seed.")
     
-				# THIS THROWS AN ERROR, I HAVE NO IDEA WHY THOUGH
-				#st.session_state["defaults"].txt2img.separate_prompts = st.checkbox("Separate Prompts", value=st.session_state['defaults'].separate_prompts, help="Separate Prompts. Default: False")
+				st.session_state["defaults"].txt2img.separate_prompts = st.checkbox("Separate Prompts", value=st.session_state['defaults'].txt2img.separate_prompts, help="Separate Prompts. Default: False")
     
 				st.session_state["defaults"].txt2img.normalize_prompt_weights = st.checkbox("Normalize Prompt Weights", value=st.session_state['defaults'].txt2img.normalize_prompt_weights, help="Choose to normalize prompt weights. Default: True")
     
