@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 from sd_utils import *
 
@@ -28,7 +28,7 @@ class plugin_info():
 
 # Init Vuejs component
 _component_func = components.declare_component(
-	"sd-concepts-browser", "./frontend/dist")
+	"sd-concepts-browser", "./frontend/dists/concept-browser/dist")
 
 
 def sdConceptsBrowser(concepts, key=None):
