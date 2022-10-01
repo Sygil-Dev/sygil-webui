@@ -37,16 +37,10 @@ button[data-baseweb="tab"] {
 
 /* Main streamlit container (below header) //reduce the empty spaces*/
 .css-18e3th9 {
-  padding-top: 2rem;
+  padding-top: 1rem;
 }
 
-/* @media only for widescreen, to ensure enough space to see all */
-@media (min-width: 1024px) {
-  /* Main streamlit container (below header) //reduce the empty spaces, can go fully to the top on widescreen devices*/
-  .css-18e3th9 {
-    padding-top: 0px;
-  }
-}
+
 
 /***********************************************************
 * Additional CSS for streamlit custom/3rd party components *
