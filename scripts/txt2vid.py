@@ -231,12 +231,12 @@ def load_diffusers_model(weights_path,torch_device):
 	try:
 		with server_state_lock["pipe"]:
 			if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
-				if st.session_state["weights_path"] != weights_path:
+				if ("weights_path" in st.session_state) and st.session_state["weights_path"] != weights_path:
 					del st.session_state["weights_path"]
 		
 				st.session_state["weights_path"] = weights_path
 				# if folder "user_data/model_cache/stable-diffusion-v1-4" exists, load the model from there
-				if weights_path == "CompVisLab/stable-diffusion-v1-4":
+				if weights_path == "CompVis/stable-diffusion-v1-4":
 					model_path = os.path.join("user_data", "model_cache", "stable-diffusion-v1-4")
 				elif weights_path == "hakurei/waifu-diffusion":
 					model_path = os.path.join("user_data", "model_cache", "waifu-diffusion")
