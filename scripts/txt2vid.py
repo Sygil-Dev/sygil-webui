@@ -241,7 +241,7 @@ def load_diffusers_model(weights_path,torch_device):
 				elif weights_path == "hakurei/waifu-diffusion":
 					model_path = os.path.join("user_data", "model_cache", "waifu-diffusion")
 
-				if not os.path.exists(model_path):
+				if not os.path.exists(model_path + "config.json"):
 					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 							weights_path,
 							use_local_file=True,
