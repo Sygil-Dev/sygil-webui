@@ -106,6 +106,11 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
     if os.path.exists("scripts/modeldownload.py"):
         import modeldownload
         modeldownload.updateModels()
+        
+#
+#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded",
+                  #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
+
 
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
@@ -149,6 +154,24 @@ elif save_format[0] == 'webp':
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
+
+#
+
+# functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
+# TODO, maybe look into async loading the file especially for remote fetching 
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+def remote_css(url):
+    st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
+
+def load_css(isLocal, nameOrURL):
+    if(isLocal):
+        local_css(nameOrURL)
+    else:
+        remote_css(nameOrURL)
+        
 def set_page_title(title):
     """
     Simple function to allows us to change the title dynamically.
@@ -847,7 +870,7 @@ def try_loading_LDSR(model_name: str,checking=False):
 
 # Loads Stable Diffusion model by name
 #@retry(tries=5)
-def load_sd_model(model_name: str) -> [any, any, any, any, any]:    
+def load_sd_model(model_name: str):    
     ckpt_path = st.session_state.defaults.general.default_model_path
     
     if model_name != st.session_state.defaults.general.default_model:
@@ -1923,3 +1946,4 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     torch.save(params_dict, "learned_embeds.bin")
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
     print("loaded", placeholder_token)
+    
