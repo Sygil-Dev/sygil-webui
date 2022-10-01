@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 from sd_utils import *
 
@@ -23,7 +23,7 @@ from streamlit import StopException
 #other imports
 import os
 from typing import Union
-#from io import BytesIO
+from io import BytesIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
@@ -64,14 +64,14 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
             n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-            save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True, 
-            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None, 
+            save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True,
+            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
     outpath = st.session_state['defaults'].general.outdir_txt2img or st.session_state['defaults'].general.outdir or "outputs/txt2img-samples"
 
     seed = seed_to_int(seed)
-    
+
     if sampler_name == 'PLMS':
         sampler = PLMSSampler(server_state["model"])
     elif sampler_name == 'DDIM':
@@ -111,9 +111,9 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
                 sampler_name=sampler_name,
                 save_grid=save_grid,
                 batch_size=batch_size,
-                n_iter=n_iter,      
-                steps=ddim_steps,   
-                cfg_scale=cfg_scale,	
+                n_iter=n_iter,
+                steps=ddim_steps,
+                cfg_scale=cfg_scale,
                 width=width,
                 height=height,
                 prompt_matrix=separate_prompts,
@@ -151,7 +151,7 @@ def layout():
             prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
 
         # creating the page layout using columns
-        col1, col2, col3 = st.columns([1,2,1], gap="large")    
+        col1, col2, col3 = st.columns([1,2,1], gap="large")
 
         with col1:
             width = st.slider("Width:", min_value=st.session_state['defaults'].txt2img.width.min_value, max_value=st.session_state['defaults'].txt2img.width.max_value,
@@ -160,15 +160,15 @@ def layout():
                                value=st.session_state['defaults'].txt2img.height.value, step=st.session_state['defaults'].txt2img.height.step)
             cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2img.cfg_scale.min_value,
                                   max_value=st.session_state['defaults'].txt2img.cfg_scale.max_value,
-                                  value=st.session_state['defaults'].txt2img.cfg_scale.value, step=st.session_state['defaults'].txt2img.cfg_scale.step, 
+                                  value=st.session_state['defaults'].txt2img.cfg_scale.value, step=st.session_state['defaults'].txt2img.cfg_scale.step,
                                   help="How strongly the image should follow the prompt.")
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
-            
+
             with st.expander("Batch Options"):
                 batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
                                         value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
                                         help="How many iterations or batches of images to generate in total.")
-    
+
                 batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
                                        value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
                                        help="How many images are at once in a batch.\
@@ -184,7 +184,7 @@ def layout():
                 st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                              help="Frequency in steps at which the the preview image is updated. By default the frequency \
                                                                               is set to 1 step.")
-                
+
         with col2:
             preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
 
@@ -206,26 +206,26 @@ def layout():
                 message = st.empty()
 
         with col3:
-            # If we have custom models available on the "models/custom" 
+            # If we have custom models available on the "models/custom"
             #folder then we show a menu to select which model we want to use, otherwise we use the main model for SD
             custom_models_available()
-            
+
             if server_state["CustomModel_available"]:
                 st.session_state["custom_model"] = st.selectbox("Custom Model:", server_state["custom_models"],
                                                                 index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
                                                                 help="Select the model you want to use. This option is only available if you have custom models \
                                                                 on your 'models/custom' folder. The model name that will be shown here is the same as the name\
                                                                 the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-                                                                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4") 
-            
+                                                                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+
             st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state.defaults.txt2img.sampling_steps.value,
                                                         min_value=st.session_state.defaults.txt2img.sampling_steps.min_value,
                                                         max_value=st.session_state['defaults'].txt2img.sampling_steps.max_value,
-                                                        step=st.session_state['defaults'].txt2img.sampling_steps.step)    
+                                                        step=st.session_state['defaults'].txt2img.sampling_steps.step)
 
             sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
-                                        index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")  
+                                        index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")
 
             with st.expander("Advanced"):
                 separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
@@ -279,13 +279,13 @@ def layout():
                                                min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
                                                step=st.session_state['defaults'].txt2img.variant_amount.step)
                     variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
-            
+
             #galleryCont = st.empty()
 
         # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
         generate_col1.write("")
         generate_col1.write("")
-        generate_button = generate_col1.form_submit_button("Generate")        
+        generate_button = generate_col1.form_submit_button("Generate")
 
         if generate_button:
             #print("Loading models")
@@ -295,19 +295,19 @@ def layout():
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
                     load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
-                                st.session_state["custom_model"])   
-                    
+                                st.session_state["custom_model"])
+
             try:
                 #
                 output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
                                                             cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
                                                             save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
                                                             variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
-                
+
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
-        
+
                 #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
-        
+
                 #if 'latestImages' in st.session_state:
                     #for i in output_images:
                         ##push the new image to the list of latest images and remove the oldest one
@@ -332,18 +332,19 @@ def layout():
                             #with col3:
                                 #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
                         #historyGallery = st.empty()
-                
+
                     ## check if output_images length is the same as seeds length
                     #with gallery_tab:
                         #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
-                    
-                    
+
+
                         #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
-                
+
             except (StopException, KeyError):
                 print(f"Received Streamlit StopException")
-            
+
                 # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
                 # use the current col2 first tab to show the preview_img and update it as its generated.
                 #preview_image.image(output_images)
+
 
