@@ -86,6 +86,55 @@ def load_blip_model():
     #return server_state["blip_model"]
 
 
+#
+def artstation_links():
+    """Find and save every artstation link for the first 500 pages of the explore page."""
+    # collecting links to the list()
+    links = []
+    
+    with open('data/img2txt/artstation_links.txt', 'w') as f:
+        for page_num in range(1,500):
+            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
+            # open json response
+            data = json.loads(response)
+            
+            # loopinh through json response
+            for result in data['data']:
+                # still looping and grabbing url's
+                url = result['url']
+                links.append(url)
+                # writing each link on the new line (\n)
+                f.write(f'{url}\n')  
+    return links
+#
+def artstation_users():
+    """Get all the usernames and full name of the users on the first 500 pages of artstation explore page."""
+    # collect username and full name
+    artists = []
+    
+    # opening a .txt file
+    with open('data/img2txt/artstation_artists.txt', 'w') as f:
+        for page_num in range(1,500):
+            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
+            # open json response
+            data = json.loads(response)
+    
+    
+            # loopinh through json response
+            for item in data['data']:
+                #print (item['user'])
+                username = item['user']['username']
+                full_name = item['user']['full_name']
+    
+                # still looping and grabbing url's
+                artists.append(username)
+                artists.append(full_name)
+                # writing each link on the new line (\n)
+                f.write(f'{slugify(username)}\n')
+                f.write(f'{slugify(full_name)}\n')
+    
+    return artists
+
 def generate_caption(pil_image):
 
     load_blip_model()
@@ -163,6 +212,12 @@ def interrogate(image, models):
     bests = [[('', 0)]]*5
 
     print("Ranking Text")
+    
+    #if "clip_model" in server_state:
+        #print (server_state["clip_model"])
+        
+    #print (st.session_state["log_message"])
+        
     for model_name in models:
         print(f"Interrogating with {model_name}...")
         st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
