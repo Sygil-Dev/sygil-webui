@@ -108,11 +108,11 @@ else
             validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
         fi
     done
-    mkdir -p ${MODEL_DIR}/stable-diffusion-v1-4/tokenizer
-    mkdir -p ${MODEL_DIR}/waifu-diffusion/tokenizer
+    mkdir -p ${MODEL_DIR}/stable-diffusion-v1-4
+    mkdir -p ${MODEL_DIR}/waifu-diffusion
 
-    ln -fs ${SCRIPT_DIR}/models/clip-vit-large-patch14 ${MODEL_DIR}/stable-diffusion-v1-4/tokenizer
-    ln -fs ${SCRIPT_DIR}/models/clip-vit-large-patch14 ${MODEL_DIR}/waifu-diffusion/tokenizer
+    ln -fs ${SCRIPT_DIR}/models/clip-vit-large-patch14/ ${MODEL_DIR}/stable-diffusion-v1-4/tokenizer
+    ln -fs ${SCRIPT_DIR}/models/clip-vit-large-patch14/ ${MODEL_DIR}/waifu-diffusion/tokenizer
 fi
 
 if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
@@ -122,10 +122,13 @@ if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
 else
     git clone https://github.com/sd-webui/sd-concepts-library
 fi
-mkdir -p ${SCRIPT_DIR}/models/custom/sd-concepts-library
-ln -fs ${MODEL_DIR}/sd-concepts-library/sd-concepts-library ${SCRIPT_DIR}/models/custom/sd-concepts-library
+mkdir -p ${SCRIPT_DIR}/models/custom
+ln -fs ${MODEL_DIR}/sd-concepts-library/sd-concepts-library ${SCRIPT_DIR}/models/custom
 
+echo "export HF_HOME=${MODEL_DIR}" >> ~/.bashrc
+echo "export XDG_CACHE_HOME=${MODEL_DIR}" >> ~/.bashrc
 echo "export TRANSFORMERS_CACHE=${MODEL_DIR}" >> ~/.bashrc
+source ~/.bashrc
 
 launch_command="streamlit run ${SCRIPT_DIR}/scripts/webui_streamlit.py"
 
