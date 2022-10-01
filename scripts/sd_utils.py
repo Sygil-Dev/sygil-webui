@@ -38,7 +38,7 @@ from scipy import integrate
 import torch
 from torchdiffeq import odeint
 import k_diffusion as K
-import math
+import math, requests
 import mimetypes
 import numpy as np
 import pynvml
@@ -210,14 +210,14 @@ def human_readable_size(size, decimal_places=3):
     return f"{size:.{decimal_places}f}{unit}"
 
 
-def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
+def load_models(continue_prev_run = False, use_GFPGAN=False, GFPGAN_model='GFPGANv1.3', use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
         
     print ("Loading models.")
 
-    #if "progress_bar_text" in st.session_state:
-    #    st.session_state["progress_bar_text"].text("Loading models...")
+    if "progress_bar_text" in st.session_state:
+        st.session_state["progress_bar_text"].text("Loading models...")
     
 
     # Generate random run ID
@@ -231,17 +231,20 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
     
     with server_state_lock["GFPGAN"]:
         if use_GFPGAN:
-            if "GFPGAN" in server_state:
+            if "GFPGAN" in server_state and server_state["GFPGAN"].name == GFPGAN_model:
                 print("GFPGAN already loaded")
             else:
+                if "GFPGAN" in server_state:
+                    del server_state["GFPGAN"]
+                    
                 # Load GFPGAN
                 if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
                     try:
-                        server_state["GFPGAN"] = load_GFPGAN()
-                        print("Loaded GFPGAN")
+                        server_state["GFPGAN"] = load_GFPGAN(GFPGAN_model)
+                        print(f"Loaded GFPGAN: {GFPGAN_model}")
                     except Exception:
                         import traceback
-                        print("Error loading GFPGAN:", file=sys.stderr)
+                        print(f"Error loading GFPGAN:", file=sys.stderr)
                         print(traceback.format_exc(), file=sys.stderr)          
         else:
             if "GFPGAN" in server_state:
@@ -311,10 +314,9 @@ def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=Fals
         
         #trying to disable multiprocessing as it makes it so streamlit cant stop when the 
         # model is loaded in memory and you need to kill the process sometimes.
-        try:
-            server_state["model"].args.use_multiprocessing_for_evaluation = False
-        except:
-            pass
+        
+        server_state["model"].args.use_multiprocessing_for_evaluation = False
+        
         
         if st.session_state.defaults.general.enable_attention_slicing:
             server_state["model"].enable_attention_slicing()  
@@ -777,9 +779,15 @@ def torch_gc():
     torch.cuda.ipc_collect()
 
 @retry(tries=5)
-def load_GFPGAN():
-    model_name = 'GFPGANv1.3'
+#@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
+def load_GFPGAN(model_name='GFPGANv1.3'):
+    #model_name = 'GFPGANv1.3'
+    
     model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    
+    if not os.path.isfile(model_path):
+        model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, model_name + '.pth')
+    
     if not os.path.isfile(model_path):
         raise Exception("GFPGAN model not found at path "+model_path)
 
@@ -789,11 +797,18 @@ def load_GFPGAN():
     with server_state_lock['GFPGAN']:
         if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
             server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
+            
         elif st.session_state['defaults'].general.extra_models_gpu:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None,
+                                              device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
         else:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-    
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, 
+                                              device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+        
+        # Add the model_name to model loaded so we can later 
+        # check if its the same when we change it on the UI.
+        server_state['GFPGAN'].name = model_name
+        
     return server_state['GFPGAN']
 
 @retry(tries=5)
@@ -805,7 +820,11 @@ def load_RealESRGAN(model_name: str):
         }
 
     model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{model_name}.pth")):
+    
+    if not os.path.isfile(model_path):
+        model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, model_name + '.pth')
+        
+    if not os.path.exists(model_path):
         raise Exception(model_name+".pth not found at path "+model_path)
 
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.RealESRGAN_dir))
@@ -813,13 +832,21 @@ def load_RealESRGAN(model_name: str):
 
     with server_state_lock['RealESRGAN']:
         if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name],
+                                                      pre_pad=0, half=False) # cpu does not support half
+            
             server_state['RealESRGAN'].device = torch.device('cpu')
             server_state['RealESRGAN'].model.to('cpu')
+            
         elif st.session_state['defaults'].general.extra_models_gpu:
-            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name],
+                                                      pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
         else:
-            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name],
+                                                      pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
+    
+        # Add the model_name to model loaded so we can later 
+        # check if its the same when we change it on the UI.        
         server_state['RealESRGAN'].model.name = model_name
 
     return server_state['RealESRGAN']
@@ -846,14 +873,14 @@ def load_LDSR(checking=False):
     return LDSRObject
 
 #
-LDSR = None
 
 @retry(tries=5)
 def try_loading_LDSR(model_name: str,checking=False):
-    global LDSR
+    #LDSR = None
+    #global LDSR
     if os.path.exists(st.session_state['defaults'].general.LDSR_dir):
         try:
-            LDSR = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
+            server_state["LDSR"] = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
             if checking == True:
                 print("Found LDSR")
                 return True
@@ -868,9 +895,9 @@ def try_loading_LDSR(model_name: str,checking=False):
 #try_loading_LDSR('model',checking=True)
 
 
-# Loads Stable Diffusion model by name
 #@retry(tries=5)
 def load_sd_model(model_name: str):    
+    """Loads Stable Diffusion model by name"""
     ckpt_path = st.session_state.defaults.general.default_model_path
     
     if model_name != st.session_state.defaults.general.default_model:
@@ -935,8 +962,8 @@ def load_sd_model(model_name: str):
         return config, device, model, None, None
 
 
-# @codedealer: No usages
 def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='RealESRGAN_x4plus'):
+    #codedealer: No usages
     #get global variables
     global_vars = globals()
     #check if m is in globals
@@ -1053,11 +1080,11 @@ prompt_parser = re.compile("""
     )                          # end non-capture group
 """, re.VERBOSE)
 
-# grabs all text up to the first occurrence of ':' as sub-prompt
-# takes the value following ':' as weight
-# if ':' has no value defined, defaults to 1.0
-# repeats until no text remaining
 def split_weighted_subprompts(input_string, normalize=True):
+    # grabs all text up to the first occurrence of ':' as sub-prompt
+    # takes the value following ':' as weight
+    # if ':' has no value defined, defaults to 1.0
+    # repeats until no text remaining
     parsed_prompts = [(match.group("prompt"), float(match.group("weight") or 1)) for match in re.finditer(prompt_parser, input_string)]
     if not normalize:
         return parsed_prompts
@@ -1315,7 +1342,46 @@ def custom_models_available():
                 server_state["CustomModel_available"] = True
                 server_state["custom_models"].append("Stable Diffusion v1.4")
             else:
-                server_state["CustomModel_available"] = False	
+                server_state["CustomModel_available"] = False
+
+#
+def GFPGAN_available():
+    #with server_state_lock["GFPGAN_models"]:
+    #
+    # Allow for custom models to be used instead of the default one,
+    # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
+    st.session_state["GFPGAN_models"]:sorted = []
+
+    for root, dirs, files in os.walk(st.session_state['defaults'].general.GFPGAN_dir):
+        for file in files:
+            if os.path.splitext(file)[1] == '.pth':						
+                st.session_state["GFPGAN_models"].append(os.path.splitext(file)[0])
+
+    #print (len(st.session_state["GFPGAN_models"]))
+    #with server_state_lock["GFPGAN_available"]:
+    if len(st.session_state["GFPGAN_models"]) > 0:
+        st.session_state["GFPGAN_available"] = True
+    else:
+        st.session_state["GFPGAN_available"] = False
+
+#
+def RealESRGAN_available():
+    #with server_state_lock["RealESRGAN_models"]:
+    #
+    # Allow for custom models to be used instead of the default one,
+    # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
+    st.session_state["RealESRGAN_models"]:sorted = []
+
+    for root, dirs, files in os.walk(st.session_state['defaults'].general.RealESRGAN_dir):
+        for file in files:
+            if os.path.splitext(file)[1] == '.pth':						
+                st.session_state["RealESRGAN_models"].append(os.path.splitext(file)[0])
+
+    #with server_state_lock["RealESRGAN_available"]:
+    if len(st.session_state["RealESRGAN_models"]) > 0:
+        st.session_state["RealESRGAN_available"] = True
+    else:
+        st.session_state["RealESRGAN_available"] = False
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
@@ -1497,7 +1563,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 #
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
-        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, use_RealESRGAN, realesrgan_model_name,
+        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, GFPGAN_model, use_RealESRGAN, realesrgan_model_name,
         ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
         mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,

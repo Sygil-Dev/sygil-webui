@@ -19,11 +19,13 @@ from sd_utils import *
 # streamlit imports
 from streamlit import StopException
 #from streamlit.elements import image as STImage
+import streamlit.components.v1 as components
+from streamlit.runtime.media_file_manager  import media_file_manager
+from streamlit.elements.image import image_to_url
 
 #other imports
-import os
+import uuid
 from typing import Union
-from io import BytesIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
@@ -42,29 +44,58 @@ try:
 except:
     pass
 
+#
+# Dev mode (server)
+# _component_func = components.declare_component(
+#         "sd-gallery",
+#         url="http://localhost:3001",
+#     )
+
+# Init Vuejs component
+_component_func = components.declare_component(
+    "sd-gallery", "./frontend/dists/sd-gallery/dist")
+
+def sdGallery(images=[], key=None):
+    component_value = _component_func(images=imgsToGallery(images), key=key, default="")
+    return component_value
+
+def imgsToGallery(images):
+    urls = []
+    for i in images:
+        # random string for id
+        random_id = str(uuid.uuid4())
+        url = image_to_url(
+            image=i,
+            image_id= random_id,
+            width=i.width,
+            clamp=False,
+            channels="RGB",
+            output_format="PNG"
+        )
+        # image_io = BytesIO()
+        # i.save(image_io, 'PNG')
+        # width, height = i.size
+        # image_id = "%s" % (str(images.index(i)))
+        # (data, mimetype) = STImage._normalize_to_bytes(image_io.getvalue(), width, 'auto')
+        # this_file = media_file_manager.add(data, mimetype, image_id)
+        # img_str = this_file.url
+        urls.append(url)
+
+    return urls
+
+
 class plugin_info():
     plugname = "txt2img"
     description = "Text to Image"
     isTab = True
     displayPriority = 1
 
-
-#if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-    #server_state["GFPGAN_available"] = True
-#else:
-    #server_state["GFPGAN_available"] = False
-
-#if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-    #server_state["RealESRGAN_available"] = True
-#else:
-    #server_state["RealESRGAN_available"] = False	
-
 #
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_name: str,
             n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-            save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True,
+            save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = True,
             RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
@@ -118,6 +149,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
                 height=height,
                 prompt_matrix=separate_prompts,
                 use_GFPGAN=st.session_state["use_GFPGAN"],
+                GFPGAN_model=st.session_state["GFPGAN_model"],
                 use_RealESRGAN=st.session_state["use_RealESRGAN"],
                 realesrgan_model_name=realesrgan_model_name,
                 ddim_eta=ddim_eta,
@@ -197,13 +229,18 @@ def layout():
 
                 # create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
                 st.session_state["preview_image"] = st.empty()
-
-                st.session_state["loading"] = st.empty()
+                
 
                 st.session_state["progress_bar_text"] = st.empty()
+                st.session_state["progress_bar_text"].info("Nothing but crickets here, try generating something first.")
+                
                 st.session_state["progress_bar"] = st.empty()
 
                 message = st.empty()
+                
+            with gallery_tab:
+                st.session_state["gallery"] = st.empty()  
+                st.session_state["gallery"].info("Nothing but crickets here, try generating something first.")
 
         with col3:
             # If we have custom models available on the "models/custom"
@@ -247,29 +284,34 @@ def layout():
                 save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
                 
                 # check if GFPGAN, RealESRGAN and LDSR are available.
-                GFPGAN_available()
+                if "GFPGAN_available" not in st.session_state:
+                    GFPGAN_available()
+
+                if "RealESRGAN_available" not in st.session_state:
+                    RealESRGAN_available()
                 
-                if server_state["GFPGAN_available"] or server_state["RealESRGAN_available"]:
+                if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"]:
                     with st.expander("Post-Processing"):
                         # GFPGAN used for face restoration
-                        if server_state["GFPGAN_available"]:
+                        if st.session_state["GFPGAN_available"]:
                             with st.expander("Face Restoration"):
                                 st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN,
                                                                              help="Uses the GFPGAN model to improve faces after the generation.\
                                                                              This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
                                 
-                                st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", server_state["GFPGAN_models"],
-                                                                                index=server_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
+                                st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
+                                                                                index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
                         else:
                             st.session_state["use_GFPGAN"] = False
                         
                         with st.expander("Upscaling"): 
                             # RealESRGAN used for upscaling.     
-                            if server_state["RealESRGAN_available"]:
+                            if st.session_state["RealESRGAN_available"]:
                                 st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
                                                                                  help="Uses the RealESRGAN model to upscale the images after the generation.\
                                         This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-                                st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
+                                st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
+                                                                                    index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
                             else:
                                 st.session_state["use_RealESRGAN"] = False
                                 st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
@@ -278,7 +320,8 @@ def layout():
                     variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
                                                min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
                                                step=st.session_state['defaults'].txt2img.variant_amount.step)
-                    variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed, help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+                    variant_seed = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2img.seed,
+                                                 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
 
             #galleryCont = st.empty()
 
@@ -294,14 +337,15 @@ def layout():
             #print (st.session_state['custom_model'])
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
-                                st.session_state["custom_model"])
+                    load_models(False, st.session_state["use_GFPGAN"], st.session_state["GFPGAN_model"] , st.session_state["use_RealESRGAN"],
+                                st.session_state["RealESRGAN_model"], server_state["CustomModel_available"], st.session_state["custom_model"])
 
             try:
                 #
                 output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
                                                             cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
+                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
+                                                            st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
                                                             variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
@@ -339,6 +383,11 @@ def layout():
 
 
                         #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                        
+                with gallery_tab:
+                    print(seeds)
+                    sdGallery(output_images)
+                        
 
             except (StopException, KeyError):
                 print(f"Received Streamlit StopException")
