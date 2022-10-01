@@ -24,7 +24,21 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $SCRIPT_DIR
 export PYTHONPATH=$SCRIPT_DIR
 
-MODEL_DIR="${SCRIPT_DIR}/model_cache"
+if [[ $PUBLIC_KEY ]]
+then
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    cd ~/.ssh
+    echo $PUBLIC_KEY >> authorized_keys
+    chmod 700 -R ~/.ssh
+    cd /
+    service ssh start
+    echo "SSH Service Started"
+fi
+
+
+MODEL_DIR="${SCRIPT_DIR}/user_data/model_cache"
+mkdir -p $MODEL_DIR
 # Array of model files to pre-download
 # local filename
 # local path in container (no trailing slash)
@@ -37,6 +51,17 @@ MODEL_FILES=(
     'RealESRGAN_x4plus_anime_6B.pth src/realesrgan/experiments/pretrained_models https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth f872d837d3c90ed2e05227bed711af5671a6fd1c9f7d7e91c911a61f155e99da'
     'project.yaml src/latent-diffusion/experiments/pretrained_models https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1 9d6ad53c5dafeb07200fb712db14b813b527edd262bc80ea136777bdb41be2ba'
     'model.ckpt src/latent-diffusion/experiments/pretrained_models https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1 c209caecac2f97b4bb8f4d726b70ac2ac9b35904b7fc99801e1f5e61f9210c13'
+    'waifu-diffusion.ckpt models/custom https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt 9b31355f90fea9933847175d4731a033f49f861395addc7e153f480551a24c25'
+    'trinart.ckpt models/custom https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt c1799d22a355ba25c9ceeb6e3c91fc61788c8e274b73508ae8a15877c5dbcf63'
+    'model__base_caption.pth models/blip https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth 96ac8749bd0a568c274ebe302b3a3748ab9be614c737f3d8c529697139174086'
+    'pytorch_model.bin models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/pytorch_model.bin f1a17cdbe0f36fec524f5cafb1c261ea3bbbc13e346e0f74fc9eb0460dedd0d3'
+    'config.json models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/config.json 8a09b467700c58138c29d53c605b34ebc69beaadd13274a8a2af8ad2c2f4032a'
+    'merges.txt models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/merges.txt 9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a'
+    'preprocessor_config.json models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/preprocessor_config.json 910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd'
+    'special_tokens_map.json models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/special_tokens_map.json f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf'
+    'tokenizer.json models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/tokenizer.json a83e0809aa4c3af7208b2df632a7a69668c6d48775b3c3fe4e1b1199d1f8b8f4'
+    'tokenizer_config.json models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/tokenizer_config.json deef455e52fa5e8151e339add0582e4235f066009601360999d3a9cda83b1129'
+    'vocab.json models/clip-vit-large-patch14 https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/vocab.json 3f0c4f7d2086b61b38487075278ea9ed04edb53a03cbb045b86c27190fa8fb69'
 )
 
 
@@ -83,33 +108,24 @@ else
             validateDownloadModel ${model[0]} ${model[1]} ${model[2]} ${model[3]}
         fi
     done
+    ln -s models/clip-vit-large-patch14 user_data/model_cache/stable-diffusion-v1-4/tokenizer
+    ln -s models/clip-vit-large-patch14 user_data/model_cache/waifu-diffusion/tokenizer
 fi
 
-# Determine which webserver interface to launch (Streamlit vs Default: Gradio)
-if [[ ! -z $WEBUI_SCRIPT && $WEBUI_SCRIPT == "webui_streamlit.py" ]]; then
-    launch_command="streamlit run scripts/${WEBUI_SCRIPT:-webui.py} $WEBUI_ARGS"
+cd ${MODEL_DIR}
+if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
+    git clone https://github.com/sd-webui/sd-concepts-library
 else
-    launch_command="python scripts/${WEBUI_SCRIPT:-webui.py} $WEBUI_ARGS"
+    cd sd-concepts-library
+    git pull
+    cd ..
 fi
+ln -s ${MODEL_DIR}/sd-concepts-library/sd-concepts-library models/custom/sd-concepts-library
 
-# Start webserver interface
-launch_message="Starting Stable Diffusion WebUI... ${launch_command}..."
-if [[ -z $WEBUI_RELAUNCH || $WEBUI_RELAUNCH == "true" ]]; then
-    n=0
-    while true; do
-        echo $launch_message
+echo "export TRANSFORMERS_CACHE=${MODEL_DIR}" >> ~/.bashrc
 
-        if (( $n > 0 )); then
-            echo "Relaunch count: ${n}"
-        fi
+launch_command="streamlit run scripts/webui_streamlit.py"
 
-        $launch_command
+$launch_command
 
-        echo "entrypoint.sh: Process is ending. Relaunching in 0.5s..."
-        ((n++))
-        sleep 0.5
-    done
-else
-    echo $launch_message
-    $launch_command
-fi
+sleep infinity

@@ -230,58 +230,47 @@ def load_diffusers_model(weights_path,torch_device):
 	
 	try:
 		with server_state_lock["pipe"]:
-			try:
-				if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
-					if st.session_state["weights_path"] != weights_path:
-						del st.session_state["weights_path"]
-			
-					st.session_state["weights_path"] = weights_path
-					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-						    weights_path,
-						    use_local_file=True,
-						    use_auth_token=st.session_state["defaults"].general.huggingface_token,
-						    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-						    revision="fp16" if not st.session_state['defaults'].general.no_half else None
-						)
-			
-					server_state["pipe"].unet.to(torch_device)
-					server_state["pipe"].vae.to(torch_device)
-					server_state["pipe"].text_encoder.to(torch_device)
-			
-					if st.session_state.defaults.general.enable_attention_slicing:
-						server_state["pipe"].enable_attention_slicing()
-						
-					if st.session_state.defaults.general.enable_minimal_memory_usage:	
-						server_state["pipe"].enable_minimal_memory_usage()
-			
-					print("Tx2Vid Model Loaded")
-				else:
-					print("Tx2Vid Model already Loaded")
+			if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
+				if st.session_state["weights_path"] != weights_path:
+					del st.session_state["weights_path"]
 		
-			except:
-				#del st.session_state["weights_path"]
-				#del server_state["pipe"]
-			
 				st.session_state["weights_path"] = weights_path
-				server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-					    weights_path,
-					    use_local_file=True,
-					    use_auth_token=st.session_state["defaults"].general.huggingface_token,
-					    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-					    revision="fp16" if not st.session_state['defaults'].general.no_half else None
-					)
-			
+				# if folder "user_data/model_cache/stable-diffusion-v1-4" exists, load the model from there
+				if weights_path == "CompVisLab/stable-diffusion-v1-4":
+					model_path = os.path.join("user_data", "model_cache", "stable-diffusion-v1-4")
+				elif weights_path == "hakurei/waifu-diffusion":
+					model_path = os.path.join("user_data", "model_cache", "waifu-diffusion")
+
+				if not os.path.exists(model_path):
+					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+							weights_path,
+							use_local_file=True,
+							use_auth_token=st.session_state["defaults"].general.huggingface_token,
+							torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+						)
+					StableDiffusionPipeline.save_pretrained(server_state["pipe"], model_path)
+				else:
+					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+							model_path,
+							use_local_file=True,
+							torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+						)
+		
 				server_state["pipe"].unet.to(torch_device)
 				server_state["pipe"].vae.to(torch_device)
 				server_state["pipe"].text_encoder.to(torch_device)
-			
+		
 				if st.session_state.defaults.general.enable_attention_slicing:
 					server_state["pipe"].enable_attention_slicing()
-			
-				if st.session_state.defaults.general.enable_minimal_memory_usage:
+					
+				if st.session_state.defaults.general.enable_minimal_memory_usage:	
 					server_state["pipe"].enable_minimal_memory_usage()
-			
-				print("Tx2Vid Model Loaded")	
+		
+				print("Tx2Vid Model Loaded")
+			else:
+				print("Tx2Vid Model already Loaded")
 	except (EnvironmentError, OSError):
 		st.session_state["progress_bar_text"].error(
 		    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
