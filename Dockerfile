@@ -14,19 +14,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # Assumes host environment is AMD64 architecture
+# ARG TARGETPLATFORM
 
-# We should use the Pytorch CUDA/GPU-enabled base image. See:  https://hub.docker.com/r/pytorch/pytorch/tags
-# FROM nvidia/cuda:11.3.1-runtime-ubuntu20.04
+# This is used to allow building against AMD GPUs
+# Annoyingly, you can't IF branch off of, say, TARGETGPU and set
+# the Dockerfile's FROM based on that, so we have to have the user
+# pass in the entire image path for us.
+ARG PYTORCH_IMAGE=pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
+# To build against AMD, use
+# --build-arg PYTORCH_IMAGE=rocm/pytorch:rocm5.2.3_ubuntu20.04_py3.7_pytorch_1.12.1
 
-# Assumes AMD64 host architecture
-FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
+FROM ${PYTORCH_IMAGE}
 
 WORKDIR /install
 
 SHELL ["/bin/bash", "-c"]
 
 RUN apt-get update && \
-    apt-get install -y wget git && \
+    apt-get install -y wget git build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

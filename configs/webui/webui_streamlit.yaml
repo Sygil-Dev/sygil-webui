@@ -292,6 +292,9 @@ img2img:
     variant_seed: ""
     write_info_files: True
     
+img2txt:
+    batch_size: 100
+    blip_image_eval_size: 512
 concepts_library:
     concepts_per_page: 12
     
