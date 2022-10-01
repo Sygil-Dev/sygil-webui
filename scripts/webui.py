@@ -70,6 +70,7 @@ parser.add_argument('--horde_name', action="store", required=False, type=str, he
 parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
 parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
 parser.add_argument('--horde_max_power',type=int, required=False, help="How much power this instance has to generate pictures. Min: 2")
+parser.add_argument('--horde_nsfw', action='store_true', required=False, help="Set to false if you do not want this worker generating NSFW images.")
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -2610,7 +2611,7 @@ def run_headless():
         print()
 
 @logger.catch
-def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels):
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw):
     current_id = None
     current_payload = None
     loop_retry = 0
@@ -2619,6 +2620,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             "name": horde_name,
             "max_pixels": horde_max_pixels,
             "priority_usernames": priority_usernames,
+            "nsfw": horde_nsfw,
         }
         headers = {"apikey": api_key}
         if current_id:
@@ -2734,18 +2736,20 @@ if __name__ == '__main__':
                     # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
                     self.horde_priority_usernames = []
                     self.horde_max_power = 8
+                    self.nsfw = True
             cd = temp()
         horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
         horde_name = opt.horde_name if opt.horde_name else cd.horde_name
         horde_url = opt.horde_url if opt.horde_url else cd.horde_url
         horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
         horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
+        horde_nsfw = opt.horde_nsfw if opt.horde_nsfw else cd.horde_nsfw
         if horde_max_power < 2:
             horde_max_power = 2
         horde_max_pixels = 64*64*8*horde_max_power
         logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
         try:
-            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels)
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw)
         except KeyboardInterrupt:
             logger.info(f"Keyboard Interrupt Received. Ending Bridge")
     else:

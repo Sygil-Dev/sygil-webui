@@ -13,3 +13,5 @@ horde_priority_usernames = []
 # So if you put this to 2 (the minimum, your SD can only generate 64x64 pixels
 # If you put this to 32, it is equivalent to 1024x1024 pixels
 horde_max_power = 8
+# Set this to false, if you do not want your worker to receive requests for NSFW generations
+horde_nsfw = True
