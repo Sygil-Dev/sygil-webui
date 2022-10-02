@@ -91,13 +91,11 @@ class plugin_info():
     displayPriority = 1
 
 #
-def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_name: str,
-            n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
+def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-            save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = True,
-            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True,
-            LDSR_model: str = "model", 
+            save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = False,
+            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True, LDSR_model: str = "model", 
             fp = None, variant_amount: float = None,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
@@ -153,7 +151,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
                 use_GFPGAN=st.session_state["use_GFPGAN"],
                 GFPGAN_model=st.session_state["GFPGAN_model"],
                 use_RealESRGAN=st.session_state["use_RealESRGAN"],
-                realesrgan_model_name=realesrgan_model_name,
+                realesrgan_model_name=RealESRGAN_model,
                 use_LDSR=st.session_state["use_LDSR"],
                 LDSR_model_name=LDSR_model,                
                 ddim_eta=ddim_eta,
@@ -381,14 +379,20 @@ def layout():
             
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    load_models(st.session_state["use_LDSR"], st.session_state["LDSR_model"], st.session_state["use_GFPGAN"], st.session_state["GFPGAN_model"] , st.session_state["use_RealESRGAN"],
-                                st.session_state["RealESRGAN_model"], server_state["CustomModel_available"], st.session_state["custom_model"])
+                    load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+                                use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] , 
+                                use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"], 
+                                CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
+
+            #print(st.session_state['use_RealESRGAN'])
+            #print(st.session_state['use_LDSR'])
             #try:
             #
-            output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
+            output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, batch_count, batch_size,
                                                         cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
                                                         save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
+                                                        use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
                                                         use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"], 
                                                         variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
