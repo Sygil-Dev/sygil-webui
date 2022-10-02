@@ -287,8 +287,11 @@ class ModelHndl:
     def __init__(self, model: Model, del_callback: Optional[Callable] = None, call_filter: Optional[Callable] = None):
         self._model = model
         self._del_callback = del_callback
-        if call_filter is None:
+
+        # Don't bother wrapping if it only is called on CPU
+        if call_filter is None or model.is_cpu:
             def call_filter(attr):
+                self._model.is_loaded(block=True)
                 return getattr(self._model._instance, attr)
         self._call_filter = call_filter
 

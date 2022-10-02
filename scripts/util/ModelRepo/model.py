@@ -58,6 +58,10 @@ class Model:
     def device(self) -> torch.device:
         return self._device
 
+    @property
+    def is_cpu(self) -> bool:
+        return self.device.type == 'cpu'
+
     def exists(self) -> bool:
         """Check if the model appears to exist without actually loading the model"""
         try:
