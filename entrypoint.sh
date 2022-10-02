@@ -129,7 +129,7 @@ echo "export HF_HOME=${MODEL_DIR}" >> ~/.bashrc
 echo "export XDG_CACHE_HOME=${MODEL_DIR}" >> ~/.bashrc
 echo "export TRANSFORMERS_CACHE=${MODEL_DIR}" >> ~/.bashrc
 source ~/.bashrc
-
+cd $SCRIPT_DIR
 launch_command="streamlit run ${SCRIPT_DIR}/scripts/webui_streamlit.py"
 
 $launch_command
