@@ -13,10 +13,11 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
-import argparse, os, sys, glob, re
+import argparse, os, sys, glob, re, requests, json, time
 
 import cv2
 
+from logger import logger, set_logger_verbosity, quiesce_logger
 from perlin import perlinNoise
 from frontend.frontend import draw_gradio_ui
 from frontend.job_manager import JobManager, JobInfo
@@ -61,6 +62,15 @@ parser.add_argument("--skip-save", action='store_true', help="do not save indivi
 parser.add_argument('--no-job-manager', action='store_true', help="Don't use the experimental job manager on top of gradio", default=False)
 parser.add_argument("--max-jobs", type=int, help="Maximum number of concurrent 'generate' commands", default=1)
 parser.add_argument("--tiling", action='store_true', help="Generate tiling images", default=False)
+parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+parser.add_argument('-q', '--quiet', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
+parser.add_argument("--bridge", action='store_true', help="don't launch web server, but make this instance into a Horde bridge.", default=False)
+parser.add_argument('--horde_api_key', action="store", required=False, type=str, help="The API key corresponding to the owner of this Horde instance")
+parser.add_argument('--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
+parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
+parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
+parser.add_argument('--horde_max_power',type=int, required=False, help="How much power this instance has to generate pictures. Min: 2")
+parser.add_argument('--horde_nsfw', action='store_true', required=False, help="Set to false if you do not want this worker generating NSFW images.")
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -749,6 +759,9 @@ def get_next_sequence_number(path, prefix=''):
 
     The sequence starts at 0.
     """
+    # Because when running in bridge-mode, we do not have a dir
+    if opt.bridge: 
+        return(0)
     result = -1
     for p in Path(path).iterdir():
         if p.name.endswith(('.png', '.jpg')) and p.name.startswith(prefix):
@@ -933,10 +946,12 @@ def process_images(
     if hasattr(model, "embedding_manager"):
         load_embeddings(fp)
 
-    os.makedirs(outpath, exist_ok=True)
+    if not opt.bridge:
+        os.makedirs(outpath, exist_ok=True)
 
     sample_path = os.path.join(outpath, "samples")
-    os.makedirs(sample_path, exist_ok=True)
+    if not opt.bridge:
+        os.makedirs(sample_path, exist_ok=True)
 
     if not ("|" in prompt) and prompt.startswith("@"):
         prompt = prompt[1:]
@@ -1176,7 +1191,8 @@ def process_images(
                 if sort_samples:
                     sanitized_prompt = sanitized_prompt[:128] #200 is too long
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
-                    os.makedirs(sample_path_i, exist_ok=True)
+                    if not opt.bridge:
+                        os.makedirs(sample_path_i, exist_ok=True)
                     base_count = get_next_sequence_number(sample_path_i)
                     filename = opt.filename_format or "[STEPS]_[SAMPLER]_[SEED]_[VARIANT_AMOUNT]"
                 else:
@@ -1364,9 +1380,23 @@ Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_0
     return output_images, seed, info, stats
 
 
-def txt2img(prompt: str, ddim_steps: int, sampler_name: str, toggles: List[int], realesrgan_model_name: str,
-            ddim_eta: float, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
-            height: int, width: int, fp, variant_amount: float = None, variant_seed: int = None, job_info: JobInfo = None):
+def txt2img(
+        prompt: str, 
+        ddim_steps: int = 50, 
+        sampler_name: str = 'k_lms', 
+        toggles: List[int] = [1, 4], 
+        realesrgan_model_name: str = '',
+        ddim_eta: float = 0.0, 
+        n_iter: int = 1, 
+        batch_size: int = 1, 
+        cfg_scale: float = 5.0, 
+        seed: Union[int, str, None] = None,
+        height: int = 512, 
+        width: int = 512, 
+        fp = None, 
+        variant_amount: float = 0.0, 
+        variant_seed: int = None, 
+        job_info: JobInfo = None):
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)
@@ -2580,8 +2610,150 @@ def run_headless():
         print(stats)
         print()
 
+@logger.catch
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw):
+    current_id = None
+    current_payload = None
+    loop_retry = 0
+    while True:
+        gen_dict = {
+            "name": horde_name,
+            "max_pixels": horde_max_pixels,
+            "priority_usernames": priority_usernames,
+            "nsfw": horde_nsfw,
+        }
+        headers = {"apikey": api_key}
+        if current_id:
+            loop_retry += 1
+        else:
+            try:
+                pop_req = requests.post(horde_url + '/api/v2/generate/pop', json = gen_dict, headers = headers)
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            except requests.exceptions.JSONDecodeError():
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            try:
+                pop = pop_req.json()
+            except json.decoder.JSONDecodeError:
+                logger.error(f"Could not decode response from {horde_url} as json. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if pop == None:
+                logger.error(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if not pop_req.ok:
+                message = pop['message']
+                logger.warning(f"During gen pop, server {horde_url} responded with status code {pop_req.status_code}: {pop['message']}. Waiting for 10 seconds...")
+                if 'errors' in pop:
+                    logger.warning(f"Detailed Request Errors: {pop['errors']}")
+                time.sleep(10)
+                continue
+            if not pop.get("id"):
+                skipped_info = pop.get('skipped')
+                if skipped_info and len(skipped_info):
+                    skipped_info = f" Skipped Info: {skipped_info}."
+                else:
+                    skipped_info = ''
+                logger.debug(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
+                time.sleep(interval)
+                continue
+            current_id = pop['id']
+            logger.debug(f"Request with id {current_id} picked up. Initiating work...")
+            current_payload = pop['payload']
+            if 'toggles' in current_payload and current_payload['toggles'] == None:
+                logger.error(f"Received Bad payload: {pop}")
+                current_id = None
+                current_payload = None
+                current_generation = None
+                time.sleep(10)
+                continue
+        images, seed, info, stats = txt2img(**current_payload)
+        buffer = BytesIO()
+        # We send as WebP to avoid using all the horde bandwidth
+        images[0].save(buffer, format="WebP", quality=90)
+        # logger.info(info)
+        submit_dict = {
+            "id": current_id,
+            "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
+            "api_key": api_key,
+            "seed": seed,
+            "max_pixels": horde_max_pixels,
+        }
+        current_generation = seed
+        while current_id and current_generation:
+            try:
+                submit_req = requests.post(horde_url + '/api/v2/generate/submit', json = submit_dict, headers = headers)
+                try:
+                    submit = submit_req.json()
+                except json.decoder.JSONDecodeError:
+                    logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!")
+                    time.sleep(interval)
+                    continue
+                if submit_req.status_code == 404:
+                    logger.warning(f"The generation we were working on got stale. Aborting!")
+                elif not submit_req.ok:
+                    logger.warning(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...")
+                    if 'errors' in submit:
+                        logger.warning(f"Detailed Request Errors: {submit['errors']}")
+                    time.sleep(10)
+                    continue
+                else:
+                    logger.info(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
+                current_id = None
+                current_payload = None
+                current_generation = None
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+        time.sleep(interval)
+
+
 if __name__ == '__main__':
-    if opt.cli is None:
-        launch_server()
-    else:
+    set_logger_verbosity(opt.verbosity)
+    quiesce_logger(opt.quiet)
+    if opt.cli:
         run_headless()
+    if opt.bridge:
+        try:
+            import bridgeData as cd
+        except:
+            logger.warning("No bridgeData found, use default where no CLI args are set")
+            class temp(object):
+                def __init__(self):
+                    random.seed()
+                    self.horde_url = "https://stablehorde.net"
+                    # Give a cool name to your instance
+                    self.horde_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                    # The api_key identifies a unique user in the horde
+                    self.horde_api_key = "0000000000"
+                    # Put other users whose prompts you want to prioritize.
+                    # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
+                    self.horde_priority_usernames = []
+                    self.horde_max_power = 8
+                    self.nsfw = True
+            cd = temp()
+        horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
+        horde_name = opt.horde_name if opt.horde_name else cd.horde_name
+        horde_url = opt.horde_url if opt.horde_url else cd.horde_url
+        horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
+        horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
+        try:
+            horde_nsfw = opt.horde_nsfw if opt.horde_nsfw else cd.horde_nsfw 
+        except AttributeError:
+            horde_nsfw = True
+        if horde_max_power < 2:
+            horde_max_power = 2
+        horde_max_pixels = 64*64*8*horde_max_power
+        logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
+        try:
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw)
+        except KeyboardInterrupt:
+            logger.info(f"Keyboard Interrupt Received. Ending Bridge")
+    else:
+        launch_server()

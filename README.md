@@ -8,7 +8,6 @@
 - **[Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.windows-installation.html)** 
 - **[Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.html)**
 
-
 ### Want to ask a question or request a feature?
 
 Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions).

@@ -97,7 +97,7 @@ call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
   set "PYTHONPATH=%~dp0"
-  python scripts\relauncher.py
+  python scripts\relauncher.py %*
 ) ELSE (
   echo Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
   pause
