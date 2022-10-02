@@ -34,9 +34,9 @@ def layout():
 
     csvString = f"""
                     ,Stable Diffusion v1.4            , ./models/ldm/stable-diffusion-v1               , https://huggingface.co/CompVis/stable-diffusion-v-1-4-original                  
-                    ,GFPGAN v1.3                      , ./src/gfpgan/experiments/pretrained_models     , https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth                     
-                    ,RealESRGAN_x4plus                , ./src/realesrgan/experiments/pretrained_models , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth            
-                    ,RealESRGAN_x4plus_anime_6B       , ./src/realesrgan/experiments/pretrained_models , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth 
+                    ,GFPGAN v1.4                      , ./models/gfpgan                                , https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth
+                    ,RealESRGAN_x4plus                , ./models/realesrgan                            , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth            
+                    ,RealESRGAN_x4plus_anime_6B       , ./models/realesrgan                            , https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth 
                     ,Waifu Diffusion v1.2             , ./models/custom                                , https://huggingface.co/hakurei/waifu-diffusion
                     ,Waifu Diffusion v1.2 Pruned      , ./models/custom                                , https://huggingface.co/crumb/pruned-waifu-diffusion
                     ,TrinArt Stable Diffusion v2      , ./models/custom                                , https://huggingface.co/naclbit/trinart_stable_diffusion_v2
