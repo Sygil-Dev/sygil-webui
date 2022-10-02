@@ -258,7 +258,8 @@ def load_diffusers_model(weights_path,torch_device):
 					
 				if st.session_state.defaults.general.enable_minimal_memory_usage:	
 					model.enable_minimal_memory_usage()
-					
+				
+				# TODO: Create a ModelRepo.ModelLoader
 				model_manager.register_model(name=ModelNames.Txt2Vid, load_func=lambda: model, exists_func=lambda:True, max_depth=0)
 				print("Tx2Vid Model Loaded")
 			else:
@@ -413,7 +414,9 @@ def txt2vid(
 		model.scheduler = SCHEDULERS[scheduler]
 		model.use_multiprocessing_for_evaluation = False
 		model.use_multiprocessed_decoding = False
-	
+		tokenizer = model.tokenizer
+		text_encoder = model.text_encoder
+
 	if do_loop:
 		prompts = str([prompts, prompts])
 		seeds = [seeds, seeds]
@@ -421,12 +424,10 @@ def txt2vid(
 		#prompts.append(prompts)
 		#seeds.append(first_seed)	
 
-		tokenizer = model.tokenizer
-		text_encoder = model.text_encoder
 
-		# get the conditional text embeddings based on the prompt
-		text_input = tokenizer(prompts, padding="max_length", max_length=server_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
-		cond_embeddings = text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
+	# get the conditional text embeddings based on the prompt
+	text_input = tokenizer(prompts, padding="max_length", max_length=tokenizer.model_max_length, truncation=True, return_tensors="pt")
+	cond_embeddings = text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
 
 	#
 	if st.session_state.defaults.general.use_sd_concepts_library:
@@ -456,7 +457,8 @@ def txt2vid(
 							load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{prompt_tokens[0]}>")  	 
 
 	# sample a source
-	init1 = torch.randn((1, server_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
+	with model_manager.model_context(ModelNames.Txt2Vid) as model:
+		init1 = torch.randn((1, model.unet.in_channels, height // 8, width // 8), device=torch_device)
 
 
 	# iterate the loop
