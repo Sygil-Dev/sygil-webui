@@ -85,15 +85,9 @@ txt2img:
     seed: ""
     batch_count:
         value:      1
-        min_value:  1
-        max_value:  100
-        step:       1
         
     batch_size:
         value:      1
-        min_value:  1 
-        max_value:  5
-        step:       1
         
     sampling_steps:
         value:      30
@@ -148,15 +142,9 @@ txt2vid:
         
     batch_count:
         value:      1
-        min_value:  1
-        max_value:  100
-        step:       1
         
     batch_size:
         value:      1
-        min_value:  1 
-        max_value:  5
-        step:       1
         
     sampling_steps:
         value:      30
@@ -251,15 +239,9 @@ img2img:
         
     batch_count:
         value:      1
-        min_value:  1
-        max_value:  100
-        step:       1
         
     batch_size:
         value:      1
-        min_value:  1 
-        max_value:  5
-        step:       1
         
     sampling_steps:
         value:      30
