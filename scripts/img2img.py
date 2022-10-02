@@ -50,33 +50,19 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	    n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
 	    seed: int = -1, noise_mode: int = 0, find_noise_steps: str = "", height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
 	    variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
-	    write_info_files:bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
-	    separate_prompts:bool = False, normalize_prompt_weights:bool = True,
+	    write_info_files:bool = True, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
 	    save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-	    save_as_jpg: bool = True, use_GFPGAN: bool = True, use_RealESRGAN: bool = True, loopback: bool = False,
+	    save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3',
+		use_RealESRGAN: bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
+		use_LDSR: bool = True, LDSR_model: str = "model",
+		loopback: bool = False,
 	    random_seed_loopback: bool = False
 	    ):
 
 	outpath = st.session_state['defaults'].general.outdir_img2img or st.session_state['defaults'].general.outdir or "outputs/img2img-samples"
-	#err = False
-	#loopback = False
-	#skip_save = False
 	seed = seed_to_int(seed)
 
 	batch_size = 1
-
-	#prompt_matrix = 0
-	#normalize_prompt_weights = 1 in toggles
-	#loopback = 2 in toggles
-	#random_seed_loopback = 3 in toggles
-	#skip_save = 4 not in toggles
-	#save_grid = 5 in toggles
-	#sort_samples = 6 in toggles
-	#write_info_files = 7 in toggles
-	#write_sample_info_to_log_file = 8 in toggles
-	#jpg_sample = 9 in toggles
-	#use_GFPGAN = 10 in toggles
-	#use_RealESRGAN = 11 in toggles
 
 	if sampler_name == 'PLMS':
 		sampler = PLMSSampler(server_state["model"])
@@ -273,8 +259,11 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 				height=height,
 				prompt_matrix=separate_prompts,
 				use_GFPGAN=use_GFPGAN,
+				GFPGAN_model=GFPGAN_model,
 				use_RealESRGAN=use_RealESRGAN and is_final_iteration, # Forcefully disable upscaling when using loopback
 				realesrgan_model_name=RealESRGAN_model,
+				use_LDSR=use_LDSR,
+				LDSR_model_name=LDSR_model,
 				normalize_prompt_weights=normalize_prompt_weights,
 				save_individual_images=save_individual_images,
 				init_img=init_img,
@@ -343,8 +332,11 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			height=height,
 			prompt_matrix=separate_prompts,
 			use_GFPGAN=use_GFPGAN,
+			GFPGAN_model=GFPGAN_model,
 			use_RealESRGAN=use_RealESRGAN,
 			realesrgan_model_name=RealESRGAN_model,
+			use_LDSR=use_LDSR,
+			LDSR_model_name=LDSR_model,
 			normalize_prompt_weights=normalize_prompt_weights,
 			save_individual_images=save_individual_images,
 			init_img=init_img,
@@ -484,20 +476,80 @@ def layout():
 									       help="Save a file next to the image with informartion about the generation.")						
 				save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].img2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 	
-				if server_state["GFPGAN_available"]:
-					use_GFPGAN = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].img2img.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation.\
-							This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
-				else:
-					use_GFPGAN = False
-	
-				if server_state["RealESRGAN_available"]:
-					st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].img2img.use_RealESRGAN,
-										     help="Uses the RealESRGAN model to upscale the images after the generation.\
-							This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-					st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)  
-				else:
-					st.session_state["use_RealESRGAN"] = False
-					st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+				#
+				# check if GFPGAN, RealESRGAN and LDSR are available.
+				if "GFPGAN_available" not in st.session_state:
+					GFPGAN_available()
+			
+				if "RealESRGAN_available" not in st.session_state:
+					RealESRGAN_available()
+			
+				if "LDSR_available" not in st.session_state:
+					LDSR_available()
+			
+				if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
+					with st.expander("Post-Processing"):
+						face_restoration_tab, upscaling_tab = st.tabs(["Face Restoration", "Upscaling"])
+						with face_restoration_tab:
+							# GFPGAN used for face restoration
+							if st.session_state["GFPGAN_available"]:
+								#with st.expander("Face Restoration"):
+								#if st.session_state["GFPGAN_available"]:
+								#with st.expander("GFPGAN"):
+								st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN,
+																							 help="Uses the GFPGAN model to improve faces after the generation.\
+																							 This greatly improve the quality and consistency of faces but uses\
+																							 extra VRAM. Disable if you need the extra VRAM.")
+			
+								st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
+																								index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
+			
+								#st.session_state["GFPGAN_strenght"] = st.slider("Effect Strenght", min_value=1, max_value=100, value=1, step=1, help='')
+			
+							else:
+								st.session_state["use_GFPGAN"] = False                                 
+			
+						with upscaling_tab:
+							#with st.expander("Upscaling"): 
+							# RealESRGAN and LDSR used for upscaling.     
+							if st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
+			
+								upscaling_method_list = []
+								if st.session_state["RealESRGAN_available"]:
+									upscaling_method_list.append("RealESRGAN")
+								if st.session_state["LDSR_available"]:
+									upscaling_method_list.append("LDSR")
+			
+								st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
+																								index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
+			
+								if st.session_state["RealESRGAN_available"]:
+									# with st.expander("RealESRGAN"):
+									st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
+																								 help="Uses the RealESRGAN model to upscale the images after the generation.\
+																								 This greatly improve the quality and lets you have high resolution images but \
+																								 uses extra VRAM. Disable if you need the extra VRAM.")
+			
+									st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
+																									index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
+								else:
+									st.session_state["use_RealESRGAN"] = False
+									st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+			
+			
+								#
+								if st.session_state["LDSR_available"]:
+									#with st.expander("LDSR"):
+									st.session_state["use_LDSR"] = st.checkbox("Use LDSR", value=st.session_state['defaults'].txt2img.use_LDSR,
+																						   help="Uses the LDSR model to upscale the images after the generation.\
+																								 This greatly improve the quality and lets you have high resolution images but \
+																								 uses extra VRAM. Disable if you need the extra VRAM.")
+			
+									st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
+																							  index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))  
+								else:
+									st.session_state["use_LDSR"] = False
+									st.session_state["LDSR_model"] = "model" 
 	
 				with st.expander("Variant"):
 					variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].img2img.variant_amount, min_value=0.0, max_value=1.0, step=0.01)
@@ -588,8 +640,9 @@ def layout():
 			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 			with col3_img2img_layout:
 				with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-					load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
-							st.session_state["custom_model"])                
+						load_models(st.session_state["use_LDSR"], st.session_state["LDSR_model"], st.session_state["use_GFPGAN"],
+									st.session_state["GFPGAN_model"] , st.session_state["use_RealESRGAN"],
+									st.session_state["RealESRGAN_model"], server_state["CustomModel_available"], st.session_state["custom_model"])             
 			
 			if uploaded_images:
 				image = Image.open(uploaded_images).convert('RGBA')
@@ -608,11 +661,13 @@ def layout():
 										   seed=seed, noise_mode=noise_mode, find_noise_steps=find_noise_steps, width=width, 
 										   height=height, variant_amount=variant_amount, 
 										   ddim_eta=st.session_state.defaults.img2img.ddim_eta, write_info_files=write_info_files,
-										   RealESRGAN_model=st.session_state["RealESRGAN_model"],
 										   separate_prompts=separate_prompts, normalize_prompt_weights=normalize_prompt_weights,
 										   save_individual_images=save_individual_images, save_grid=save_grid, 
-										   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=use_GFPGAN,
-										   use_RealESRGAN=st.session_state["use_RealESRGAN"], loopback=loopback
+										   group_by_prompt=group_by_prompt, save_as_jpg=save_as_jpg, use_GFPGAN=st.session_state["use_GFPGAN"],
+										   GFPGAN_model=st.session_state["GFPGAN_model"],
+										   use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+										   use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+										   loopback=loopback
 										   )
 	
 					#show a message when the generation is complete.
