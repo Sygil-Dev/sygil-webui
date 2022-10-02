@@ -25,7 +25,7 @@ class TaskInfo:
     waiters_cnt: int = 0
 
     def __repr__(self):
-        return f"TaskInfo: {self.model._name} (On Device: {self.on_device}). Waiters: {self.waiters_cnt}. rlock: {self.lock.v_read_count}  wlock: {self.lock.v_write_count}"
+        return f"TaskInfo: {self.model.name} (On Device: {self.on_device}). Waiters: {self.waiters_cnt}. rlock: {self.lock.v_read_count}  wlock: {self.lock.v_write_count}"
 
     def __post_init__(self):
         self.wlock = self.lock.gen_wlock()
@@ -44,6 +44,7 @@ class LoadModelCmd:
 class Scheduler:
     def __init__(self):
         self._tasks: Dict[str, TaskInfo] = {}
+        self._device_tasks: Dict[str, str] = {}
         self._thread = threading.Thread(name="ModelRepo Model Mover", target=self._model_thread)
         self._device_queue: queue.Queue[LoadModelCmd] = queue.Queue()
         self._tls: threading.local = threading.local()
@@ -62,6 +63,7 @@ class Scheduler:
         key = uuid.uuid4().hex
         new_task = TaskInfo(model=model)
         self._tasks[key] = new_task
+        self._device_tasks.setdefault(model.device.type, set()).add(key)
         return key
 
     def prepare_for_task(self, task: TaskInfo):
@@ -191,11 +193,15 @@ class OneAtATimeScheduler(Scheduler):
         self._keep_family = keep_family
 
     def prepare_for_task(self, task: TaskInfo):
-        for key, iter_task in self._tasks.copy().items():
+        # Only consider models that share the same device
+        device_task_keys = self._device_tasks[task.model.device.type]
+        device_tasks = [self._tasks[x] for x in device_task_keys]
+
+        for iter_task in device_tasks:
             if iter_task is not task:
                 # Optimization: Don't unload same 'family'
-                iter_is_parent = task.model._name.startswith(iter_task.model._name)
-                iter_is_child = iter_task.model._name.startswith(task.model._name)
+                iter_is_parent = task.model.name.startswith(iter_task.model.name)
+                iter_is_child = iter_task.model.name.startswith(task.model.name)
                 if not (self._keep_family and (iter_is_parent or iter_is_child)):
                     self._move_off_device(iter_task)
         torch_gc()

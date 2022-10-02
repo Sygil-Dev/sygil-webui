@@ -253,11 +253,21 @@ def register_models( manager: ModelRepo.Manager ):
     server_state["loaded_model"] = "Stable Diffusion v1.4" # TODO: Custom models?
     server_state["device"] = torch.device("cuda") # TODO: Device?
 
+def get_device_setting( setting_name: str ) -> torch.device:
+    """ Returns a torch.device for a given setting (gfpgan, esrgan, extra-models) """
+    gen_settings = st.session_state["defaults"].general
+    on_cpu = gen_settings.get(f"{setting_name}_cpu", False)
+    if on_cpu:
+        return torch.device("cpu")
+    gpu_id = gen_settings.get(f"{setting_name}_gpu", 0)
+    return torch.device(f"cuda:{gpu_id}")
+
 def register_preconfigured_models( manager:ModelRepo.Manager ):
     # Pre-configured model definitions
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {
         ModelNames.GFPGAN:
-            Models.GFPGAN( gfpgan_dir = st.session_state["defaults"].general.GFPGAN_dir),
+            Models.GFPGAN( gfpgan_dir = st.session_state["defaults"].general.GFPGAN_dir,
+                           device=get_device_setting("gfpgan")),
 
         ModelNames.LDSR:
             Models.LDSR( ldsr_dir=st.session_state['defaults'].general.LDSR_dir ),
@@ -332,7 +342,7 @@ def register_custom_esgran_models( manager:ModelRepo.Manager ):
     custom_models = RealESRGAN_available()
     for name,path in custom_models.items():
         model_loaders[name] = Models.RealESRGAN( esrgan_dir=st.session_state["defaults"].general.RealESRGAN_dir,
-                                                 model_name=name, path=path)
+                                                 model_name=name, path=path, device=get_device_setting("esrgan"))
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():
         manager.register_model_loader(name=name, loader=loader)
@@ -343,7 +353,7 @@ def register_custom_gfpgan_models( manager:ModelRepo.Manager ):
     custom_models = GFPGAN_available()
     for name,path in custom_models.items():
         model_loaders[name] = Models.GFPGAN( gfpgan_dir=st.session_state["defaults"].general.GFPGAN_dir,
-                                                 model_name=name, path=path)
+                                                 model_name=name, path=path, device=get_device_setting("gfpgan"))
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():
         manager.register_model_loader(name=name, loader=loader)

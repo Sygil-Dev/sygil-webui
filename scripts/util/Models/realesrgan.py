@@ -6,13 +6,13 @@ import torch
 
 
 class RealESRGAN(ModelLoader):
-    def __init__(self, esrgan_dir: str, model_name: str, half_precision: bool = True, path:str = None, **kwargs):
+    def __init__(self, esrgan_dir: str, model_name: str, half_precision: bool = True, path: str = None, **kwargs):
         super().__init__(**kwargs)
         self._esrgan_dir = esrgan_dir
         self._model_name = model_name
         self._half_precision = half_precision
-        self._path = path if path else os.path.join(self._esrgan_dir, "experiments/pretrained_models", self._model_name + '.pth')
-        self._TODO_gpu = 0
+        self._path = path if path else os.path.join(
+            self._esrgan_dir, "experiments/pretrained_models", self._model_name + '.pth')
 
     def load(self) -> Any:
         """ Overrides ModelLoader.load """
@@ -34,7 +34,7 @@ class RealESRGAN(ModelLoader):
         else:
             instance = RealESRGANer(
                 scale=2, model_path=self._get_model_path(), model=RealESRGAN_models[self._model_name],
-                pre_pad=0, half=self._half_precision, gpu_id=self._TODO_gpu)
+                pre_pad=0, half=self._half_precision, device=self.device)
         instance.model.name = self._model_name
         return instance
 

@@ -38,7 +38,7 @@ class ModelInfo:
 class Manager:
     NUM_WORKERS: int = 5
 
-    def __init__(self, device: torch.device = torch.device("cuda"), scheduler: Optional[Scheduler] = None):
+    def __init__(self, default_device: torch.device = torch.device("cuda"), scheduler: Optional[Scheduler] = None):
         """Construct a new ModelRepo Manager
 
         Args:
@@ -47,7 +47,7 @@ class Manager:
         """
         if scheduler is None:
             scheduler = OneAtATimeScheduler()
-        self._device = device
+        self._default_device = default_device
         self._model_infos: Dict[str, ModelInfo] = {}
         self._model_info_lock: rwlock.RWLockWrite = rwlock.RWLockWrite()
         self._executor = ThreadPoolExecutor(Manager.NUM_WORKERS)
@@ -63,11 +63,11 @@ class Manager:
 
         """
         self.register_model(name=name, load_func=loader.load, exists_func=loader.exists,
-                            max_depth=loader.max_depth, **reg_kwargs)
+                            max_depth=loader.max_depth, device=loader.device, **reg_kwargs)
 
     def register_model(
             self, name: str, load_func: Callable, exists_func: Callable, preload: bool = False, max_depth: int = 1,
-            load_kwargs: Dict[str, Any] = None):
+            device: Optional[torch.device] = None, load_kwargs: Dict[str, Any] = None):
         """Registers a new model with the model manager
 
         Args:
@@ -78,12 +78,15 @@ class Manager:
                 without fully loading the model.
                 This function will be called with the same parameters that load_func would
                 receive. It should return True if the model exists
-            load_kwargs (Dict): keyword arguments to pass to the load function
             preload (bool): immediately begin loading the model from disk
+            max_depth (int): maximum recursion depth to search when hooking models
+            device (torch.device, optional): preferred device for model to run on. Will use manager default if not specified
+            load_kwargs (Dict): keyword arguments to pass to the load function
         """
         if name in self._model_infos:
             raise KeyError(f"Model name {name} is already registered")
-        model = Model(name=name, load_func=load_func, exists_func=exists_func, load_kwargs=load_kwargs or {})
+        device = device if device else self._default_device
+        model = Model(name=name, load_func=load_func, exists_func=exists_func, device=device, load_kwargs=load_kwargs or {})
         scheduler_token = self._scheduler.register(model)
         model_info = ModelInfo(model=model, check_func=exists_func,
                                depth_remaining=max_depth, scheduler_token=scheduler_token)
@@ -91,7 +94,7 @@ class Manager:
             self._model_infos[name] = model_info
         exists = exists_func()
 
-        logger.info(f"Model {name} has been registered. Available? {exists}")
+        logger.info(f"ModelRepo registered [{model_info.model}]. Available? {exists}")
         if exists and preload:
             self._load_model(model_info)
 
@@ -107,7 +110,7 @@ class Manager:
         return False
 
     @contextmanager
-    def model_context(self, model_name:str, *args, **kwargs) -> Generator[ModelHndl, None, None]:
+    def model_context(self, model_name: str, *args, **kwargs) -> Generator[ModelHndl, None, None]:
         """Access a model using a 'with' context.
            Use arguments as if calling get_model
         """
@@ -154,7 +157,7 @@ class Manager:
         assert model_info.ref_cnt > 0
         model_info.ref_cnt -= 1
         if model_info.ref_cnt == 0:
-            logging.debug(f"No more refs for {model_info.model._name}")
+            logging.debug(f"No more refs for {model_info.model.name}")
 
     def _load_model(self, model_info: ModelInfo, block=False) -> None:
         """Starts loading the model from disk into RAM
@@ -197,7 +200,7 @@ class Manager:
 
         for name, child_model in model_info.model._child_models.items():
             # Register the child model
-            model_name = f"{model_info.model._name}##{name}"
+            model_name = f"{model_info.model.name}##{name}"
             self.register_model(name=model_name,
                                 load_func=lambda x=child_model: x,
                                 exists_func=lambda: True,
@@ -225,7 +228,7 @@ class Manager:
         """
         # Ensure the model is loaded from disk
         if not model_info.model.is_loaded():
-            logger.debug(f"{model_info.model._name} call to {attr} blocked to load model from disk")
+            logger.debug(f"{model_info.model.name} call to {attr} blocked to load model from disk")
             self._load_model(model_info, block=True)
 
         # Then get the attribute from the underlying instance.
@@ -234,9 +237,9 @@ class Manager:
         if not isinstance(ret, ModelHndl) and callable(ret):
             ret = FuncWrapper(name=attr, func=ret, model_info=model_info, scheduler=self._scheduler)
 
-        if isinstance(ret, torch.Tensor) and ret.device.type == 'cpu':
-            logger.debug(f"Wrapper moved tensor returned by {attr} on {model_info.model._name} to device")
-            ret = ret.cuda()  # Don't go around returning cpu tensors
+        if isinstance(ret, torch.Tensor) and ret.device.type != model_info.model.device.type:
+            logger.debug(f"Wrapper moved tensor returned by {attr} on {model_info.model.name} to device")
+            ret = ret.to(model_info.model.device)
         return ret
 
 
@@ -310,6 +313,11 @@ class ModelHndl:
         # Otherwise forward the call
         ret = self._call_filter(attr)
         return ret
+
+    @property
+    def device(self):
+        """ Don't query the model, just return the desired device """
+        return self._model.device
 
 
 def torch_gc():

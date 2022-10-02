@@ -1,15 +1,16 @@
 from typing import Any
+import torch
 
 
 class ModelLoader:
-    def __init__(self, cpu_only: bool = False, max_depth: int = 0):
+    def __init__(self, device: torch.device = torch.device("cuda"), max_depth: int = 0):
         """Initialize a ModelLoader for use with ModelRepo
 
         Args:
             cpu_only (bool, optional): Run this model only on the CPU
             max_depth (int, optional): maximum child depth for ModelRepo to attempt hooking the model
         """
-        self._cpu_only = cpu_only
+        self._device = device
         self._max_depth = max_depth
 
     def load(self) -> Any:
@@ -23,9 +24,13 @@ class ModelLoader:
         raise NotImplementedError("Load must be implemented in a derived class")
 
     @property
-    def cpu_only(self):
-        return self._cpu_only
+    def is_cpu(self) -> bool:
+        return self.device.type == 'cpu'
 
     @property
-    def max_depth(self):
+    def device(self) -> torch.device:
+        return self._device
+
+    @property
+    def max_depth(self) -> int:
         return self._max_depth

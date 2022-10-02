@@ -15,9 +15,9 @@ logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger("ModelRepo.Model")
 
 
-class Model(object):
+class Model:
     def __init__(
-            self, name: str, load_func: Callable, exists_func: Callable, load_kwargs: Optional[Dict] = None):
+            self, name: str, load_func: Callable, exists_func: Callable, device: torch.device = torch.device('cuda'), load_kwargs: Optional[Dict] = None):
         """Initialize a new Model
 
         Args:
@@ -34,9 +34,29 @@ class Model(object):
         self._exists_func: Callable = exists_func
         self._load_kwargs: Dict = load_kwargs
         self._child_models: Dict[str, torch.nn.Module] = {}
+        self._device = device
 
         self._loaded: Event = Event()
         self._on_device: bool = False
+
+    def __repr__(self):
+        return f"Model '{self.name}'. Loaded: {self.loaded}   Device: {self.device.type}   OnDevice: {self.on_device}"
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def loaded(self) -> bool:
+        return self._loaded.is_set()
+
+    @property
+    def on_device(self) -> bool:
+        return self._on_device
+
+    @property
+    def device(self) -> torch.device:
+        return self._device
 
     def exists(self) -> bool:
         """Check if the model appears to exist without actually loading the model"""
@@ -89,7 +109,7 @@ class Model(object):
         """
         if to_device == self._on_device:
             return
-        logger.debug(f"Moving {self._name} to (device: {to_device})")
+        logger.debug(f"Moving {self}")
         start_time = time.time()
         # TODO: Move child models as well?
         if to_device:
@@ -103,4 +123,4 @@ class Model(object):
                     model.to('cpu')
             self._on_device = False
         logger.debug(
-            f"Done moving {self._name} toDevice {to_device}. Elapsed time: {time.time()-start_time:.3f} seconds")
+            f"Done moving {self}. Elapsed time: {time.time()-start_time:.3f} seconds")
