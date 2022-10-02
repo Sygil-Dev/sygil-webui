@@ -2743,7 +2743,10 @@ if __name__ == '__main__':
         horde_url = opt.horde_url if opt.horde_url else cd.horde_url
         horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
         horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
-        horde_nsfw = opt.horde_nsfw if opt.horde_nsfw else cd.horde_nsfw
+        try:
+            horde_nsfw = opt.horde_nsfw if opt.horde_nsfw else cd.horde_nsfw 
+        except AttributeError:
+            horde_nsfw = True
         if horde_max_power < 2:
             horde_max_power = 2
         horde_max_pixels = 64*64*8*horde_max_power
