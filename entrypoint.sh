@@ -118,7 +118,6 @@ fi
 if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
     cd ${MODEL_DIR}/sd-concepts-library
     git pull
-    cd $SCRIPT_DIR
 else
     cd ${MODEL_DIR}
     git clone https://github.com/sd-webui/sd-concepts-library
