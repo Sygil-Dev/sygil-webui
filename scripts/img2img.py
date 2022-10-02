@@ -31,6 +31,7 @@ import torch
 import skimage
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
+import util.ModelRepo as ModelRepo
 # Temp imports
 
 
@@ -65,7 +66,8 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
     seed = seed_to_int(seed)
 
     batch_size = 1
-
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
+    model_unet_name, model_cs_name, model_fs_name = get_active_sd_models()
     #prompt_matrix = 0
     #normalize_prompt_weights = 1 in toggles
     #loopback = 2 in toggles
@@ -79,24 +81,25 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
     #use_GFPGAN = 10 in toggles
     #use_RealESRGAN = 11 in toggles
 
-    if sampler_name == 'PLMS':
-        sampler = PLMSSampler(server_state["model"])
-    elif sampler_name == 'DDIM':
-        sampler = DDIMSampler(server_state["model"])
-    elif sampler_name == 'k_dpm_2_a':
-        sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
-    elif sampler_name == 'k_dpm_2':
-        sampler = KDiffusionSampler(server_state["model"],'dpm_2')
-    elif sampler_name == 'k_euler_a':
-        sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
-    elif sampler_name == 'k_euler':
-        sampler = KDiffusionSampler(server_state["model"],'euler')
-    elif sampler_name == 'k_heun':
-        sampler = KDiffusionSampler(server_state["model"],'heun')
-    elif sampler_name == 'k_lms':
-        sampler = KDiffusionSampler(server_state["model"],'lms')
-    else:
-        raise Exception("Unknown sampler: " + sampler_name)
+    with model_manager.model_context(model_unet_name) as model_unet:
+        if sampler_name == 'PLMS':
+            sampler = PLMSSampler(model_unet)
+        elif sampler_name == 'DDIM':
+            sampler = DDIMSampler(model_unet)
+        elif sampler_name == 'k_dpm_2_a':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2_ancestral')
+        elif sampler_name == 'k_dpm_2':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2')
+        elif sampler_name == 'k_euler_a':
+            sampler = KDiffusionSampler(model_unet, 'euler_ancestral')
+        elif sampler_name == 'k_euler':
+            sampler = KDiffusionSampler(model_unet, 'euler')
+        elif sampler_name == 'k_heun':
+            sampler = KDiffusionSampler(model_unet, 'heun')
+        elif sampler_name == 'k_lms':
+            sampler = KDiffusionSampler(model_unet, 'lms')
+        else:
+            raise Exception("Unknown sampler: " + sampler_name)
 
     def process_init_mask(init_mask: Image):
         if init_mask.mode == "RGBA":
@@ -177,18 +180,10 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
             mask = mask[None].transpose(0, 1, 2, 3)
             mask = torch.from_numpy(mask).to(server_state["device"])
 
-        if st.session_state['defaults'].general.optimized:
-            server_state["modelFS"].to(server_state["device"] )
-
         init_image = 2. * image - 1.
         init_image = init_image.to(server_state["device"])
-        init_latent = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).get_first_stage_encoding((server_state["model"]  if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
-
-        if st.session_state['defaults'].general.optimized:
-            mem = torch.cuda.memory_allocated()/1e6
-            server_state["modelFS"].to("cpu")
-            while(torch.cuda.memory_allocated()/1e6 >= mem):
-                time.sleep(1)
+        with model_manager.model_context(model_fs_name) as model:
+            init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space
 
         return init_latent, mask,
 
@@ -589,8 +584,9 @@ def layout():
             # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
             with col3_img2img_layout:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
-                                    st.session_state["custom_model"])
+                    pass
+                    # load_models(False, use_GFPGAN, st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
+                    #                 st.session_state["custom_model"])
 
             if uploaded_images:
                 image = Image.open(uploaded_images).convert('RGBA')
@@ -620,7 +616,9 @@ def layout():
                     message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
                 except (StopException, KeyError):
+                    import traceback
                     print(f"Received Streamlit StopException")
+                    print(traceback.format_exc(), file=sys.stderr)
 
                 # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
                 # use the current col2 first tab to show the preview_img and update it as its generated.

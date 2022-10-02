@@ -26,7 +26,8 @@ from typing import Union
 #from io import BytesIO
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
-
+import util.ModelRepo as ModelRepo
+from typing import List
 # Temp imports
 
 
@@ -72,24 +73,29 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
 
     seed = seed_to_int(seed)
 
-    if sampler_name == 'PLMS':
-        sampler = PLMSSampler(server_state["model"])
-    elif sampler_name == 'DDIM':
-        sampler = DDIMSampler(server_state["model"])
-    elif sampler_name == 'k_dpm_2_a':
-        sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
-    elif sampler_name == 'k_dpm_2':
-        sampler = KDiffusionSampler(server_state["model"],'dpm_2')
-    elif sampler_name == 'k_euler_a':
-        sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
-    elif sampler_name == 'k_euler':
-        sampler = KDiffusionSampler(server_state["model"],'euler')
-    elif sampler_name == 'k_heun':
-        sampler = KDiffusionSampler(server_state["model"],'heun')
-    elif sampler_name == 'k_lms':
-        sampler = KDiffusionSampler(server_state["model"],'lms')
-    else:
-        raise Exception("Unknown sampler: " + sampler_name)
+    # Choose the model
+    model_manager:ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
+    model_unet_name, model_cs_name, model_fs_name = get_active_sd_models()
+
+    with model_manager.model_context(model_unet_name) as model_unet:
+        if sampler_name == 'PLMS':
+            sampler = PLMSSampler(model_unet)
+        elif sampler_name == 'DDIM':
+            sampler = DDIMSampler(model_unet)
+        elif sampler_name == 'k_dpm_2_a':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2_ancestral')
+        elif sampler_name == 'k_dpm_2':
+            sampler = KDiffusionSampler(model_unet, 'dpm_2')
+        elif sampler_name == 'k_euler_a':
+            sampler = KDiffusionSampler(model_unet, 'euler_ancestral')
+        elif sampler_name == 'k_euler':
+            sampler = KDiffusionSampler(model_unet, 'euler')
+        elif sampler_name == 'k_heun':
+            sampler = KDiffusionSampler(model_unet, 'heun')
+        elif sampler_name == 'k_lms':
+            sampler = KDiffusionSampler(model_unet, 'lms')
+        else:
+            raise Exception("Unknown sampler: " + sampler_name)
 
     def init():
         pass
@@ -272,8 +278,9 @@ def layout():
             #print (st.session_state['custom_model'])
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
-                                st.session_state["custom_model"])
+                    pass
+                    # load_models(False, st.session_state["use_GFPGAN"], st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"], server_state["CustomModel_available"],
+                    #             st.session_state["custom_model"])
 
             try:
                 #
@@ -319,8 +326,13 @@ def layout():
                         #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
 
             except (StopException, KeyError):
+                import traceback
                 print(f"Received Streamlit StopException")
+                print(traceback.format_exc(), file=sys.stderr)
 
+            except Exception as e:
+                print(f"Exception: {e}")
+                print(traceback.format_exc(), file=sys.stderr)
                 # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
                 # use the current col2 first tab to show the preview_img and update it as its generated.
                 # preview_image.image(output_images)

@@ -51,7 +51,7 @@ import torch.nn as nn
 from omegaconf import OmegaConf
 import yaml
 from pathlib import Path
-from contextlib import nullcontext
+from contextlib import nullcontext, ExitStack
 from einops import rearrange
 from ldm.util import instantiate_from_config
 from retry import retry
@@ -60,6 +60,9 @@ import skimage
 import piexif
 import piexif.helper
 from tqdm import trange
+import util.ModelRepo as ModelRepo
+import util.Models as Models
+from typing import Dict, List, Tuple
 
 # Temp imports
 
@@ -211,150 +214,121 @@ def human_readable_size(size, decimal_places=3):
     return f"{size:.{decimal_places}f}{unit}"
 
 
-def load_models(continue_prev_run = False, use_GFPGAN=False, use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
-                CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
-    """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
+class ModelNames:
+    RealESRGANx4Plus = "RealESRGAN_x4plus"
+    RealESRGANx4Plus_Anime_6B = "RealESRGAN_x4plus_anime_6B"
+    RealESRGANx2Plus = "RealESRGAN_x4plus"  # Uses x4 model
+    RealESRGANx2Plus_Anime_6B = "RealESRGAN_x4plus_anime_6B"  # Uses x4 model
+    LDSR = "LDSR"
+    BLIP = "BLIP"
+    Txt2Vid = "Txt2Vid"
+    SD_opt_unet = "sd_unet"
+    SD_opt_cs = "sd_cs"
+    SD_opt_fs = "sd_fs"
+    SD_full = "sd_full"
+    GFPGAN = "GFPGAN"
 
-    print ("Loading models.")
+    # Aliases for optimized mode
+    SD_unet = "sd_full" if not st.session_state.defaults.general.optimized else "sd_unet"
+    SD_cs = "sd_full" if not st.session_state.defaults.general.optimized else "sd_cs"
+    SD_fs = "sd_full" if not st.session_state.defaults.general.optimized else "sd_fs"
 
-    # if "progress_bar_text" in st.session_state:
-    #    st.session_state["progress_bar_text"].text("Loading models...")
+    # Alias for any RealESRGAN
+    RealESRGAN = "RealESRGAN_x4plus"
 
+def register_models( manager: ModelRepo.Manager ):
+    # Pre-configurd model definitions
+    model_loaders: Dict[str, ModelRepo.ModelLoader] = {
+        ModelNames.RealESRGANx4Plus:
+            Models.RealESRGAN( esrgan_dir = st.session_state["defaults"].general.RealESRGAN_dir,
+                               model_name="RealESRGAN_x4plus",
+                               half_precision=not st.session_state['defaults'].general.no_half ),
 
-    # Generate random run ID
-    # Used to link runs linked w/ continue_prev_run which is not yet implemented
-    # Use URL and filesystem safe version just in case.
-    st.session_state["run_id"] = base64.urlsafe_b64encode(
-            os.urandom(6)
-                ).decode("ascii")
+        ModelNames.RealESRGANx4Plus_Anime_6B:
+            Models.RealESRGAN( esrgan_dir = st.session_state["defaults"].general.RealESRGAN_dir,
+                               model_name="RealESRGAN_x4plus_anime_6B",
+                               half_precision=not st.session_state['defaults'].general.no_half ),
+        ModelNames.GFPGAN:
+            Models.GFPGAN( gfpgan_dir = st.session_state["defaults"].general.GFPGAN_dir),
 
-    # check what models we want to use and if the they are already loaded.
+        ModelNames.LDSR:
+            Models.LDSR( ldsr_dir=st.session_state['defaults'].general.LDSR_dir ),
 
-    with server_state_lock["GFPGAN"]:
-        if use_GFPGAN:
-            if "GFPGAN" in server_state:
-                print("GFPGAN already loaded")
-            else:
-                # Load GFPGAN
-                if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-                    try:
-                        server_state["GFPGAN"] = load_GFPGAN()
-                        print("Loaded GFPGAN")
-                    except Exception:
-                        import traceback
-                        print("Error loading GFPGAN:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
-        else:
-            if "GFPGAN" in server_state:
-                del server_state["GFPGAN"]
+        ModelNames.SD_full:
+            Models.SD( checkpoint=st.session_state.defaults.general.default_model_path,
+                       config_yaml=st.session_state.defaults.general.default_model_config,
+                       half_precision=not st.session_state['defaults'].general.no_half ),
 
-    with server_state_lock["RealESRGAN"]:
-        if use_RealESRGAN:
-            if "RealESRGAN" in server_state and server_state["RealESRGAN"].model.name == RealESRGAN_model:
-                print("RealESRGAN already loaded")
-            else:
-                # Load RealESRGAN
-                try:
-                    # We first remove the variable in case it has something there,
-                    # some errors can load the model incorrectly and leave things in memory.
-                    del server_state["RealESRGAN"]
-                except KeyError:
-                    pass
+        ModelNames.SD_opt_cs:
+            Models.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
+                                 config_yaml=st.session_state.defaults.general.optimized_config,
+                                 stage=Models.SD_Optimized.Stage.COND_STAGE,
+                                 half_precision=not st.session_state['defaults'].general.no_half),
 
-                if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
-                    # st.session_state is used for keeping the models in memory across multiple pages or runs.
-                    server_state["RealESRGAN"] = load_RealESRGAN(RealESRGAN_model)
-                    print("Loaded RealESRGAN with model "+ server_state["RealESRGAN"].model.name)
+        ModelNames.SD_opt_unet:
+            Models.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
+                                 config_yaml=st.session_state.defaults.general.optimized_config,
+                                 stage=Models.SD_Optimized.Stage.UNET,
+                                 half_precision=not st.session_state['defaults'].general.no_half,
+                                 max_depth = 0 if st.session_state.defaults.general.optimized_turbo else 1),
 
-        else:
-            if "RealESRGAN" in server_state:
-                del server_state["RealESRGAN"]
+        ModelNames.SD_opt_fs:
+            Models.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
+                                 config_yaml=st.session_state.defaults.general.optimized_config,
+                                 stage=Models.SD_Optimized.Stage.FIRST_STAGE,
+                                 half_precision=not st.session_state['defaults'].general.no_half),
 
-    with server_state_lock["model"], server_state_lock["modelCS"], server_state_lock["modelFS"], server_state_lock["loaded_model"]:
+        ModelNames.BLIP:
+            Models.BLIP()
+    }
 
-        if "model" in server_state:
-            if "model" in server_state and server_state["loaded_model"] == custom_model:
-                # TODO: check if the optimized mode was changed?
-                print("Model already loaded")
+    # Check for custom models
+    custom_models = custom_models_available()
+    for name,path in custom_models.items():
+        full_loader = Models.SD( checkpoint=path,
+                                 config_yaml=st.session_state.defaults.general.default_model_config,
+                                 half_precision=not st.session_state['defaults'].general.no_half )
+        unet_loader =  Models.SD_Optimized( checkpoint=path,
+                                 config_yaml=st.session_state.defaults.general.optimized_config,
+                                 stage=Models.SD_Optimized.Stage.UNET,
+                                 half_precision=not st.session_state['defaults'].general.no_half)
+        cs_loader =  Models.SD_Optimized( checkpoint=path,
+                                 config_yaml=st.session_state.defaults.general.optimized_config,
+                                 stage=Models.SD_Optimized.Stage.COND_STAGE,
+                                 half_precision=not st.session_state['defaults'].general.no_half)
+        fs_loader =  Models.SD_Optimized( checkpoint=path,
+                                 config_yaml=st.session_state.defaults.general.optimized_config,
+                                 stage=Models.SD_Optimized.Stage.FIRST_STAGE,
+                                 half_precision=not st.session_state['defaults'].general.no_half)
 
-                return
-            else:
-                try:
-                    del server_state["model"]
-                    del server_state["modelCS"]
-                    del server_state["modelFS"]
-                    del server_state["loaded_model"]
-
-                except KeyError:
-                    pass
-
-        # if the model from txt2vid is in memory we need to remove it to improve performance.
-        with server_state_lock["pipe"]:
-            if "pipe" in server_state:
-                del server_state["pipe"]
-
-        if "textual_inversion" in st.session_state:
-            del st.session_state['textual_inversion']
-
-        # At this point the model is either
-        # not loaded yet or have been evicted:
-        # load new model into memory
-        server_state["custom_model"] = custom_model
-
-        config, device, model, modelCS, modelFS = load_sd_model(custom_model)
-
-        server_state["device"] = device
-        server_state["model"] = model
-
-        server_state["modelCS"] = modelCS
-        server_state["modelFS"] = modelFS
-        server_state["loaded_model"] = custom_model
-
-        # trying to disable multiprocessing as it makes it so streamlit cant stop when the
-        # model is loaded in memory and you need to kill the process sometimes.
-        try:
-            server_state["model"].args.use_multiprocessing_for_evaluation = False
-        except:
-            pass
-
-        if st.session_state.defaults.general.enable_attention_slicing:
-            server_state["model"].enable_attention_slicing()
-
-        if st.session_state.defaults.general.enable_minimal_memory_usage:
-            server_state["model"].enable_minimal_memory_usage()
-
-        print("Model loaded.")
+        model_loaders[f"{name}_full"] = full_loader
+        model_loaders[f"{name}_unet"] = unet_loader
+        model_loaders[f"{name}_cs"] = cs_loader
+        model_loaders[f"{name}_fs"] = fs_loader
 
 
-def load_model_from_config(config, ckpt, verbose=False):
+    # Register every model in model_loaders above
+    for name, loader in model_loaders.items():
+        manager.register_model_loader(name=name, loader=loader)
 
-    print(f"Loading model from {ckpt}")
-
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(sd, strict=False)
-    if len(m) > 0 and verbose:
-        print("missing keys:")
-        print(m)
-    if len(u) > 0 and verbose:
-        print("unexpected keys:")
-        print(u)
-
-    model.cuda()
-    model.eval()
-    return model
+    server_state["loaded_model"] = "Stable Diffusion v1.4" # TODO: Custom models?
+    server_state["device"] = torch.device("cuda") # TODO: Device?
 
 
-def load_sd_from_config(ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    return sd
+#         # trying to disable multiprocessing as it makes it so streamlit cant stop when the
+#         # model is loaded in memory and you need to kill the process sometimes.
+#         try:
+#             server_state["model"].args.use_multiprocessing_for_evaluation = False
+#         except:
+#             pass
+
+#         if st.session_state.defaults.general.enable_attention_slicing:
+#             server_state["model"].enable_attention_slicing()
+
+#         if st.session_state.defaults.general.enable_minimal_memory_usage:
+#             server_state["model"].enable_minimal_memory_usage()
+
+#         print("Model loaded.")
 
 
 class MemUsageMonitor(threading.Thread):
@@ -777,209 +751,14 @@ def torch_gc():
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
 
-@retry(tries=5)
-def load_GFPGAN():
-    model_name = 'GFPGANv1.3'
-    model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.isfile(model_path):
-        raise Exception("GFPGAN model not found at path "+model_path)
-
-    sys.path.append(os.path.abspath(st.session_state['defaults'].general.GFPGAN_dir))
-    from gfpgan import GFPGANer
-
-    with server_state_lock['GFPGAN']:
-        if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
-        elif st.session_state['defaults'].general.extra_models_gpu:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
-        else:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-
-    return server_state['GFPGAN']
-
-@retry(tries=5)
-def load_RealESRGAN(model_name: str):
-    from basicsr.archs.rrdbnet_arch import RRDBNet
-    RealESRGAN_models = {
-            'RealESRGAN_x4plus': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4),
-                'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
-        }
-
-    model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
-    if not os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{model_name}.pth")):
-        raise Exception(model_name+".pth not found at path "+model_path)
-
-    sys.path.append(os.path.abspath(st.session_state['defaults'].general.RealESRGAN_dir))
-    from realesrgan import RealESRGANer
-
-    with server_state_lock['RealESRGAN']:
-        if st.session_state['defaults'].general.esrgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=False) # cpu does not support half
-            server_state['RealESRGAN'].device = torch.device('cpu')
-            server_state['RealESRGAN'].model.to('cpu')
-        elif st.session_state['defaults'].general.extra_models_gpu:
-            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.esrgan_gpu}"))
-        else:
-            server_state['RealESRGAN'] = RealESRGANer(scale=2, model_path=model_path, model=RealESRGAN_models[model_name], pre_pad=0, half=not st.session_state['defaults'].general.no_half, device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
-        server_state['RealESRGAN'].model.name = model_name
-
-    return server_state['RealESRGAN']
-
-#
-@retry(tries=5)
-def load_LDSR(checking=False):
-    model_name = 'model'
-    yaml_name = 'project'
-    model_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
-    yaml_path = os.path.join(st.session_state['defaults'].general.LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
-
-    if not os.path.isfile(model_path):
-        raise Exception("LDSR model not found at path "+model_path)
-    if not os.path.isfile(yaml_path):
-        raise Exception("LDSR model not found at path "+yaml_path)
-    if checking == True:
-        return True
-
-    sys.path.append(os.path.abspath(st.session_state['defaults'].general.LDSR_dir))
-    from LDSR import LDSR
-    LDSRObject = LDSR(model_path, yaml_path)
-
-    return LDSRObject
-
-#
-LDSR = None
-
-@retry(tries=5)
-def try_loading_LDSR(model_name: str,checking=False):
-    global LDSR
-    if os.path.exists(st.session_state['defaults'].general.LDSR_dir):
-        try:
-            LDSR = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
-            if checking == True:
-                print("Found LDSR")
-                return True
-            print("Latent Diffusion Super Sampling (LDSR) model loaded")
-        except Exception:
-            import traceback
-            print("Error loading LDSR:", file=sys.stderr)
-            print(traceback.format_exc(), file=sys.stderr)
-    else:
-        print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
-
-# try_loading_LDSR('model',checking=True)
-
-
-# Loads Stable Diffusion model by name
-# @retry(tries=5)
-def load_sd_model(model_name: str):
-    ckpt_path = st.session_state.defaults.general.default_model_path
-
-    if model_name != st.session_state.defaults.general.default_model:
-        ckpt_path = os.path.join("models", "custom", f"{model_name}.ckpt")
-
-    if st.session_state.defaults.general.optimized:
-        config = OmegaConf.load(st.session_state.defaults.general.optimized_config)
-
-        sd = load_sd_from_config(ckpt_path)
-        li, lo = [], []
-        for key, v_ in sd.items():
-            sp = key.split('.')
-            if (sp[0]) == 'model':
-                if 'input_blocks' in sp:
-                    li.append(key)
-                elif 'middle_block' in sp:
-                    li.append(key)
-                elif 'time_embed' in sp:
-                    li.append(key)
-                else:
-                    lo.append(key)
-        for key in li:
-            sd['model1.' + key[6:]] = sd.pop(key)
-        for key in lo:
-            sd['model2.' + key[6:]] = sd.pop(key)
-
-        device = torch.device(f"cuda:{st.session_state.defaults.general.gpu}") \
-            if torch.cuda.is_available() else torch.device("cpu")
-
-        model = instantiate_from_config(config.modelUNet)
-        _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
-        model.eval()
-        model.turbo = st.session_state.defaults.general.optimized_turbo
-
-        modelCS = instantiate_from_config(config.modelCondStage)
-        _, _ = modelCS.load_state_dict(sd, strict=False)
-        modelCS.cond_stage_model.device = device
-        modelCS.eval()
-
-        modelFS = instantiate_from_config(config.modelFirstStage)
-        _, _ = modelFS.load_state_dict(sd, strict=False)
-        modelFS.eval()
-
-        del sd
-
-        if not st.session_state.defaults.general.no_half:
-            model = model.half().to(device)
-            modelCS = modelCS.half().to(device)
-            modelFS = modelFS.half().to(device)
-
-        return config, device, model, modelCS, modelFS
-    else:
-        config = OmegaConf.load(st.session_state.defaults.general.default_model_config)
-        model = load_model_from_config(config, ckpt_path)
-
-        device = torch.device(f"cuda:{st.session_state.defaults.general.gpu}") \
-            if torch.cuda.is_available() else torch.device("cpu")
-        model = (model if st.session_state.defaults.general.no_half
-                 else model.half()).to(device)
-
-        return config, device, model, None, None
-
-
-# @codedealer: No usages
-def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='RealESRGAN_x4plus'):
-    # get global variables
-    global_vars = globals()
-    # check if m is in globals
-    if unload:
-        for m in models:
-            if m in global_vars:
-                # if it is, delete it
-                del global_vars[m]
-                if st.session_state['defaults'].general.optimized:
-                    if m == 'model':
-                        del global_vars[m+'FS']
-                        del global_vars[m+'CS']
-                if m == 'model':
-                    m = 'Stable Diffusion'
-                print('Unloaded ' + m)
-    if load:
-        for m in models:
-            if m not in global_vars or m in global_vars and type(global_vars[m]) == bool:
-                # if it isn't, load it
-                if m == 'GFPGAN':
-                    global_vars[m] = load_GFPGAN()
-                elif m == 'model':
-                    sdLoader = load_sd_from_config()
-                    global_vars[m] = sdLoader[0]
-                    if st.session_state['defaults'].general.optimized:
-                        global_vars[m+'CS'] = sdLoader[1]
-                        global_vars[m+'FS'] = sdLoader[2]
-                elif m == 'RealESRGAN':
-                    global_vars[m] = load_RealESRGAN(imgproc_realesrgan_model_name)
-                elif m == 'LDSR':
-                    global_vars[m] = load_LDSR()
-                if m =='model':
-                    m='Stable Diffusion'
-                print('Loaded ' + m)
-    torch_gc()
-
-
 #
 @retry(tries=5)
 def generation_callback(img, i=0):
     if "update_preview_frequency" not in st.session_state:
         raise StopException
+
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
+    model_unet_name, model_cs_name, model_fs_name = get_active_sd_models()
 
     try:
         if i == 0:
@@ -996,14 +775,13 @@ def generation_callback(img, i=0):
         # The following lines will convert the tensor we got on img to an actual image we can render on the UI.
         # It can probably be done in a better way for someone who knows what they're doing. I don't.
         #print (img,isinstance(img, torch.Tensor))
-        if isinstance(img, torch.Tensor):
-            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
-                              ).decode_first_stage(img).to('cuda')
-        else:
-            # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
-            # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
-            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
-                              ).decode_first_stage(img["denoised"]).to('cuda')
+        with model_manager.model_context(model_fs_name) as model:
+            if isinstance(img, torch.Tensor):
+                x_samples_ddim = model.decode_first_stage(img).to('cuda')
+            else:
+                # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
+                # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
+                x_samples_ddim = model.decode_first_stage(img["denoised"]).to('cuda')
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
@@ -1123,8 +901,9 @@ def get_font(fontsize):
     raise Exception(f"No usable font found (tried {', '.join(fonts)})")
 
 def load_embeddings(fp):
-    if fp is not None and hasattr(server_state["model"], "embedding_manager"):
-        server_state["model"].embedding_manager.load(fp['name'])
+    with server_state[ModelRepo.Manager.__name__].model_context( ModelNames.SD_unet) as model:
+        if fp is not None and hasattr(model, "embedding_manager"):
+            model.embedding_manager.load(fp['name'])
 
 def load_learned_embed_in_clip(learned_embeds_path, text_encoder, tokenizer, token=None):
     loaded_learned_embeds = torch.load(learned_embeds_path, map_location="cpu")
@@ -1281,12 +1060,12 @@ def enable_minimal_memory_usage(model):
 
 def check_prompt_length(prompt, comments):
     """this function tests if prompt is too long, and if so, adds a message to comments"""
+    with server_state[ModelRepo.Manager.__name__].model_context( ModelNames.SD_cs) as model:
+        tokenizer = model.cond_stage_model.tokenizer
+        max_length = model.cond_stage_model.max_length
 
-    tokenizer = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.tokenizer
-    max_length = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.max_length
-
-    info = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.tokenizer([prompt], truncation=True, max_length=max_length,
-                                                                                                                     return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
+    info = tokenizer([prompt], truncation=True, max_length=max_length,
+                     return_overflowing_tokens=True, padding="max_length", return_tensors="pt")
     ovf = info['overflowing_tokens'][0]
     overflowing_count = ovf.shape[0]
     if overflowing_count == 0:
@@ -1299,7 +1078,8 @@ def check_prompt_length(prompt, comments):
     comments.append(f"Warning: too many input tokens; some ({len(overflowing_words)}) have been truncated:\n{overflowing_text}\n")
 
 #
-def custom_models_available():
+def custom_models_available() -> List[str]:
+    ret: Dict[str, str] = {}
     with server_state_lock["custom_models"]:
         #
         # Allow for custom models to be used instead of the default one,
@@ -1308,8 +1088,10 @@ def custom_models_available():
 
         for root, dirs, files in os.walk(os.path.join("models", "custom")):
             for file in files:
-                if os.path.splitext(file)[1] == '.ckpt':
-                    server_state["custom_models"].append(os.path.splitext(file)[0])
+                name,ext = os.path.splitext(file)
+                if ext == '.ckpt':
+                    server_state["custom_models"].append(name)
+                    ret[name] = os.path.join(root, file)
 
         with server_state_lock["CustomModel_available"]:
             if len(server_state["custom_models"]) > 0:
@@ -1317,6 +1099,7 @@ def custom_models_available():
                 server_state["custom_models"].append("Stable Diffusion v1.4")
             else:
                 server_state["CustomModel_available"] = False
+    return ret
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
@@ -1495,6 +1278,25 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 
     return all_seeds, n_iter, prompt_matrix_parts, all_prompts, needrows
 
+def get_active_sd_models() -> Tuple[str,str,str]:
+    """Returns the ModelRepo-registered names of the currently selected SD model stages
+
+    Returns:
+        unet_name, cs_name, fs_name
+    """
+    custom_model_name = st.session_state["custom_model"]
+    if st.session_state.defaults.general.optimized:
+        unet_ext = "_unet"
+        cs_ext = "_cs"
+        fs_ext = "_fs"
+    else:
+        unet_ext = cs_ext = fs_ext = "_full"
+
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
+    model_unet_name = [x for x in [f"{custom_model_name}{unet_ext}", ModelNames.SD_unet] if model_manager.is_loadable(x)][0]
+    model_cs_name = [x for x in [f"{custom_model_name}{cs_ext}", ModelNames.SD_cs] if model_manager.is_loadable(x)][0]
+    model_fs_name = [x for x in [f"{custom_model_name}{fs_ext}", ModelNames.SD_fs] if model_manager.is_loadable(x)][0]
+    return model_unet_name, model_cs_name, model_fs_name
 #
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
@@ -1514,18 +1316,16 @@ def process_images(
     mem_mon = MemUsageMonitor('MemMon')
     mem_mon.start()
 
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
+    model_unet_name, model_cs_name, model_fs_name = get_active_sd_models()
+
     if st.session_state.defaults.general.use_sd_concepts_library:
-
         prompt_tokens = re.findall('<([a-zA-Z0-9-]+)>', prompt)
-
         if prompt_tokens:
             # compviz
-            tokenizer = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.tokenizer
-            text_encoder = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).cond_stage_model.transformer
-
-            # diffusers
-            #tokenizer = pipe.tokenizer
-            #text_encoder = pipe.text_encoder
+            with model_manager.model_context(model_cs_name) as model:
+                tokenizer = model.cond_stage_model.tokenizer
+                text_encoder = model.cond_stage_model.transformer
 
             ext = ('pt', 'bin')
 
@@ -1605,7 +1405,13 @@ def process_images(
     output_images = []
     grid_captions = []
     stats = []
-    with torch.no_grad(), precision_scope("cuda"), (server_state["model"].ema_scope() if not st.session_state['defaults'].general.optimized else nullcontext()):
+    with ExitStack() as stack:
+        stack.enter_context( torch.no_grad() )
+        stack.enter_context( precision_scope("cuda") )
+        model = stack.enter_context( model_manager.model_context(model_unet_name) )
+        if not st.session_state['defaults'].general.optimized:
+            stack.enter_context(model.ema_scope())
+
         init_data = func_init()
         tic = time.time()
 
@@ -1630,10 +1436,8 @@ def process_images(
 
             print(prompt)
 
-            if st.session_state['defaults'].general.optimized:
-                server_state["modelCS"].to(st.session_state['defaults'].general.gpu)
-
-            uc = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(len(prompts) * [negprompt])
+            with model_manager.model_context(model_cs_name) as model:
+                uc = model.get_learned_conditioning(len(prompts) * [negprompt])
 
             if isinstance(prompts, tuple):
                 prompts = list(prompts)
@@ -1643,30 +1447,26 @@ def process_images(
             weighted_subprompts = split_weighted_subprompts(prompts[0], normalize_prompt_weights)
 
             # sub-prompt weighting used if more than 1
-            if len(weighted_subprompts) > 1:
-                c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
-                for i in range(0, len(weighted_subprompts)):
-                    # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
-            else: # just behave like usual
-                c = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(prompts)
+            with model_manager.model_context(model_cs_name) as model:
+                if len(weighted_subprompts) > 1:
+                    c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
+                    for i in range(0, len(weighted_subprompts)):
+                        # note if alpha negative, it functions same as torch.sub
+                        c = torch.add(c, model.get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                else: # just behave like usual
+                    c = model.get_learned_conditioning(prompts)
 
 
             shape = [opt_C, height // opt_f, width // opt_f]
 
-            if st.session_state['defaults'].general.optimized:
-                mem = torch.cuda.memory_allocated()/1e6
-                server_state["modelCS"].to("cpu")
-                while(torch.cuda.memory_allocated()/1e6 >= mem):
-                    time.sleep(1)
-
             if noise_mode == 1 or noise_mode == 3:
                 # TODO params for find_noise_to_image
-                x = torch.cat(batch_size * [find_noise_for_image(
-                                    server_state["model"], server_state["device"],
-                                        init_img.convert('RGB'), '', find_noise_steps, 0.0, normalize=True,
-                                        generation_callback=generation_callback,
-                                        )], dim=0)
+                with model_manager.model_context( model_unet_name ) as model:
+                    x = torch.cat(batch_size * [find_noise_for_image(
+                                            model, server_state["device"], # TODO: ModelManager device
+                                            init_img.convert('RGB'), '', find_noise_steps, 0.0, normalize=True,
+                                            generation_callback=generation_callback,
+                                            )], dim=0)
             else:
                 # we manually generate all input noises because each one should have a specific seed
                 x = create_random_tensors(shape, seeds=seeds)
@@ -1684,10 +1484,8 @@ def process_images(
 
             samples_ddim = func_sample(init_data=init_data, x=x, conditioning=c, unconditional_conditioning=uc, sampler_name=sampler_name)
 
-            if st.session_state['defaults'].general.optimized:
-                server_state["modelFS"].to(st.session_state['defaults'].general.gpu)
-
-            x_samples_ddim = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).decode_first_stage(samples_ddim)
+            with model_manager.model_context(model_fs_name) as model:
+                x_samples_ddim = model.decode_first_stage(samples_ddim)
             x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
             run_images = []
@@ -1724,11 +1522,12 @@ def process_images(
 
                 st.session_state["preview_image"].image(image)
 
-                if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN:
+                if use_GFPGAN and model_manager.is_loadable(ModelNames.GFPGAN) and not use_RealESRGAN:
                     st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     # skip_save = True # #287 >_>
                     torch_gc()
-                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    with model_manager.model_context(ModelNames.GFPGAN) as model:
+                        cropped_faces, restored_faces, restored_img = model.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
                     gfpgan_filename = original_filename + '-gfpgan'
@@ -1744,16 +1543,13 @@ def process_images(
                     if simple_templating:
                         grid_captions.append( captions[i] + "\ngfpgan" )
 
-                elif use_RealESRGAN and server_state["RealESRGAN"] is not None and not use_GFPGAN:
+                elif use_RealESRGAN and model_manager.is_loadable(realesrgan_model_name) and not use_GFPGAN:
                     st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     # skip_save = True # #287 >_>
                     torch_gc()
 
-                    if server_state["RealESRGAN"].model.name != realesrgan_model_name:
-                        # try_loading_RealESRGAN(realesrgan_model_name)
-                        load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
-
-                    output, img_mode = server_state["RealESRGAN"].enhance(x_sample[:,:,::-1])
+                    with model_manager.model_context(realesrgan_model_name) as model:
+                        output, img_mode = model.enhance(x_sample[:,:,::-1])
                     esrgan_filename = original_filename + '-esrgan4x'
                     esrgan_sample = output[:,:,::-1]
                     esrgan_image = Image.fromarray(esrgan_sample)
@@ -1772,18 +1568,17 @@ def process_images(
                     if simple_templating:
                         grid_captions.append( captions[i] + "\nesrgan" )
 
-                elif use_RealESRGAN and server_state["RealESRGAN"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
+                elif use_RealESRGAN and model_manager.is_loadable(realesrgan_model_name) and use_GFPGAN and model_manager.is_loadable(ModelNames.GFPGAN):
                     st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     # skip_save = True # #287 >_>
                     torch_gc()
-                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    with model_manager.model_context(ModelNames.GFPGAN) as model:
+                        cropped_faces, restored_faces, restored_img = model.enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
 
-                    if server_state["RealESRGAN"].model.name != realesrgan_model_name:
-                        # try_loading_RealESRGAN(realesrgan_model_name)
-                        load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+                    with model_manager.model_context(realesrgan_model_name) as model:
+                        output, img_mode = model.enhance(gfpgan_sample[:,:,::-1])
 
-                    output, img_mode = server_state["RealESRGAN"].enhance(gfpgan_sample[:,:,::-1])
                     gfpgan_esrgan_filename = original_filename + '-gfpgan-esrgan4x'
                     gfpgan_esrgan_sample = output[:,:,::-1]
                     gfpgan_esrgan_image = Image.fromarray(gfpgan_esrgan_sample)
@@ -1808,18 +1603,15 @@ def process_images(
                     init_img = init_img.convert('RGB')
                     image = image.convert('RGB')
 
-                    if use_RealESRGAN and server_state["RealESRGAN"] is not None:
-                        if server_state["RealESRGAN"].model.name != realesrgan_model_name:
-                            # try_loading_RealESRGAN(realesrgan_model_name)
-                            load_models(use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+                    if use_RealESRGAN and model_manager.is_loadable(realesrgan_model_name):
+                        with model_manager.model_context(realesrgan_model_name) as model:
+                            output, img_mode = model.enhance(np.array(init_img, dtype=np.uint8))
+                            init_img = Image.fromarray(output)
+                            init_img = init_img.convert('RGB')
 
-                        output, img_mode = server_state["RealESRGAN"].enhance(np.array(init_img, dtype=np.uint8))
-                        init_img = Image.fromarray(output)
-                        init_img = init_img.convert('RGB')
-
-                        output, img_mode = server_state["RealESRGAN"].enhance(np.array(init_mask, dtype=np.uint8))
-                        init_mask = Image.fromarray(output)
-                        init_mask = init_mask.convert('L')
+                            output, img_mode = model.enhance(np.array(init_mask, dtype=np.uint8))
+                            init_mask = Image.fromarray(output)
+                            init_mask = init_mask.convert('L')
 
                     image = Image.composite(init_img, image, init_mask)
 
@@ -1832,12 +1624,6 @@ def process_images(
                         # output_images.append(image)
                         # if simple_templating:
                             #grid_captions.append( captions[i] )
-
-                if st.session_state['defaults'].general.optimized:
-                    mem = torch.cuda.memory_allocated()/1e6
-                    server_state["modelFS"].to("cpu")
-                    while(torch.cuda.memory_allocated()/1e6 >= mem):
-                        time.sleep(1)
 
             if len(run_images) > 1:
                 preview_image = image_grid(run_images, n_iter)
@@ -1879,7 +1665,7 @@ def process_images(
 
     info = f"""
             {prompt}
-            Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and server_state["GFPGAN"] is not None else ''}{', '+realesrgan_model_name if use_RealESRGAN and server_state["RealESRGAN"] is not None else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+            Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', Denoising strength: '+str(denoising_strength) if init_img is not None else ''}{', GFPGAN' if use_GFPGAN and model_manager.is_loadable(ModelNames.GFPGAN) else ''}{', '+realesrgan_model_name if use_RealESRGAN and model_manager.is_loadable(realesrgan_model_name) else ''}{', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
     stats = f'''
             Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
             Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''

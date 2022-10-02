@@ -30,10 +30,14 @@ from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
 
 # other imports
+import logging
+logging.basicConfig(stream=sys.stdout)
+
 
 import warnings
 import os, toml
 import k_diffusion as K
+import util.ModelRepo as ModelRepo
 from omegaconf import OmegaConf
 
 if not "defaults" in st.session_state:
@@ -98,35 +102,20 @@ def layout():
         # load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
         load_css(True, 'frontend/css/streamlit.main.css')
 
+    with server_state_lock[ModelRepo.Manager.__name__]:
+        if ModelRepo.Manager.__name__ not in server_state:
+            model_manager = ModelRepo.Manager()
+            register_models(model_manager)
+            server_state[ModelRepo.Manager.__name__] = model_manager
+        else:
+            model_manager:ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
+
     # check if the models exist on their respective folders
     with server_state_lock["GFPGAN_available"]:
-        if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-            server_state["GFPGAN_available"] = True
-        else:
-            server_state["GFPGAN_available"] = False
+        server_state["GFPGAN_available"] = model_manager.is_loadable(ModelNames.GFPGAN)
 
     with server_state_lock["RealESRGAN_available"]:
-        if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-            server_state["RealESRGAN_available"] = True
-        else:
-            server_state["RealESRGAN_available"] = False
-
-    # Allow for custom models to be used instead of the default one,
-    # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
-    #st.session_state["custom_models"]:sorted = []
-    # for root, dirs, files in os.walk(os.path.join("models", "custom")):
-        # for file in files:
-            # if os.path.splitext(file)[1] == '.ckpt':
-                ##fullpath = os.path.join(root, file)
-                # print(fullpath)
-                # st.session_state["custom_models"].append(os.path.splitext(file)[0])
-                ##print (os.path.splitext(file)[0])
-
-    # if len(st.session_state["custom_models"]) > 0:
-        #st.session_state["CustomModel_available"] = True
-        #st.session_state["custom_models"].append("Stable Diffusion v1.4")
-    # else:
-        #st.session_state["CustomModel_available"] = False
+        server_state["RealESRGAN_available"] = model_manager.is_loadable(ModelNames.RealESRGAN)
 
     with st.sidebar:
         tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"],

@@ -40,6 +40,7 @@ from slugify import slugify
 from diffusers import StableDiffusionPipeline
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
      PNDMScheduler
+import util.ModelRepo as ModelRepo
 
 # Temp imports
 
@@ -222,17 +223,11 @@ def diffuse(
 #
 @st.experimental_singleton(show_spinner=False, suppress_st_warning=True)
 def load_diffusers_model(weights_path,torch_device):
-    with server_state_lock["model"]:
-        if "model" in server_state:
-            del server_state["model"]
-
-    if "textual_inversion" in st.session_state:
-        del st.session_state['textual_inversion']
-
     try:
+        model_manager:ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
         with server_state_lock["pipe"]:
             try:
-                if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
+                if not model_manager.is_loadable("txt2vid") or st.session_state["weights_path"] != weights_path:
                     if st.session_state["weights_path"] != weights_path:
                         del st.session_state["weights_path"]
 
@@ -245,15 +240,13 @@ def load_diffusers_model(weights_path,torch_device):
                             revision="fp16" if not st.session_state['defaults'].general.no_half else None
                         )
 
-                    server_state["pipe"].unet.to(torch_device)
-                    server_state["pipe"].vae.to(torch_device)
-                    server_state["pipe"].text_encoder.to(torch_device)
-
                     if st.session_state.defaults.general.enable_attention_slicing:
-                        server_state["pipe"].enable_attention_slicing()
+                        model.enable_attention_slicing()
 
                     if st.session_state.defaults.general.enable_minimal_memory_usage:
-                        server_state["pipe"].enable_minimal_memory_usage()
+                        model.enable_minimal_memory_usage()
+
+                    model_manager.register_model(name="txt2vid", load_func=lambda: model, exists_func=lambda:True, max_depth=0)
 
                     print("Tx2Vid Model Loaded")
                 else:
@@ -272,15 +265,13 @@ def load_diffusers_model(weights_path,torch_device):
                         revision="fp16" if not st.session_state['defaults'].general.no_half else None
                     )
 
-                server_state["pipe"].unet.to(torch_device)
-                server_state["pipe"].vae.to(torch_device)
-                server_state["pipe"].text_encoder.to(torch_device)
-
                 if st.session_state.defaults.general.enable_attention_slicing:
-                    server_state["pipe"].enable_attention_slicing()
+                    model.enable_attention_slicing()
 
                 if st.session_state.defaults.general.enable_minimal_memory_usage:
-                    server_state["pipe"].enable_minimal_memory_usage()
+                    model.enable_minimal_memory_usage()
+
+                model_manager.register_model(name="txt2vid", load_func=lambda: model, exists_func=lambda:True, max_depth=0)
 
                 print("Tx2Vid Model Loaded")
     except (EnvironmentError, OSError):
@@ -354,6 +345,8 @@ def txt2vid(
     assert height % 8 == 0 and width % 8 == 0
     torch.manual_seed(seeds)
     torch_device = f"cuda:{gpu}"
+
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
 
     # init the output dir
     sanitized_prompt = slugify(prompts)
@@ -429,11 +422,6 @@ def txt2vid(
 
             load_diffusers_model(weights_path, torch_device)
 
-    server_state["pipe"].scheduler = SCHEDULERS[scheduler]
-
-    server_state["pipe"].use_multiprocessing_for_evaluation = False
-    server_state["pipe"].use_multiprocessed_decoding = False
-
     if do_loop:
         prompts = str([prompts, prompts])
         seeds = [seeds, seeds]
@@ -441,9 +429,16 @@ def txt2vid(
         # prompts.append(prompts)
         # seeds.append(first_seed)
 
-    # get the conditional text embeddings based on the prompt
-    text_input = server_state["pipe"].tokenizer(prompts, padding="max_length", max_length=server_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
-    cond_embeddings = server_state["pipe"].text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
+    with model_manager.model_context("txt2vid") as model:
+        model.scheduler = SCHEDULERS[scheduler]
+        model.use_multiprocessing_for_evaluation = False
+        model.use_multiprocessed_decoding = False
+
+        # get the conditional text embeddings based on the prompt
+        tokenizer = model.tokenizer
+        text_encoder = model.text_encoder
+        text_input = tokenizer(prompts, padding="max_length", max_length=tokenizer.model_max_length, truncation=True, return_tensors="pt")
+        cond_embeddings = text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
 
     #
     if st.session_state.defaults.general.use_sd_concepts_library:
@@ -454,11 +449,6 @@ def txt2vid(
             # compviz
             #tokenizer = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.tokenizer
             #text_encoder = (st.session_state["model"] if not st.session_state['defaults'].general.optimized else st.session_state.modelCS).cond_stage_model.transformer
-
-            # diffusers
-            tokenizer = st.session_state.pipe.tokenizer
-            text_encoder = st.session_state.pipe.text_encoder
-
             ext = ('pt', 'bin')
             #print (prompt_tokens)
 
@@ -477,7 +467,8 @@ def txt2vid(
                             load_learned_embed_in_clip(f"{os.path.join(embedding_path, files)}", text_encoder, tokenizer, f"<{prompt_tokens[0]}>")
 
     # sample a source
-    init1 = torch.randn((1, server_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
+    with model_manager.model_context("txt2vid") as model:
+        init1 = torch.randn((1, model.unet.in_channels, height // 8, width // 8), device=torch_device)
 
 
     # iterate the loop
@@ -494,7 +485,8 @@ def txt2vid(
             st.session_state["current_frame"] = frame_index
 
             # sample the destination
-            init2 = torch.randn((1, server_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
+            with model_manager.model_context("txt2vid") as model:
+                init2 = torch.randn((1, model.unet.in_channels, height // 8, width // 8), device=torch_device)
 
             for i, t in enumerate(np.linspace(0, 1, num_steps)):
                 start = timeit.default_timer()
@@ -508,7 +500,8 @@ def txt2vid(
                 init = slerp(gpu, float(t), init1, init2)
 
                 with autocast("cuda"):
-                    image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
+                    with model_manager.model_context("txt2vid") as model:
+                        image = diffuse(model, cond_embeddings, init, num_inference_steps, cfg_scale, eta)
 
                 if st.session_state["save_individual_images"] and not st.session_state["use_GFPGAN"] and not st.session_state["use_RealESRGAN"]:
                     #im = Image.fromarray(image)
@@ -525,12 +518,12 @@ def txt2vid(
                 #
                 # try:
                 # if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None and not st.session_state["use_RealESRGAN"]:
-                if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None:
+                if st.session_state["use_GFPGAN"] and model_manager.is_loadable(ModelNames.GFPGAN):
                     #print("Running GFPGAN on image ...")
                     st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
                     # skip_save = True # #287 >_>
-                    torch_gc()
-                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(np.array(image)[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    with model_manager.model_context(ModelNames.GFPGAN) as model:
+                        cropped_faces, restored_faces, restored_img = model.enhance(np.array(image)[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
 
