@@ -65,3 +65,4 @@ condaenv.*.requirements.txt
 /models/*
 z_version_env.tmp
 scripts/bridgeData.py
+/user_data/*

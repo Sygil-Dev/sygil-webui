@@ -230,58 +230,47 @@ def load_diffusers_model(weights_path,torch_device):
 	
 	try:
 		with server_state_lock["pipe"]:
-			try:
-				if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
-					if st.session_state["weights_path"] != weights_path:
-						del st.session_state["weights_path"]
-			
-					st.session_state["weights_path"] = weights_path
-					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-						    weights_path,
-						    use_local_file=True,
-						    use_auth_token=st.session_state["defaults"].general.huggingface_token,
-						    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-						    revision="fp16" if not st.session_state['defaults'].general.no_half else None
-						)
-			
-					server_state["pipe"].unet.to(torch_device)
-					server_state["pipe"].vae.to(torch_device)
-					server_state["pipe"].text_encoder.to(torch_device)
-			
-					if st.session_state.defaults.general.enable_attention_slicing:
-						server_state["pipe"].enable_attention_slicing()
-						
-					if st.session_state.defaults.general.enable_minimal_memory_usage:	
-						server_state["pipe"].enable_minimal_memory_usage()
-			
-					print("Tx2Vid Model Loaded")
-				else:
-					print("Tx2Vid Model already Loaded")
+			if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
+				if ("weights_path" in st.session_state) and st.session_state["weights_path"] != weights_path:
+					del st.session_state["weights_path"]
 		
-			except:
-				#del st.session_state["weights_path"]
-				#del server_state["pipe"]
-			
 				st.session_state["weights_path"] = weights_path
-				server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-					    weights_path,
-					    use_local_file=True,
-					    use_auth_token=st.session_state["defaults"].general.huggingface_token,
-					    torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-					    revision="fp16" if not st.session_state['defaults'].general.no_half else None
-					)
-			
+				# if folder "user_data/model_cache/stable-diffusion-v1-4" exists, load the model from there
+				if weights_path == "CompVis/stable-diffusion-v1-4":
+					model_path = os.path.join("user_data", "model_cache", "stable-diffusion-v1-4")
+				elif weights_path == "hakurei/waifu-diffusion":
+					model_path = os.path.join("user_data", "model_cache", "waifu-diffusion")
+
+				if not os.path.exists(model_path + "/model_index.json"):
+					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+							weights_path,
+							use_local_file=True,
+							use_auth_token=st.session_state["defaults"].general.huggingface_token,
+							torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+						)
+					StableDiffusionPipeline.save_pretrained(server_state["pipe"], model_path)
+				else:
+					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
+							model_path,
+							use_local_file=True,
+							torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+						)
+		
 				server_state["pipe"].unet.to(torch_device)
 				server_state["pipe"].vae.to(torch_device)
 				server_state["pipe"].text_encoder.to(torch_device)
-			
+		
 				if st.session_state.defaults.general.enable_attention_slicing:
 					server_state["pipe"].enable_attention_slicing()
-			
-				if st.session_state.defaults.general.enable_minimal_memory_usage:
+					
+				if st.session_state.defaults.general.enable_minimal_memory_usage:	
 					server_state["pipe"].enable_minimal_memory_usage()
-			
-				print("Tx2Vid Model Loaded")	
+		
+				print("Tx2Vid Model Loaded")
+			else:
+				print("Tx2Vid Model already Loaded")
 	except (EnvironmentError, OSError):
 		st.session_state["progress_bar_text"].error(
 		    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
@@ -726,8 +715,11 @@ def layout():
 			st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.",
 																	   value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
 			st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
-																	 value=st.session_state['defaults'].txt2vid.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
-			st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video, help="Save a video with all the images generated as frames at the end of the generation.")
+																	 value=st.session_state['defaults'].txt2vid.save_individual_images,
+			                                                         help="Save each image generated before any filter or enhancement is applied.")
+			st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video,
+			                                             help="Save a video with all the images generated as frames at the end of the generation.")
+			
 			st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
 															  help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
 			st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
@@ -740,13 +732,17 @@ def layout():
 			st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 			if server_state["GFPGAN_available"]:
-				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
+				                                             help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency \
+				                                             of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 			else:
 				st.session_state["use_GFPGAN"] = False
 
 			if server_state["RealESRGAN_available"]:
 				st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
-																 help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+																 help="Uses the RealESRGAN model to upscale the images after the generation. \
+				                                                 This greatly improve the quality and lets you have high resolution images but \
+				                                                 uses extra VRAM. Disable if you need the extra VRAM.")
 				st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)
 			else:
 				st.session_state["use_RealESRGAN"] = False
