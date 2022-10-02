@@ -64,3 +64,4 @@ condaenv.*.requirements.txt
 /gfpgan/*
 /models/*
 z_version_env.tmp
+/user_data/*
