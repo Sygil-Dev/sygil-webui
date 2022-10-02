@@ -715,8 +715,11 @@ def layout():
 			st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.",
 																	   value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
 			st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
-																	 value=st.session_state['defaults'].txt2vid.save_individual_images, help="Save each image generated before any filter or enhancement is applied.")
-			st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video, help="Save a video with all the images generated as frames at the end of the generation.")
+																	 value=st.session_state['defaults'].txt2vid.save_individual_images,
+			                                                         help="Save each image generated before any filter or enhancement is applied.")
+			st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video,
+			                                             help="Save a video with all the images generated as frames at the end of the generation.")
+			
 			st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
 															  help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
 			st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
@@ -729,13 +732,17 @@ def layout():
 			st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 			if server_state["GFPGAN_available"]:
-				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN, help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
+				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
+				                                             help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency \
+				                                             of faces but uses extra VRAM. Disable if you need the extra VRAM.")
 			else:
 				st.session_state["use_GFPGAN"] = False
 
 			if server_state["RealESRGAN_available"]:
 				st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
-																 help="Uses the RealESRGAN model to upscale the images after the generation. This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
+																 help="Uses the RealESRGAN model to upscale the images after the generation. \
+				                                                 This greatly improve the quality and lets you have high resolution images but \
+				                                                 uses extra VRAM. Disable if you need the extra VRAM.")
 				st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)
 			else:
 				st.session_state["use_RealESRGAN"] = False

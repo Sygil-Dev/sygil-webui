@@ -96,7 +96,9 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
             save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = True,
-            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", fp = None, variant_amount: float = None,
+            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True,
+            LDSR_model: str = "model", 
+            fp = None, variant_amount: float = None,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
     outpath = st.session_state['defaults'].general.outdir_txt2img or st.session_state['defaults'].general.outdir or "outputs/txt2img-samples"
@@ -152,6 +154,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
                 GFPGAN_model=st.session_state["GFPGAN_model"],
                 use_RealESRGAN=st.session_state["use_RealESRGAN"],
                 realesrgan_model_name=realesrgan_model_name,
+                use_LDSR=st.session_state["use_LDSR"],
+                LDSR_model_name=LDSR_model,                
                 ddim_eta=ddim_eta,
                 normalize_prompt_weights=normalize_prompt_weights,
                 save_individual_images=save_individual_images,
@@ -171,7 +175,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, realesrgan_model_na
         #err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
         #stats = err_msg
         #return [], seed, 'err', stats
-
+        
+#
 def layout():
     with st.form("txt2img-inputs"):
         st.session_state["generation_mode"] = "txt2img"
@@ -286,35 +291,76 @@ def layout():
                 # check if GFPGAN, RealESRGAN and LDSR are available.
                 if "GFPGAN_available" not in st.session_state:
                     GFPGAN_available()
-
+            
                 if "RealESRGAN_available" not in st.session_state:
                     RealESRGAN_available()
                 
-                if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"]:
-                    with st.expander("Post-Processing"):
-                        # GFPGAN used for face restoration
-                        if st.session_state["GFPGAN_available"]:
-                            with st.expander("Face Restoration"):
-                                st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN,
-                                                                             help="Uses the GFPGAN model to improve faces after the generation.\
-                                                                             This greatly improve the quality and consistency of faces but uses extra VRAM. Disable if you need the extra VRAM.")
-                                
-                                st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
-                                                                                index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
-                        else:
-                            st.session_state["use_GFPGAN"] = False
+                if "LDSR_available" not in st.session_state:
+                    LDSR_available()
                         
-                        with st.expander("Upscaling"): 
-                            # RealESRGAN used for upscaling.     
-                            if st.session_state["RealESRGAN_available"]:
-                                st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
-                                                                                 help="Uses the RealESRGAN model to upscale the images after the generation.\
-                                        This greatly improve the quality and lets you have high resolution images but uses extra VRAM. Disable if you need the extra VRAM.")
-                                st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
-                                                                                    index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
+                if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
+                    with st.expander("Post-Processing"):
+                        face_restoration_tab, upscaling_tab = st.tabs(["Face Restoration", "Upscaling"])
+                        with face_restoration_tab:
+                            # GFPGAN used for face restoration
+                            if st.session_state["GFPGAN_available"]:
+                                #with st.expander("Face Restoration"):
+                                #if st.session_state["GFPGAN_available"]:
+                                #with st.expander("GFPGAN"):
+                                    st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN,
+                                                                                 help="Uses the GFPGAN model to improve faces after the generation.\
+                                                                                 This greatly improve the quality and consistency of faces but uses\
+                                                                                 extra VRAM. Disable if you need the extra VRAM.")
+                                    
+                                    st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
+                                                                                    index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
+                                
+                                #st.session_state["GFPGAN_strenght"] = st.slider("Effect Strenght", min_value=1, max_value=100, value=1, step=1, help='')
+                                    
                             else:
-                                st.session_state["use_RealESRGAN"] = False
-                                st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+                                st.session_state["use_GFPGAN"] = False                                 
+                            
+                        with upscaling_tab:
+                            #with st.expander("Upscaling"): 
+                            # RealESRGAN and LDSR used for upscaling.     
+                            if st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
+                                
+                                upscaling_method_list = []
+                                if st.session_state["RealESRGAN_available"]:
+                                    upscaling_method_list.append("RealESRGAN")
+                                if st.session_state["LDSR_available"]:
+                                    upscaling_method_list.append("LDSR")
+                                    
+                                st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
+                                                                                    index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
+                                
+                                if st.session_state["RealESRGAN_available"]:
+                                   # with st.expander("RealESRGAN"):
+                                    st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
+                                                                                     help="Uses the RealESRGAN model to upscale the images after the generation.\
+                                                                                     This greatly improve the quality and lets you have high resolution images but \
+                                                                                     uses extra VRAM. Disable if you need the extra VRAM.")
+                                    
+                                    st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
+                                                                                    index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
+                                else:
+                                    st.session_state["use_RealESRGAN"] = False
+                                    st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+                                    
+                                    
+                                #
+                                if st.session_state["LDSR_available"]:
+                                    #with st.expander("LDSR"):
+                                    st.session_state["use_LDSR"] = st.checkbox("Use LDSR", value=st.session_state['defaults'].txt2img.use_LDSR,
+                                                                                     help="Uses the LDSR model to upscale the images after the generation.\
+                                                                                     This greatly improve the quality and lets you have high resolution images but \
+                                                                                     uses extra VRAM. Disable if you need the extra VRAM.")
+                                    
+                                    st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
+                                                                                    index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))  
+                                else:
+                                    st.session_state["use_LDSR"] = False
+                                    st.session_state["LDSR_model"] = "model"                                
                     
                 with st.expander("Variant"):
                     variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
@@ -330,67 +376,65 @@ def layout():
         generate_col1.write("")
         generate_button = generate_col1.form_submit_button("Generate")
 
-        if generate_button:
-            #print("Loading models")
-            # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
-            #print (server_state['CustomModel_available'])
-            #print (st.session_state['custom_model'])
+        #
+        if generate_button:           
+            
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    load_models(False, st.session_state["use_GFPGAN"], st.session_state["GFPGAN_model"] , st.session_state["use_RealESRGAN"],
+                    load_models(st.session_state["use_LDSR"], st.session_state["LDSR_model"], st.session_state["use_GFPGAN"], st.session_state["GFPGAN_model"] , st.session_state["use_RealESRGAN"],
                                 st.session_state["RealESRGAN_model"], server_state["CustomModel_available"], st.session_state["custom_model"])
 
-            try:
-                #
-                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
-                                                            cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
-                                                            st.session_state["use_RealESRGAN"], st.session_state["RealESRGAN_model"],
-                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+            #try:
+            #
+            output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["RealESRGAN_model"], batch_count, batch_size,
+                                                        cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+                                                        save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
+                                                        use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"], 
+                                                        variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
-                message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+            message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
-                #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
+            #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
 
-                #if 'latestImages' in st.session_state:
-                    #for i in output_images:
-                        ##push the new image to the list of latest images and remove the oldest one
-                        ##remove the last index from the list\
-                        #st.session_state['latestImages'].pop()
-                        ##add the new image to the start of the list
-                        #st.session_state['latestImages'].insert(0, i)
-                    #PlaceHolder.empty()
-                    #with PlaceHolder.container():
-                        #col1, col2, col3 = st.columns(3)
-                        #col1_cont = st.container()
-                        #col2_cont = st.container()
-                        #col3_cont = st.container()
-                        #images = st.session_state['latestImages']
-                        #with col1_cont:
-                            #with col1:
-                                #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                        #with col2_cont:
-                            #with col2:
-                                #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                        #with col3_cont:
-                            #with col3:
-                                #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                        #historyGallery = st.empty()
+            #if 'latestImages' in st.session_state:
+                #for i in output_images:
+                    ##push the new image to the list of latest images and remove the oldest one
+                    ##remove the last index from the list\
+                    #st.session_state['latestImages'].pop()
+                    ##add the new image to the start of the list
+                    #st.session_state['latestImages'].insert(0, i)
+                #PlaceHolder.empty()
+                #with PlaceHolder.container():
+                    #col1, col2, col3 = st.columns(3)
+                    #col1_cont = st.container()
+                    #col2_cont = st.container()
+                    #col3_cont = st.container()
+                    #images = st.session_state['latestImages']
+                    #with col1_cont:
+                        #with col1:
+                            #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
+                    #with col2_cont:
+                        #with col2:
+                            #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
+                    #with col3_cont:
+                        #with col3:
+                            #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
+                    #historyGallery = st.empty()
 
-                    ## check if output_images length is the same as seeds length
-                    #with gallery_tab:
-                        #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
+                ## check if output_images length is the same as seeds length
+                #with gallery_tab:
+                    #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
 
 
-                        #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
-                        
-                with gallery_tab:
-                    print(seeds)
-                    sdGallery(output_images)
-                        
+                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
+                    
+            with gallery_tab:
+                print(seeds)
+                sdGallery(output_images)
+                    
 
-            except (StopException, KeyError):
-                print(f"Received Streamlit StopException")
+            #except (StopException, KeyError):
+                #print(f"Received Streamlit StopException")
 
                 # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
                 # use the current col2 first tab to show the preview_img and update it as its generated.
