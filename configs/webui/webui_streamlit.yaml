@@ -31,9 +31,11 @@ general:
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./src/gfpgan"
     GFPGAN_model: "GFPGANv1.3"
+    LDSR_dir: "./models/ldsr"
+    LDSR_model: "model"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
-    LDSR_dir: "./src/latent-diffusion"
+    upscaling_method: "RealESRGAN"
     outdir_txt2img: outputs/txt2img-samples
     outdir_img2img: outputs/img2img-samples
     gfpgan_cpu: False
@@ -110,6 +112,7 @@ txt2img:
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
+    use_LDSR: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     
     variant_amount:
