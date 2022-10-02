@@ -1,0 +1,11 @@
+sd-webui/daisi:
+  - source: configs/
+  - source: data/
+  - source: frontend/
+  - source: ldm/
+  - source: models/
+  - source: outputs/
+  - source: optimizedSD/
+  - source: frontend/
+  - source: scripts/
+    dest: .
