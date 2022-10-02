@@ -120,6 +120,7 @@ if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
     git pull
     cd $SCRIPT_DIR
 else
+    cd ${MODEL_DIR}
     git clone https://github.com/sd-webui/sd-concepts-library
 fi
 mkdir -p ${SCRIPT_DIR}/models/custom
