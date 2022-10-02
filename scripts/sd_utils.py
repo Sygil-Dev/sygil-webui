@@ -351,6 +351,8 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
             server_state["model"].enable_minimal_memory_usage()    
     
         print("Model loaded.")
+    
+    return True
 
 
 def load_model_from_config(config, ckpt, verbose=False):
