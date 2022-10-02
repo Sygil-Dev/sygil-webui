@@ -45,6 +45,7 @@ parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not
 parser.add_argument("--no-verify-input", action='store_true', help="do not verify input to check if it's too long", default=False)
 parser.add_argument("--optimized-turbo", action='store_true', help="alternative optimization mode that does not save as much VRAM but runs siginificantly faster")
 parser.add_argument("--optimized", action='store_true', help="load the model onto the device piecemeal instead of all at once to reduce VRAM usage at the cost of performance")
+parser.add_argument("--outdir_scn2img", type=str, nargs="?", help="dir to write scn2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_img2img", type=str, nargs="?", help="dir to write img2img results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_imglab", type=str, nargs="?", help="dir to write imglab results to (overrides --outdir)", default=None)
 parser.add_argument("--outdir_txt2img", type=str, nargs="?", help="dir to write txt2img results to (overrides --outdir)", default=None)
@@ -2414,6 +2415,7 @@ txt2img_defaults = {
     'variant_amount': 0.0,
     'variant_seed': '',
     'submit_on_enter': 'Yes',
+    'realesrgan_model_name': 'RealESRGAN_x4plus',
 }
 
 if 'txt2img' in user_defaults:
@@ -2488,6 +2490,9 @@ img2img_defaults = {
     'height': 512,
     'width': 512,
     'fp': None,
+    'mask_blur_strength': 1,
+    'realesrgan_model_name': 'RealESRGAN_x4plus',
+    'image_editor_mode': 'Mask'
 }
 
 if 'img2img' in user_defaults:
@@ -2495,6 +2500,34 @@ if 'img2img' in user_defaults:
 
 img2img_toggle_defaults = [img2img_toggles[i] for i in img2img_defaults['toggles']]
 img2img_image_mode = 'sketch'
+
+from scn2img import get_scn2img, scn2img_define_args
+# avoid circular import, by passing all necessary types, functions 
+# and variables to get_scn2img, which will return scn2img function.
+scn2img = get_scn2img(
+    MemUsageMonitor, save_sample, get_next_sequence_number, seed_to_int, 
+    txt2img, txt2img_defaults, img2img, img2img_defaults, 
+    opt
+)
+
+scn2img_toggles = [
+    'Clear Cache',
+    'Output intermediate images',
+    'Save individual images',
+    'Write sample info files',
+    'Write sample info to one file',
+    'jpg samples',
+]
+scn2img_defaults = {
+    'prompt': '',
+    'seed': '',
+    'toggles': [1, 2, 3]
+}
+
+if 'scn2img' in user_defaults:
+    scn2img_defaults.update(user_defaults['scn2img'])
+
+scn2img_toggle_defaults = [scn2img_toggles[i] for i in scn2img_defaults['toggles']]
 
 help_text = """
     ## Mask/Crop
@@ -2524,6 +2557,7 @@ demo = draw_gradio_ui(opt,
                       txt2img=txt2img,
                       img2img=img2img,
                       imgproc=imgproc,
+                      scn2img=scn2img,
                       txt2img_defaults=txt2img_defaults,
                       txt2img_toggles=txt2img_toggles,
                       txt2img_toggle_defaults=txt2img_toggle_defaults,
@@ -2536,6 +2570,10 @@ demo = draw_gradio_ui(opt,
                       sample_img2img=sample_img2img,
                       imgproc_defaults=imgproc_defaults,
                       imgproc_mode_toggles=imgproc_mode_toggles,
+                      scn2img_defaults=scn2img_defaults,
+                      scn2img_toggles=scn2img_toggles,
+                      scn2img_toggle_defaults=scn2img_toggle_defaults,
+                      scn2img_define_args=scn2img_define_args,
                       RealESRGAN=RealESRGAN,
                       GFPGAN=GFPGAN,
                       LDSR=LDSR,
