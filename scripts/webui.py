@@ -376,31 +376,51 @@ class ModelNames:
     # Alias for any RealESRGAN
     RealESRGAN = "RealESRGAN_x4plus"
 
+if opt.extra_models_cpu:
+    opt.esrgan_cpu = True
+    opt.gfpgan_cpu = True
+elif opt.extra_models_gpu:
+    opt.esrgan_cpu = False
+    opt.gfpgan_cpu = False
+
+if opt.esrgan_cpu:
+    esrgan_device = torch.device('cpu')
+else:
+    esrgan_device = torch.device(f"cuda:{opt.esrgan_gpu}")
+
+if opt.gfpgan_cpu:
+    gfpgan_device = torch.device('cpu')
+else:
+    gfpgan_device = torch.device(f"cuda:{opt.gfpgan_gpu}")
+
+sd_device = torch.device(f"cuda:{opt.gpu}")
 
 model_loaders: Dict[str, ModelRepo.ModelLoader] = {
     ModelNames.RealESRGANx4Plus:
-        Models.RealESRGAN( esrgan_dir = opt.realesrgan_dir, model_name=opt.realesrgan_model, half_precision=not opt.no_half ),
+        Models.RealESRGAN( esrgan_dir = opt.realesrgan_dir, model_name=opt.realesrgan_model, half_precision=not opt.no_half,
+                           device=esrgan_device ),
 
     ModelNames.GFPGAN:
-        Models.GFPGAN( gfpgan_dir = opt.gfpgan_dir),
+        Models.GFPGAN( gfpgan_dir = opt.gfpgan_dir, device=gfpgan_device),
 
     ModelNames.LDSR:
         Models.LDSR( ldsr_dir=opt.ldsr_dir ),
 
     ModelNames.SD_full:
-        Models.SD( checkpoint=opt.ckpt, config_yaml=opt.config, half_precision=not opt.no_half ),
+        Models.SD( checkpoint=opt.ckpt, config_yaml=opt.config, half_precision=not opt.no_half, device=sd_device ),
 
     ModelNames.SD_opt_cs:
         Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.COND_STAGE,
-                             half_precision=not opt.no_half),
+                             half_precision=not opt.no_half, device=sd_device),
 
     ModelNames.SD_opt_unet:
         Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.UNET,
-                             half_precision=not opt.no_half, max_depth = 0 if opt.optimized_turbo else 1),
+                             half_precision=not opt.no_half, max_depth = 0 if opt.optimized_turbo else 1,
+                             device=sd_device),
 
     ModelNames.SD_opt_fs:
         Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.FIRST_STAGE,
-                             half_precision=not opt.no_half)
+                             half_precision=not opt.no_half, device=sd_device)
 }
 # Register every model in model_loaders above
 model_manager = ModelRepo.Manager(default_device=device)
