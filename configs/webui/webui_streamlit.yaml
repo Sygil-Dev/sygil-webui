@@ -30,14 +30,14 @@ general:
     use_sd_concepts_library: True
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./src/gfpgan"
-    GFPGAN_model: "GFPGANv1.3"
+    GFPGAN_model: "GFPGANv1.4"
     LDSR_dir: "./models/ldsr"
     LDSR_model: "model"
     RealESRGAN_dir: "./src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
     upscaling_method: "RealESRGAN"
-    outdir_txt2img: outputs/txt2img-samples
-    outdir_img2img: outputs/img2img-samples
+    outdir_txt2img: outputs/txt2img
+    outdir_img2img: outputs/img2img
     gfpgan_cpu: False
     esrgan_cpu: False
     extra_models_cpu: False
