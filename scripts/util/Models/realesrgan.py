@@ -10,6 +10,8 @@ class RealESRGAN(ModelLoader):
         super().__init__(**kwargs)
         self._esrgan_dir = esrgan_dir
         self._model_name = model_name
+        if self.is_cpu:
+            half_precision = False # cpu does not support half
         self._half_precision = half_precision
         self._path = path if path else os.path.join(
             self._esrgan_dir, "experiments/pretrained_models", self._model_name + '.pth')
@@ -24,17 +26,9 @@ class RealESRGAN(ModelLoader):
 
         sys.path.append(os.path.abspath(self._esrgan_dir))
         from realesrgan import RealESRGANer
-        # TODO: this stuffs should be handled by repo
-        if self.cpu_only:
-            instance = RealESRGANer(
-                scale=2, model_path=self._esrgan_dir, model=RealESRGAN_models[self._model_name],
-                pre_pad=0, half=False)  # cpu does not support half
-            instance.device = torch.device('cpu')
-            instance.model.to('cpu')
-        else:
-            instance = RealESRGANer(
-                scale=2, model_path=self._get_model_path(), model=RealESRGAN_models[self._model_name],
-                pre_pad=0, half=self._half_precision, device=self.device)
+        instance = RealESRGANer(
+            scale=2, model_path=self._get_model_path(), model=RealESRGAN_models[self._model_name],
+            pre_pad=0, half=self._half_precision, device=self.device) 
         instance.model.name = self._model_name
         return instance
 

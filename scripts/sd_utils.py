@@ -1208,7 +1208,6 @@ def create_random_tensors(shape, seeds):
 def torch_gc():
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
-
 #
 @retry(tries=5)
 def generation_callback(img, i=0):
@@ -1828,12 +1827,14 @@ def get_active_sd_models() -> Tuple[str,str,str]:
 #
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
-        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, GFPGAN_model, use_RealESRGAN, realesrgan_model_name,
-        use_LDSR, LDSR_model_name, ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
+        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', 
+        use_RealESRGAN: bool = False, realesrgan_model_name:str = 'RealESRGAN_x4plus',
+        use_LDSR:bool = False, LDSR_model_name:str = 'model', ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
         mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
+    
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -1983,7 +1984,6 @@ def process_images(
                         c = torch.add(c, model.get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
                 else: # just behave like usual
                     c = model.get_learned_conditioning(prompts)
-
 
             shape = [opt_C, height // opt_f, width // opt_f]
 

@@ -57,7 +57,7 @@ fairscale==0.4.4
 pycocotools==2.0.5
 pycocoevalcap==1.2
 regex
-timm==0.4.12
+timm==0.6.7
 tqdm==4.64.0
 tensorboard==2.10.1
 
@@ -75,4 +75,9 @@ gfpgan==1.3.8  # GFPGAN
 realesrgan==0.3.0  # RealESRGAN brings in GFPGAN as a requirement
 -e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion  #ldsr
 
+## for monocular depth estimation 
+tensorflow==2.10.0
+
+
 # Orphaned Packages:  No usage found
+

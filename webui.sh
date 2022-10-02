@@ -162,7 +162,7 @@ launch_webui () {
     select yn in "Streamlit" "Gradio"; do
         case $yn in
             Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
-            Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py; break;;
+            Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py "$@"; break;;
         esac
     done
 }
@@ -177,8 +177,8 @@ start_initialization () {
         echo "Your model file does not exist! Place it in 'models/ldm/stable-diffusion-v1' with the name 'model.ckpt'."
         exit 1
     fi
-    launch_webui
+    launch_webui "$@"
 
 }
 
-start_initialization
+start_initialization "$@"

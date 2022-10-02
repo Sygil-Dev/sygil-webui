@@ -32,6 +32,7 @@ from streamlit_server_state import server_state, server_state_lock
 # other imports
 import logging
 logging.basicConfig(stream=sys.stdout)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 import warnings

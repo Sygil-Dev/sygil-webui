@@ -32,11 +32,8 @@ def layout():
 	st.header("Settings")
 	
 	with st.form("Settings"):
-		general_tab, txt2img_tab, img2img_tab, \
-			txt2vid_tab, textual_inversion_tab, concepts_library_tab = st.tabs(['General', "Text-To-Image",
-																				"Image-To-Image", "Text-To-Video",
-																				"Textual Inversion",	
-																				"Concepts Library"])
+		general_tab, txt2img_tab, img2img_tab, img2txt_tab, txt2vid_tab, image_processing, textual_inversion_tab, concepts_library_tab = st.tabs(
+			['General', "Text-To-Image", "Image-To-Image", "Image-To-Text", "Text-To-Video", "Image processing", "Textual Inversion", "Concepts Library"])
 		
 		with general_tab:
 			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
@@ -156,7 +153,8 @@ def layout():
 				st.session_state["defaults"].general.update_preview = st.checkbox("Update Preview Image", value=st.session_state['defaults'].general.update_preview,
 																					help="Enables the preview image to be updated and shown to the user on the UI during the generation.\
 																					If checked, once you save the settings an option to specify the frequency at which the image is updated\
-																					in steps will be shown, this is helpful to reduce the negative effect this option has on performance. Default: True")				
+																					in steps will be shown, this is helpful to reduce the negative effect this option has on performance. \
+																					Default: True")				
 				if st.session_state["defaults"].general.update_preview:
 					st.session_state["defaults"].general.update_preview_frequency = int(st.text_input("Update Preview Frequency", value=st.session_state['defaults'].general.update_preview_frequency,
 																						help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
@@ -224,20 +222,668 @@ def layout():
 																							at https://huggingface.co/settings/tokens. Default: None")
 				
 		with txt2img_tab:
-			st.title("Text To Image")
-			st.info("Under Construction. :construction_worker:")
+			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
+
+			with col1:
+				st.title("Slider Parameters")
+				
+				# Width
+				st.session_state["defaults"].txt2img.width.value = int(st.text_input("Default Image Width", value=st.session_state['defaults'].txt2img.width.value, 
+																					 help="Set the default width for the generated image. Default is: 512"))
+       
+				st.session_state["defaults"].txt2img.width.min_value = int(st.text_input("Minimum Image Width", value=st.session_state['defaults'].txt2img.width.min_value,
+																						 help="Set the default minimum value for the width slider. Default is: 64"))
+    
+				st.session_state["defaults"].txt2img.width.max_value = int(st.text_input("Maximum Image Width", value=st.session_state['defaults'].txt2img.width.max_value,
+																						 help="Set the default maximum value for the width slider. Default is: 2048"))
+    
+				# Height
+				st.session_state["defaults"].txt2img.height.value = int(st.text_input("Default Image Height", value=st.session_state['defaults'].txt2img.height.value, 
+																					  help="Set the default height for the generated image. Default is: 512"))
+       
+				st.session_state["defaults"].txt2img.height.min_value = int(st.text_input("Minimum Image Height", value=st.session_state['defaults'].txt2img.height.min_value,
+																						  help="Set the default minimum value for the height slider. Default is: 64"))
+    
+				st.session_state["defaults"].txt2img.height.max_value = int(st.text_input("Maximum Image Height", value=st.session_state['defaults'].txt2img.height.max_value,
+																						  help="Set the default maximum value for the height slider. Default is: 2048"))
+    
+				with col2:
+					# CFG
+					st.session_state["defaults"].txt2img.cfg_scale.value = float(st.text_input("Default CFG Scale", value=st.session_state['defaults'].txt2img.cfg_scale.value,
+																							   help="Set the default value for the CFG Scale. Default is: 7.5"))
+		   
+					st.session_state["defaults"].txt2img.cfg_scale.min_value = float(st.text_input("Minimum CFG Scale Value", value=st.session_state['defaults'].txt2img.cfg_scale.min_value,
+																								   help="Set the default minimum value for the CFG scale slider. Default is: 1"))
+		
+					st.session_state["defaults"].txt2img.cfg_scale.max_value = float(st.text_input("Maximum CFG Scale Value", 
+																								   value=st.session_state['defaults'].txt2img.cfg_scale.max_value,
+																								   help="Set the default maximum value for the CFG scale slider. Default is: 30"))
+		
+					st.session_state["defaults"].txt2img.cfg_scale.step = float(st.text_input("CFG Slider Steps", value=st.session_state['defaults'].txt2img.cfg_scale.step,
+																							  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5"))
+		
+					# Sampling Steps
+					st.session_state["defaults"].txt2img.sampling_steps.value = int(st.text_input("Default Sampling Steps", value=st.session_state['defaults'].txt2img.sampling_steps.value, 
+																								  help="Set the default number of sampling steps to use. Default is: 30 (with k_euler)"))
+		   
+					st.session_state["defaults"].txt2img.sampling_steps.min_value = int(st.text_input("Minimum Sampling Steps", 
+																									  value=st.session_state['defaults'].txt2img.sampling_steps.min_value, 
+																									  help="Set the default minimum value for the sampling steps slider. Default is: 1"))
+		
+					st.session_state["defaults"].txt2img.sampling_steps.max_value = int(st.text_input("Maximum Sampling Steps", 
+																									  value=st.session_state['defaults'].txt2img.sampling_steps.max_value,
+																									  help="Set the default maximum value for the sampling steps slider. Default is: 250"))
+		
+					st.session_state["defaults"].txt2img.sampling_steps.step = int(st.text_input("Sampling Slider Steps", 
+																								 value=st.session_state['defaults'].txt2img.sampling_steps.step,
+																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
+		
+					with col3:
+						# Batch Count
+						st.session_state["defaults"].txt2img.batch_count.value = int(st.text_input("Default Batch Count", 
+																								   value=st.session_state['defaults'].txt2img.batch_count.value,
+																								   help="Set the default batch count to use. Default is: 1"))
+			   
+						st.session_state["defaults"].txt2img.batch_count.min_value = int(st.text_input("Minimum Batch Count",
+																									   value=st.session_state['defaults'].txt2img.batch_count.min_value,
+																									   help="Set the default minimum value for the batch count slider. Default is: 1"))
+			
+						st.session_state["defaults"].txt2img.batch_count.max_value = int(st.text_input("Maximum Batch Count",
+																									   value=st.session_state['defaults'].txt2img.batch_count.max_value,
+																									   help="Set the default maximum value for the batch count slider. Default is: 100"))
+			
+						st.session_state["defaults"].txt2img.batch_count.step = int(st.text_input("Batch Count Slider Steps",
+																								  value=st.session_state['defaults'].txt2img.batch_count.step, 
+																								  help="Set the default value for the number of steps on the batch count slider. Default is: 10"))
+		
+						# Batch Size
+						st.session_state["defaults"].txt2img.batch_size.value = int(st.text_input("Default Batch Size",
+																								  value=st.session_state['defaults'].txt2img.batch_size.value,
+																								  help="Set the default batch size to use. Default is: 1"))
+			   
+						st.session_state["defaults"].txt2img.batch_size.min_value = int(st.text_input("Minimum Batch Size", 
+																									  value=st.session_state['defaults'].txt2img.batch_size.min_value, 
+																									  help="Set the default minimum value for the batch size slider. Default is: 1"))
+			
+						st.session_state["defaults"].txt2img.batch_size.max_value = int(st.text_input("Maximum Batch Size",
+																									  value=st.session_state['defaults'].txt2img.batch_size.max_value, 
+																									  help="Set the default maximum value for the batch size slider. Default is: 5"))
+			
+						st.session_state["defaults"].txt2img.batch_size.step = int(st.text_input("Batch Size Slider Steps",
+																								 value=st.session_state['defaults'].txt2img.batch_size.step,
+																								 help="Set the default value for the number of steps on the batch size slider. Default is: 1"))
+       
+			with col4:
+				st.title("General Parameters")
+    
+				default_sampler_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_heun", "PLMS", "DDIM"]
+				st.session_state["defaults"].txt2img.default_sampler = st.selectbox("Default Sampler",
+																					default_sampler_list, index=default_sampler_list.index(st.session_state['defaults'].txt2img.default_sampler),
+																					help="Defaut sampler to use for txt2img. Default: k_euler")
+    
+				st.session_state['defaults'].txt2img.seed = st.text_input("Default Seed", value=st.session_state['defaults'].txt2img.seed, help="Default seed.")
+    
+				st.session_state["defaults"].txt2img.separate_prompts = st.checkbox("Separate Prompts",
+																					value=st.session_state['defaults'].txt2img.separate_prompts, help="Separate Prompts. Default: False")
+    
+				st.session_state["defaults"].txt2img.normalize_prompt_weights = st.checkbox("Normalize Prompt Weights", 
+																							value=st.session_state['defaults'].txt2img.normalize_prompt_weights,
+																							help="Choose to normalize prompt weights. Default: True")
+    
+				st.session_state["defaults"].txt2img.save_individual_images = st.checkbox("Save Individual Images",
+																						  value=st.session_state['defaults'].txt2img.save_individual_images, 
+																						  help="Choose to save individual images. Default: True")
+    
+				st.session_state["defaults"].txt2img.save_grid = st.checkbox("Save Grid Images", value=st.session_state['defaults'].txt2img.save_grid, 
+																			 help="Choose to save the grid images. Default: True")
+
+				st.session_state["defaults"].txt2img.group_by_prompt = st.checkbox("Group By Prompt", value=st.session_state['defaults'].txt2img.group_by_prompt,
+																				   help="Choose to save images grouped by their prompt. Default: False")
+    
+				st.session_state["defaults"].txt2img.save_as_jpg = st.checkbox("Save As JPG", value=st.session_state['defaults'].txt2img.save_as_jpg, 
+																			   help="Choose to save images as jpegs. Default: False")
+    
+				st.session_state["defaults"].txt2img.write_info_files = st.checkbox("Write Info Files For Images", value=st.session_state['defaults'].txt2img.write_info_files,
+																					help="Choose to write the info files along with the generated images. Default: True")
+
+				st.session_state["defaults"].txt2img.use_GFPGAN = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Choose to use GFPGAN. Default: False")
+    
+				st.session_state["defaults"].txt2img.use_RealESRGAN = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN, 
+																				  help="Choose to use RealESRGAN. Default: False")
+    
+				st.session_state["defaults"].txt2img.update_preview = st.checkbox("Update Preview Image", value=st.session_state['defaults'].txt2img.update_preview, 
+																				  help="Choose to update the preview image during generation. Default: True")
+    
+				st.session_state["defaults"].txt2img.update_preview_frequency = int(st.text_input("Preview Image Update Frequency",
+																								  value=st.session_state['defaults'].txt2img.update_preview_frequency,
+																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10"))
+
+			with col5:
+				st.title("Variation Parameters")
+    
+				st.session_state["defaults"].txt2img.variant_amount.value = float(st.text_input("Default Variation Amount", 
+																								value=st.session_state['defaults'].txt2img.variant_amount.value,
+																								help="Set the default variation to use. Default is: 0.0"))
+       
+				st.session_state["defaults"].txt2img.variant_amount.min_value = float(st.text_input("Minimum Variation Amount",
+																									value=st.session_state['defaults'].txt2img.variant_amount.min_value,
+																									help="Set the default minimum value for the variation slider. Default is: 0.0"))
+    
+				st.session_state["defaults"].txt2img.variant_amount.max_value = float(st.text_input("Maximum Variation Amount",
+																									value=st.session_state['defaults'].txt2img.variant_amount.max_value,
+																									help="Set the default maximum value for the variation slider. Default is: 1.0"))
+    
+				st.session_state["defaults"].txt2img.variant_amount.step = float(st.text_input("Variation Slider Steps",
+																							   value=st.session_state['defaults'].txt2img.variant_amount.step,
+																							   help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+    
+				st.session_state['defaults'].txt2img.variant_seed = st.text_input("Default Variation Seed", value=st.session_state['defaults'].txt2img.variant_seed,
+																				  help="Default variation seed.")
 			
 		with img2img_tab:
-			st.title("Image To Image")
-			st.info("Under Construction. :construction_worker:")
+			col1, col2, col3, col4, col5 = st.columns(5, gap='medium')
 			
+			with col1:
+				st.title("Image Editing")
+    
+				# Denoising
+				st.session_state["defaults"].img2img.denoising_strength.value = float(st.text_input("Default Denoising Amount",
+																									value=st.session_state['defaults'].img2img.denoising_strength.value, 
+																									help="Set the default denoising to use. Default is: 0.75"))
+       
+				st.session_state["defaults"].img2img.denoising_strength.min_value = float(st.text_input("Minimum Denoising Amount", 
+																										value=st.session_state['defaults'].img2img.denoising_strength.min_value, 
+																										help="Set the default minimum value for the denoising slider. Default is: 0.0"))
+    
+				st.session_state["defaults"].img2img.denoising_strength.max_value = float(st.text_input("Maximum Denoising Amount",
+																										value=st.session_state['defaults'].img2img.denoising_strength.max_value,
+																										help="Set the default maximum value for the denoising slider. Default is: 1.0"))
+    
+				st.session_state["defaults"].img2img.denoising_strength.step = float(st.text_input("Denoising Slider Steps",
+																								   value=st.session_state['defaults'].img2img.denoising_strength.step, 
+																								   help="Set the default value for the number of steps on the denoising slider. Default is: 0.01"))
+    
+				# Masking
+				st.session_state["defaults"].img2img.mask_mode = int(st.text_input("Default Mask Mode", value=st.session_state['defaults'].img2img.mask_mode,
+																				   help="Set the default mask mode to use. 0 = Keep Masked Area, 1 = Regenerate Masked Area. Default is: 0"))
+       
+				st.session_state["defaults"].img2img.mask_restore = st.checkbox("Default Mask Restore", value=st.session_state['defaults'].img2img.mask_restore, 
+																				help="Mask Restore. Default: False")
+    
+				st.session_state["defaults"].img2img.resize_mode = int(st.text_input("Default Resize Mode", value=st.session_state['defaults'].img2img.resize_mode, 
+																					 help="Set the default resizing mode. 0 = Just Resize, 1 = Crop and Resize, 3 = Resize and Fill. Default is: 0"))
+
+			with col2:
+				st.title("Slider Parameters")
+    
+				# Width
+				st.session_state["defaults"].img2img.width.value = int(st.text_input("Default Outputted Image Width", value=st.session_state['defaults'].img2img.width.value,
+																					 help="Set the default width for the generated image. Default is: 512"))
+       
+				st.session_state["defaults"].img2img.width.min_value = int(st.text_input("Minimum Outputted Image Width", value=st.session_state['defaults'].img2img.width.min_value,
+																						 help="Set the default minimum value for the width slider. Default is: 64"))
+    
+				st.session_state["defaults"].img2img.width.max_value = int(st.text_input("Maximum Outputted Image Width", value=st.session_state['defaults'].img2img.width.max_value,
+																						 help="Set the default maximum value for the width slider. Default is: 2048"))
+    
+				# Height
+				st.session_state["defaults"].img2img.height.value = int(st.text_input("Default Outputted Image Height", value=st.session_state['defaults'].img2img.height.value, 
+																					  help="Set the default height for the generated image. Default is: 512"))
+       
+				st.session_state["defaults"].img2img.height.min_value = int(st.text_input("Minimum Outputted Image Height", value=st.session_state['defaults'].img2img.height.min_value,
+																						  help="Set the default minimum value for the height slider. Default is: 64"))
+    
+				st.session_state["defaults"].img2img.height.max_value = int(st.text_input("Maximum Outputted Image Height", value=st.session_state['defaults'].img2img.height.max_value, 
+																						  help="Set the default maximum value for the height slider. Default is: 2048"))
+    
+				# CFG
+				st.session_state["defaults"].img2img.cfg_scale.value = float(st.text_input("Default Img2Img CFG Scale", value=st.session_state['defaults'].img2img.cfg_scale.value,
+																						   help="Set the default value for the CFG Scale. Default is: 7.5"))
+       
+				st.session_state["defaults"].img2img.cfg_scale.min_value = float(st.text_input("Minimum Img2Img CFG Scale Value", 
+																							   value=st.session_state['defaults'].img2img.cfg_scale.min_value,
+																							   help="Set the default minimum value for the CFG scale slider. Default is: 1"))
+    
+				st.session_state["defaults"].img2img.cfg_scale.max_value = float(st.text_input("Maximum Img2Img CFG Scale Value",
+																							   value=st.session_state['defaults'].img2img.cfg_scale.max_value, 
+																							   help="Set the default maximum value for the CFG scale slider. Default is: 30"))
+    
+				with col3:
+					st.session_state["defaults"].img2img.cfg_scale.step = float(st.text_input("Img2Img CFG Slider Steps",
+																							  value=st.session_state['defaults'].img2img.cfg_scale.step, 
+																							  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5"))
+		
+					# Sampling Steps
+					st.session_state["defaults"].img2img.sampling_steps.value = int(st.text_input("Default Img2Img Sampling Steps",
+																								  value=st.session_state['defaults'].img2img.sampling_steps.value,
+																								  help="Set the default number of sampling steps to use. Default is: 30 (with k_euler)"))
+		   
+					st.session_state["defaults"].img2img.sampling_steps.min_value = int(st.text_input("Minimum Img2Img Sampling Steps", 
+																									  value=st.session_state['defaults'].img2img.sampling_steps.min_value,
+																									  help="Set the default minimum value for the sampling steps slider. Default is: 1"))
+		
+					st.session_state["defaults"].img2img.sampling_steps.max_value = int(st.text_input("Maximum Img2Img Sampling Steps",
+																									  value=st.session_state['defaults'].img2img.sampling_steps.max_value, 
+																									  help="Set the default maximum value for the sampling steps slider. Default is: 250"))
+		
+					st.session_state["defaults"].img2img.sampling_steps.step = int(st.text_input("Img2Img Sampling Slider Steps",
+																								 value=st.session_state['defaults'].img2img.sampling_steps.step, 
+																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
+		
+					# Batch Count
+					st.session_state["defaults"].img2img.batch_count.value = int(st.text_input("Default Img2Img Batch Count",
+																							   value=st.session_state['defaults'].img2img.batch_count.value, 
+																							   help="Set the default batch count to use. Default is: 1"))
+		   
+					st.session_state["defaults"].img2img.batch_count.min_value = int(st.text_input("Minimum Img2Img Batch Count",
+																								   value=st.session_state['defaults'].img2img.batch_count.min_value, 
+																								   help="Set the default minimum value for the batch count slider. Default is: 1"))
+		
+					st.session_state["defaults"].img2img.batch_count.max_value = int(st.text_input("Maximum Img2Img Batch Count",
+																								   value=st.session_state['defaults'].img2img.batch_count.max_value,
+																								   help="Set the default maximum value for the batch count slider. Default is: 100"))
+		
+					st.session_state["defaults"].img2img.batch_count.step = int(st.text_input("Img2Img Batch Count Slider Steps", 
+																							  value=st.session_state['defaults'].img2img.batch_count.step,
+																							  help="Set the default value for the number of steps on the batch count slider. Default is: 10"))
+	
+					# Batch Size
+					st.session_state["defaults"].img2img.batch_size.value = int(st.text_input("Default Img2Img Batch Size", 
+																							  value=st.session_state['defaults'].img2img.batch_size.value, 
+																							  help="Set the default batch size to use. Default is: 1"))
+		   
+					st.session_state["defaults"].img2img.batch_size.min_value = int(st.text_input("Minimum Img2Img Batch Size",
+																								  value=st.session_state['defaults'].img2img.batch_size.min_value, 
+																								  help="Set the default minimum value for the batch size slider. Default is: 1"))
+		
+					st.session_state["defaults"].img2img.batch_size.max_value = int(st.text_input("Maximum Img2Img Batch Size", 
+																								  value=st.session_state['defaults'].img2img.batch_size.max_value,
+																								  help="Set the default maximum value for the batch size slider. Default is: 5"))
+		
+					st.session_state["defaults"].img2img.batch_size.step = int(st.text_input("Img2Img Batch Size Slider Steps", 
+																							 value=st.session_state['defaults'].img2img.batch_size.step, 
+																							 help="Set the default value for the number of steps on the batch size slider. Default is: 1"))
+					with col4:
+						# Inference Steps
+						st.session_state["defaults"].img2img.num_inference_steps.value = int(st.text_input("Default Inference Steps", 
+																										   value=st.session_state['defaults'].img2img.num_inference_steps.value,
+																										   help="Set the default number of inference steps to use. Default is: 200"))
+			   
+						st.session_state["defaults"].img2img.num_inference_steps.min_value = int(st.text_input("Minimum Sampling Steps", 
+																											   value=st.session_state['defaults'].img2img.num_inference_steps.min_value,
+																											   help="Set the default minimum value for the inference steps slider. Default is: 10"))
+			
+						st.session_state["defaults"].img2img.num_inference_steps.max_value = int(st.text_input("Maximum Sampling Steps", 
+																											   value=st.session_state['defaults'].img2img.num_inference_steps.max_value,
+																											   help="Set the default maximum value for the inference steps slider. Default is: 500"))
+			
+						st.session_state["defaults"].img2img.num_inference_steps.step = int(st.text_input("Inference Slider Steps",
+																										  value=st.session_state['defaults'].img2img.num_inference_steps.step,
+																										  help="Set the default value for the number of steps on the inference steps slider.\
+																										  Default is: 10"))
+			
+						# Find Noise Steps
+						st.session_state["defaults"].img2img.find_noise_steps.value = int(st.text_input("Default Find Noise Steps",
+																										value=st.session_state['defaults'].img2img.find_noise_steps.value,
+																										help="Set the default number of find noise steps to use. Default is: 100"))
+			   
+						st.session_state["defaults"].img2img.find_noise_steps.min_value = int(st.text_input("Minimum Find Noise Steps",
+																											value=st.session_state['defaults'].img2img.find_noise_steps.min_value,
+																											help="Set the default minimum value for the find noise steps slider. Default is: 0"))
+			
+						st.session_state["defaults"].img2img.find_noise_steps.max_value = int(st.text_input("Maximum Find Noise Steps",
+																											value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
+																											help="Set the default maximum value for the find noise steps slider. Default is: 500"))
+			
+						st.session_state["defaults"].img2img.find_noise_steps.step = int(st.text_input("Find Noise Slider Steps",
+																									   value=st.session_state['defaults'].img2img.find_noise_steps.step,
+																									   help="Set the default value for the number of steps on the find noise steps slider. \
+																									   Default is: 10"))
+    
+			with col5:
+				st.title("General Parameters")
+    
+				default_sampler_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_heun", "PLMS", "DDIM"]
+				st.session_state["defaults"].img2img.sampler_name = st.selectbox("Default Img2Img Sampler", default_sampler_list,
+																				 index=default_sampler_list.index(st.session_state['defaults'].img2img.sampler_name),
+																				 help="Defaut sampler to use for img2img. Default: k_euler")
+    
+				st.session_state['defaults'].img2img.seed = st.text_input("Default Img2Img Seed", value=st.session_state['defaults'].img2img.seed, help="Default seed.")
+    
+				st.session_state["defaults"].img2img.separate_prompts = st.checkbox("Separate Img2Img Prompts", value=st.session_state['defaults'].img2img.separate_prompts,
+																					help="Separate Prompts. Default: False")
+    
+				st.session_state["defaults"].img2img.normalize_prompt_weights = st.checkbox("Normalize Img2Img Prompt Weights",
+																							value=st.session_state['defaults'].img2img.normalize_prompt_weights, 
+																							help="Choose to normalize prompt weights. Default: True")
+    
+				st.session_state["defaults"].img2img.save_individual_images = st.checkbox("Save Individual Img2Img Images",
+																						  value=st.session_state['defaults'].img2img.save_individual_images,
+																						  help="Choose to save individual images. Default: True")
+    
+				st.session_state["defaults"].img2img.save_grid = st.checkbox("Save Img2Img Grid Images",
+																			 value=st.session_state['defaults'].img2img.save_grid, help="Choose to save the grid images. Default: True")
+
+				st.session_state["defaults"].img2img.group_by_prompt = st.checkbox("Group By Img2Img Prompt", 
+																				   value=st.session_state['defaults'].img2img.group_by_prompt, 
+																				   help="Choose to save images grouped by their prompt. Default: False")
+    
+				st.session_state["defaults"].img2img.save_as_jpg = st.checkbox("Save Img2Img As JPG", value=st.session_state['defaults'].img2img.save_as_jpg,
+																			   help="Choose to save images as jpegs. Default: False")
+    
+				st.session_state["defaults"].img2img.write_info_files = st.checkbox("Write Info Files For Img2Img Images", 
+																					value=st.session_state['defaults'].img2img.write_info_files,
+																					help="Choose to write the info files along with the generated images. Default: True")
+
+				st.session_state["defaults"].img2img.use_GFPGAN = st.checkbox("Img2Img Use GFPGAN", value=st.session_state['defaults'].img2img.use_GFPGAN, help="Choose to use GFPGAN. Default: False")
+    
+				st.session_state["defaults"].img2img.use_RealESRGAN = st.checkbox("Img2Img Use RealESRGAN", value=st.session_state['defaults'].img2img.use_RealESRGAN,
+																				  help="Choose to use RealESRGAN. Default: False")
+    
+				st.session_state["defaults"].img2img.update_preview = st.checkbox("Update Img2Img Preview Image", value=st.session_state['defaults'].img2img.update_preview,
+																				  help="Choose to update the preview image during generation. Default: True")
+    
+				st.session_state["defaults"].img2img.update_preview_frequency = int(st.text_input("Img2Img Preview Image Update Frequency",
+																								  value=st.session_state['defaults'].img2img.update_preview_frequency, 
+																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10"))
+			
+				st.title("Variation Parameters")
+    
+				st.session_state["defaults"].img2img.variant_amount = float(st.text_input("Default Img2Img Variation Amount", 
+																						  value=st.session_state['defaults'].img2img.variant_amount,
+																						  help="Set the default variation to use. Default is: 0.0"))
+       
+				# I THINK THESE ARE MISSING FROM THE CONFIG FILE
+				# st.session_state["defaults"].img2img.variant_amount.min_value = float(st.text_input("Minimum Img2Img Variation Amount", 
+				# value=st.session_state['defaults'].img2img.variant_amount.min_value, help="Set the default minimum value for the variation slider. Default is: 0.0"))
+    
+				# st.session_state["defaults"].img2img.variant_amount.max_value = float(st.text_input("Maximum Img2Img Variation Amount",
+				# value=st.session_state['defaults'].img2img.variant_amount.max_value, help="Set the default maximum value for the variation slider. Default is: 1.0"))
+    
+				# st.session_state["defaults"].img2img.variant_amount.step = float(st.text_input("Img2Img Variation Slider Steps", 
+				# value=st.session_state['defaults'].img2img.variant_amount.step, help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+    
+				st.session_state['defaults'].img2img.variant_seed = st.text_input("Default Img2Img Variation Seed", 
+																				  value=st.session_state['defaults'].img2img.variant_seed, help="Default variation seed.")
+
+		with img2txt_tab:
+			col1 = st.columns(1, gap="large")		
+   
+			st.title("Image-To-Text")
+
+			st.session_state["defaults"].img2txt.batch_size = int(st.text_input("Default Img2Txt Batch Size", value=st.session_state['defaults'].img2txt.batch_size, 
+																				help="Set the default batch size for Img2Txt. Default is: 420?"))
+
+			st.session_state["defaults"].img2txt.blip_image_eval_size = int(st.text_input("Default Blip Image Size Evaluation", 
+																						  value=st.session_state['defaults'].img2txt.blip_image_eval_size,
+																						  help="Set the default value for the blip image evaluation size. Default is: 512"))
+  
 		with txt2vid_tab:
-			st.title("Text To Video")
-			st.info("Under Construction. :construction_worker:")
+			col1, col2, col3, col4, col5 = st.columns(5, gap="medium")
+   
+			with col1:
+				st.title("Slider Parameters")
+    
+				# Width
+				st.session_state["defaults"].txt2vid.width.value = int(st.text_input("Default txt2vid Image Width",
+																					 value=st.session_state['defaults'].txt2vid.width.value, 
+																					 help="Set the default width for the generated image. Default is: 512"))
+       
+				st.session_state["defaults"].txt2vid.width.min_value = int(st.text_input("Minimum txt2vid Image Width",
+																						 value=st.session_state['defaults'].txt2vid.width.min_value, 
+																						 help="Set the default minimum value for the width slider. Default is: 64"))
+    
+				st.session_state["defaults"].txt2vid.width.max_value = int(st.text_input("Maximum txt2vid Image Width", 
+																						 value=st.session_state['defaults'].txt2vid.width.max_value, 
+																						 help="Set the default maximum value for the width slider. Default is: 2048"))
+    
+				# Height
+				st.session_state["defaults"].txt2vid.height.value = int(st.text_input("Default txt2vid Image Height",
+																					  value=st.session_state['defaults'].txt2vid.height.value, 
+																					  help="Set the default height for the generated image. Default is: 512"))
+       
+				st.session_state["defaults"].txt2vid.height.min_value = int(st.text_input("Minimum txt2vid Image Height", 
+																						  value=st.session_state['defaults'].txt2vid.height.min_value, 
+																						  help="Set the default minimum value for the height slider. Default is: 64"))
+    
+				st.session_state["defaults"].txt2vid.height.max_value = int(st.text_input("Maximum txt2vid Image Height",
+																						  value=st.session_state['defaults'].txt2vid.height.max_value, 
+																						  help="Set the default maximum value for the height slider. Default is: 2048"))
+    
+				# CFG
+				st.session_state["defaults"].txt2vid.cfg_scale.value = float(st.text_input("Default txt2vid CFG Scale",
+																						   value=st.session_state['defaults'].txt2vid.cfg_scale.value,
+																						   help="Set the default value for the CFG Scale. Default is: 7.5"))
+       
+				st.session_state["defaults"].txt2vid.cfg_scale.min_value = float(st.text_input("Minimum txt2vid CFG Scale Value",
+																							   value=st.session_state['defaults'].txt2vid.cfg_scale.min_value, 
+																							   help="Set the default minimum value for the CFG scale slider. Default is: 1"))
+    
+				st.session_state["defaults"].txt2vid.cfg_scale.max_value = float(st.text_input("Maximum txt2vid CFG Scale Value", 
+																							   value=st.session_state['defaults'].txt2vid.cfg_scale.max_value, 
+																							   help="Set the default maximum value for the CFG scale slider. Default is: 30"))
+    
+				st.session_state["defaults"].txt2vid.cfg_scale.step = float(st.text_input("txt2vid CFG Slider Steps", 
+																						  value=st.session_state['defaults'].txt2vid.cfg_scale.step,
+																						  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5"))
+    
+				with col2:
+					# Sampling Steps
+					st.session_state["defaults"].txt2vid.sampling_steps.value = int(st.text_input("Default txt2vid Sampling Steps",
+																								  value=st.session_state['defaults'].txt2vid.sampling_steps.value, 
+																								  help="Set the default number of sampling steps to use. Default is: 30 (with k_euler)"))
+		   
+					st.session_state["defaults"].txt2vid.sampling_steps.min_value = int(st.text_input("Minimum txt2vid Sampling Steps",
+																									  value=st.session_state['defaults'].txt2vid.sampling_steps.min_value,
+																									  help="Set the default minimum value for the sampling steps slider. Default is: 1"))
+		
+					st.session_state["defaults"].txt2vid.sampling_steps.max_value = int(st.text_input("Maximum txt2vid Sampling Steps", 
+																									  value=st.session_state['defaults'].txt2vid.sampling_steps.max_value,
+																									  help="Set the default maximum value for the sampling steps slider. Default is: 250"))
+		
+					st.session_state["defaults"].txt2vid.sampling_steps.step = int(st.text_input("txt2vid Sampling Slider Steps", 
+																								 value=st.session_state['defaults'].txt2vid.sampling_steps.step, 
+																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
+		
+					# Batch Count
+					st.session_state["defaults"].txt2vid.batch_count.value = int(st.text_input("Default txt2vid Batch Count", 
+																							   value=st.session_state['defaults'].txt2vid.batch_count.value, 
+																							   help="Set the default batch count to use. Default is: 1"))
+		   
+					st.session_state["defaults"].txt2vid.batch_count.min_value = int(st.text_input("Minimum txt2vid Batch Count",
+																								   value=st.session_state['defaults'].img2img.batch_count.min_value, 
+																								   help="Set the default minimum value for the batch count slider. Default is: 1"))
+		
+					st.session_state["defaults"].img2img.batch_count.max_value = int(st.text_input("Maximum txt2vid Batch Count",
+																								   value=st.session_state['defaults'].txt2vid.batch_count.max_value, 
+																								   help="Set the default maximum value for the batch count slider. Default is: 100"))
+		
+					st.session_state["defaults"].txt2vid.batch_count.step = int(st.text_input("txt2vid Batch Count Slider Steps", 
+																							  value=st.session_state['defaults'].txt2vid.batch_count.step,
+																							  help="Set the default value for the number of steps on the batch count slider. Default is: 10"))
+	
+					# Batch Size
+					st.session_state["defaults"].txt2vid.batch_size.value = int(st.text_input("Default txt2vid Batch Size",
+																							  value=st.session_state['defaults'].txt2vid.batch_size.value,
+																							  help="Set the default batch size to use. Default is: 1"))
+		   
+					st.session_state["defaults"].txt2vid.batch_size.min_value = int(st.text_input("Minimum txt2vid Batch Size", 
+																								  value=st.session_state['defaults'].txt2vid.batch_size.min_value,
+																								  help="Set the default minimum value for the batch size slider. Default is: 1"))
+		
+					st.session_state["defaults"].txt2vid.batch_size.max_value = int(st.text_input("Maximum txt2vid Batch Size",
+																								  value=st.session_state['defaults'].txt2vid.batch_size.max_value, 
+																								  help="Set the default maximum value for the batch size slider. Default is: 5"))
+		
+					st.session_state["defaults"].txt2vid.batch_size.step = int(st.text_input("txt2vid Batch Size Slider Steps",
+																							 value=st.session_state['defaults'].txt2vid.batch_size.step,
+																							 help="Set the default value for the number of steps on the batch size slider. Default is: 1"))
+		
+					# Inference Steps
+					st.session_state["defaults"].txt2vid.num_inference_steps.value = int(st.text_input("Default Txt2Vid Inference Steps",
+																									   value=st.session_state['defaults'].txt2vid.num_inference_steps.value, 
+																									   help="Set the default number of inference steps to use. Default is: 200"))
+		   
+					st.session_state["defaults"].txt2vid.num_inference_steps.min_value = int(st.text_input("Minimum Txt2Vid Sampling Steps", 
+																										   value=st.session_state['defaults'].txt2vid.num_inference_steps.min_value,
+																										   help="Set the default minimum value for the inference steps slider. Default is: 10"))
+		
+					st.session_state["defaults"].txt2vid.num_inference_steps.max_value = int(st.text_input("Maximum Txt2Vid Sampling Steps",
+																										   value=st.session_state['defaults'].txt2vid.num_inference_steps.max_value,
+																										   help="Set the default maximum value for the inference steps slider. Default is: 500"))
+		
+					st.session_state["defaults"].txt2vid.num_inference_steps.step = int(st.text_input("Txt2Vid Inference Slider Steps",
+																									  value=st.session_state['defaults'].txt2vid.num_inference_steps.step, 
+																									  help="Set the default value for the number of steps on the inference steps slider. Default is: 10"))
+    
+			with col3:
+				st.title("General Parameters")
+    
+				st.session_state['defaults'].txt2vid.default_model = st.text_input("Default Txt2Vid Model", value=st.session_state['defaults'].txt2vid.default_model, 
+																				   help="Default: CompVis/stable-diffusion-v1-4")
+    
+				# INSERT CUSTOM_MODELS_LIST HERE
+    
+				default_sampler_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_heun", "PLMS", "DDIM"]
+				st.session_state["defaults"].txt2vid.default_sampler = st.selectbox("Default txt2vid Sampler", default_sampler_list, 
+																					index=default_sampler_list.index(st.session_state['defaults'].txt2vid.default_sampler),
+																					help="Defaut sampler to use for txt2vid. Default: k_euler")
+    
+				st.session_state['defaults'].txt2vid.seed = st.text_input("Default txt2vid Seed", value=st.session_state['defaults'].txt2vid.seed, help="Default seed.")
+    
+				st.session_state['defaults'].txt2vid.scheduler_name = st.text_input("Default Txt2Vid Scheduler", 
+																					value=st.session_state['defaults'].txt2vid.scheduler_name, help="Default scheduler.")
+    
+				st.session_state["defaults"].txt2vid.separate_prompts = st.checkbox("Separate txt2vid Prompts",
+																					value=st.session_state['defaults'].txt2vid.separate_prompts, help="Separate Prompts. Default: False")
+    
+				st.session_state["defaults"].txt2vid.normalize_prompt_weights = st.checkbox("Normalize txt2vid Prompt Weights", 
+																							value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, 
+																							help="Choose to normalize prompt weights. Default: True")
+    
+				st.session_state["defaults"].txt2vid.save_individual_images = st.checkbox("Save Individual txt2vid Images", 
+																						  value=st.session_state['defaults'].txt2vid.save_individual_images, 
+																						  help="Choose to save individual images. Default: True")
+    
+				st.session_state["defaults"].txt2vid.save_video = st.checkbox("Save Txt2Vid Video", value=st.session_state['defaults'].txt2vid.save_video,
+																			  help="Choose to save the Txt2Vid video. Default: True")
+    
+				st.session_state["defaults"].txt2vid.group_by_prompt = st.checkbox("Group By txt2vid Prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt, 
+																				   help="Choose to save images grouped by their prompt. Default: False")
+    
+				st.session_state["defaults"].txt2vid.save_as_jpg = st.checkbox("Save txt2vid As JPG", value=st.session_state['defaults'].txt2vid.save_as_jpg,
+																			   help="Choose to save images as jpegs. Default: False")
+    
+				# Need more info for the Help dialog...
+				st.session_state["defaults"].txt2vid.do_loop = st.checkbox("Loop Generations", value=st.session_state['defaults'].txt2vid.do_loop, 
+																		   help="Choose to loop or something, IDK.... Default: False")
+    
+				st.session_state["defaults"].txt2vid.max_frames = int(st.text_input("Txt2Vid Max Video Frames", value=st.session_state['defaults'].txt2vid.max_frames,
+																					help="Set the default value for the number of video frames generated. Default is: 100"))
+    
+				st.session_state["defaults"].txt2vid.write_info_files = st.checkbox("Write Info Files For txt2vid Images", value=st.session_state['defaults'].txt2vid.write_info_files, 
+																					help="Choose to write the info files along with the generated images. Default: True")
+
+				st.session_state["defaults"].txt2vid.use_GFPGAN = st.checkbox("txt2vid Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
+																			  help="Choose to use GFPGAN. Default: False")
+    
+				st.session_state["defaults"].txt2vid.use_RealESRGAN = st.checkbox("txt2vid Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
+																				  help="Choose to use RealESRGAN. Default: False")
+    
+				st.session_state["defaults"].txt2vid.update_preview = st.checkbox("Update txt2vid Preview Image", value=st.session_state['defaults'].txt2vid.update_preview, 
+																				  help="Choose to update the preview image during generation. Default: True")
+    
+				st.session_state["defaults"].txt2vid.update_preview_frequency = int(st.text_input("txt2vid Preview Image Update Frequency", 
+																								  value=st.session_state['defaults'].txt2vid.update_preview_frequency, 
+																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10"))
+    
+			with col4:
+				st.title("Variation Parameters")
+    
+				st.session_state["defaults"].txt2vid.variant_amount.value = float(st.text_input("Default txt2vid Variation Amount", 
+																								value=st.session_state['defaults'].txt2vid.variant_amount.value,
+																								help="Set the default variation to use. Default is: 0.0"))
+
+				st.session_state["defaults"].txt2vid.variant_amount.min_value = float(st.text_input("Minimum txt2vid Variation Amount", 
+																									value=st.session_state['defaults'].txt2vid.variant_amount.min_value, 
+																									help="Set the default minimum value for the variation slider. Default is: 0.0"))
+    
+				st.session_state["defaults"].txt2vid.variant_amount.max_value = float(st.text_input("Maximum txt2vid Variation Amount", 
+																									value=st.session_state['defaults'].txt2vid.variant_amount.max_value, 
+																									help="Set the default maximum value for the variation slider. Default is: 1.0"))
+    
+				st.session_state["defaults"].txt2vid.variant_amount.step = float(st.text_input("txt2vid Variation Slider Steps", 
+																							   value=st.session_state['defaults'].txt2vid.variant_amount.step,
+																							   help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+    
+				st.session_state['defaults'].txt2vid.variant_seed = st.text_input("Default txt2vid Variation Seed", 
+																				  value=st.session_state['defaults'].txt2vid.variant_seed, help="Default variation seed.")
+
+    
+			with col5:
+				st.title("Beta Parameters")
+    
+				# Beta Start
+				st.session_state["defaults"].txt2vid.beta_start.value = float(st.text_input("Default txt2vid Beta Start Value",
+																							value=st.session_state['defaults'].txt2vid.beta_start.value, 
+																							help="Set the default variation to use. Default is: 0.0"))
+
+				st.session_state["defaults"].txt2vid.beta_start.min_value = float(st.text_input("Minimum txt2vid Beta Start Amount",
+																								value=st.session_state['defaults'].txt2vid.beta_start.min_value, 
+																								help="Set the default minimum value for the variation slider. Default is: 0.0"))
+    
+				st.session_state["defaults"].txt2vid.beta_start.max_value = float(st.text_input("Maximum txt2vid Beta Start Amount", 
+																								value=st.session_state['defaults'].txt2vid.beta_start.max_value, 
+																								help="Set the default maximum value for the variation slider. Default is: 1.0"))
+    
+				st.session_state["defaults"].txt2vid.beta_start.step = float(st.text_input("txt2vid Beta Start Slider Steps", value=st.session_state['defaults'].txt2vid.beta_start.step, 
+																						   help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+    
+				st.session_state["defaults"].txt2vid.beta_start.format = st.text_input("Default txt2vid Beta Start Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
+																					   help="Set the default Beta Start Format. Default is: %.5\f")
+    
+				# Beta End
+				st.session_state["defaults"].txt2vid.beta_end.value = float(st.text_input("Default txt2vid Beta End Value", value=st.session_state['defaults'].txt2vid.beta_end.value,
+																						  help="Set the default variation to use. Default is: 0.0"))
+
+				st.session_state["defaults"].txt2vid.beta_end.min_value = float(st.text_input("Minimum txt2vid Beta End Amount", value=st.session_state['defaults'].txt2vid.beta_end.min_value,
+																							  help="Set the default minimum value for the variation slider. Default is: 0.0"))
+    
+				st.session_state["defaults"].txt2vid.beta_end.max_value = float(st.text_input("Maximum txt2vid Beta End Amount", value=st.session_state['defaults'].txt2vid.beta_end.max_value, 
+																							  help="Set the default maximum value for the variation slider. Default is: 1.0"))
+    
+				st.session_state["defaults"].txt2vid.beta_end.step = float(st.text_input("txt2vid Beta End Slider Steps", value=st.session_state['defaults'].txt2vid.beta_end.step,
+																						 help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+    
+				st.session_state["defaults"].txt2vid.beta_end.format = st.text_input("Default txt2vid Beta End Format", value=st.session_state['defaults'].txt2vid.beta_start.format, 
+																					 help="Set the default Beta Start Format. Default is: %.5\f")
+   
+		with image_processing:
+			col1, col2, col3, col4, col5 = st.columns(5, gap="large")
+
+			with col1:
+				st.title("GFPGAN")
+    
+				st.session_state["defaults"].gfpgan.strength = int(st.text_input("Default Img2Txt Batch Size", value=st.session_state['defaults'].gfpgan.strength, 
+																				 help="Set the default global strength for GFPGAN. Default is: 100"))
+			with col2:
+				st.title("GoBig")
+			with col3:
+				st.title("RealESRGAN")
+			with col4:
+				st.title("LDSR")
+			with col5:
+				st.title("GoLatent")
 			
 		with textual_inversion_tab:
 			st.title("Textual Inversion")
-			st.info("Under Construction. :construction_worker:")
+			
+			st.session_state['defaults'].textual_inversion.pretrained_model_name_or_path = st.text_input("Default Textual Inversion Model Path", 
+																										 value=st.session_state['defaults'].textual_inversion.pretrained_model_name_or_path,
+																										 help="Default: models/ldm/stable-diffusion-v1-4")
+   
+			st.session_state['defaults'].textual_inversion.tokenizer_name = st.text_input("Default Img2Img Variation Seed", value=st.session_state['defaults'].textual_inversion.tokenizer_name, 
+																						  help="Default tokenizer seed.")
 		
 		with concepts_library_tab:
 			st.title("Concepts Library")

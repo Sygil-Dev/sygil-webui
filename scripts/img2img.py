@@ -60,7 +60,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	    random_seed_loopback: bool = False
 	    ):
 
-	outpath = st.session_state['defaults'].general.outdir_img2img or st.session_state['defaults'].general.outdir or "outputs/img2img-samples"
+	outpath = st.session_state['defaults'].general.outdir_img2img
 	seed = seed_to_int(seed)
 
 	batch_size = 1
