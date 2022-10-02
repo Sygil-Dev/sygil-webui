@@ -163,7 +163,7 @@ div[id*="111"]{
     align-self: center !important;
 }
 /* Selected tabs color */
-button, input, optgroup, select, textarea {color: #9c85fb;!important}
+button, input, optgroup, select, textarea {color: #9c85fb!important}
 
 /* -or- text color wtf */
 .text-gray-300{

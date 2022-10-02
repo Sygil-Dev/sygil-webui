@@ -1,0 +1,49 @@
+[global]
+disableWatchdogWarning = false
+showWarningOnDirectExecution = true
+dataFrameSerialization = "arrow"
+
+[logger]
+level = "info"
+messageFormat = "%(asctime)s %(message)s"
+
+[client]
+caching = true
+displayEnabled = true
+showErrorDetails = true
+
+[runner]
+magicEnabled = true
+installTracer = false
+fixMatplotlib = true
+postScriptGC = true
+fastReruns = false
+
+[server]
+folderWatchBlacklist = []
+fileWatcherType = "auto"
+cookieSecret = ""
+headless = false
+runOnSave = false
+port = 8501
+baseUrlPath = ""
+enableCORS = true
+enableXsrfProtection = true
+maxUploadSize = 200
+maxMessageSize = 200
+enableWebsocketCompression = false
+
+[browser]
+serverAddress = "localhost"
+gatherUsageStats = false
+serverPort = 8501
+
+[mapbox]
+token = ""
+
+[deprecation]
+showfileUploaderEncoding = true
+showPyplotGlobalUse = true
+
+[theme]
+base = "dark"
