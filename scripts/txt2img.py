@@ -99,7 +99,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
             fp = None, variant_amount: float = None,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
-    outpath = st.session_state['defaults'].general.outdir_txt2img or st.session_state['defaults'].general.outdir or "outputs/txt2img-samples"
+    outpath = st.session_state['defaults'].general.outdir_txt2img
 
     seed = seed_to_int(seed)
 
@@ -385,18 +385,19 @@ def layout():
                                 CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
 
-            #print(st.session_state['use_RealESRGAN'])
-            #print(st.session_state['use_LDSR'])
-            #try:
-            #
-            output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, batch_count, batch_size,
-                                                        cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                        save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
-                                                        use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
-                                                        use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"], 
-                                                        variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+                #print(st.session_state['use_RealESRGAN'])
+                #print(st.session_state['use_LDSR'])
+                #try:
+                #
+            
+                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, batch_count, batch_size,
+                                                            cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
+                                                            use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+                                                            use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"], 
+                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
-            message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+                message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
             #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
 
