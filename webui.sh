@@ -1,5 +1,19 @@
 #!/bin/bash -i
+# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
 
+# Copyright 2022 sd-webui team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # Start the Stable Diffusion WebUI for Linux Users
 
 DIRECTORY="."
@@ -78,7 +92,7 @@ sd_model_loading () {
     else
         printf "\n\n########## MOVE MODEL FILE ##########\n\n"
         printf "Please download the 1.4 AI Model from Huggingface (or another source) and place it inside of the stable-diffusion-webui folder\n\n"
-        read -p "Once you have sd-v1-4.ckpt in , Press Enter...\n\n"
+        read -p "Once you have sd-v1-4.ckpt in the project root, Press Enter...\n\n"
         
         # Check to make sure checksum of models is the original one from HuggingFace and not a fake model set
         printf "fe4efff1e174c627256e44ec2991ba279b3816e364b49f9be2abc0b3ff3f8556 sd-v1-4.ckpt" | sha256sum --check || exit 1
@@ -148,7 +162,7 @@ launch_webui () {
     select yn in "Streamlit" "Gradio"; do
         case $yn in
             Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
-            Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py; break;;
+            Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py "$@"; break;;
         esac
     done
 }
@@ -163,8 +177,8 @@ start_initialization () {
         echo "Your model file does not exist! Place it in 'models/ldm/stable-diffusion-v1' with the name 'model.ckpt'."
         exit 1
     fi
-    launch_webui
+    launch_webui "$@"
 
 }
 
-start_initialization
+start_initialization "$@"

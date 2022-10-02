@@ -134,6 +134,16 @@ window.SD = (() => {
 
       await this.copyToClipboard([item]);
     }
+    async copyFullOutput ({ fromId }) {
+      const textField = this.el.get(`#${fromId} .textfield`);
+      if (!textField) {
+        SDclass.error(new Error(`Can't find textfield with the output!`));
+      }
+
+      const value = textField.textContent.replace(/\s+/g,' ').replace(/: /g,':');
+
+      await this.copyToClipboard(value)
+    }
     clickFirstVisibleButton({ rowId }) {
       const generateButtons = this.el.get(`#${rowId}`).querySelectorAll('.gr-button-primary');
 

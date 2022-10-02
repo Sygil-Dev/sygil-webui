@@ -1,0 +1,8 @@
+services:
+  stable-diffusion:
+    build:
+      args:
+        PYTORCH_IMAGE: rocm/pytorch:rocm5.2.3_ubuntu20.04_py3.7_pytorch_1.12.1
+    devices:
+      - /dev/dri
+      - /dev/kfd
