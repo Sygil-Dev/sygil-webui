@@ -18,7 +18,7 @@
 """
 CLIP Interrogator made by @pharmapsychotic modified to work with our WebUI.
 
-# CLIP Interrogator by @pharmapsychotic
+# CLIP Interrogator by @pharmapsychotic 
 Twitter: https://twitter.com/pharmapsychotic
 Github: https://github.com/pharmapsychotic/clip-interrogator
 
@@ -61,7 +61,8 @@ from ldm.models.blip import blip_decoder
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 blip_image_eval_size = 512
 #blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'
-
+server_state["clip_models"] = {}
+server_state["preprocesses"] = {}
 
 def load_blip_model():
     print("Loading BLIP Model")
@@ -71,25 +72,74 @@ def load_blip_model():
         with server_state_lock['blip_model']:
             server_state["blip_model"] = blip_decoder(pretrained="models/blip/model__base_caption.pth",
                                                         image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
-
+            
             server_state["blip_model"] = server_state["blip_model"].eval()
-
-            # if not st.session_state["defaults"].general.optimized:
+            
+            #if not st.session_state["defaults"].general.optimized:
             server_state["blip_model"] = server_state["blip_model"].to(device).half()
-
+            
             print("BLIP Model Loaded")
             st.session_state["log_message"].code("BLIP Model Loaded", language='')
     else:
         print("BLIP Model already loaded")
         st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
 
-    # return server_state["blip_model"]
+    #return server_state["blip_model"]
 
+
+#
+def artstation_links():
+    """Find and save every artstation link for the first 500 pages of the explore page."""
+    # collecting links to the list()
+    links = []
+    
+    with open('data/img2txt/artstation_links.txt', 'w') as f:
+        for page_num in range(1,500):
+            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
+            # open json response
+            data = json.loads(response)
+            
+            # loopinh through json response
+            for result in data['data']:
+                # still looping and grabbing url's
+                url = result['url']
+                links.append(url)
+                # writing each link on the new line (\n)
+                f.write(f'{url}\n')  
+    return links
+#
+def artstation_users():
+    """Get all the usernames and full name of the users on the first 500 pages of artstation explore page."""
+    # collect username and full name
+    artists = []
+    
+    # opening a .txt file
+    with open('data/img2txt/artstation_artists.txt', 'w') as f:
+        for page_num in range(1,500):
+            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
+            # open json response
+            data = json.loads(response)
+    
+    
+            # loopinh through json response
+            for item in data['data']:
+                #print (item['user'])
+                username = item['user']['username']
+                full_name = item['user']['full_name']
+    
+                # still looping and grabbing url's
+                artists.append(username)
+                artists.append(full_name)
+                # writing each link on the new line (\n)
+                f.write(f'{slugify(username)}\n')
+                f.write(f'{slugify(full_name)}\n')
+    
+    return artists
 
 def generate_caption(pil_image):
 
     load_blip_model()
-
+    
     gpu_image = transforms.Compose([  # type: ignore
         transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),  # type: ignore
         transforms.ToTensor(),  # type: ignore
@@ -141,9 +191,9 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
 
 def interrogate(image, models):
 
-    # server_state["blip_model"] =
+    #server_state["blip_model"] = 
     load_blip_model()
-
+    
     print("Generating Caption")
     st.session_state["log_message"].code("Generating Caption", language='')
     caption = generate_caption(image)
@@ -163,62 +213,67 @@ def interrogate(image, models):
     bests = [[('', 0)]]*5
 
     print("Ranking Text")
+    
+    #if "clip_model" in server_state:
+        #print (server_state["clip_model"])
+        
+    #print (st.session_state["log_message"])
+        
     for model_name in models:
-        print(f"Interrogating with {model_name}...")
-        st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
+        with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
+            print(f"Interrogating with {model_name}...")
+            st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
+            
+            if model_name not in server_state["clip_models"]:
+                if model_name == 'ViT-H-14':
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k', cache_dir='user_data/model_cache/clip')
+                elif model_name == 'ViT-g-14':
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k', cache_dir='user_data/model_cache/clip')
+                else:
+                    server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = clip.load(model_name, device=device, download_root='user_data/model_cache/clip')
+                server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda().eval()
+            
+            images = server_state["preprocesses"][model_name](image).unsqueeze(0).cuda()
+                    
+            
+            image_features = server_state["clip_models"][model_name].encode_image(images).float()
+                
+            image_features /= image_features.norm(dim=-1, keepdim=True)
 
-        if "clip_model" not in server_state:
-            # with server_state_lock[server_state["clip_model"]]:
-            if model_name == 'ViT-H-14':
-                server_state["clip_model"], _, server_state["preprocess"] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k')
-            elif model_name == 'ViT-g-14':
-                server_state["clip_model"], _, server_state["preprocess"] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k')
-            else:
-                server_state["clip_model"], server_state["preprocess"] = clip.load(model_name, device=device)
+            if st.session_state["defaults"].general.optimized:
+                clear_cuda()
+                
+            ranks = []
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["mediums"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, ["by "+artist for artist in server_state["artists"]]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["trending_list"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["movements"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["flavors"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["genres"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["styles"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["techniques"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["subjects"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["colors"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["moods"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["themes"]))
+            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["keywords"]))
 
-        server_state["clip_model"] = server_state["clip_model"].cuda().eval()
+            for i in range(len(ranks)):
+                confidence_sum = 0
+                for ci in range(len(ranks[i])):
+                    confidence_sum += ranks[i][ci][1]
+                if confidence_sum > sum(bests[i][t][1] for t in range(len(bests[i]))):
+                    bests[i] = ranks[i]
 
-        images = server_state["preprocess"](image).unsqueeze(0).cuda()
+            row = [model_name]
+            for r in ranks:
+                row.append(', '.join([f"{x[0]} ({x[1]:0.1f}%)" for x in r]))
 
-        with torch.no_grad():
-            image_features = server_state["clip_model"].encode_image(images).float()
+            table.append(row)
 
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-
-        if st.session_state["defaults"].general.optimized:
-            clear_cuda()
-
-        ranks = []
-        ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["mediums"]))
-        ranks.append(batch_rank(server_state["clip_model"], image_features, ["by "+artist for artist in server_state["artists"]]))
-        ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["trending_list"]))
-        ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["movements"]))
-        ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["flavors"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["genres"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["styles"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["techniques"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["subjects"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["colors"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["moods"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["themes"]))
-        # ranks.append(batch_rank(server_state["clip_model"], image_features, server_state["keywords"]))
-
-        for i in range(len(ranks)):
-            confidence_sum = 0
-            for ci in range(len(ranks[i])):
-                confidence_sum += ranks[i][ci][1]
-            if confidence_sum > sum(bests[i][t][1] for t in range(len(bests[i]))):
-                bests[i] = ranks[i]
-
-        row = [model_name]
-        for r in ranks:
-            row.append(', '.join([f"{x[0]} ({x[1]:0.1f}%)" for x in r]))
-
-        table.append(row)
-
-        if st.session_state["defaults"].general.optimized:
-            del server_state["clip_model"]
-            gc.collect()
+            if st.session_state["defaults"].general.optimized:
+                del server_state["clip_models"][model_name]
+                gc.collect()
 
     # for i in range(len(st.session_state["uploaded_image"])):
     st.session_state["prediction_table"][st.session_state["processed_image_count"]].dataframe(pd.DataFrame(

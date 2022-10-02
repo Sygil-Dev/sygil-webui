@@ -107,14 +107,16 @@ class Manager:
         return False
 
     @contextmanager
-    def model_context(self, *args, **kwargs) -> Generator[ModelHndl, None, None]:
+    def model_context(self, model_name:str, *args, **kwargs) -> Generator[ModelHndl, None, None]:
         """Access a model using a 'with' context.
            Use arguments as if calling get_model
         """
         hndl = None
         try:
-            hndl = self.get_model(*args, **kwargs)
+            hndl = self.get_model(model_name, *args, **kwargs)
         finally:
+            if hndl is None:
+                raise KeyError(f"Model {model_name} not registered")
             yield hndl
             if hndl:
                 del hndl

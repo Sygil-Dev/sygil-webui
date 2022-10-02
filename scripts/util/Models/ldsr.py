@@ -6,11 +6,12 @@ import torch
 
 
 class LDSR(ModelLoader):
-    def __init__(self, ldsr_dir: str, model_name: str = "model", yaml_name: str = "project", **kwargs):
+    def __init__(self, ldsr_dir: str, model_name: str = "model", yaml_name: str = "project", model_path:str = None, **kwargs):
         super().__init__(**kwargs)
         self._ldsr_dir = ldsr_dir
         self._model_name = model_name
         self._yaml_name = yaml_name
+        self._model_path = model_path if model_path else os.path.join(self._ldsr_dir, 'experiments/pretrained_models', self._model_name + '.ckpt')
         self._TODO_gpu = 0
 
     def load(self) -> Any:
@@ -24,7 +25,7 @@ class LDSR(ModelLoader):
         return os.path.isfile(self._get_model_path()) and os.path.isfile(self._get_yaml_path())
 
     def _get_model_path(self) -> str:
-        return os.path.join(self._ldsr_dir, 'experiments/pretrained_models', self._model_name + '.ckpt')
+        return self._model_path
 
     def _get_yaml_path(self) -> str:
         return os.path.join(self._ldsr_dir, 'experiments/pretrained_models', self._yaml_name + '.yaml')
