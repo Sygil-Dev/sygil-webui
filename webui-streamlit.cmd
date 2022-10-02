@@ -57,9 +57,16 @@ IF "%v_conda_path%"=="" (
 )
 
 :CONDA_FOUND
+call git diff HEAD --exit-code
+if "%ERRORLEVEL%" == "0" (
+  call git pull
+  goto CONDA_ACTIVATE
+)
+
 echo Stashing local changes and pulling latest update...
 call git stash
 call git pull
+
 set /P restore="Do you want to restore changes you made before updating? (Y/N): "
 IF /I "%restore%" == "N" (
   echo Removing changes please wait...
@@ -72,6 +79,8 @@ IF /I "%restore%" == "N" (
   echo Changes restored, press any key to continue...
   pause >nul
 )
+
+:CONDA_ACTIVATE
 call "%v_conda_path%\Scripts\activate.bat"
 
 for /f "delims=" %%a in ('git log -1 --format^="%%H" -- environment.yaml')  DO set v_cur_hash=%%a
