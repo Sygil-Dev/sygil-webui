@@ -223,7 +223,7 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
     print ("Loading models.")
 
     if "progress_bar_text" in st.session_state:
-        st.session_state["progress_bar_text"].text("Loading models...")
+        st.session_state["progress_bar_text"].text("")
     
 
     # Generate random run ID
@@ -351,6 +351,8 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
             server_state["model"].enable_minimal_memory_usage()    
     
         print("Model loaded.")
+    
+    return True
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -1225,14 +1227,14 @@ def load_GFPGAN(model_name='GFPGANv1.3'):
 
     with server_state_lock['GFPGAN']:
         if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=2, arch='clean',
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean',
                                               channel_multiplier=2, bg_upsampler=None, device=torch.device('cpu'))
             
         elif st.session_state['defaults'].general.extra_models_gpu:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=2, arch='clean', channel_multiplier=2, bg_upsampler=None,
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean', channel_multiplier=2, bg_upsampler=None,
                                               device=torch.device(f"cuda:{st.session_state['defaults'].general.gfpgan_gpu}"))
         else:
-            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=2, arch='clean',
+            server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean',
                                               channel_multiplier=2, bg_upsampler=None, 
                                               device=torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
         
@@ -1309,22 +1311,22 @@ def load_LDSR(model_name="model", config="project", checking=False):
 #
 
 @retry(tries=5)
-def try_loading_LDSR(model_name: str,checking=False):
-    #LDSR = None
-    #global LDSR
-    if os.path.exists(st.session_state['defaults'].general.LDSR_dir):
-        try:
-            server_state["LDSR"] = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
-            if checking == True:
-                print("Found LDSR")
-                return True
-            print("Latent Diffusion Super Sampling (LDSR) model loaded")
-        except Exception:
-            import traceback
-            print("Error loading LDSR:", file=sys.stderr)
-            print(traceback.format_exc(), file=sys.stderr)
-    else:
-        print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
+#def try_loading_LDSR(model_name: str,checking=False):
+    ##LDSR = None
+    ##global LDSR
+    #if os.path.exists(st.session_state['defaults'].general.LDSR_dir):
+        #try:
+            #server_state["LDSR"] = load_LDSR(checking=True) # TODO: Should try to load both models before giving up
+            #if checking == True:
+                #print("Found LDSR")
+                #return True
+            #print("Latent Diffusion Super Sampling (LDSR) model loaded")
+        #except Exception:
+            #import traceback
+            #print("Error loading LDSR:", file=sys.stderr)
+            #print(traceback.format_exc(), file=sys.stderr)
+    #else:
+        #print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
 
 #try_loading_LDSR('model',checking=True)
 
@@ -2018,12 +2020,14 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 #
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
-        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, GFPGAN_model, use_RealESRGAN, realesrgan_model_name,
-        use_LDSR, LDSR_model_name, ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
+        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', 
+        use_RealESRGAN: bool = False, realesrgan_model_name:str = 'RealESRGAN_x4plus',
+        use_LDSR:bool = False, LDSR_model_name:str = 'model', ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
         mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
         uses_random_seed_loopback=False, sort_samples=True, write_info_files=True, jpg_sample=False,
         variant_amount=0.0, variant_seed=None, save_individual_images: bool = True):
     """this is the main loop that both txt2img and img2img use; it calls func_init once inside all the scopes and func_sample once per batch"""
+    
     torch_gc()
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -2167,7 +2171,8 @@ def process_images(
                 c = torch.zeros_like(uc) # i dont know if this is correct.. but it works
                 for i in range(0, len(weighted_subprompts)):
                     # note if alpha negative, it functions same as torch.sub
-                    c = torch.add(c, (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
+                    c = torch.add(c, (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]
+                                      ).get_learned_conditioning(weighted_subprompts[i][0]), alpha=weighted_subprompts[i][1])
             else: # just behave like usual
                 c = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(prompts)
 
