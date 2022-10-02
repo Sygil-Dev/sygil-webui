@@ -41,7 +41,7 @@ additional_arguments = ""
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-n', '--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
-parser.add_argument('--bridge', action="store_true", required=False, default=True, help="When specified, start the stable horde bridge instead of the webui.")
+parser.add_argument('--bridge', action="store_true", required=False, default=False, help="When specified, start the stable horde bridge instead of the webui.")
 args = parser.parse_args()
 
 if args.bridge:
