@@ -54,23 +54,50 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 from ldm.models.blip import blip_decoder
-import util.ModelRepo as ModelRepo
-from util.Models.blip import BLIP
+
 # end of imports
 # ---------------------------------------------------------------------------------------------------------------
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+blip_image_eval_size = 512
+#blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'
+
+
+def load_blip_model():
+    print("Loading BLIP Model")
+    st.session_state["log_message"].code("Loading BLIP Model", language='')
+
+    if "blip_model" not in server_state:
+        with server_state_lock['blip_model']:
+            server_state["blip_model"] = blip_decoder(pretrained="models/blip/model__base_caption.pth",
+                                                        image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
+
+            server_state["blip_model"] = server_state["blip_model"].eval()
+
+            # if not st.session_state["defaults"].general.optimized:
+            server_state["blip_model"] = server_state["blip_model"].to(device).half()
+
+            print("BLIP Model Loaded")
+            st.session_state["log_message"].code("BLIP Model Loaded", language='')
+    else:
+        print("BLIP Model already loaded")
+        st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
+
+    # return server_state["blip_model"]
+
 
 def generate_caption(pil_image):
+
+    load_blip_model()
+
     gpu_image = transforms.Compose([  # type: ignore
-        transforms.Resize((BLIP.image_eval_size, BLIP.image_eval_size), interpolation=InterpolationMode.BICUBIC),  # type: ignore
+        transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),  # type: ignore
         transforms.ToTensor(),  # type: ignore
         transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))  # type: ignore
     ])(pil_image).unsqueeze(0).to(device).half()
 
     with torch.no_grad():
-        with server_state[ModelRepo.Manager.__name__].model_context(ModelNames.BLIP) as model:
-            caption = model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
+        caption = server_state["blip_model"].generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
 
     #print (caption)
     return caption[0]
@@ -113,9 +140,17 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
     return ranks
 
 def interrogate(image, models):
+
+    # server_state["blip_model"] =
+    load_blip_model()
+
     print("Generating Caption")
     st.session_state["log_message"].code("Generating Caption", language='')
     caption = generate_caption(image)
+
+    if st.session_state["defaults"].general.optimized:
+        del server_state["blip_model"]
+        clear_cuda()
 
     print("Caption Generated")
     st.session_state["log_message"].code("Caption Generated", language='')
@@ -357,5 +392,15 @@ def layout():
         generate_button = st.form_submit_button("Generate!")
 
     if generate_button:
+        # if model, pipe, RealESRGAN or GFPGAN is in st.session_state remove the model and pipe form session_state so that they are reloaded.
+        if "model" in st.session_state and st.session_state["defaults"].general.optimized:
+            del st.session_state["model"]
+        if "pipe" in st.session_state and st.session_state["defaults"].general.optimized:
+            del st.session_state["pipe"]
+        if "RealESRGAN" in st.session_state and st.session_state["defaults"].general.optimized:
+            del st.session_state["RealESRGAN"]
+        if "GFPGAN" in st.session_state and st.session_state["defaults"].general.optimized:
+            del st.session_state["GFPGAN"]
+
         # run clip interrogator
         img2txt()
