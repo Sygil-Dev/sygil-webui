@@ -13,7 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
-import os, time
+import os, time, argparse
 
 # USER CHANGABLE ARGUMENTS
 
@@ -36,9 +36,13 @@ share = False
 
 # Generate tiling images
 tiling = False
-
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-n', '--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
+args = parser.parse_args()
 # Enter other `--arguments` you wish to use - Must be entered as a `--argument ` syntax
 additional_arguments = ""
+if args.horde_name:
+    additional_arguments += f' --horde_name {args.horde_name}'
 
 
 
