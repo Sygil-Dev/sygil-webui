@@ -89,9 +89,11 @@ class Manager:
                                depth_remaining=max_depth, scheduler_token=scheduler_token)
         with self._model_info_lock.gen_wlock():
             self._model_infos[name] = model_info
-        if preload:
+        exists = exists_func()
+
+        logger.info(f"Model {name} has been registered. Available? {exists}")
+        if exists and preload:
             self._load_model(model_info)
-        logger.info(f"Model {name} has been registered")
 
     def is_loadable(self, name: str) -> bool:
         """Returns quick check if model is registered and appears loadable"""
