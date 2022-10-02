@@ -2249,7 +2249,7 @@ def process_images(
 
                 st.session_state["preview_image"].image(image)
 
-                if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN:
+                if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN and not use_LDSR:
                     st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
 
                     torch_gc()
@@ -2275,31 +2275,6 @@ def process_images(
                         grid_captions.append( captions[i] + "\ngfpgan" )
                         
                 #
-                elif use_GFPGAN and server_state["GFPGAN"] is not None and not use_LDSR:
-                    st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
-
-                    torch_gc()
-                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
-                    
-                    gfpgan_sample = restored_img[:,:,::-1]
-                    gfpgan_image = Image.fromarray(gfpgan_sample)
-                    
-                    #if st.session_state["GFPGAN_strenght"]:
-                        #gfpgan_sample = Image.blend(image, gfpgan_image, st.session_state["GFPGAN_strenght"])                    
-                        
-                    gfpgan_filename = original_filename + '-gfpgan'
-
-                    save_sample(gfpgan_image, sample_path_i, gfpgan_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-                                                    normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback,
-                                                    uses_random_seed_loopback, save_grid, sort_samples, sampler_name, ddim_eta,
-                                                    n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
-
-                    output_images.append(gfpgan_image) #287
-                    run_images.append(gfpgan_image)
-
-                    if simple_templating:
-                        grid_captions.append( captions[i] + "\ngfpgan" )                
-
                 elif use_RealESRGAN and server_state["RealESRGAN"] is not None and not use_GFPGAN:
                     st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
@@ -2341,14 +2316,14 @@ def process_images(
 
                     result = server_state["LDSR"].superResolution(image, 2, 2, 2)
                     ldsr_filename = original_filename + '-ldsr4x'
-                    ldsr_sample = result[:,:,::-1]
-                    ldsr_image = Image.fromarray(ldsr_sample)
+                    #ldsr_sample = result[:,:,::-1]
+                    #ldsr_image = Image.fromarray(ldsr_sample)
 
                     #save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                             #normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
                             #save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
 
-                    save_sample(esrgan_image, sample_path_i, ldsr_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                    save_sample(result, sample_path_i, ldsr_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                                                     save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
 
@@ -2356,7 +2331,37 @@ def process_images(
                     run_images.append(ldsr_image)
 
                     if simple_templating:
-                        grid_captions.append( captions[i] + "\nldsr" )                
+                        grid_captions.append( captions[i] + "\nldsr" )  
+                        
+                #
+                elif use_LDSR and server_state["LDSR"] is not None and use_GFPGAN:
+                    print ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    #skip_save = True # #287 >_>
+                    torch_gc()
+
+                    if server_state["LDSR"].name != LDSR_model_name:
+                        #try_loading_RealESRGAN(realesrgan_model_name)
+                        load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+
+                    result = server_state["LDSR"].superResolution(image, 2, 2, 2)
+                    ldsr_filename = original_filename + '-gfpgan-ldsr2x'
+                    #ldsr_sample = result[:,:,::-1]
+                    #ldsr_image = Image.fromarray(result)
+
+                    #save_sample(image, sample_path_i, original_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                            #normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback, skip_save,
+                            #save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode)
+
+                    save_sample(result, sample_path_i, ldsr_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                                    normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
+                                                    save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
+
+                    output_images.append(result) #287
+                    run_images.append(result)
+
+                    if simple_templating:
+                        grid_captions.append( captions[i] + "\ngfpgan-ldsr" )                   
 
                 elif use_RealESRGAN and server_state["RealESRGAN"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
                     st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
@@ -2385,32 +2390,7 @@ def process_images(
                         grid_captions.append( captions[i] + "\ngfpgan_esrgan" )
                         
                 #
-                    elif use_LDSR and server_state["LDSR"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
-                        st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
-                        #skip_save = True # #287 >_>
-                        torch_gc()
-                        cropped_faces, restored_faces, restored_img = server_state["LDSR"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
-                        gfpgan_sample = restored_img[:,:,::-1]
-    
-                        if server_state["LDSR"].model.name != ldsr_model_name:
-                            #try_loading_RealESRGAN(realesrgan_model_name)
-                            load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name,use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
-    
-                        output, img_mode = server_state["LDSR"].enhance(gfpgan_sample[:,:,::-1])
-                        gfpgan_ldsr_filename = original_filename + '-gfpgan-ldsr4x'
-                        gfpgan_ldsr_sample = output[:,:,::-1]
-                        gfpgan_ldsr_image = Image.fromarray(gfpgan_ldsr_sample)
-    
-                        save_sample(gfpgan_ldsr_image, sample_path_i, gfpgan_ldsr_filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
-                                                        normalize_prompt_weights, False, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
-                                                        save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
-    
-                        output_images.append(gfpgan_ldsr_image) #287
-                        run_images.append(gfpgan_ldsr_image)
-    
-                        if simple_templating:
-                            grid_captions.append( captions[i] + "\ngfpgan_ldsr" )                
-                
+                    
                 else:
                     output_images.append(image)
                     run_images.append(image)

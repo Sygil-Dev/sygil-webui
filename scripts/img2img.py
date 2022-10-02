@@ -437,44 +437,40 @@ def layout():
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 			
 			with st.expander("Batch Options"):
-				batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].img2img.batch_count.min_value, max_value=st.session_state['defaults'].img2img.batch_count.max_value,
-										value=st.session_state['defaults'].img2img.batch_count.value, step=st.session_state['defaults'].img2img.batch_count.step,
-									help="How many iterations or batches of images to generate in total.")
-				
-				batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].img2img.batch_size.min_value, max_value=st.session_state['defaults'].img2img.batch_size.max_value,
-												   value=st.session_state['defaults'].img2img.batch_size.value, step=st.session_state['defaults'].img2img.batch_size.step,
-												   help="How many images are at once in a batch. It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish \
-													   generation as more images are generated at once.Default: 1")		
+				st.session_state["batch_count"] = int(st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
+																help="How many iterations or batches of images to generate in total."))
+
+				st.session_state["batch_size"] = int(st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
+				                            help="How many images are at once in a batch.\
+				                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+                                            Default: 1")) 	
 				
 			with st.expander("Preview Settings"):
-				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].img2img.update_preview,
-																		 help="If enabled the image preview will be updated during the generation instead of at the end. \
-														 You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-														 By default this is enabled and the frequency is set to 1 step.")
-		
+				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].img2img.update_preview_frequency,
 																					 help="Frequency in steps at which the the preview image is updated. By default the frequency \
 															  is set to 1 step.")					
 			#			
 			with st.expander("Advanced"):
-				separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].img2img.separate_prompts,
-									       help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-				normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].img2img.normalize_prompt_weights,
-										       help="Ensure the sum of all weights add up to 1.0")
-				loopback = st.checkbox("Loopback.", value=st.session_state['defaults'].img2img.loopback, help="Use images from previous batch when creating next batch.")
-				random_seed_loopback = st.checkbox("Random loopback seed.", value=st.session_state['defaults'].img2img.random_seed_loopback, help="Random loopback seed")
-				img2img_mask_restore = st.checkbox("Only modify regenerated parts of image",
-												   value=st.session_state['defaults'].img2img.mask_restore,
-												   help="Enable to restore the unmasked parts of the image with the input, may not blend as well but preserves detail")
-				save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].img2img.save_individual_images,
-										     help="Save each image generated before any filter or enhancement is applied.")
-				save_grid = st.checkbox("Save grid",value=st.session_state['defaults'].img2img.save_grid, help="Save a grid with all the images generated into a single image.")
-				group_by_prompt = st.checkbox("Group results by prompt", value=st.session_state['defaults'].img2img.group_by_prompt,
-									      help="Saves all the images with the same prompt into the same folder. \
-									      When using a prompt matrix each prompt combination will have its own folder.")
-				write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].img2img.write_info_files, 
-									       help="Save a file next to the image with informartion about the generation.")						
-				save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].img2img.save_as_jpg, help="Saves the images as jpg instead of png.")
+				with st.expander("Output Settings"):
+					separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].img2img.separate_prompts,
+						                       help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+					normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].img2img.normalize_prompt_weights,
+						                           help="Ensure the sum of all weights add up to 1.0")
+					loopback = st.checkbox("Loopback.", value=st.session_state['defaults'].img2img.loopback, help="Use images from previous batch when creating next batch.")
+					random_seed_loopback = st.checkbox("Random loopback seed.", value=st.session_state['defaults'].img2img.random_seed_loopback, help="Random loopback seed")
+					img2img_mask_restore = st.checkbox("Only modify regenerated parts of image",
+						                               value=st.session_state['defaults'].img2img.mask_restore,
+						                               help="Enable to restore the unmasked parts of the image with the input, may not blend as well but preserves detail")
+					save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].img2img.save_individual_images,
+						                         help="Save each image generated before any filter or enhancement is applied.")
+					save_grid = st.checkbox("Save grid",value=st.session_state['defaults'].img2img.save_grid, help="Save a grid with all the images generated into a single image.")
+					group_by_prompt = st.checkbox("Group results by prompt", value=st.session_state['defaults'].img2img.group_by_prompt,
+						                      help="Saves all the images with the same prompt into the same folder. \
+						                      When using a prompt matrix each prompt combination will have its own folder.")
+					write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].img2img.write_info_files, 
+						                       help="Save a file next to the image with informartion about the generation.")						
+					save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].img2img.save_as_jpg, help="Saves the images as jpg instead of png.")
 	
 				#
 				# check if GFPGAN, RealESRGAN and LDSR are available.
@@ -656,7 +652,7 @@ def layout():
 				try:
 					output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, init_info_mask=new_mask, mask_mode=mask_mode,
 										   mask_restore=img2img_mask_restore, ddim_steps=st.session_state["sampling_steps"],
-										   sampler_name=st.session_state["sampler_name"], n_iter=batch_count,
+										   sampler_name=st.session_state["sampler_name"], n_iter=st.session_state["batch_count"],
 										   cfg_scale=cfg_scale, denoising_strength=st.session_state["denoising_strength"], variant_seed=variant_seed,
 										   seed=seed, noise_mode=noise_mode, find_noise_steps=find_noise_steps, width=width, 
 										   height=height, variant_amount=variant_amount, 

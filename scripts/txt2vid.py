@@ -613,7 +613,8 @@ def layout():
 			#uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
 												#help="Upload an image which will be used for the image to image generation.")			
 			seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
-			#batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2vid.batch_count, step=1, help="How many iterations or batches of images to generate in total.")
+			#batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2vid.batch_count,
+			# step=1, help="How many iterations or batches of images to generate in total.")
 			#batch_size = st.slider("Batch size", min_value=1, max_value=250, value=st.session_state['defaults'].txt2vid.batch_size, step=1,
 					#help="How many images are at once in a batch.\
 					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
@@ -622,11 +623,12 @@ def layout():
 			st.session_state["max_frames"] = int(st.text_input("Max Frames:", value=st.session_state['defaults'].txt2vid.max_frames, help="Specify the max number of frames you want to generate."))
 
 			with st.expander("Preview Settings"):
-				st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
-																 help="If enabled the image preview will be updated during the generation instead of at the end. \
-					                                         You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-					                                         By default this is enabled and the frequency is set to 1 step.")
+				#st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
+																 #help="If enabled the image preview will be updated during the generation instead of at the end. \
+					                                         #You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
+					                                         #By default this is enabled and the frequency is set to 1 step.")
 
+				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2vid.update_preview_frequency,
 																			 help="Frequency in steps at which the the preview image is updated. By default the frequency \
 																			 is set to 1 step.")
@@ -710,26 +712,27 @@ def layout():
 				#help="Press the Enter key to summit, when 'No' is selected you can use the Enter key to write multiple lines.")
 
 		with st.expander("Advanced"):
-			st.session_state["separate_prompts"] = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2vid.separate_prompts,
-															   help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-			st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.",
-																	   value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
-			st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
-																	 value=st.session_state['defaults'].txt2vid.save_individual_images,
-			                                                         help="Save each image generated before any filter or enhancement is applied.")
-			st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video,
-			                                             help="Save a video with all the images generated as frames at the end of the generation.")
-			
-			st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
-															  help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-			st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
-															   help="Save a file next to the image with informartion about the generation.")
-			st.session_state["dynamic_preview_frequency"] = st.checkbox("Dynamic Preview Frequency", value=st.session_state['defaults'].txt2vid.dynamic_preview_frequency,
-																		help="This option tries to find the best value at which we can update \
-					                                           the preview image during generation while minimizing the impact it has in performance. Default: True")
-			st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
-													  help="Do loop")
-			st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
+			with st.expander("Output Settings"):
+				st.session_state["separate_prompts"] = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2vid.separate_prompts,
+					                                               help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+				st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.",
+					                                                       value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
+				st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
+					                                                     value=st.session_state['defaults'].txt2vid.save_individual_images,
+					                                                     help="Save each image generated before any filter or enhancement is applied.")
+				st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video,
+					                                         help="Save a video with all the images generated as frames at the end of the generation.")
+				
+				st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
+					                                              help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
+				st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
+					                                               help="Save a file next to the image with informartion about the generation.")
+				st.session_state["dynamic_preview_frequency"] = st.checkbox("Dynamic Preview Frequency", value=st.session_state['defaults'].txt2vid.dynamic_preview_frequency,
+					                                                        help="This option tries to find the best value at which we can update \
+					                                               the preview image during generation while minimizing the impact it has in performance. Default: True")
+				st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
+					                                      help="Do loop")
+				st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 			if server_state["GFPGAN_available"]:
 				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
