@@ -214,9 +214,10 @@ def layout():
                                                                 help="How many iterations or batches of images to generate in total."))
                 
                 st.session_state["batch_size"] = int(st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
-                                            help="How many images are at once in a batch.\
-                                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                            Default: 1") )
+                                                                   help="How many images are at once in a batch.\
+                                                                   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes \
+                                                                   to finish generation as more images are generated at once.\
+                                                                   Default: 1") )
 
             with st.expander("Preview Settings"):
                 
@@ -336,8 +337,9 @@ def layout():
                                 if st.session_state["LDSR_available"]:
                                     upscaling_method_list.append("LDSR")
                                     
+                                #print (st.session_state["RealESRGAN_available"])
                                 st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
-                                                                                    index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
+                                                                                    index=upscaling_method_list.index(str(st.session_state['defaults'].general.upscaling_method)))
                                 
                                 if st.session_state["RealESRGAN_available"]:
                                     with st.expander("RealESRGAN"):

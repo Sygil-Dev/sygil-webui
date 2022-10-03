@@ -867,13 +867,13 @@ def layout():
 		# run video generation
 		video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
 	                                       num_steps=st.session_state.sampling_steps, max_frames=int(st.session_state.max_frames),
-	                       num_inference_steps=st.session_state.num_inference_steps,
-	                       cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
-	                       seeds=seed, quality=100, eta=0.0, width=width,
-	                       height=height, weights_path=custom_model, scheduler=scheduler_name,
-	                       disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
-	                       beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
-	                       beta_schedule=beta_scheduler_type, starting_image=None)
+		                                   num_inference_steps=st.session_state.num_inference_steps,
+		                                   cfg_scale=cfg_scale,do_loop=st.session_state["do_loop"],
+		                                   seeds=seed, quality=100, eta=0.0, width=width,
+		                                   height=height, weights_path=custom_model, scheduler=scheduler_name,
+		                                   disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
+		                                   beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
+		                                   beta_schedule=beta_scheduler_type, starting_image=None)
 
 		#message.success('Done!', icon="✅")
 		message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
