@@ -45,8 +45,8 @@ dependencies:
     - fairscale==0.4.4
     - gradio==3.1.6
     - gfpgan==1.3.8
-    - hydralit==1.0.14
     - hydralit_components==1.0.10
+    - hydralit==1.0.14
     - imageio-ffmpeg==0.4.2
     - imageio==2.9.0
     - kornia==0.6
