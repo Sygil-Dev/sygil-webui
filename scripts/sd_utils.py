@@ -295,9 +295,6 @@ def register_preconfigured_models( manager:ModelRepo.Manager ):
                                  config_yaml=st.session_state.defaults.general.optimized_config,
                                  stage=Models.SD_Optimized.Stage.FIRST_STAGE,
                                  half_precision=not st.session_state['defaults'].general.no_half),
-
-        ModelNames.BLIP:
-            Models.BLIP()
     }
 
     # Register every model in model_loaders above
