@@ -282,14 +282,14 @@ def layout():
 				st.title("General Parameters")
 				
 				# Batch Count
-				st.session_state["batch_count"] = st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
-																help="How many iterations or batches of images to generate in total.")
+				st.session_state["defaults"].txt2img.batch_count.value = int(st.text_input("Batch count", value=st.session_state['defaults'].txt2img.batch_count.value,
+																					 help="How many iterations or batches of images to generate in total."))
 				
-				st.session_state["batch_size"] = st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
-																help="How many images are at once in a batch.\
-																It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
-																takes to finish generation as more images are generated at once.\
-																Default: 1") 					
+				st.session_state["defaults"].txt2img.batch_size.value = int(st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
+																					 help="How many images are at once in a batch.\
+																					 It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+																					 takes to finish generation as more images are generated at once.\
+																					 Default: 1"))				
     
 				default_sampler_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_heun", "PLMS", "DDIM"]
 				st.session_state["defaults"].txt2img.default_sampler = st.selectbox("Default Sampler",
@@ -446,14 +446,14 @@ def layout():
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
 		
 					# Batch Count
-					st.session_state["batch_count"] = st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
-																	help="How many iterations or batches of images to generate in total.")
+					st.session_state["defaults"].img2img.batch_count.value = int(st.text_input("Img2img Batch count", value=st.session_state["defaults"].img2img.batch_count.value,
+																							   help="How many iterations or batches of images to generate in total."))
 				
-					st.session_state["batch_size"] = st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
-																   help="How many images are at once in a batch.\
-																   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
-																   takes to finish generation as more images are generated at once.\
-																   Default: 1") 							
+					st.session_state["defaults"].img2img.batch_size.value = int(st.text_input("Img2img Batch size", value=st.session_state["defaults"].img2img.batch_size.value,
+																							  help="How many images are at once in a batch.\
+																							  It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+																							  takes to finish generation as more images are generated at once.\
+																							  Default: 1")) 							
 					with col4:
 						# Inference Steps
 						st.session_state["defaults"].img2img.num_inference_steps.value = int(st.text_input("Default Inference Steps", 
@@ -635,14 +635,14 @@ def layout():
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
 		
 					# Batch Count
-					st.session_state["batch_count"] = st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
-																help="How many iterations or batches of images to generate in total.")
+					st.session_state["defaults"].txt2vid.batch_count.value = int(st.text_input("txt2vid Batch count", value=st.session_state['defaults'].txt2vid.batch_count.value,
+																							  help="How many iterations or batches of images to generate in total."))
 
-					st.session_state["batch_size"] = st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
-																   help="How many images are at once in a batch.\
-																   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
-																   takes to finish generation as more images are generated at once.\
-																   Default: 1") 
+					st.session_state["defaults"].txt2vid.batch_size.value = int(st.text_input("txt2vid Batch size", value=st.session_state.defaults.txt2vid.batch_size.value,
+																							  help="How many images are at once in a batch.\
+																							  It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+																							  takes to finish generation as more images are generated at once.\
+																							  Default: 1") )
 		
 					# Inference Steps
 					st.session_state["defaults"].txt2vid.num_inference_steps.value = int(st.text_input("Default Txt2Vid Inference Steps",
