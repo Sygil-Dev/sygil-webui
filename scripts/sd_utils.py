@@ -2287,7 +2287,7 @@ def process_images(
                         #try_loading_RealESRGAN(realesrgan_model_name)
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
-                    result = server_state["LDSR"].superResolution(gfpgan_image, ddimSteps = st.session_state["ldsr_sampling_steps"],
+                    result = server_state["LDSR"].superResolution(image, ddimSteps = st.session_state["ldsr_sampling_steps"],
                                                                   preDownScale = st.session_state["preDownScale"], postDownScale = st.session_state["postDownScale"], 
                                                                   downsample_method=st.session_state["downsample_method"])
                     
