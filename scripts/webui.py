@@ -2708,8 +2708,12 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 current_id = None
                 current_payload = None
                 current_generation = None
+                loop_retry = 0
                 time.sleep(10)
                 continue
+        # In bridge-mode, matrix is prepared on the horde and split in multiple nodes
+        if 'toggles' in current_payload and 0 in current_payload['toggles']:
+            current_payload['toggles'].remove(0)
         images, seed, info, stats = txt2img(**current_payload)
         buffer = BytesIO()
         # We send as WebP to avoid using all the horde bandwidth
@@ -2723,19 +2727,19 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             "max_pixels": horde_max_pixels,
         }
         current_generation = seed
-        while current_id and current_generation:
+        while current_id and current_generation != None:
             try:
                 submit_req = requests.post(horde_url + '/api/v2/generate/submit', json = submit_dict, headers = headers)
                 try:
                     submit = submit_req.json()
                 except json.decoder.JSONDecodeError:
-                    logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!")
+                    logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!  (Retry {loop_retry}/10)")
                     time.sleep(interval)
                     continue
                 if submit_req.status_code == 404:
                     logger.warning(f"The generation we were working on got stale. Aborting!")
                 elif not submit_req.ok:
-                    logger.warning(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...")
+                    logger.warning(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...  (Retry {loop_retry}/10)")
                     if 'errors' in submit:
                         logger.warning(f"Detailed Request Errors: {submit['errors']}")
                     time.sleep(10)
@@ -2745,10 +2749,19 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 current_id = None
                 current_payload = None
                 current_generation = None
+                loop_retry = 0
             except requests.exceptions.ConnectionError:
-                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...")
+                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...  (Retry {loop_retry}/10)")
                 time.sleep(10)
                 continue
+        if loop_retry > 10 and current_id:
+            logger.error(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
+            current_id = None
+            current_payload = None
+            current_generation = None
+            loop_retry = 0
+        elif current_id:
+            logger.debug(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
         time.sleep(interval)
 
 
