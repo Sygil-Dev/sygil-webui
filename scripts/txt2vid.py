@@ -54,7 +54,7 @@ except:
 	pass
 
 class plugin_info():
-	plugname = "txt2img"
+	plugname = "txt2vid"
 	description = "Text to Image"
 	isTab = True
 	displayPriority = 1
@@ -734,22 +734,93 @@ def layout():
 					                                      help="Do loop")
 				st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
-			if server_state["GFPGAN_available"]:
-				st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
-				                                             help="Uses the GFPGAN model to improve faces after the generation. This greatly improve the quality and consistency \
-				                                             of faces but uses extra VRAM. Disable if you need the extra VRAM.")
-			else:
-				st.session_state["use_GFPGAN"] = False
-
-			if server_state["RealESRGAN_available"]:
-				st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
-																 help="Uses the RealESRGAN model to upscale the images after the generation. \
-				                                                 This greatly improve the quality and lets you have high resolution images but \
-				                                                 uses extra VRAM. Disable if you need the extra VRAM.")
-				st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"], index=0)
-			else:
-				st.session_state["use_RealESRGAN"] = False
-				st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+			#
+			if "GFPGAN_available" not in st.session_state:
+					GFPGAN_available()
+			
+			if "RealESRGAN_available" not in st.session_state:
+				RealESRGAN_available()
+		
+			if "LDSR_available" not in st.session_state:
+				LDSR_available()
+		
+			if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
+				with st.expander("Post-Processing"):
+					face_restoration_tab, upscaling_tab = st.tabs(["Face Restoration", "Upscaling"])
+					with face_restoration_tab:
+						# GFPGAN used for face restoration
+						if st.session_state["GFPGAN_available"]:
+							#with st.expander("Face Restoration"):
+							#if st.session_state["GFPGAN_available"]:
+							#with st.expander("GFPGAN"):
+							st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
+						                                                                 help="Uses the GFPGAN model to improve faces after the generation.\
+						                                                                 This greatly improve the quality and consistency of faces but uses\
+						                                                                 extra VRAM. Disable if you need the extra VRAM.")
+		
+							st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
+						                                                                    index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
+		
+							#st.session_state["GFPGAN_strenght"] = st.slider("Effect Strenght", min_value=1, max_value=100, value=1, step=1, help='')
+		
+						else:
+							st.session_state["use_GFPGAN"] = False                                 
+		
+					with upscaling_tab:
+						st.session_state['us_upscaling'] = st.checkbox("Use Upscaling", value=st.session_state['defaults'].txt2vid.use_upscaling)
+						# RealESRGAN and LDSR used for upscaling.     
+						if st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
+		
+							upscaling_method_list = []
+							if st.session_state["RealESRGAN_available"]:
+								upscaling_method_list.append("RealESRGAN")
+							if st.session_state["LDSR_available"]:
+								upscaling_method_list.append("LDSR")
+		
+							st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
+						                                                                    index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
+		
+							if st.session_state["RealESRGAN_available"]:
+								with st.expander("RealESRGAN"):
+									if st.session_state["upscaling_method"] == "RealESRGAN" and st.session_state['us_upscaling']:
+										st.session_state["use_RealESRGAN"] = True
+									else:
+										st.session_state["use_RealESRGAN"] = False
+		
+									st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
+									                                                    index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
+							else:
+								st.session_state["use_RealESRGAN"] = False
+								st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
+		
+		
+							#
+							if st.session_state["LDSR_available"]:
+								with st.expander("LDSR"):
+									if st.session_state["upscaling_method"] == "LDSR" and st.session_state['us_upscaling']:
+										st.session_state["use_LDSR"] = True
+									else:
+										st.session_state["use_LDSR"] = False
+		
+									st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
+									                                              index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))  
+		
+									st.session_state["ldsr_sampling_steps"] = int(st.text_input("Sampling Steps", value=st.session_state['defaults'].txt2vid.LDSR_config.sampling_steps,
+									                                                            help=""))
+		
+									st.session_state["preDownScale"] = int(st.text_input("PreDownScale", value=st.session_state['defaults'].txt2vid.LDSR_config.preDownScale,
+									                                                     help=""))
+		
+									st.session_state["postDownScale"] = int(st.text_input("postDownScale", value=st.session_state['defaults'].txt2vid.LDSR_config.postDownScale,
+									                                                      help=""))
+		
+									downsample_method_list = ['Nearest', 'Lanczos']
+									st.session_state["downsample_method"] = st.selectbox("Downsample Method", downsample_method_list,
+									                                                     index=downsample_method_list.index(st.session_state['defaults'].txt2vid.LDSR_config.downsample_method))
+		
+							else:
+								st.session_state["use_LDSR"] = False
+								st.session_state["LDSR_model"] = "model"  
 				
 			with st.expander("Variant"):
 				st.session_state["variant_amount"] = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,

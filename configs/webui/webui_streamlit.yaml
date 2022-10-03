@@ -91,9 +91,12 @@ txt2img:
         
     sampling_steps:
         value:      30
-        min_value:  10
-        max_value:  250
-        step:       10
+    
+    LDSR_config:
+        sampling_steps: 50
+        preDownScale: 1
+        postDownScale: 1
+        downsample_method: "Lanczos"
 
     default_sampler: "k_euler"
     separate_prompts: False
@@ -108,6 +111,7 @@ txt2img:
     use_RealESRGAN: False
     use_LDSR: False
     RealESRGAN_model: "RealESRGAN_x4plus"
+    use_upscaling: False
     
     variant_amount:
         value:      0.0
@@ -175,6 +179,7 @@ txt2vid:
     use_GFPGAN: False
     use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
+    use_upscaling: False
     variant_amount:
         value:      0.0
         min_value:  0.0
@@ -199,6 +204,12 @@ txt2vid:
         
     beta_scheduler_type: "linear"
     max_frames: 100
+    
+    LDSR_config:
+        sampling_steps: 50
+        preDownScale: 1
+        postDownScale: 1
+        downsample_method: "Lanczos"
     
 img2img:
     prompt: 
@@ -261,6 +272,12 @@ img2img:
         max_value:  500
         step:       10
         
+    LDSR_config:
+        sampling_steps: 50
+        preDownScale: 1
+        postDownScale: 1
+        downsample_method: "Lanczos"
+        
     loopback: True
     random_seed_loopback: True
     separate_prompts: False
@@ -274,6 +291,7 @@ img2img:
     use_GFPGAN: False
     use_RealESRGAN: False
     RealESRGAN_model: "RealESRGAN_x4plus"
+    use_upscaling: False
     variant_amount: 0.0
     variant_seed: ""
     write_info_files: True
@@ -296,3 +314,5 @@ textual_inversion:
 daisi_app:
     running_on_daisi_io: False
   
+model_manager:
+    value: 0

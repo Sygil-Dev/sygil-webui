@@ -1036,34 +1036,8 @@ class LDSR():
 
     @torch.no_grad()
     
-    def superResolution(self,image,ddimSteps=100,preDownScale='None',postDownScale='None'):
-        diffMode = 'superresolution'
-        model = self.load_model_from_config()
-        #@title Import location
-        #@markdown ***File height and width should be multiples of 64, or image will be padded.***
-
-        #@markdown *To change upload settings without adding more, run and cancel upload*
-        #import_method = 'Directory' #@param ['Google Drive', 'Upload']
-        #output_subfolder_name = 'processed' #@param {type: 'string'}
-
-        #@markdown Drive method options:
-        #drive_directory = '/content/drive/MyDrive/upscaleTest' #@param {type: 'string'}
-
-        #@markdown Upload method options:
-        #remove_previous_uploads = False #@param {type: 'boolean'}
-        #save_output_to_drive = False #@param {type: 'boolean'}
-        #zip_if_not_drive = False #@param {type: 'boolean'}
-        '''
-        os.makedirs(pathInput+'/content/input'.replace('\\',os.sep).replace('/',os.sep), exist_ok=True)
-        output_directory = os.getcwd()+f'/content/output/{output_subfolder_name}'.replace('\\',os.sep).replace('/',os.sep)
-        os.makedirs(output_directory, exist_ok=True)
-        uploaded_img = pathInput+'/content/input/'.replace('\\',os.sep).replace('/',os.sep)
-        pathInput, dirsInput, filesInput = next(os.walk(pathInput+'/content/input').replace('\\',os.sep).replace('/',os.sep))
-        file_count = len(filesInput)
-        print(f'Found {file_count} files total')
-        '''
-
-
+    def superResolution(self, image, ddimSteps = 100, preDownScale = 1, postDownScale = 1, downsample_method= "Lanczos"):
+        """
         #Run settings
 
         diffusion_steps = int(ddimSteps) #@param [25, 50, 100, 250, 500, 1000]
@@ -1074,47 +1048,53 @@ class LDSR():
         # Downsampling to 256px first will often improve the final image and runs faster.
         
         # You can improve sharpness without upscaling by upscaling and then downsampling to the original size (i.e. Super Resolution)
-        pre_downsample = preDownScale #@param ['None', '1/2', '1/4']
+        preDownScale: Values ['None', '2', '4']
 
-        post_downsample = postDownScale #@param ['None', 'Original Size', '1/2', '1/4']
+        postDownScale: Values ['None', 'Original Size', '2', '4']
 
         # Nearest gives sharper results, but may look more pixellated. Lancoz is much higher quality, but result may be less crisp.
         downsample_method = 'Lanczos' #@param ['Nearest', 'Lanczos']
+        """
+        
+        diffMode = 'superresolution'
+        model = self.load_model_from_config()        
+        
+        #Run settings
+
+        diffusion_steps = int(ddimSteps) #@param [25, 50, 100, 250, 500, 1000]
+        eta = 1.0 #@param  {type: 'raw'}
+        stride = 0 #not working atm
+
+        # ####Scaling options:
+        # Downsampling to 256px first will often improve the final image and runs faster.
+        
+        # You can improve sharpness without upscaling by upscaling and then downsampling to the original size (i.e. Super Resolution)
+        pre_downsample = preDownScale #@param ['None', '2', '4']
+
+        post_downsample = postDownScale #@param ['None', 'Original Size', '2', '4']
+
+        # Nearest gives sharper results, but may look more pixellated. Lancoz is much higher quality, but result may be less crisp.
+        #downsample_method = 'Lanczos' #@param ['Nearest', 'Lanczos']
 
 
         overwrite_prior_runs = True #@param {type: 'boolean'}
 
-        #pathProcessed, dirsProcessed, filesProcessed = next(os.walk(output_directory))
-
-        #for img in filesInput:
-        #    if img in filesProcessed and overwrite_prior_runs is False:
-        #        print(f'Skipping {img}: Already processed')
-        #        continue
         gc.collect()
         torch.cuda.empty_cache()
-        #dir = pathInput
-        #filepath = os.path.join(dir, img).replace('\\',os.sep).replace('/',os.sep)
 
         im_og = image
         width_og, height_og = im_og.size
 
         #Downsample Pre
-        if pre_downsample == '1/2':
-            downsample_rate = 2
-        elif pre_downsample == '1/4':
-            downsample_rate = 4
-        else:
-            downsample_rate = 1
+        
+        downsample_rate = preDownScale
+        
         # get system temp directory
-        #dir = tempfile.gettempdir()
         width_downsampled_pre = width_og//downsample_rate
         height_downsampled_pre = height_og//downsample_rate
         if downsample_rate != 1:
             print(f'Downsampling from [{width_og}, {height_og}] to [{width_downsampled_pre}, {height_downsampled_pre}]')
             im_og = im_og.resize((width_downsampled_pre, height_downsampled_pre), Image.LANCZOS)
-            #os.makedirs(dir, exist_ok=True)
-            #im_og.save(dir + '/ldsr/temp.png'.replace('\\',os.sep).replace('/',os.sep))
-            #filepath = dir + '/ldsr/temp.png'.replace('\\',os.sep).replace('/',os.sep)
 
         logs = self.run(model["model"], im_og, diffMode, diffusion_steps, eta)
 
@@ -1124,16 +1104,11 @@ class LDSR():
         sample = (sample + 1.) / 2. * 255
         sample = sample.numpy().astype(np.uint8)
         sample = np.transpose(sample, (0, 2, 3, 1))
-        #print(sample.shape)
+        
         a = Image.fromarray(sample[0])
 
-        #Downsample Post
-        if post_downsample == '1/2':
-            downsample_rate = 2
-        elif post_downsample == '1/4':
-            downsample_rate = 4
-        else:
-            downsample_rate = 1
+        #Downsample Post    
+        downsample_rate = postDownScale
 
         width, height = a.size
         width_downsampled_post = width//downsample_rate
@@ -1150,20 +1125,11 @@ class LDSR():
         elif post_downsample == 'Original Size':
             print(f'Downsampling from [{width}, {height}] to Original Size [{width_og}, {height_og}]')
             a = a.resize((width_og, height_og), aliasing)
-
-        #display.display(a)
-        #a.save(f'{output_directory}/{img}')
+            
         del model
         gc.collect()
         torch.cuda.empty_cache()
-        '''
-        if import_method != 'Google Drive' and zip_if_not_drive is True:
-        print('Zipping files')
-        current_time = datetime.now().strftime('%y%m%d-%H%M%S_%f')
-        output_zip_name = 'output'+str(current_time)+'.zip'
-        #!zip -r {output_zip_name} {output_directory}
-        print(f'Zipped outputs in {output_zip_name}')
-        '''
+        
         print(f'Processing finished!')
         return a
 
@@ -1211,13 +1177,13 @@ def torch_gc():
 
 @retry(tries=5)
 #@st.experimental_memo(persist="disk", show_spinner=False, suppress_st_warning=True)
-def load_GFPGAN(model_name='GFPGANv1.3'):
+def load_GFPGAN(model_name='GFPGANv1.4'):
     #model_name = 'GFPGANv1.3'
     
-    model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, model_name + '.pth')
     
-    if not os.path.isfile(model_path):
-        model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, model_name + '.pth')
+    #if not os.path.isfile(model_path):
+        #model_path = os.path.join(st.session_state['defaults'].general.GFPGAN_dir, model_name + '.pth')
     
     if not os.path.isfile(model_path):
         raise Exception("GFPGAN model not found at path "+model_path)
@@ -2020,7 +1986,7 @@ def oxlamon_matrix(prompt, seed, n_iter, batch_size):
 #
 def process_images(
     outpath, func_init, func_sample, prompt, seed, sampler_name, save_grid, batch_size,
-        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', 
+        n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.4', 
         use_RealESRGAN: bool = False, realesrgan_model_name:str = 'RealESRGAN_x4plus',
         use_LDSR:bool = False, LDSR_model_name:str = 'model', ddim_eta=0.0, normalize_prompt_weights=True, init_img=None, init_mask=None,
         mask_blur_strength=3, mask_restore=False, denoising_strength=0.75, noise_mode=0, find_noise_steps=1, resize_mode=None, uses_loopback=False,
@@ -2248,10 +2214,14 @@ def process_images(
                 original_filename = filename
 
                 st.session_state["preview_image"].image(image)
-
+                
+                #
                 if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN and not use_LDSR:
                     st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
-
+                    
+                    if server_state["GFPGAN"].name != GFPGAN_model:
+                        load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+                    
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
                     
@@ -2314,7 +2284,10 @@ def process_images(
                         #try_loading_RealESRGAN(realesrgan_model_name)
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
-                    result = server_state["LDSR"].superResolution(image, 2, 2, 2)
+                    result = server_state["LDSR"].superResolution(gfpgan_image, ddimSteps = st.session_state["ldsr_sampling_steps"],
+                                                                  preDownScale = st.session_state["preDownScale"], postDownScale = st.session_state["postDownScale"], 
+                                                                  downsample_method=st.session_state["downsample_method"])
+                    
                     ldsr_filename = original_filename + '-ldsr4x'
                     #ldsr_sample = result[:,:,::-1]
                     #ldsr_image = Image.fromarray(ldsr_sample)
@@ -2327,24 +2300,35 @@ def process_images(
                                                     normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                                                     save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, False, server_state["loaded_model"])
 
-                    output_images.append(ldsr_image) #287
-                    run_images.append(ldsr_image)
+                    output_images.append(result) #287
+                    run_images.append(result)
 
                     if simple_templating:
                         grid_captions.append( captions[i] + "\nldsr" )  
                         
                 #
-                elif use_LDSR and server_state["LDSR"] is not None and use_GFPGAN:
+                elif use_LDSR and server_state["LDSR"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
                     print ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
-                    #skip_save = True # #287 >_>
+                    
+                    if server_state["GFPGAN"].name != GFPGAN_model:
+                        load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
+                    
                     torch_gc()
+                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+                    
+                    gfpgan_sample = restored_img[:,:,::-1]
+                    gfpgan_image = Image.fromarray(gfpgan_sample)                    
 
                     if server_state["LDSR"].name != LDSR_model_name:
                         #try_loading_RealESRGAN(realesrgan_model_name)
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
-                    result = server_state["LDSR"].superResolution(image, 2, 2, 2)
+                    #LDSR.superResolution(gfpgan_image, ddimSteps=100, preDownScale='None', postDownScale='None', downsample_method="Lanczos")
+                    result = server_state["LDSR"].superResolution(gfpgan_image, ddimSteps = st.session_state["ldsr_sampling_steps"],
+                                                                  preDownScale = st.session_state["preDownScale"], postDownScale = st.session_state["postDownScale"], 
+                                                                  downsample_method=st.session_state["downsample_method"])
+                    
                     ldsr_filename = original_filename + '-gfpgan-ldsr2x'
                     #ldsr_sample = result[:,:,::-1]
                     #ldsr_image = Image.fromarray(result)

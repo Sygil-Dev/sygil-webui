@@ -325,7 +325,8 @@ def layout():
                                 st.session_state["use_GFPGAN"] = False                                 
                             
                         with upscaling_tab:
-                            #with st.expander("Upscaling"): 
+                            st.session_state['us_upscaling'] = st.checkbox("Use Upscaling", value=st.session_state['defaults'].txt2img.use_upscaling)
+                            
                             # RealESRGAN and LDSR used for upscaling.     
                             if st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
                                 
@@ -339,14 +340,14 @@ def layout():
                                                                                     index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
                                 
                                 if st.session_state["RealESRGAN_available"]:
-                                   # with st.expander("RealESRGAN"):
-                                    st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
-                                                                                     help="Uses the RealESRGAN model to upscale the images after the generation.\
-                                                                                     This greatly improve the quality and lets you have high resolution images but \
-                                                                                     uses extra VRAM. Disable if you need the extra VRAM.")
-                                    
-                                    st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
-                                                                                    index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
+                                    with st.expander("RealESRGAN"):
+                                        if st.session_state["upscaling_method"] == "RealESRGAN" and st.session_state['us_upscaling']:
+                                            st.session_state["use_RealESRGAN"] = True
+                                        else:
+                                            st.session_state["use_RealESRGAN"] = False
+                                        
+                                        st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
+                                                                                        index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
                                 else:
                                     st.session_state["use_RealESRGAN"] = False
                                     st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
@@ -354,14 +355,28 @@ def layout():
                                     
                                 #
                                 if st.session_state["LDSR_available"]:
-                                    #with st.expander("LDSR"):
-                                    st.session_state["use_LDSR"] = st.checkbox("Use LDSR", value=st.session_state['defaults'].txt2img.use_LDSR,
-                                                                                     help="Uses the LDSR model to upscale the images after the generation.\
-                                                                                     This greatly improve the quality and lets you have high resolution images but \
-                                                                                     uses extra VRAM. Disable if you need the extra VRAM.")
-                                    
-                                    st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
-                                                                                    index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))  
+                                    with st.expander("LDSR"):
+                                        if st.session_state["upscaling_method"] == "LDSR" and st.session_state['us_upscaling']:
+                                            st.session_state["use_LDSR"] = True
+                                        else:
+                                            st.session_state["use_LDSR"] = False
+                                        
+                                        st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
+                                                                                      index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))  
+                                        
+                                        st.session_state["ldsr_sampling_steps"] = int(st.text_input("Sampling Steps", value=st.session_state['defaults'].txt2img.LDSR_config.sampling_steps,
+                                                                                      help=""))
+                                        
+                                        st.session_state["preDownScale"] = int(st.text_input("PreDownScale", value=st.session_state['defaults'].txt2img.LDSR_config.preDownScale,
+                                                                               help=""))
+                                        
+                                        st.session_state["postDownScale"] = int(st.text_input("postDownScale", value=st.session_state['defaults'].txt2img.LDSR_config.postDownScale,
+                                                                               help=""))
+                                        
+                                        downsample_method_list = ['Nearest', 'Lanczos']
+                                        st.session_state["downsample_method"] = st.selectbox("Downsample Method", downsample_method_list,
+                                                                                             index=downsample_method_list.index(st.session_state['defaults'].txt2img.LDSR_config.downsample_method))
+                                        
                                 else:
                                     st.session_state["use_LDSR"] = False
                                     st.session_state["LDSR_model"] = "model"                                
