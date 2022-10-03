@@ -124,7 +124,10 @@ def layout():
 	if tabs =='Stable Diffusion':
 		# set the page url and title
 		st.experimental_set_query_params(page='stable-diffusion')
-		set_page_title("Stable Diffusion Playground")
+		try:
+			set_page_title("Stable Diffusion Playground")
+		except NameError:
+			st.experimental_rerun()
 		
 		txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image", 
 		                                                                      "Text-to-Video", "Image-To-Text",

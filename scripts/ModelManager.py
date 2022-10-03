@@ -42,6 +42,8 @@ def layout():
                     ,TrinArt Stable Diffusion v2      , ./models/custom                                , https://huggingface.co/naclbit/trinart_stable_diffusion_v2
                     ,Stable Diffusion Concept Library , ./models/custom/sd-concepts-library            , https://github.com/sd-webui/sd-concepts-library
                     ,Blip Model                       , ./models/blip                                  , https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth
+                    ,LDSR `project.yaml`              , ./models/ldsr                                  , https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1
+                    ,LDSR `model.cpkt`                , ./models/ldsr                                  , https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1
                     """
     colms = st.columns((1, 3, 5, 5))
     columns = ["№",'Model Name','Save Location','Download Link']
