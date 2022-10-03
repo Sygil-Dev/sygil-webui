@@ -33,7 +33,6 @@ dependencies:
     - -e .
     - -e git+https://github.com/CompVis/taming-transformers#egg=taming-transformers
     - -e git+https://github.com/openai/CLIP#egg=clip
-    - -e git+https://github.com/TencentARC/GFPGAN#egg=GFPGAN
     - -e git+https://github.com/hlky/k-diffusion-sd#egg=k_diffusion
     - -e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion
     - accelerate==0.12.0
@@ -45,6 +44,7 @@ dependencies:
     - ftfy==6.1.1
     - fairscale==0.4.4
     - gradio==3.1.6
+    - gfpgan==1.3.8
     - hydralit==1.0.14
     - hydralit_components==1.0.10
     - imageio-ffmpeg==0.4.2

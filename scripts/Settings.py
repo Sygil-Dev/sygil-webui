@@ -150,15 +150,15 @@ def layout():
 																							(Not properly implemented and currently not working, check this \
 																							link 'https://github.com/huggingface/diffusers/pull/537' for more information on it ). Default: False")	
 				
-				st.session_state["defaults"].general.update_preview = st.checkbox("Update Preview Image", value=st.session_state['defaults'].general.update_preview,
-																					help="Enables the preview image to be updated and shown to the user on the UI during the generation.\
-																					If checked, once you save the settings an option to specify the frequency at which the image is updated\
-																					in steps will be shown, this is helpful to reduce the negative effect this option has on performance. \
-																					Default: True")				
-				if st.session_state["defaults"].general.update_preview:
-					st.session_state["defaults"].general.update_preview_frequency = int(st.text_input("Update Preview Frequency", value=st.session_state['defaults'].general.update_preview_frequency,
-																						help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
-																						negative effect updating the preview image has on performance. Default: 10"))					
+				#st.session_state["defaults"].general.update_preview = st.checkbox("Update Preview Image", value=st.session_state['defaults'].general.update_preview,
+																					#help="Enables the preview image to be updated and shown to the user on the UI during the generation.\
+																					#If checked, once you save the settings an option to specify the frequency at which the image is updated\
+																					#in steps will be shown, this is helpful to reduce the negative effect this option has on performance. \
+																					#Default: True")	
+				st.session_state["defaults"].general.update_preview = True
+				st.session_state["defaults"].general.update_preview_frequency = int(st.text_input("Update Preview Frequency", value=st.session_state['defaults'].general.update_preview_frequency,
+																								  help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
+																								  negative effect updating the preview image has on performance. Default: 10"))					
 				
 			with col3:
 				st.title("Others")
@@ -222,7 +222,7 @@ def layout():
 																							at https://huggingface.co/settings/tokens. Default: None")
 				
 		with txt2img_tab:
-			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
+			col1, col2, col3, col4, col5 = st.columns(5, gap='medium')
 
 			with col1:
 				st.title("Slider Parameters")
@@ -277,44 +277,19 @@ def layout():
 					st.session_state["defaults"].txt2img.sampling_steps.step = int(st.text_input("Sampling Slider Steps", 
 																								 value=st.session_state['defaults'].txt2img.sampling_steps.step,
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
-		
-					with col3:
-						# Batch Count
-						st.session_state["defaults"].txt2img.batch_count.value = int(st.text_input("Default Batch Count", 
-																								   value=st.session_state['defaults'].txt2img.batch_count.value,
-																								   help="Set the default batch count to use. Default is: 1"))
-			   
-						st.session_state["defaults"].txt2img.batch_count.min_value = int(st.text_input("Minimum Batch Count",
-																									   value=st.session_state['defaults'].txt2img.batch_count.min_value,
-																									   help="Set the default minimum value for the batch count slider. Default is: 1"))
-			
-						st.session_state["defaults"].txt2img.batch_count.max_value = int(st.text_input("Maximum Batch Count",
-																									   value=st.session_state['defaults'].txt2img.batch_count.max_value,
-																									   help="Set the default maximum value for the batch count slider. Default is: 100"))
-			
-						st.session_state["defaults"].txt2img.batch_count.step = int(st.text_input("Batch Count Slider Steps",
-																								  value=st.session_state['defaults'].txt2img.batch_count.step, 
-																								  help="Set the default value for the number of steps on the batch count slider. Default is: 10"))
-		
-						# Batch Size
-						st.session_state["defaults"].txt2img.batch_size.value = int(st.text_input("Default Batch Size",
-																								  value=st.session_state['defaults'].txt2img.batch_size.value,
-																								  help="Set the default batch size to use. Default is: 1"))
-			   
-						st.session_state["defaults"].txt2img.batch_size.min_value = int(st.text_input("Minimum Batch Size", 
-																									  value=st.session_state['defaults'].txt2img.batch_size.min_value, 
-																									  help="Set the default minimum value for the batch size slider. Default is: 1"))
-			
-						st.session_state["defaults"].txt2img.batch_size.max_value = int(st.text_input("Maximum Batch Size",
-																									  value=st.session_state['defaults'].txt2img.batch_size.max_value, 
-																									  help="Set the default maximum value for the batch size slider. Default is: 5"))
-			
-						st.session_state["defaults"].txt2img.batch_size.step = int(st.text_input("Batch Size Slider Steps",
-																								 value=st.session_state['defaults'].txt2img.batch_size.step,
-																								 help="Set the default value for the number of steps on the batch size slider. Default is: 1"))
        
-			with col4:
+			with col3:
 				st.title("General Parameters")
+				
+				# Batch Count
+				st.session_state["batch_count"] = st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
+																help="How many iterations or batches of images to generate in total.")
+				
+				st.session_state["batch_size"] = st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
+																help="How many images are at once in a batch.\
+																It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+																takes to finish generation as more images are generated at once.\
+																Default: 1") 					
     
 				default_sampler_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_heun", "PLMS", "DDIM"]
 				st.session_state["defaults"].txt2img.default_sampler = st.selectbox("Default Sampler",
@@ -322,6 +297,8 @@ def layout():
 																					help="Defaut sampler to use for txt2img. Default: k_euler")
     
 				st.session_state['defaults'].txt2img.seed = st.text_input("Default Seed", value=st.session_state['defaults'].txt2img.seed, help="Default seed.")
+				
+			with col4:
     
 				st.session_state["defaults"].txt2img.separate_prompts = st.checkbox("Separate Prompts",
 																					value=st.session_state['defaults'].txt2img.separate_prompts, help="Separate Prompts. Default: False")
@@ -351,9 +328,7 @@ def layout():
 				st.session_state["defaults"].txt2img.use_RealESRGAN = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN, 
 																				  help="Choose to use RealESRGAN. Default: False")
     
-				st.session_state["defaults"].txt2img.update_preview = st.checkbox("Update Preview Image", value=st.session_state['defaults'].txt2img.update_preview, 
-																				  help="Choose to update the preview image during generation. Default: True")
-    
+				st.session_state["defaults"].txt2img.update_preview = True
 				st.session_state["defaults"].txt2img.update_preview_frequency = int(st.text_input("Preview Image Update Frequency",
 																								  value=st.session_state['defaults'].txt2img.update_preview_frequency,
 																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10"))
@@ -471,38 +446,14 @@ def layout():
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
 		
 					# Batch Count
-					st.session_state["defaults"].img2img.batch_count.value = int(st.text_input("Default Img2Img Batch Count",
-																							   value=st.session_state['defaults'].img2img.batch_count.value, 
-																							   help="Set the default batch count to use. Default is: 1"))
-		   
-					st.session_state["defaults"].img2img.batch_count.min_value = int(st.text_input("Minimum Img2Img Batch Count",
-																								   value=st.session_state['defaults'].img2img.batch_count.min_value, 
-																								   help="Set the default minimum value for the batch count slider. Default is: 1"))
-		
-					st.session_state["defaults"].img2img.batch_count.max_value = int(st.text_input("Maximum Img2Img Batch Count",
-																								   value=st.session_state['defaults'].img2img.batch_count.max_value,
-																								   help="Set the default maximum value for the batch count slider. Default is: 100"))
-		
-					st.session_state["defaults"].img2img.batch_count.step = int(st.text_input("Img2Img Batch Count Slider Steps", 
-																							  value=st.session_state['defaults'].img2img.batch_count.step,
-																							  help="Set the default value for the number of steps on the batch count slider. Default is: 10"))
-	
-					# Batch Size
-					st.session_state["defaults"].img2img.batch_size.value = int(st.text_input("Default Img2Img Batch Size", 
-																							  value=st.session_state['defaults'].img2img.batch_size.value, 
-																							  help="Set the default batch size to use. Default is: 1"))
-		   
-					st.session_state["defaults"].img2img.batch_size.min_value = int(st.text_input("Minimum Img2Img Batch Size",
-																								  value=st.session_state['defaults'].img2img.batch_size.min_value, 
-																								  help="Set the default minimum value for the batch size slider. Default is: 1"))
-		
-					st.session_state["defaults"].img2img.batch_size.max_value = int(st.text_input("Maximum Img2Img Batch Size", 
-																								  value=st.session_state['defaults'].img2img.batch_size.max_value,
-																								  help="Set the default maximum value for the batch size slider. Default is: 5"))
-		
-					st.session_state["defaults"].img2img.batch_size.step = int(st.text_input("Img2Img Batch Size Slider Steps", 
-																							 value=st.session_state['defaults'].img2img.batch_size.step, 
-																							 help="Set the default value for the number of steps on the batch size slider. Default is: 1"))
+					st.session_state["batch_count"] = st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
+																	help="How many iterations or batches of images to generate in total.")
+				
+					st.session_state["batch_size"] = st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
+																   help="How many images are at once in a batch.\
+																   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+																   takes to finish generation as more images are generated at once.\
+																   Default: 1") 							
 					with col4:
 						# Inference Steps
 						st.session_state["defaults"].img2img.num_inference_steps.value = int(st.text_input("Default Inference Steps", 
@@ -580,9 +531,7 @@ def layout():
 				st.session_state["defaults"].img2img.use_RealESRGAN = st.checkbox("Img2Img Use RealESRGAN", value=st.session_state['defaults'].img2img.use_RealESRGAN,
 																				  help="Choose to use RealESRGAN. Default: False")
     
-				st.session_state["defaults"].img2img.update_preview = st.checkbox("Update Img2Img Preview Image", value=st.session_state['defaults'].img2img.update_preview,
-																				  help="Choose to update the preview image during generation. Default: True")
-    
+				st.session_state["defaults"].img2img.update_preview = True
 				st.session_state["defaults"].img2img.update_preview_frequency = int(st.text_input("Img2Img Preview Image Update Frequency",
 																								  value=st.session_state['defaults'].img2img.update_preview_frequency, 
 																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10"))
@@ -686,38 +635,14 @@ def layout():
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10"))
 		
 					# Batch Count
-					st.session_state["defaults"].txt2vid.batch_count.value = int(st.text_input("Default txt2vid Batch Count", 
-																							   value=st.session_state['defaults'].txt2vid.batch_count.value, 
-																							   help="Set the default batch count to use. Default is: 1"))
-		   
-					st.session_state["defaults"].txt2vid.batch_count.min_value = int(st.text_input("Minimum txt2vid Batch Count",
-																								   value=st.session_state['defaults'].img2img.batch_count.min_value, 
-																								   help="Set the default minimum value for the batch count slider. Default is: 1"))
-		
-					st.session_state["defaults"].img2img.batch_count.max_value = int(st.text_input("Maximum txt2vid Batch Count",
-																								   value=st.session_state['defaults'].txt2vid.batch_count.max_value, 
-																								   help="Set the default maximum value for the batch count slider. Default is: 100"))
-		
-					st.session_state["defaults"].txt2vid.batch_count.step = int(st.text_input("txt2vid Batch Count Slider Steps", 
-																							  value=st.session_state['defaults'].txt2vid.batch_count.step,
-																							  help="Set the default value for the number of steps on the batch count slider. Default is: 10"))
-	
-					# Batch Size
-					st.session_state["defaults"].txt2vid.batch_size.value = int(st.text_input("Default txt2vid Batch Size",
-																							  value=st.session_state['defaults'].txt2vid.batch_size.value,
-																							  help="Set the default batch size to use. Default is: 1"))
-		   
-					st.session_state["defaults"].txt2vid.batch_size.min_value = int(st.text_input("Minimum txt2vid Batch Size", 
-																								  value=st.session_state['defaults'].txt2vid.batch_size.min_value,
-																								  help="Set the default minimum value for the batch size slider. Default is: 1"))
-		
-					st.session_state["defaults"].txt2vid.batch_size.max_value = int(st.text_input("Maximum txt2vid Batch Size",
-																								  value=st.session_state['defaults'].txt2vid.batch_size.max_value, 
-																								  help="Set the default maximum value for the batch size slider. Default is: 5"))
-		
-					st.session_state["defaults"].txt2vid.batch_size.step = int(st.text_input("txt2vid Batch Size Slider Steps",
-																							 value=st.session_state['defaults'].txt2vid.batch_size.step,
-																							 help="Set the default value for the number of steps on the batch size slider. Default is: 1"))
+					st.session_state["batch_count"] = st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
+																help="How many iterations or batches of images to generate in total.")
+
+					st.session_state["batch_size"] = st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
+																   help="How many images are at once in a batch.\
+																   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+																   takes to finish generation as more images are generated at once.\
+																   Default: 1") 
 		
 					# Inference Steps
 					st.session_state["defaults"].txt2vid.num_inference_steps.value = int(st.text_input("Default Txt2Vid Inference Steps",
@@ -790,9 +715,7 @@ def layout():
 				st.session_state["defaults"].txt2vid.use_RealESRGAN = st.checkbox("txt2vid Use RealESRGAN", value=st.session_state['defaults'].txt2vid.use_RealESRGAN,
 																				  help="Choose to use RealESRGAN. Default: False")
     
-				st.session_state["defaults"].txt2vid.update_preview = st.checkbox("Update txt2vid Preview Image", value=st.session_state['defaults'].txt2vid.update_preview, 
-																				  help="Choose to update the preview image during generation. Default: True")
-    
+				st.session_state["defaults"].txt2vid.update_preview = True
 				st.session_state["defaults"].txt2vid.update_preview_frequency = int(st.text_input("txt2vid Preview Image Update Frequency", 
 																								  value=st.session_state['defaults'].txt2vid.update_preview_frequency, 
 																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10"))
