@@ -59,17 +59,6 @@ class plugin_info():
 	isTab = True
 	displayPriority = 1
 
-
-if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-	server_state["GFPGAN_available"] = True
-else:
-	server_state["GFPGAN_available"] = False
-
-if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].txt2vid.RealESRGAN_model}.pth")):
-	server_state["RealESRGAN_available"] = True
-else:
-	server_state["RealESRGAN_available"] = False
-
 #
 # -----------------------------------------------------------------------------
 
@@ -235,11 +224,11 @@ def load_diffusers_model(weights_path,torch_device):
 					del st.session_state["weights_path"]
 		
 				st.session_state["weights_path"] = weights_path
-				# if folder "user_data/model_cache/stable-diffusion-v1-4" exists, load the model from there
+				# if folder "models/diffusers/stable-diffusion-v1-4" exists, load the model from there
 				if weights_path == "CompVis/stable-diffusion-v1-4":
-					model_path = os.path.join("user_data", "model_cache", "stable-diffusion-v1-4")
+					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-4")
 				elif weights_path == "hakurei/waifu-diffusion":
-					model_path = os.path.join("user_data", "model_cache", "waifu-diffusion")
+					model_path = os.path.join("models", "diffusers", "waifu-diffusion")
 
 				if not os.path.exists(model_path + "/model_index.json"):
 					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(

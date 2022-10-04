@@ -52,7 +52,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	    variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
 	    write_info_files:bool = True, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
 	    save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
-	    save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3',
+	    save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.4',
 		use_RealESRGAN: bool = True, RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B",
 		use_LDSR: bool = True, LDSR_model: str = "model",
 		loopback: bool = False,
@@ -167,7 +167,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 
 		init_image = 2. * image - 1.
 		init_image = init_image.to(server_state["device"])
-		init_latent = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).get_first_stage_encoding((server_state["model"]  if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
+		init_latent = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).get_first_stage_encoding((server_state["model"]  if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).encode_first_stage(init_image))  # move to latent space
 
 		if st.session_state['defaults'].general.optimized:
 			mem = torch.cuda.memory_allocated()/1e6

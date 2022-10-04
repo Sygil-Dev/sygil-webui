@@ -322,55 +322,82 @@ model_manager:
         stable_diffusion: 
             model_name:     "Stable Diffusion v1.4"
             save_location:  "./models/ldm/stable-diffusion-v1"
-            download_link:  "https://huggingface.co/CompVis/stable-diffusion-v-1-4-original"
+            files:
+                model_ckpt:
+                    file_name:  "model.ckpt"
+                    download_link:  "https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media"
         
         gfpgan:
-            model_name:     "GFPGAN v1.4"
-            save_location:  "./models/gfpgan" 
-            download_link:  "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth"
+            model_name:     "GFPGAN"
+            save_location:  "./models/gfpgan"
+            files:
+                gfpgan_1_4:
+                    file_name:  "GFPGANv1.4.pth"
+                    download_link:  "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth"
+                resnet_50:
+                    file_name: "detection_Resnet50_Final.pth"
+                    save_location:  "./gfpgan/weights"
+                    download_link: "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
+                parsing_parsenet:
+                    file_name: "parsing_parsenet.pth"
+                    save_location:  "./gfpgan/weights"
+                    download_link: "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
+                
             
-        realesrgan_x4plus:
-            model_name:     "RealESRGAN_x4plus"
+        realesrgan:
+            model_name:     "RealESRGAN"
             save_location:  "./models/realesrgan"
-            download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
-        
-        realesrgan_x4plus_anime_6b:
-            model_name:     "RealESRGAN_x4plus_anime_6B"
-            save_location:  "./models/realesrgan"
-            download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
+            files:
+                x4plus:
+                    file_name: "RealESRGAN_x4plus.pth"
+                    download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+                x4plus_anime_6b:
+                    file_name: "RealESRGAN_x4plus_anime_6B.pth"
+                    download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
+            
             
         waifu_diffusion:
             model_name:     "Waifu Diffusion v1.2"
             save_location:  "./models/custom"
-            download_link:  "https://huggingface.co/hakurei/waifu-diffusion"
-            
-        waifu-diffusion_pruned:
-            model_name:     "Waifu Diffusion v1.2 Pruned"
-            save_location:  "./models/custom"
-            download_link:  "https://huggingface.co/crumb/pruned-waifu-diffusion"
+            files:
+                waifu_diffusion:
+                    file_name: "waifu-diffusion.ckpt"
+                    download_link:  "https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt"
+
         
         trinart_stable_diffusion:
             model_name:     "TrinArt Stable Diffusion v2"
             save_location:  "./models/custom"
-            download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2"
+            files:
+                trinart:
+                    file_name: "trinart.ckpt"
+                    download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
             
         stable_diffusion_concept_library:
             model_name:     "Stable Diffusion Concept Library"
-            save_location:  "./models/custom/sd-concepts-library"
-            download_link:  "https://github.com/sd-webui/sd-concepts-library"
+            save_location:  "./models/custom/sd-concepts-library/"
+            files:
+                concept_library:
+                    file_name: ""
+                    download_link:  "https://github.com/sd-webui/sd-concepts-library"
         
         blip_model:
             model_name:     "Blip Model"
             save_location:  "./models/blip"
-            download_link:  "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth"
+            files:
+                blip:
+                    file_name: "model__base_caption.pth"
+                    download_link:  "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth"
         
-        lds_project_file:
-            model_name:     "LDSR `project.yaml`"
+        ldsr:
+            model_name: "Latent Diffusion Super Resolution (LDSR)"
             save_location:  "./models/ldsr"
-            download_link:  "https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
-            
-        ldsr_model:
-            model_name:     "LDSR `model.cpkt`"
-            save_location:  "./models/ldsr"
-            download_link:  "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
+            files:
+                project_yaml:
+                    file_name:     "project.yaml"
+                    download_link:  "https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
+                    
+                ldsr_model:
+                    file_name:     "model.ckpt"
+                    download_link:  "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
     

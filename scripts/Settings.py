@@ -83,10 +83,10 @@ def layout():
 																			help="Default model path. Default: 'models/ldm/stable-diffusion-v1/model.ckpt'")		
 						
 				st.session_state['defaults'].general.GFPGAN_dir = st.text_input("Default GFPGAN directory", value=st.session_state['defaults'].general.GFPGAN_dir,
-																			help="Default GFPGAN directory. Default: './src/gfpgan'")
+																			help="Default GFPGAN directory. Default: './models/gfpgan'")
 				
 				st.session_state['defaults'].general.RealESRGAN_dir = st.text_input("Default RealESRGAN directory", value=st.session_state['defaults'].general.RealESRGAN_dir,
-																			help="Default GFPGAN directory. Default: './src/realesrgan'")
+																			help="Default GFPGAN directory. Default: './models/realesrgan'")
 				
 				RealESRGAN_model_list = ["RealESRGAN_x4plus", "RealESRGAN_x4plus_anime_6B"]
 				st.session_state['defaults'].general.RealESRGAN_model = st.selectbox("RealESRGAN model", RealESRGAN_model_list,

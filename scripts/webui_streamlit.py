@@ -100,13 +100,13 @@ def layout():
 		
 	# check if the models exist on their respective folders
 	with server_state_lock["GFPGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, f"{st.session_state['defaults'].general.GFPGAN_model}.pth")):
 			server_state["GFPGAN_available"] = True
 		else:
 			server_state["GFPGAN_available"] = False
 
 	with server_state_lock["RealESRGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
 			server_state["RealESRGAN_available"] = True 
 		else:
 			server_state["RealESRGAN_available"] = False	

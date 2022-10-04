@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 from sd_utils import *
-
+import wget
 # streamlit imports
 
 
@@ -26,6 +26,22 @@ from sd_utils import *
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
+def download_file(file_name, file_path, file_url):
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+    if not os.path.exists(file_path + '/' + file_name):
+        print('Downloading ' + file_name + '...')
+        # TODO - add progress bar in streamlit
+        wget.download(url=file_url, out=file_path + '/' + file_name)
+    else:
+        print(file_name + ' already exists.')
+
+def download_model(models, model_name):
+    """ Download all files from model_list[model_name] """
+    for file in models[model_name]:
+        download_file(file['file_name'], file['file_path'], file['file_url'])
+    return
+
 
 def layout():
     #search = st.text_input(label="Search", placeholder="Type the name of the model you want to search for.", help="")
@@ -44,4 +60,29 @@ def layout():
         col1.write(x)  # index
         col2.write(models[model_name]['model_name'])
         col3.write(models[model_name]['save_location'])
-        col4.write(models[model_name]['download_link'])    
+        with col4:
+            files_exist = 0
+            for file in models[model_name]['files']:
+                if "save_location" in models[model_name]['files'][file]:
+                    os.path.exists(models[model_name]['files'][file]['save_location'] + '/' + models[model_name]['files'][file]['file_name'])
+                    files_exist += 1
+                elif os.path.exists(models[model_name]['save_location'] + '/' + models[model_name]['files'][file]['file_name']):
+                    files_exist += 1
+            files_needed = []
+            for file in models[model_name]['files']:
+                if "save_location" in models[model_name]['files'][file]:
+                    if not os.path.exists(models[model_name]['files'][file]['save_location'] + '/' + models[model_name]['files'][file]['file_name']):
+                        files_needed.append(file)
+                elif not os.path.exists(models[model_name]['save_location'] + '/' + models[model_name]['files'][file]['file_name']):
+                    files_needed.append(file)
+            if len(files_needed) > 0:
+                if st.button('Download', key=models[model_name]['model_name'], help='Download ' + models[model_name]['model_name']):
+                    for file in files_needed:
+                        if "save_location" in models[model_name]['files'][file]:
+                            download_file(models[model_name]['files'][file]['file_name'], models[model_name]['files'][file]['save_location'], models[model_name]['files'][file]['download_link'])
+                        else:
+                            download_file(models[model_name]['files'][file]['file_name'], models[model_name]['save_location'], models[model_name]['files'][file]['download_link'])
+                else:
+                    st.empty()
+            else:
+                st.write('✅')

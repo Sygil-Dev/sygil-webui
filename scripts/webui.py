@@ -369,8 +369,8 @@ def torch_gc():
 def load_LDSR(checking=False):
     model_name = 'model'
     yaml_name = 'project'
-    model_path = os.path.join(LDSR_dir, 'experiments/pretrained_models', model_name + '.ckpt')
-    yaml_path = os.path.join(LDSR_dir, 'experiments/pretrained_models', yaml_name + '.yaml')
+    model_path = os.path.join(LDSR_dir, model_name + '.ckpt')
+    yaml_path = os.path.join(LDSR_dir, yaml_name + '.yaml')
     if not os.path.isfile(model_path):
         raise Exception("LDSR model not found at path "+model_path)
     if not os.path.isfile(yaml_path):
@@ -384,7 +384,7 @@ def load_LDSR(checking=False):
     return LDSRObject
 def load_GFPGAN(checking=False):
     model_name = 'GFPGANv1.3'
-    model_path = os.path.join(GFPGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    model_path = os.path.join(GFPGAN_dir, model_name + '.pth')
     if not os.path.isfile(model_path):
         raise Exception("GFPGAN model not found at path "+model_path)
     if checking == True:
@@ -407,7 +407,7 @@ def load_RealESRGAN(model_name: str, checking = False):
         'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
     }
 
-    model_path = os.path.join(RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    model_path = os.path.join(RealESRGAN_dir, model_name + '.pth')
     if not os.path.isfile(model_path):
         raise Exception(model_name+".pth not found at path "+model_path)
     if checking == True:

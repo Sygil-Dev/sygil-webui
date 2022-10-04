@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 #from webui_streamlit import st
+import gfpgan
 import hydralit as st
 
 
@@ -219,7 +220,7 @@ def human_readable_size(size, decimal_places=3):
     return f"{size:.{decimal_places}f}{unit}"
 
 
-def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_model='GFPGANv1.3', use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
+def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_model='GFPGANv1.4', use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
         
@@ -1193,7 +1194,6 @@ def load_GFPGAN(model_name='GFPGANv1.4'):
 
     sys.path.append(os.path.abspath(st.session_state['defaults'].general.GFPGAN_dir))
     from gfpgan import GFPGANer
-
     with server_state_lock['GFPGAN']:
         if st.session_state['defaults'].general.gfpgan_cpu or st.session_state['defaults'].general.extra_models_cpu:
             server_state['GFPGAN'] = GFPGANer(model_path=model_path, upscale=1, arch='clean',
@@ -1221,7 +1221,7 @@ def load_RealESRGAN(model_name: str):
                 'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
         }
 
-    model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, model_name + '.pth')
     
     if not os.path.isfile(model_path):
         model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, model_name + '.pth')
@@ -1756,15 +1756,19 @@ def GFPGAN_available():
     # Allow for custom models to be used instead of the default one,
     # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
     st.session_state["GFPGAN_models"]:sorted = []
+    model = st.session_state["defaults"].model_manager.models.gfpgan
+    files_available = 0
+    for file in model['files']:
+        if "save_location" in model['files'][file]:
+            if os.path.exists(os.path.join(model['files'][file]['save_location'], model['files'][file]['file_name'] )):
+                files_available += 1
+        elif os.path.exists(os.path.join(model['save_location'], model['files'][file]['file_name'] )):
+            base_name = os.path.splitext(model['files'][file]['file_name'])[0]
+            if "GFPGANv" in base_name:
+                st.session_state["GFPGAN_models"].append(base_name)
+            files_available += 1
 
-    for root, dirs, files in os.walk(st.session_state['defaults'].general.GFPGAN_dir):
-        for file in files:
-            if os.path.splitext(file)[1] == '.pth':						
-                st.session_state["GFPGAN_models"].append(os.path.splitext(file)[0])
-
-    #print (len(st.session_state["GFPGAN_models"]))
-    #with server_state_lock["GFPGAN_available"]:
-    if len(st.session_state["GFPGAN_models"]) > 0:
+    if len(st.session_state["GFPGAN_models"]) > 0 and files_available == len(model['files']):
         st.session_state["GFPGAN_available"] = True
     else:
         st.session_state["GFPGAN_available"] = False
@@ -1776,14 +1780,13 @@ def RealESRGAN_available():
     # Allow for custom models to be used instead of the default one,
     # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
     st.session_state["RealESRGAN_models"]:sorted = []
+    model = st.session_state["defaults"].model_manager.models.realesrgan
+    for file in model['files']:
+        if os.path.exists(os.path.join(model['save_location'], model['files'][file]['file_name'] )):
+            base_name = os.path.splitext(model['files'][file]['file_name'])[0]
+            st.session_state["RealESRGAN_models"].append(base_name)
 
-    for root, dirs, files in os.walk(st.session_state['defaults'].general.RealESRGAN_dir):
-        for file in files:
-            if os.path.splitext(file)[1] == '.pth':						
-                st.session_state["RealESRGAN_models"].append(os.path.splitext(file)[0])
-
-    #with server_state_lock["RealESRGAN_available"]:
-    if len(st.session_state["RealESRGAN_models"]) > 0:
+    if len(st.session_state["RealESRGAN_models"]) > 0: 
         st.session_state["RealESRGAN_available"] = True
     else:
         st.session_state["RealESRGAN_available"] = False
@@ -1794,19 +1797,22 @@ def LDSR_available():
     # Allow for custom models to be used instead of the default one,
     # an example would be Waifu-Diffusion or any other fine tune of stable diffusion
     st.session_state["LDSR_models"]:sorted = []
-
-    for root, dirs, files in os.walk(st.session_state['defaults'].general.LDSR_dir):
-        for file in files:
-            if os.path.splitext(file)[1] == '.ckpt':						
-                st.session_state["LDSR_models"].append(os.path.splitext(file)[0])
-
-    #print (st.session_state['defaults'].general.LDSR_dir)
-    #print (st.session_state["LDSR_models"])
-    #with server_state_lock["LDSR_available"]:
-    if len(st.session_state["LDSR_models"]) > 0:
+    files_available = 0
+    model = st.session_state["defaults"].model_manager.models.ldsr
+    for file in model['files']:
+        if os.path.exists(os.path.join(model['save_location'], model['files'][file]['file_name'] )):
+            base_name = os.path.splitext(model['files'][file]['file_name'])[0]
+            extension = os.path.splitext(model['files'][file]['file_name'])[1]
+            if extension == ".ckpt":
+                st.session_state["LDSR_models"].append(base_name)
+            files_available += 1
+    if files_available == len(model['files']):
         st.session_state["LDSR_available"] = True
     else:
-        st.session_state["LDSR_available"] = False 
+        st.session_state["LDSR_available"] = False
+
+
+
         
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale, 
