@@ -95,7 +95,7 @@ sd_model_loading () {
         read -p "Once you have sd-v1-4.ckpt in the project root, Press Enter...\n\n"
         
         # Check to make sure checksum of models is the original one from HuggingFace and not a fake model set
-        printf "5a4792c52c98aaaf7ce8943b6d0700c217e7bb163857479bfea3ec56de338377 sd-v1-4.ckpt" | b3sum --check || exit 1
+        printf "5a4792c52c98aaaf7ce8943b6d0700c217e7bb163857479bfea3ec56de338377  sd-v1-4.ckpt" | b3sum --check || exit 1
         mv sd-v1-4.ckpt $DIRECTORY/models/ldm/stable-diffusion-v1/model.ckpt
         rm -r ./Models
     fi
