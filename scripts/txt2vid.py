@@ -40,6 +40,7 @@ from diffusers import StableDiffusionPipeline
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
      PNDMScheduler
 import util.ModelRepo as ModelRepo
+import util.Models as Models
 
 # Temp imports
 
@@ -225,11 +226,7 @@ def load_diffusers_model(weights_path,torch_device):
 	try:
 		model_manager:ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
 		with server_state_lock["pipe"]:
-			if not model_manager.is_loadable(ModelNames.Txt2Vid) or st.session_state["weights_path"] != weights_path:
-				if ("weights_path" in st.session_state) and st.session_state["weights_path"] != weights_path:
-					del st.session_state["weights_path"]
-		
-				st.session_state["weights_path"] = weights_path
+			if not model_manager.is_loadable(weights_path):
 				# if folder "user_data/model_cache/stable-diffusion-v1-4" exists, load the model from there
 				if weights_path == "CompVis/stable-diffusion-v1-4":
 					model_path = os.path.join("user_data", "model_cache", "stable-diffusion-v1-4")
@@ -259,8 +256,10 @@ def load_diffusers_model(weights_path,torch_device):
 				if st.session_state.defaults.general.enable_minimal_memory_usage:	
 					model.enable_minimal_memory_usage()
 				
-				# TODO: Create a ModelRepo.ModelLoader
-				model_manager.register_model(name=ModelNames.Txt2Vid, load_func=lambda: model, exists_func=lambda:True, max_depth=0)
+				# Wrap the model
+				model_manager.register_model_loader(name=weights_path, loader=Models.Wrapper(model))
+				# Register it under the name Txt2Vid
+				model_manager.register_model_alias(name=weights_path, alias=ModelNames.Txt2Vid)
 				print("Tx2Vid Model Loaded")
 			else:
 				print("Tx2Vid Model already Loaded")
@@ -400,14 +399,6 @@ def txt2vid(
 	#st.session_state["progress_bar_text"].text("Loading models...")	
 	with st.session_state["progress_bar_text"].container():
 		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-			try:
-				if "model" in st.session_state:
-					del st.session_state["model"]
-			except:
-				pass
-		
-			#print (st.session_state["weights_path"] != weights_path)
-		
 			load_diffusers_model(weights_path, torch_device)	
 	
 	with model_manager.model_context(ModelNames.Txt2Vid) as model:
