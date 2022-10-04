@@ -317,5 +317,60 @@ textual_inversion:
 daisi_app:
     running_on_daisi_io: False
   
-model_manager:
-    value: 0
+model_manager:  
+    models:
+        stable_diffusion: 
+            model_name:     "Stable Diffusion v1.4"
+            save_location:  "./models/ldm/stable-diffusion-v1"
+            download_link:  "https://huggingface.co/CompVis/stable-diffusion-v-1-4-original"
+        
+        gfpgan:
+            model_name:     "GFPGAN v1.4"
+            save_location:  "./models/gfpgan" 
+            download_link:  "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth"
+            
+        realesrgan_x4plus:
+            model_name:     "RealESRGAN_x4plus"
+            save_location:  "./models/realesrgan"
+            download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+        
+        realesrgan_x4plus_anime_6b:
+            model_name:     "RealESRGAN_x4plus_anime_6B"
+            save_location:  "./models/realesrgan"
+            download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
+            
+        waifu_diffusion:
+            model_name:     "Waifu Diffusion v1.2"
+            save_location:  "./models/custom"
+            download_link:  "https://huggingface.co/hakurei/waifu-diffusion"
+            
+        waifu-diffusion_pruned:
+            model_name:     "Waifu Diffusion v1.2 Pruned"
+            save_location:  "./models/custom"
+            download_link:  "https://huggingface.co/crumb/pruned-waifu-diffusion"
+        
+        trinart_stable_diffusion:
+            model_name:     "TrinArt Stable Diffusion v2"
+            save_location:  "./models/custom"
+            download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2"
+            
+        stable_diffusion_concept_library:
+            model_name:     "Stable Diffusion Concept Library"
+            save_location:  "./models/custom/sd-concepts-library"
+            download_link:  "https://github.com/sd-webui/sd-concepts-library"
+        
+        blip_model:
+            model_name:     "Blip Model"
+            save_location:  "./models/blip"
+            download_link:  "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth"
+        
+        lds_project_file:
+            model_name:     "LDSR `project.yaml`"
+            save_location:  "./models/ldsr"
+            download_link:  "https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
+            
+        ldsr_model:
+            model_name:     "LDSR `model.cpkt`"
+            save_location:  "./models/ldsr"
+            download_link:  "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
+    
