@@ -167,7 +167,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 
 		init_image = 2. * image - 1.
 		init_image = init_image.to(server_state["device"])
-		init_latent = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).get_first_stage_encoding((server_state["model"]  if not st.session_state['defaults'].general.optimized else modelFS).encode_first_stage(init_image))  # move to latent space
+		init_latent = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).get_first_stage_encoding((server_state["model"]  if not st.session_state['defaults'].general.optimized else server_state["modelFS"]).encode_first_stage(init_image))  # move to latent space
 
 		if st.session_state['defaults'].general.optimized:
 			mem = torch.cuda.memory_allocated()/1e6
@@ -475,13 +475,13 @@ def layout():
 				#
 				# check if GFPGAN, RealESRGAN and LDSR are available.
 				if "GFPGAN_available" not in st.session_state:
-					GFPGAN_available()
-			
+					st.session_state['GFPGAN_available'] = GFPGAN_available()
+
 				if "RealESRGAN_available" not in st.session_state:
-					RealESRGAN_available()
-			
+					st.session_state['RealESRGAN_available'] = RealESRGAN_available()
+
 				if "LDSR_available" not in st.session_state:
-					LDSR_available()
+					st.session_state['LDSR_available'] = LDSR_available()
 			
 				if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
 					with st.expander("Post-Processing"):

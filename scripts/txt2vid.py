@@ -59,17 +59,6 @@ class plugin_info():
 	isTab = True
 	displayPriority = 1
 
-
-if os.path.exists(os.path.join(st.session_state['defaults'].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-	server_state["GFPGAN_available"] = True
-else:
-	server_state["GFPGAN_available"] = False
-
-if os.path.exists(os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].txt2vid.RealESRGAN_model}.pth")):
-	server_state["RealESRGAN_available"] = True
-else:
-	server_state["RealESRGAN_available"] = False
-
 #
 # -----------------------------------------------------------------------------
 
@@ -736,13 +725,13 @@ def layout():
 
 			#
 			if "GFPGAN_available" not in st.session_state:
-					GFPGAN_available()
-			
+				st.session_state['GFPGAN_available'] = GFPGAN_available()
+
 			if "RealESRGAN_available" not in st.session_state:
-				RealESRGAN_available()
-		
+				st.session_state['RealESRGAN_available'] = RealESRGAN_available()
+
 			if "LDSR_available" not in st.session_state:
-				LDSR_available()
+				st.session_state['LDSR_available'] = LDSR_available()
 		
 			if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
 				with st.expander("Post-Processing"):

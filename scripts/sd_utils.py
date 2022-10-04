@@ -1221,7 +1221,7 @@ def load_RealESRGAN(model_name: str):
                 'RealESRGAN_x4plus_anime_6B': RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=6, num_grow_ch=32, scale=4)
         }
 
-    model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, 'experiments/pretrained_models', model_name + '.pth')
+    model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, model_name + '.pth')
     
     if not os.path.isfile(model_path):
         model_path = os.path.join(st.session_state['defaults'].general.RealESRGAN_dir, model_name + '.pth')
@@ -1765,9 +1765,12 @@ def GFPGAN_available():
     #print (len(st.session_state["GFPGAN_models"]))
     #with server_state_lock["GFPGAN_available"]:
     if len(st.session_state["GFPGAN_models"]) > 0:
-        st.session_state["GFPGAN_available"] = True
+        if st.session_state['defaults'].general.GFPGAN_model in st.session_state["GFPGAN_models"]:
+            return True
+        else:
+            return False
     else:
-        st.session_state["GFPGAN_available"] = False
+        return False
 
 #
 def RealESRGAN_available():

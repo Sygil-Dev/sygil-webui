@@ -295,13 +295,13 @@ def layout():
                 
                 # check if GFPGAN, RealESRGAN and LDSR are available.
                 if "GFPGAN_available" not in st.session_state:
-                    GFPGAN_available()
+                    st.session_state['GFPGAN_available'] = GFPGAN_available()
             
                 if "RealESRGAN_available" not in st.session_state:
-                    RealESRGAN_available()
+                    st.session_state['RealESRGAN_available'] = RealESRGAN_available()
                 
                 if "LDSR_available" not in st.session_state:
-                    LDSR_available()
+                    st.session_state['LDSR_available'] = LDSR_available()
                         
                 if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
                     with st.expander("Post-Processing"):
@@ -320,7 +320,7 @@ def layout():
                                     st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
                                                                                     index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
                                 
-                                #st.session_state["GFPGAN_strenght"] = st.slider("Effect Strenght", min_value=1, max_value=100, value=1, step=1, help='')
+                                    st.session_state["GFPGAN_strength"] = st.slider("Effect Strength", min_value=1, max_value=100, value=st.session_state['defaults'].gfpgan.strength, step=1, help='')
                                     
                             else:
                                 st.session_state["use_GFPGAN"] = False                                 

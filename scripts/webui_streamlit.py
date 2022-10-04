@@ -97,19 +97,15 @@ def layout():
 	with st.empty():
 		# load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
 		load_css(True, 'frontend/css/streamlit.main.css')
-		
 	# check if the models exist on their respective folders
 	with server_state_lock["GFPGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
-			server_state["GFPGAN_available"] = True
-		else:
-			server_state["GFPGAN_available"] = False
+		st.session_state['GFPGAN_available'] = GFPGAN_available()
 
 	with server_state_lock["RealESRGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-			server_state["RealESRGAN_available"] = True 
-		else:
-			server_state["RealESRGAN_available"] = False	
+		st.session_state['RealESRGAN_available'] = RealESRGAN_available()
+	
+	with server_state_lock["LDSR_available"]:
+		st.session_state['LDSR_available'] = LDSR_available()
 
 	with st.sidebar:		
 		tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"], 
