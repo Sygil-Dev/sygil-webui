@@ -381,15 +381,19 @@ def layout():
 
         #
         if generate_button:           
-            
+            model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    pass
-                    # load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-                    #             use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] , 
-                    #             use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"], 
-                    #             CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
-
+                    preloads = []
+                    if st.session_state["use_LDSR"]:
+                        preloads.append(st.session_state["LDSR_model"])
+                    if st.session_state["use_GFPGAN"]:
+                        preloads.append(st.session_state["GFPGAN_model"])
+                    if st.session_state["use_RealESRGAN"]:
+                        preloads.append(st.session_state["RealESRGAN_model"])
+                    preloads.append(st.session_state["custom_model"])
+                    for model in preloads:
+                        model_manager.preload(model, block=True)
 
                 #print(st.session_state['use_RealESRGAN'])
                 #print(st.session_state['use_LDSR'])

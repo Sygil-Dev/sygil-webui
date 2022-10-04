@@ -301,11 +301,15 @@ def register_preconfigured_models( manager:ModelRepo.Manager ):
     for name, loader in model_loaders.items():
         manager.register_model_loader(name=name, loader=loader)
 
+    # Register an alias for "Stable Diffusion v1.4" since the UI will use this name
+    manager.register_model_alias(ModelNames.SD_unet, "Stable Diffusion v1.4")
+
 
 def register_custom_models( manager:ModelRepo.Manager ):
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {}
     # Check for custom models
     custom_models = custom_models_available()
+    aliases = {}
     for name,path in custom_models.items():
         full_loader = Models.SD( checkpoint=path,
                                  config_yaml=st.session_state.defaults.general.default_model_config,
@@ -327,11 +331,17 @@ def register_custom_models( manager:ModelRepo.Manager ):
         model_loaders[f"{name}_unet"] = unet_loader
         model_loaders[f"{name}_cs"] = cs_loader
         model_loaders[f"{name}_fs"] = fs_loader
+        if st.session_state.defaults.general.optimized:
+            aliases[name] = f"{name}_unet"
+        else:
+            aliases[name] = f"{name}_full"
 
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():
         manager.register_model_loader(name=name, loader=loader)
 
+    for alias, name in aliases.items():
+        manager.register_model_alias(name, alias)
 
 def register_custom_esgran_models( manager:ModelRepo.Manager ):
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {}
