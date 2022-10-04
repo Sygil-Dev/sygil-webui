@@ -71,8 +71,9 @@ parser.add_argument('--horde_name', action="store", required=False, type=str, he
 parser.add_argument('--horde_url', action="store", required=False, type=str, help="The SH Horde URL. Where the bridge will pickup prompts and send the finished generations.")
 parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
 parser.add_argument('--horde_max_power',type=int, required=False, help="How much power this instance has to generate pictures. Min: 2")
-parser.add_argument('--horde_nsfw', action='store_true', required=False, help="Set to false if you do not want this worker generating NSFW images.")
+parser.add_argument('--horde_sfw', action='store_true', required=False, help="Set to true if you do not want this worker generating NSFW images.")
 parser.add_argument('--horde_blacklist', nargs='+', required=False, help="List the words that you want to blacklist.")
+parser.add_argument('--horde_censor_nsfw', action='store_true', required=False, help="Set to true if you want this bridge worker to censor NSFW images.")
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -2650,7 +2651,7 @@ def run_headless():
         print()
 
 @logger.catch
-def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_blacklist):
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist):
     current_id = None
     current_payload = None
     loop_retry = 0
@@ -2724,6 +2725,11 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
         # In bridge-mode, matrix is prepared on the horde and split in multiple nodes
         if 'toggles' in current_payload and 0 in current_payload['toggles']:
             current_payload['toggles'].remove(0)
+        if 'toggles' in current_payload and 8 not in current_payload['toggles'] and horde_censor_nsfw and not horde_nsfw:
+            current_payload['toggles'].append(8)
+        elif horde_censor_nsfw and not horde_nsfw:
+            # 1,4 are the defaults
+            current_payload['toggles'] = [1,4,8]
         images, seed, info, stats = txt2img(**current_payload)
         buffer = BytesIO()
         # We send as WebP to avoid using all the horde bandwidth
@@ -2797,9 +2803,13 @@ if __name__ == '__main__':
         horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
         horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
         try:
-            horde_nsfw = opt.horde_nsfw if opt.horde_nsfw else cd.horde_nsfw 
+            horde_nsfw = not opt.horde_sfw if opt.horde_sfw else cd.horde_nsfw 
         except AttributeError:
             horde_nsfw = True
+        try:
+            horde_censor_nsfw = opt.horde_censor_nsfw if opt.horde_censor_nsfw else cd.horde_censor_nsfw
+        except AttributeError:
+            horde_censor_nsfw = False
         try:
             horde_blacklist = opt.horde_blacklist if opt.horde_blacklist else cd.horde_blacklist
         except AttributeError:
@@ -2809,7 +2819,7 @@ if __name__ == '__main__':
         horde_max_pixels = 64*64*8*horde_max_power
         logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
         try:
-            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw, horde_blacklist)
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist)
         except KeyboardInterrupt:
             logger.info(f"Keyboard Interrupt Received. Ending Bridge")
     else:
