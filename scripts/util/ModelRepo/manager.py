@@ -66,6 +66,7 @@ class Manager:
         if alias in self._model_infos:
             raise KeyError(f"Can't create an alias '{alias}' since a model is already registered by that name")
         self._aliases[alias] = name
+        logger.debug(f"ModelRepo set alias '{alias} to '{name}'")
 
     def register_model_loader(self, name: str, loader: ModelLoader, **reg_kwargs):
         """Register a model via a ModelLoader

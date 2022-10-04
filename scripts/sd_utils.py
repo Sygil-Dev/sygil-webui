@@ -230,18 +230,11 @@ class ModelNames:
     LDSR = "LDSR"
     BLIP = "BLIP"
     Txt2Vid = "Txt2Vid"
-    SD_opt_unet = "sd_unet"
-    SD_opt_cs = "sd_cs"
-    SD_opt_fs = "sd_fs"
-    SD_full = "sd_full"
     GFPGAN = "GFPGAN"
-
-    # Aliases for optimized mode
-    SD_unet = "sd_full" if not st.session_state.defaults.general.optimized else "sd_unet"
-    SD_cs = "sd_full" if not st.session_state.defaults.general.optimized else "sd_cs"
-    SD_fs = "sd_full" if not st.session_state.defaults.general.optimized else "sd_fs"
-    # Alias for any RealESRGAN
-    RealESRGAN = "RealESRGAN_x4plus"
+    RealESRGAN = "RealESRGAN"
+    SD_unet = "SD_unet"
+    SD_cs = "SD_cs"
+    SD_fs = "SD_fs"
 
 def register_models( manager: ModelRepo.Manager ):
     register_preconfigured_models(manager)
@@ -271,44 +264,21 @@ def register_preconfigured_models( manager:ModelRepo.Manager ):
 
         ModelNames.LDSR:
             ModelLoaders.LDSR( ldsr_dir=st.session_state['defaults'].general.LDSR_dir ),
-
-        ModelNames.SD_full:
-            ModelLoaders.SD( checkpoint=st.session_state.defaults.general.default_model_path,
-                       config_yaml=st.session_state.defaults.general.default_model_config,
-                       half_precision=not st.session_state['defaults'].general.no_half ),
-
-        ModelNames.SD_opt_cs:
-            ModelLoaders.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
-                                 config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=ModelLoaders.SD_Optimized.Stage.COND_STAGE,
-                                 half_precision=not st.session_state['defaults'].general.no_half),
-
-        ModelNames.SD_opt_unet:
-            ModelLoaders.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
-                                 config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=ModelLoaders.SD_Optimized.Stage.UNET,
-                                 half_precision=not st.session_state['defaults'].general.no_half,
-                                 max_depth = 0 if st.session_state.defaults.general.optimized_turbo else 1),
-
-        ModelNames.SD_opt_fs:
-            ModelLoaders.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
-                                 config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=ModelLoaders.SD_Optimized.Stage.FIRST_STAGE,
-                                 half_precision=not st.session_state['defaults'].general.no_half),
     }
 
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():
         manager.register_model_loader(name=name, loader=loader)
 
-    # Register an alias for "Stable Diffusion v1.4" since the UI will use this name
-    manager.register_model_alias(ModelNames.SD_unet, "Stable Diffusion v1.4")
 
 
 def register_custom_models( manager:ModelRepo.Manager ):
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {}
+    default_model = st.session_state.defaults.general.default_model
     # Check for custom models
     custom_models = custom_models_available()
+    custom_models[default_model] = st.session_state.defaults.general.default_model_path
+
     aliases = {}
     for name,path in custom_models.items():
         full_loader = ModelLoaders.SD( checkpoint=path,
@@ -342,6 +312,28 @@ def register_custom_models( manager:ModelRepo.Manager ):
 
     for alias, name in aliases.items():
         manager.register_model_alias(name, alias)
+
+    # Register aliases for the optimization levels on the default model
+    register_sd_aliases(manager=manager, target_name=default_model)
+
+
+
+def register_sd_aliases( manager:ModelRepo.Manager, target_name: str):
+    """Updates the SD model aliases with a new target model name
+
+    Args:
+        manager (ModelRepo.Manager): model repo to register with
+        target_name (str): new name to update aliases with
+    """
+    # Set SD model aliaseses per optimization level
+    if st.session_state.defaults.general.optimized:
+        manager.register_model_alias(f"{target_name}_unet", ModelNames.SD_unet)
+        manager.register_model_alias(f"{target_name}_cs", ModelNames.SD_cs)
+        manager.register_model_alias(f"{target_name}_fs", ModelNames.SD_fs)
+    else:
+        manager.register_model_alias(f"{target_name}_full", ModelNames.SD_unet)
+        manager.register_model_alias(f"{target_name}_full", ModelNames.SD_cs)
+        manager.register_model_alias(f"{target_name}_full", ModelNames.SD_fs)
 
 def register_custom_esgran_models( manager:ModelRepo.Manager ):
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {}
