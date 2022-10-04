@@ -72,6 +72,7 @@ parser.add_argument('--horde_url', action="store", required=False, type=str, hel
 parser.add_argument('--horde_priority_usernames',type=str, action='append', required=False, help="Usernames which get priority use in this horde instance. The owner's username is always in this list.")
 parser.add_argument('--horde_max_power',type=int, required=False, help="How much power this instance has to generate pictures. Min: 2")
 parser.add_argument('--horde_nsfw', action='store_true', required=False, help="Set to false if you do not want this worker generating NSFW images.")
+parser.add_argument('--horde_blacklist', nargs='+', required=False, help="List the words that you want to blacklist.")
 opt = parser.parse_args()
 
 #Should not be needed anymore
@@ -2649,7 +2650,7 @@ def run_headless():
         print()
 
 @logger.catch
-def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw):
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_blacklist):
     current_id = None
     current_payload = None
     loop_retry = 0
@@ -2659,6 +2660,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             "max_pixels": horde_max_pixels,
             "priority_usernames": priority_usernames,
             "nsfw": horde_nsfw,
+            "blacklist": horde_blacklist,
         }
         headers = {"apikey": api_key}
         if current_id:
@@ -2798,12 +2800,16 @@ if __name__ == '__main__':
             horde_nsfw = opt.horde_nsfw if opt.horde_nsfw else cd.horde_nsfw 
         except AttributeError:
             horde_nsfw = True
+        try:
+            horde_blacklist = opt.horde_blacklist if opt.horde_blacklist else cd.horde_blacklist
+        except AttributeError:
+            horde_blacklist = []
         if horde_max_power < 2:
             horde_max_power = 2
         horde_max_pixels = 64*64*8*horde_max_power
         logger.info(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
         try:
-            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw)
+            run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw, horde_blacklist)
         except KeyboardInterrupt:
             logger.info(f"Keyboard Interrupt Received. Ending Bridge")
     else:
