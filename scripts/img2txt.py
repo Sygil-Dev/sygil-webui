@@ -188,45 +188,45 @@ def interrogate(image, models):
         #print (server_state["clip_model"])
         
     #print (st.session_state["log_message"])
-        
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
     for model_name in models:
         with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
             print(f"Interrogating with {model_name}...")
             st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
-            
-            if model_name not in server_state["clip_models"]:
+            if not model_manager.is_loadable(model_name):
                 if model_name == 'ViT-H-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k', cache_dir='user_data/model_cache/clip')
+                    model, _, preprocesses = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k', cache_dir='user_data/model_cache/clip')
                 elif model_name == 'ViT-g-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k', cache_dir='user_data/model_cache/clip')
+                    model, _, preprocesses = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k', cache_dir='user_data/model_cache/clip')
                 else:
-                    server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = clip.load(model_name, device=device, download_root='user_data/model_cache/clip')
-                server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda().eval()
-            
-            images = server_state["preprocesses"][model_name](image).unsqueeze(0).cuda()
-                    
-            
-            image_features = server_state["clip_models"][model_name].encode_image(images).float()
-                
-            image_features /= image_features.norm(dim=-1, keepdim=True)
+                    model, preprocesses = clip.load(model_name, device=device)
 
-            if st.session_state["defaults"].general.optimized:
-                clear_cuda()
-                
-            ranks = []
-            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["mediums"]))
-            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, ["by "+artist for artist in server_state["artists"]]))
-            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["trending_list"]))
-            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["movements"]))
-            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["flavors"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["genres"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["styles"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["techniques"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["subjects"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["colors"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["moods"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["themes"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["keywords"]))
+                model_preprocess = f"{model_name}_preprocess"
+                model_manager.register_model_loader( model_name, ModelLoaders.Wrapper(model=model) )
+                model_manager.register_model_loader( model_preprocess, ModelLoaders.Wrapper(model=preprocesses))
+
+            with model_manager.model_context(model_preprocess) as model:
+                images = model(image).unsqueeze(0).cuda()
+
+            with model_manager.model_context(model_name) as model:
+                image_features = model.encode_image(images).float()
+
+                image_features /= image_features.norm(dim=-1, keepdim=True)
+
+                ranks = []
+                ranks.append(batch_rank(model, image_features, server_state["mediums"]))
+                ranks.append(batch_rank(model, image_features, ["by "+artist for artist in server_state["artists"]]))
+                ranks.append(batch_rank(model, image_features, server_state["trending_list"]))
+                ranks.append(batch_rank(model, image_features, server_state["movements"]))
+                ranks.append(batch_rank(model, image_features, server_state["flavors"]))
+                # ranks.append(batch_rank(model, image_features, server_state["genres"]))
+                # ranks.append(batch_rank(model, image_features, server_state["styles"]))
+                # ranks.append(batch_rank(model, image_features, server_state["techniques"]))
+                # ranks.append(batch_rank(model, image_features, server_state["subjects"]))
+                # ranks.append(batch_rank(model, image_features, server_state["colors"]))
+                # ranks.append(batch_rank(model, image_features, server_state["moods"]))
+                # ranks.append(batch_rank(model, image_features, server_state["themes"]))
+                # ranks.append(batch_rank(model, image_features, server_state["keywords"]))
 
             for i in range(len(ranks)):
                 confidence_sum = 0
@@ -240,10 +240,6 @@ def interrogate(image, models):
                 row.append(', '.join([f"{x[0]} ({x[1]:0.1f}%)" for x in r]))
 
             table.append(row)
-
-            if st.session_state["defaults"].general.optimized:
-                del server_state["clip_models"][model_name]
-                gc.collect()
 
     # for i in range(len(st.session_state["uploaded_image"])):
     st.session_state["prediction_table"][st.session_state["processed_image_count"]].dataframe(pd.DataFrame(
