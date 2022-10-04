@@ -48,10 +48,24 @@ class Manager:
         if scheduler is None:
             scheduler = OneAtATimeScheduler()
         self._default_device = default_device
+        self._aliases: Dict[str, str] = {}
         self._model_infos: Dict[str, ModelInfo] = {}
         self._model_info_lock: rwlock.RWLockWrite = rwlock.RWLockWrite()
         self._executor = ThreadPoolExecutor(Manager.NUM_WORKERS)
         self._scheduler: Scheduler = scheduler
+
+    def register_model_alias(self, name: str, alias: str) -> None:
+        """Registers an alias for an already-registered model.
+
+        Args:
+            name (str): model to create an alias for
+            alias (str): alias name
+        """
+        if name not in self._model_infos:
+            raise KeyError(f"Model '{name}' must be registered before alias '{alias}' can be created")
+        if alias in self._model_infos:
+            raise KeyError(f"Can't create an alias '{alias}' since a model is already registered by that name")
+        self._aliases[alias] = name
 
     def register_model_loader(self, name: str, loader: ModelLoader, **reg_kwargs):
         """Register a model via a ModelLoader
@@ -84,9 +98,12 @@ class Manager:
             load_kwargs (Dict): keyword arguments to pass to the load function
         """
         if name in self._model_infos:
-            raise KeyError(f"Model name {name} is already registered")
+            raise KeyError(f"Model name '{name}' is already registered")
+        if name in self._aliases:
+            raise KeyError(f"Name '{name}' is already registered as an alias for '{self._aliases[name]}'")
         device = device if device else self._default_device
-        model = Model(name=name, load_func=load_func, exists_func=exists_func, device=device, load_kwargs=load_kwargs or {})
+        model = Model(name=name, load_func=load_func, exists_func=exists_func,
+                      device=device, load_kwargs=load_kwargs or {})
         scheduler_token = self._scheduler.register(model)
         model_info = ModelInfo(model=model, check_func=exists_func,
                                depth_remaining=max_depth, scheduler_token=scheduler_token)
@@ -100,6 +117,7 @@ class Manager:
 
     def is_loadable(self, name: str) -> bool:
         """Returns quick check if model is registered and appears loadable"""
+        name = self._aliases.get(name, name)
         model_info = self._model_infos.get(name, None)
         if model_info:
             try:
@@ -109,11 +127,23 @@ class Manager:
                 logger.error(traceback.format_exc())
         return False
 
+    def preload(self, name: str, block: bool = False) -> None:
+        """Starts loading the model from storage, optionally blocking until complete
+
+        Args:
+            name (str): registered name of the model to load
+            block (bool, optional): if true, block until model is loaded
+        """
+        name = self._aliases.get(name, name)
+        model_info = self._model_infos[name]
+        self._load_model(model_info, block=block)
+
     @contextmanager
     def model_context(self, model_name: str, *args, **kwargs) -> Generator[ModelHndl, None, None]:
         """Access a model using a 'with' context.
            Use arguments as if calling get_model
         """
+        model_name = self._aliases.get(model_name, model_name)
         hndl = None
         try:
             hndl = self.get_model(model_name, *args, **kwargs)
@@ -133,6 +163,7 @@ class Manager:
             name (str): model to load
             on_device (bool): if true require running on device
         """
+        name = self._aliases.get(name, name)
         model_info = self._model_infos.get(name, None)
         if not model_info:
             return None
