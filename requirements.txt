@@ -3,7 +3,7 @@ diffusers==0.3.0
 invisible-watermark==0.1.5
 pytorch_lightning==1.7.7
 open-clip-torch
-
+loguru
 taming-transformers-rom1504==0.0.6  # required by ldm
 # See: https://github.com/CompVis/taming-transformers/issues/176
 # -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers # required by ldm
