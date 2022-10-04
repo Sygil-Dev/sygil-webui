@@ -26,7 +26,7 @@ from frontend.job_manager import JobManager, JobInfo
 from frontend.image_metadata import ImageMetadata
 from frontend.ui_functions import resize_image
 import scripts.util.ModelRepo as ModelRepo
-import scripts.util.Models as Models
+import scripts.util.ModelLoaders as ModelLoaders
 
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -397,29 +397,29 @@ sd_device = torch.device(f"cuda:{opt.gpu}")
 
 model_loaders: Dict[str, ModelRepo.ModelLoader] = {
     ModelNames.RealESRGANx4Plus:
-        Models.RealESRGAN( esrgan_dir = opt.realesrgan_dir, model_name=opt.realesrgan_model, half_precision=not opt.no_half,
+        ModelLoaders.RealESRGAN( esrgan_dir = opt.realesrgan_dir, model_name=opt.realesrgan_model, half_precision=not opt.no_half,
                            device=esrgan_device ),
 
     ModelNames.GFPGAN:
-        Models.GFPGAN( gfpgan_dir = opt.gfpgan_dir, device=gfpgan_device),
+        ModelLoaders.GFPGAN( gfpgan_dir = opt.gfpgan_dir, device=gfpgan_device),
 
     ModelNames.LDSR:
-        Models.LDSR( ldsr_dir=opt.ldsr_dir ),
+        ModelLoaders.LDSR( ldsr_dir=opt.ldsr_dir ),
 
     ModelNames.SD_full:
-        Models.SD( checkpoint=opt.ckpt, config_yaml=opt.config, half_precision=not opt.no_half, device=sd_device ),
+        ModelLoaders.SD( checkpoint=opt.ckpt, config_yaml=opt.config, half_precision=not opt.no_half, device=sd_device ),
 
     ModelNames.SD_opt_cs:
-        Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.COND_STAGE,
+        ModelLoaders.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=ModelLoaders.SD_Optimized.Stage.COND_STAGE,
                              half_precision=not opt.no_half, device=sd_device),
 
     ModelNames.SD_opt_unet:
-        Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.UNET,
+        ModelLoaders.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=ModelLoaders.SD_Optimized.Stage.UNET,
                              half_precision=not opt.no_half, max_depth = 0 if opt.optimized_turbo else 1,
                              device=sd_device),
 
     ModelNames.SD_opt_fs:
-        Models.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=Models.SD_Optimized.Stage.FIRST_STAGE,
+        ModelLoaders.SD_Optimized( checkpoint=opt.ckpt, config_yaml=opt.config, stage=ModelLoaders.SD_Optimized.Stage.FIRST_STAGE,
                              half_precision=not opt.no_half, device=sd_device)
 }
 # Register every model in model_loaders above

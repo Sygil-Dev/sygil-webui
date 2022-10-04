@@ -64,7 +64,7 @@ import piexif
 import piexif.helper
 from tqdm import trange
 import util.ModelRepo as ModelRepo
-import util.Models as Models
+import util.ModelLoaders as ModelLoaders
 from typing import Dict, List, Tuple
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
@@ -266,34 +266,34 @@ def register_preconfigured_models( manager:ModelRepo.Manager ):
     # Pre-configured model definitions
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {
         ModelNames.GFPGAN:
-            Models.GFPGAN( gfpgan_dir = st.session_state["defaults"].general.GFPGAN_dir,
+            ModelLoaders.GFPGAN( gfpgan_dir = st.session_state["defaults"].general.GFPGAN_dir,
                            device=get_device_setting("gfpgan")),
 
         ModelNames.LDSR:
-            Models.LDSR( ldsr_dir=st.session_state['defaults'].general.LDSR_dir ),
+            ModelLoaders.LDSR( ldsr_dir=st.session_state['defaults'].general.LDSR_dir ),
 
         ModelNames.SD_full:
-            Models.SD( checkpoint=st.session_state.defaults.general.default_model_path,
+            ModelLoaders.SD( checkpoint=st.session_state.defaults.general.default_model_path,
                        config_yaml=st.session_state.defaults.general.default_model_config,
                        half_precision=not st.session_state['defaults'].general.no_half ),
 
         ModelNames.SD_opt_cs:
-            Models.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
+            ModelLoaders.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
                                  config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=Models.SD_Optimized.Stage.COND_STAGE,
+                                 stage=ModelLoaders.SD_Optimized.Stage.COND_STAGE,
                                  half_precision=not st.session_state['defaults'].general.no_half),
 
         ModelNames.SD_opt_unet:
-            Models.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
+            ModelLoaders.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
                                  config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=Models.SD_Optimized.Stage.UNET,
+                                 stage=ModelLoaders.SD_Optimized.Stage.UNET,
                                  half_precision=not st.session_state['defaults'].general.no_half,
                                  max_depth = 0 if st.session_state.defaults.general.optimized_turbo else 1),
 
         ModelNames.SD_opt_fs:
-            Models.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
+            ModelLoaders.SD_Optimized( checkpoint=st.session_state.defaults.general.default_model_path,
                                  config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=Models.SD_Optimized.Stage.FIRST_STAGE,
+                                 stage=ModelLoaders.SD_Optimized.Stage.FIRST_STAGE,
                                  half_precision=not st.session_state['defaults'].general.no_half),
     }
 
@@ -311,20 +311,20 @@ def register_custom_models( manager:ModelRepo.Manager ):
     custom_models = custom_models_available()
     aliases = {}
     for name,path in custom_models.items():
-        full_loader = Models.SD( checkpoint=path,
+        full_loader = ModelLoaders.SD( checkpoint=path,
                                  config_yaml=st.session_state.defaults.general.default_model_config,
                                  half_precision=not st.session_state['defaults'].general.no_half )
-        unet_loader =  Models.SD_Optimized( checkpoint=path,
+        unet_loader =  ModelLoaders.SD_Optimized( checkpoint=path,
                                  config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=Models.SD_Optimized.Stage.UNET,
+                                 stage=ModelLoaders.SD_Optimized.Stage.UNET,
                                  half_precision=not st.session_state['defaults'].general.no_half)
-        cs_loader =  Models.SD_Optimized( checkpoint=path,
+        cs_loader =  ModelLoaders.SD_Optimized( checkpoint=path,
                                  config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=Models.SD_Optimized.Stage.COND_STAGE,
+                                 stage=ModelLoaders.SD_Optimized.Stage.COND_STAGE,
                                  half_precision=not st.session_state['defaults'].general.no_half)
-        fs_loader =  Models.SD_Optimized( checkpoint=path,
+        fs_loader =  ModelLoaders.SD_Optimized( checkpoint=path,
                                  config_yaml=st.session_state.defaults.general.optimized_config,
-                                 stage=Models.SD_Optimized.Stage.FIRST_STAGE,
+                                 stage=ModelLoaders.SD_Optimized.Stage.FIRST_STAGE,
                                  half_precision=not st.session_state['defaults'].general.no_half)
 
         model_loaders[f"{name}_full"] = full_loader
@@ -348,7 +348,7 @@ def register_custom_esgran_models( manager:ModelRepo.Manager ):
     # Check for custom models
     custom_models = RealESRGAN_available()
     for name,path in custom_models.items():
-        model_loaders[name] = Models.RealESRGAN( esrgan_dir=st.session_state["defaults"].general.RealESRGAN_dir,
+        model_loaders[name] = ModelLoaders.RealESRGAN( esrgan_dir=st.session_state["defaults"].general.RealESRGAN_dir,
                                                  model_name=name, path=path, device=get_device_setting("esrgan"))
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():
@@ -359,7 +359,7 @@ def register_custom_gfpgan_models( manager:ModelRepo.Manager ):
     # Check for custom models
     custom_models = GFPGAN_available()
     for name,path in custom_models.items():
-        model_loaders[name] = Models.GFPGAN( gfpgan_dir=st.session_state["defaults"].general.GFPGAN_dir,
+        model_loaders[name] = ModelLoaders.GFPGAN( gfpgan_dir=st.session_state["defaults"].general.GFPGAN_dir,
                                                  model_name=name, path=path, device=get_device_setting("gfpgan"))
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():
@@ -370,7 +370,7 @@ def register_custom_ldsr_models( manager:ModelRepo.Manager ):
     # Check for custom models
     custom_models = LDSR_available()
     for name,path in custom_models.items():
-        model_loaders[name] = Models.LDSR( ldsr_dir=st.session_state["defaults"].general.LDSR_dir,
+        model_loaders[name] = ModelLoaders.LDSR( ldsr_dir=st.session_state["defaults"].general.LDSR_dir,
                                            model_name=name, model_path=path)
     # Register every model in model_loaders above
     for name, loader in model_loaders.items():

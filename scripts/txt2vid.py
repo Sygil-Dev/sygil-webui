@@ -40,7 +40,7 @@ from diffusers import StableDiffusionPipeline
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
      PNDMScheduler
 import util.ModelRepo as ModelRepo
-import util.Models as Models
+import util.ModelLoaders as ModelLoaders
 
 # Temp imports
 
@@ -257,7 +257,7 @@ def load_diffusers_model(weights_path,torch_device):
 					model.enable_minimal_memory_usage()
 				
 				# Wrap the model
-				model_manager.register_model_loader(name=weights_path, loader=Models.Wrapper(model))
+				model_manager.register_model_loader(name=weights_path, loader=ModelLoaders.Wrapper(model))
 				# Register it under the name Txt2Vid
 				model_manager.register_model_alias(name=weights_path, alias=ModelNames.Txt2Vid)
 				print("Tx2Vid Model Loaded")
