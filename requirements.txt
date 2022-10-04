@@ -1,23 +1,8 @@
-# Core Stable Diffusion Dependencies
-
-# Minimum Environment Dependencies for Stable Diffusion
-#torch  # already satisfied as 1.12.1 from base image
-#torchvision  # already satisfied as 0.13.1 from base image
-numpy==1.21.5  # already satisfied as 1.21.5 from base image
-
-
-# Stable Diffusion (see: https://github.com/CompVis/stable-diffusion)
-transformers==4.22.2
+transformers==4.19.2 # do not change
 diffusers==0.3.0
 invisible-watermark==0.1.5
 pytorch_lightning==1.7.7
-
-# Additional Stable Diffusion Requirements
-# TODO: Pin external dependency versions
-
-#opencv-python==4.6.0.66  # Opencv python already satisfied upstream
-#opencv-python-headless==4.6.0.66  # Needed to operate opencv in headless/server mode
-
+open-clip-torch
 
 taming-transformers-rom1504==0.0.6  # required by ldm
 # See: https://github.com/CompVis/taming-transformers/issues/176
