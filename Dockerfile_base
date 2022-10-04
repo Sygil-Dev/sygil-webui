@@ -6,9 +6,12 @@ SHELL ["/bin/bash", "-c"]
 WORKDIR /install
 
 RUN apt-get update && \
-    apt-get install -y wget curl git build-essential zip unzip nano openssh-server libgl1 && \
+    apt-get install -y wget curl git build-essential zip unzip nano openssh-server libgl1 cargo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+#ubuntu 22.04 starts carrying b3sum upstream. pytorch is still on 18.04
+RUN cargo install b3sum && cp /root/.cargo/bin/b3sum /usr/bin
 
 COPY ./requirements.txt /install/
 
