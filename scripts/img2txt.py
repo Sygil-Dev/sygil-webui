@@ -54,6 +54,7 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 from ldm.models.blip import blip_decoder
+import util.ModelRepo as ModelRepo
 
 # end of imports
 # ---------------------------------------------------------------------------------------------------------------
@@ -63,29 +64,6 @@ blip_image_eval_size = 512
 #blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'
 server_state["clip_models"] = {}
 server_state["preprocesses"] = {}
-
-def load_blip_model():
-    print("Loading BLIP Model")
-    st.session_state["log_message"].code("Loading BLIP Model", language='')
-
-    if "blip_model" not in server_state:
-        with server_state_lock['blip_model']:
-            server_state["blip_model"] = blip_decoder(pretrained="models/blip/model__base_caption.pth",
-                                                        image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
-            
-            server_state["blip_model"] = server_state["blip_model"].eval()
-            
-            #if not st.session_state["defaults"].general.optimized:
-            server_state["blip_model"] = server_state["blip_model"].to(device).half()
-            
-            print("BLIP Model Loaded")
-            st.session_state["log_message"].code("BLIP Model Loaded", language='')
-    else:
-        print("BLIP Model already loaded")
-        st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
-
-    #return server_state["blip_model"]
-
 
 #
 def artstation_links():
@@ -137,9 +115,7 @@ def artstation_users():
     return artists
 
 def generate_caption(pil_image):
-
-    load_blip_model()
-    
+    model_manager: ModelRepo.Manager = server_state[ModelRepo.Manager.__name__]
     gpu_image = transforms.Compose([  # type: ignore
         transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),  # type: ignore
         transforms.ToTensor(),  # type: ignore
@@ -147,7 +123,8 @@ def generate_caption(pil_image):
     ])(pil_image).unsqueeze(0).to(device).half()
 
     with torch.no_grad():
-        caption = server_state["blip_model"].generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
+        with model_manager.model_context(ModelNames.BLIP) as model:
+            caption = model.generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
 
     #print (caption)
     return caption[0]
@@ -191,16 +168,9 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
 
 def interrogate(image, models):
 
-    #server_state["blip_model"] = 
-    load_blip_model()
-    
     print("Generating Caption")
     st.session_state["log_message"].code("Generating Caption", language='')
     caption = generate_caption(image)
-
-    if st.session_state["defaults"].general.optimized:
-        del server_state["blip_model"]
-        clear_cuda()
 
     print("Caption Generated")
     st.session_state["log_message"].code("Caption Generated", language='')

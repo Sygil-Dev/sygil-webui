@@ -257,6 +257,7 @@ def get_device_setting( setting_name: str ) -> torch.device:
 
 def register_preconfigured_models( manager:ModelRepo.Manager ):
     # Pre-configured model definitions
+    # TODO: Move any that can be into 'custom'
     model_loaders: Dict[str, ModelRepo.ModelLoader] = {
         ModelNames.GFPGAN:
             ModelLoaders.GFPGAN( gfpgan_dir = st.session_state["defaults"].general.GFPGAN_dir,
@@ -264,6 +265,9 @@ def register_preconfigured_models( manager:ModelRepo.Manager ):
 
         ModelNames.LDSR:
             ModelLoaders.LDSR( ldsr_dir=st.session_state['defaults'].general.LDSR_dir ),
+
+        ModelNames.BLIP:
+            ModelLoaders.BLIP()
     }
 
     # Register every model in model_loaders above
