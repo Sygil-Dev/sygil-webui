@@ -15,3 +15,4 @@ horde_priority_usernames = []
 horde_max_power = 8
 # Set this to false, if you do not want your worker to receive requests for NSFW generations
 horde_nsfw = True
+horde_blacklist = []
