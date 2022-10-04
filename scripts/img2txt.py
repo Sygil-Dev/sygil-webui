@@ -181,7 +181,7 @@ def clear_cuda():
 
 
 def batch_rank(model, image_features, text_array, batch_size=st.session_state["defaults"].img2txt.batch_size):
-    batch_count = len(text_array) // batch_size
+    batch_count = len(text_array)
     batches = [text_array[i*batch_size:(i+1)*batch_size] for i in range(batch_count)]
     batches.append(text_array[batch_count*batch_size:])
     ranks = []
