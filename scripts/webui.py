@@ -2654,6 +2654,14 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
     current_payload = None
     loop_retry = 0
     while True:
+        if loop_retry > 10 and current_id:
+            logger.error(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
+            current_id = None
+            current_payload = None
+            current_generation = None
+            loop_retry = 0
+        elif current_id:
+            logger.debug(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
         gen_dict = {
             "name": horde_name,
             "max_pixels": horde_max_pixels,
@@ -2754,14 +2762,6 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...  (Retry {loop_retry}/10)")
                 time.sleep(10)
                 continue
-        if loop_retry > 10 and current_id:
-            logger.error(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
-            current_id = None
-            current_payload = None
-            current_generation = None
-            loop_retry = 0
-        elif current_id:
-            logger.debug(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
         time.sleep(interval)
 
 

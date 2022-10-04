@@ -1,0 +1,17 @@
+ARG PYTORCH_IMAGE=hlky/pytorch:1.12.1-runtime
+
+FROM ${PYTORCH_IMAGE}
+SHELL ["/bin/bash", "-c"]
+
+WORKDIR /install
+
+RUN apt-get update && \
+    apt-get install -y wget curl git build-essential zip unzip nano openssh-server libgl1 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./requirements.txt /install/
+
+RUN /opt/conda/bin/python -m pip install -r /install/requirements.txt
+
+RUN /opt/conda/bin/conda clean -ya
