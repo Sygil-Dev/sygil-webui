@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 from sd_utils import *
-import wget
 # streamlit imports
 
 
@@ -32,7 +31,13 @@ def download_file(file_name, file_path, file_url):
     if not os.path.exists(file_path + '/' + file_name):
         print('Downloading ' + file_name + '...')
         # TODO - add progress bar in streamlit
-        wget.download(url=file_url, out=file_path + '/' + file_name)
+        # download file with `requests``
+        with requests.get(file_url, stream=True) as r:
+            r.raise_for_status()
+            with open(file_path + '/' + file_name, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
     else:
         print(file_name + ' already exists.')
 
