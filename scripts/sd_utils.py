@@ -405,7 +405,7 @@ class MemUsageMonitor(threading.Thread):
         except:
             print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
-        print(f"[{self.name}] Recording max memory usage...\n")
+        print(f"[{self.name}] Recording memory usage...\n")
         # Missing context
         #handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)

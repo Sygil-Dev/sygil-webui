@@ -326,7 +326,7 @@ def layout():
                                 st.session_state["use_GFPGAN"] = False                                 
                             
                         with upscaling_tab:
-                            st.session_state['us_upscaling'] = st.checkbox("Use Upscaling", value=st.session_state['defaults'].txt2img.use_upscaling)
+                            st.session_state['use_upscaling'] = st.checkbox("Use Upscaling", value=st.session_state['defaults'].txt2img.use_upscaling)
                             
                             # RealESRGAN and LDSR used for upscaling.     
                             if st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
@@ -343,7 +343,7 @@ def layout():
                                 
                                 if st.session_state["RealESRGAN_available"]:
                                     with st.expander("RealESRGAN"):
-                                        if st.session_state["upscaling_method"] == "RealESRGAN" and st.session_state['us_upscaling']:
+                                        if st.session_state["upscaling_method"] == "RealESRGAN" and st.session_state['use_upscaling']:
                                             st.session_state["use_RealESRGAN"] = True
                                         else:
                                             st.session_state["use_RealESRGAN"] = False
@@ -358,7 +358,7 @@ def layout():
                                 #
                                 if st.session_state["LDSR_available"]:
                                     with st.expander("LDSR"):
-                                        if st.session_state["upscaling_method"] == "LDSR" and st.session_state['us_upscaling']:
+                                        if st.session_state["upscaling_method"] == "LDSR" and st.session_state['use_upscaling']:
                                             st.session_state["use_LDSR"] = True
                                         else:
                                             st.session_state["use_LDSR"] = False
