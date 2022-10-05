@@ -1,0 +1,8 @@
+services:
+  stable-diffusion:
+    build:
+      args:
+        COMPUTE_DEVICE: amd
+    devices:
+      - /dev/dri
+      - /dev/kfd
