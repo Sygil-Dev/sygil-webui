@@ -2,6 +2,8 @@
 
 # Minimum Environment Dependencies for Stable Diffusion
 #torch  # already satisfied as 1.12.1 from base image
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==1.12.0+cu116
 #torchvision  # already satisfied as 0.13.1 from base image
 numpy==1.22.0  # already satisfied as 1.21.5 from base image
 
