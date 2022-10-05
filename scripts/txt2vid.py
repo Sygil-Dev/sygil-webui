@@ -208,7 +208,6 @@ def diffuse(
 	return image2
 
 #
-@st.experimental_singleton(show_spinner=False, suppress_st_warning=True)
 def load_diffusers_model(weights_path,torch_device):
 	with server_state_lock["model"]:
 		if "model" in server_state:
@@ -219,7 +218,7 @@ def load_diffusers_model(weights_path,torch_device):
 	
 	try:
 		with server_state_lock["pipe"]:
-			if not "pipe" in st.session_state or st.session_state["weights_path"] != weights_path:
+			if "pipe" not in server_state:
 				if ("weights_path" in st.session_state) and st.session_state["weights_path"] != weights_path:
 					del st.session_state["weights_path"]
 		
@@ -227,8 +226,6 @@ def load_diffusers_model(weights_path,torch_device):
 				# if folder "models/diffusers/stable-diffusion-v1-4" exists, load the model from there
 				if weights_path == "CompVis/stable-diffusion-v1-4":
 					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-4")
-				elif weights_path == "hakurei/waifu-diffusion":
-					model_path = os.path.join("models", "diffusers", "waifu-diffusion")
 
 				if not os.path.exists(model_path + "/model_index.json"):
 					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
@@ -392,20 +389,18 @@ def txt2vid(
 	
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
-	# ------------------------------------------------------------------------------
-	#st.session_state["progress_bar_text"].text("Loading models...")	
-	with st.session_state["progress_bar_text"].container():
-		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-			try:
+	if "pipe" not in server_state:
+		with st.session_state["progress_bar_text"].container():
+			with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
 				if "model" in st.session_state:
 					del st.session_state["model"]
-			except:
-				pass
-		
-			#print (st.session_state["weights_path"] != weights_path)
-		
-			load_diffusers_model(weights_path, torch_device)	
+				load_diffusers_model(weights_path, torch_device)
+	else:
+		print("Model already loaded")
 	
+	if "pipe" not in server_state:
+		print('wtf')
+
 	server_state["pipe"].scheduler = SCHEDULERS[scheduler]
 	
 	server_state["pipe"].use_multiprocessing_for_evaluation = False
