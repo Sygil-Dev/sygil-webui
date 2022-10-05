@@ -173,7 +173,7 @@ def layout():
 																									Default: 'models/custom/sd-concepts-library'")	
 					
 				st.session_state['defaults'].general.LDSR_dir = st.text_input("LDSR Folder", value=st.session_state['defaults'].general.LDSR_dir,
-																			  help="Folder where LDSR is located. Default: './src/latent-diffusion'")
+																			  help="Folder where LDSR is located. Default: './models/ldsr'")
 				
 				st.session_state["defaults"].general.save_metadata = st.checkbox("Save Metadata", value=st.session_state['defaults'].general.save_metadata,
 																									   help="Save metadata on the output image. Default: True")

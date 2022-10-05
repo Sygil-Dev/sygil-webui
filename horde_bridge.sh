@@ -104,35 +104,35 @@ sd_model_loading () {
 # Checks to see if the upscaling models exist in their correct locations. If they do not they will be downloaded as required
 post_processor_model_loading () {
     # Check to see if GFPGAN has been added yet, if not it will download it and place it in the proper directory
-    if [ -f "$DIRECTORY/src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth" ]; then
+    if [ -f "$DIRECTORY/models/gfpgan/GFPGANv1.3.pth" ]; then
         printf "GFPGAN already exists. Continuing...\n\n"
     else
         printf "Downloading GFPGAN model. Please wait...\n"
-        wget $GFPGAN_MODEL -P $DIRECTORY/src/gfpgan/experiments/pretrained_models
+        wget $GFPGAN_MODEL -P $DIRECTORY/models/gfpgan
     fi
 
     # Check to see if realESRGAN has been added yet, if not it will download it and place it in the proper directory
-    if [ -f "$DIRECTORY/src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth" ]; then
+    if [ -f "$DIRECTORY/models/realesrgan/RealESRGAN_x4plus.pth" ]; then
         printf "realESRGAN already exists. Continuing...\n\n"
     else
         printf "Downloading realESRGAN model. Please wait...\n"
-        wget $REALESRGAN_MODEL -P $DIRECTORY/src/realesrgan/experiments/pretrained_models
-        wget $REALESRGAN_ANIME_MODEL -P $DIRECTORY/src/realesrgan/experiments/pretrained_models
+        wget $REALESRGAN_MODEL -P $DIRECTORY/models/realesrgan
+        wget $REALESRGAN_ANIME_MODEL -P $DIRECTORY/models/realesrgan
     fi
 
     # Check to see if LDSR has been added yet, if not it will be cloned and its models downloaded to the correct directory
-    if [ -f "$DIRECTORY/src/latent-diffusion/experiments/pretrained_models/model.ckpt" ]; then
+    if [ -f "$DIRECTORY/models/ldsr/model.ckpt" ]; then
         printf "LDSR already exists. Continuing...\n\n"
     else
         printf "Cloning LDSR and downloading model. Please wait...\n"
         git clone $LATENT_DIFFUSION_REPO
-        mv latent-diffusion $DIRECTORY/src/latent-diffusion
-        mkdir $DIRECTORY/src/latent-diffusion/experiments
-        mkdir $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
-        wget $LSDR_CONFIG -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
-        mv $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/index.html?dl=1 $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/project.yaml
-        wget $LSDR_MODEL -P $DIRECTORY/src/latent-diffusion/experiments/pretrained_models
-        mv $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/index.html?dl=1 $DIRECTORY/src/latent-diffusion/experiments/pretrained_models/model.ckpt
+        mv latent-diffusion $DIRECTORY/models/ldsr
+        mkdir $DIRECTORY/models/ldsr/experiments
+        mkdir $DIRECTORY/models/ldsr
+        wget $LSDR_CONFIG -P $DIRECTORY/models/ldsr
+        mv $DIRECTORY/models/ldsr/index.html?dl=1 $DIRECTORY/models/ldsr/project.yaml
+        wget $LSDR_MODEL -P $DIRECTORY/models/ldsr
+        mv $DIRECTORY/models/ldsr/index.html?dl=1 $DIRECTORY/models/ldsr/model.ckpt
     fi
 
     # Check to see if SD Concepts has been added yet, if not it will download it and place it in the proper directory

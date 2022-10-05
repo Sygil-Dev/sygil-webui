@@ -107,7 +107,7 @@ Lets you improve faces in pictures using the GFPGAN model. There is a checkbox i
 
 If you want to use GFPGAN to improve generated faces, you need to install it separately.
 Download [GFPGANv1.3.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth) and put it
-into the `/stable-diffusion-webui/src/gfpgan/experiments/pretrained_models` directory. 
+into the `/stable-diffusion-webui/models/gfpgan` directory. 
 
 ### RealESRGAN
 
@@ -117,13 +117,13 @@ Lets you double the resolution of generated images. There is a checkbox in every
 There is also a separate tab for using RealESRGAN on any picture.
 
 Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
-Put them into the `stable-diffusion-webui/src/realesrgan/experiments/pretrained_models` directory. 
+Put them into the `stable-diffusion-webui/models/realesrgan` directory. 
 
 ### GoBig, LSDR, and GoLatent *(Currently Gradio Only)*
 
 More powerful upscalers that uses a seperate Latent Diffusion model to more cleanly upscale images.
 
-Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [ model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under stable-diffusion-webui/src/latent-diffusion/experiments/pretrained_models/
+Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [ model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under stable-diffusion-webui/models/ldsr/
 
 Please see the [Image Enhancers Documentation](docs/5.image_enhancers.md) to learn more.
 
