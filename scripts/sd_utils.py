@@ -2283,7 +2283,7 @@ def process_images(
                         grid_captions.append( captions[i] + "\nesrgan" )
                         
                 #
-                elif use_LDSR and server_state["LDSR"] is not None and not use_GFPGAN:
+                elif use_LDSR and "LDSR" in server_state and not use_GFPGAN:
                     print ("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     st.session_state["progress_bar_text"].text("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
@@ -2316,7 +2316,7 @@ def process_images(
                         grid_captions.append( captions[i] + "\nldsr" )  
                         
                 #
-                elif use_LDSR and server_state["LDSR"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
+                elif use_LDSR and "LDSR" in server_state and use_GFPGAN and "GFPGAN" in server_state:
                     print ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     
@@ -2534,4 +2534,3 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     torch.save(params_dict, "learned_embeds.bin")
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
     print("loaded", placeholder_token)
-    
