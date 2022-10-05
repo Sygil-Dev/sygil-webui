@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       # Enable local development
-      - .:/sd
+      # - .:/sd
       # Make it easier to exfiltrate your outputs
       - ./outputs:/sd/outputs
       # Cache models and stuff in a volume so they're long-lived

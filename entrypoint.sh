@@ -75,15 +75,16 @@ downloadModel() {
     if [[ ! -e "${MODEL_DIR}/$2/${file}" ]]; then
         echo "Downloading: ${url} please wait..."
         mkdir -p ${MODEL_DIR}/$2
-        mkdir -p ${path}
         wget --output-document=${MODEL_DIR}/$2/${file} --no-verbose --show-progress --progress=dot:giga ${url}
-        ln -sf ${MODEL_DIR}/$2/${file} ${path}/${file}
-        if [[ -e "${path}/${file}" ]]; then
-            echo "saved ${file}"
-        else
-            echo "error saving ${MODEL_DIR}/$2/${file}!"
-            exit 1
-        fi
+    fi
+
+    mkdir -p ${path}
+    ln -sf ${MODEL_DIR}/$2/${file} ${path}/${file}
+    if [[ -e "${path}/${file}" ]]; then
+        echo "saved ${file}"
+    else
+        echo "error saving ${MODEL_DIR}/$2/${file}!"
+        exit 1
     fi
 }
 
