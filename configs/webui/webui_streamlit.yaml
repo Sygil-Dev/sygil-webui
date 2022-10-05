@@ -302,6 +302,7 @@ img2img:
 img2txt:
     batch_size: 420
     blip_image_eval_size: 512
+    keep_all_models_loaded: False
     
 concepts_library:
     concepts_per_page: 12
