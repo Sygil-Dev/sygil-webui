@@ -92,7 +92,8 @@ def layout():
 				st.session_state['defaults'].general.RealESRGAN_model = st.selectbox("RealESRGAN model", RealESRGAN_model_list,
 																					 index=RealESRGAN_model_list.index(st.session_state['defaults'].general.RealESRGAN_model),
 																					 help="Default RealESRGAN model. Default: 'RealESRGAN_x4plus'")
-				
+				Upscaler_list = ["RealESRGAN", "LDSR"]
+				st.session_state['defaults'].general.upscaling_method = st.selectbox("Upscaler", Upscaler_list, index=Upscaler_list.index(st.session_state['defaults'].general.upscaling_method), help="Default upscaling method. Default: 'RealESRGAN'")
 
 			with col2:
 				st.title("Performance")	
@@ -325,8 +326,8 @@ def layout():
 
 				st.session_state["defaults"].txt2img.use_GFPGAN = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2img.use_GFPGAN, help="Choose to use GFPGAN. Default: False")
     
-				st.session_state["defaults"].txt2img.use_RealESRGAN = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN, 
-																				  help="Choose to use RealESRGAN. Default: False")
+				st.session_state["defaults"].txt2img.use_upscaling = st.checkbox("Use Upscaling", value=st.session_state['defaults'].txt2img.use_upscaling, 
+																				  help="Choose to turn on upscaling by default. Default: False")
     
 				st.session_state["defaults"].txt2img.update_preview = True
 				st.session_state["defaults"].txt2img.update_preview_frequency = int(st.text_input("Preview Image Update Frequency",
