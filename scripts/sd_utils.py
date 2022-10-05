@@ -1295,7 +1295,7 @@ def load_LDSR(model_name="model", config="project", checking=False):
             #print("Error loading LDSR:", file=sys.stderr)
             #print(traceback.format_exc(), file=sys.stderr)
     #else:
-        #print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
+        #print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./models/ldsr/")
 
 #try_loading_LDSR('model',checking=True)
 

@@ -127,7 +127,7 @@ txt2img:
     
 txt2vid:
     default_model: "CompVis/stable-diffusion-v1-4"
-    custom_models_list: ["CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
+    custom_models_list: ["CompVis/stable-diffusion-v1-4"]
     prompt:
     width:
         value:      512
@@ -205,7 +205,7 @@ txt2vid:
         step:       0.0001
         format:     "%.5f"
         
-    beta_scheduler_type: "linear"
+    beta_scheduler_type: "scaled_linear"
     max_frames: 100
     
     LDSR_config:
@@ -302,6 +302,7 @@ img2img:
 img2txt:
     batch_size: 420
     blip_image_eval_size: 512
+    keep_all_models_loaded: False
     
 concepts_library:
     concepts_per_page: 12
@@ -310,8 +311,8 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/ldm/stable-diffusion-v1-4"
-    tokenizer_name: ""
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-4"
+    tokenizer_name: "models/clip-vit-large-patch14"
     
     
 daisi_app:

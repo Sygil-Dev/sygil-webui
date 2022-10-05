@@ -33,12 +33,12 @@ parser.add_argument("--esrgan-gpu", type=int, help="run ESRGAN on specific gpu (
 parser.add_argument("--extra-models-cpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on cpu", default=False)
 parser.add_argument("--extra-models-gpu", action='store_true', help="run extra models (GFGPAN/ESRGAN) on gpu", default=False)
 parser.add_argument("--gfpgan-cpu", action='store_true', help="run GFPGAN on cpu", default=False)
-parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=('./src/gfpgan' if os.path.exists('./src/gfpgan') else './GFPGAN')) # i disagree with where you're putting it but since all guidefags are doing it this way, there you go
+parser.add_argument("--gfpgan-dir", type=str, help="GFPGAN directory", default=('./models/gfpgan' if os.path.exists('./models/gfpgan') else './GFPGAN')) # i disagree with where you're putting it but since all guidefags are doing it this way, there you go
 parser.add_argument("--gfpgan-gpu", type=int, help="run GFPGAN on specific gpu (overrides --gpu) ", default=0)
 parser.add_argument("--gpu", type=int, help="choose which GPU to use if you have multiple", default=0)
 parser.add_argument("--grid-format", type=str, help="png for lossless png files; jpg:quality for lossy jpeg; webp:quality for lossy webp, or webp:-compression for lossless webp", default="jpg:95")
 parser.add_argument("--inbrowser", action='store_true', help="automatically launch the interface in a new tab on the default browser", default=False)
-parser.add_argument("--ldsr-dir", type=str, help="LDSR directory", default=('./src/latent-diffusion' if os.path.exists('./src/latent-diffusion') else './LDSR'))
+parser.add_argument("--ldsr-dir", type=str, help="LDSR directory", default=('./models/ldsr' if os.path.exists('./models/ldsr') else './LDSR'))
 parser.add_argument("--n_rows", type=int, default=-1, help="rows in the grid; use -1 for autodetect and 0 for n_rows to be same as batch_size (default: -1)",)
 parser.add_argument("--no-half", action='store_true', help="do not switch the model to 16-bit floats", default=False)
 parser.add_argument("--no-progressbar-hiding", action='store_true', help="do not hide progressbar in gradio UI (we hide it because it slows down ML if you have hardware accleration in browser)", default=False)
@@ -53,7 +53,7 @@ parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results 
 parser.add_argument("--filename_format", type=str, nargs="?", help="filenames format", default=None)
 parser.add_argument("--port", type=int, help="choose the port for the gradio webserver to use", default=7860)
 parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
-parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./src/realesrgan' if os.path.exists('./src/realesrgan') else './RealESRGAN'))
+parser.add_argument("--realesrgan-dir", type=str, help="RealESRGAN directory", default=('./models/realesrgan' if os.path.exists('./models/realesrgan') else './RealESRGAN'))
 parser.add_argument("--realesrgan-model", type=str, help="Upscaling model for RealESRGAN", default=('RealESRGAN_x4plus'))
 parser.add_argument("--save-metadata", action='store_true', help="Store generation parameters in the output png. Drop saved png into Image Lab to read parameters", default=False)
 parser.add_argument("--share-password", type=str, help="Sharing is open by default, use this to set a password. Username: webui", default=None)
@@ -470,7 +470,7 @@ def try_loading_LDSR(model_name: str,checking=False):
             print("Error loading LDSR:", file=sys.stderr)
             print(traceback.format_exc(), file=sys.stderr)
     else:
-        print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./src/latent-diffusion/")
+        print("LDSR not found at path, please make sure you have cloned the LDSR repo to ./models/ldsr/")
 try_loading_LDSR('model',checking=True)
 
 def load_SD_model():
