@@ -1,8 +1,3 @@
-#film
-#myportfolio
-#pixelart
-#screenshotsaturday
-#vfxfriday
 1920s
 1970s
 1990s
