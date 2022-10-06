@@ -62,18 +62,19 @@ class Models:
                 'git clone https://github.com/devilismyfriend/latent-diffusion.git')
             os.system('mv latent-diffusion src/latent-diffusion')
             st.write(f"Github Repository cloned !")
-            if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
-                st.write(f"Laten Diffusion model already exists!")
-            else:
-                os.mkdir('src/latent-diffusion/experiments')
-                os.mkdir('src/latent-diffusion/experiments/pretrained_models')
-                os.system(
-                    'curl -o src/latent-diffusion/experiments/pretrained_models/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
-                # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
-                os.system(
-                    'curl -o src/latent-diffusion/experiments/pretrained_models/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
-                # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
-                return st.write(f"Latent Diffusion successfully installed !")
+            
+        if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
+            st.write(f"Laten Diffusion model already exists!")
+        else:
+            os.mkdir('src/latent-diffusion/experiments')
+            os.mkdir('src/latent-diffusion/experiments/pretrained_models')
+            os.system(
+                'curl -o src/latent-diffusion/experiments/pretrained_models/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
+            # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
+            os.system(
+                'curl -o src/latent-diffusion/experiments/pretrained_models/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
+            # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
+            return st.write(f"Latent Diffusion successfully installed !")
 
     # Stable Diffusion Conecpt Library
     def SD_conLib():
