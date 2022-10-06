@@ -40,6 +40,7 @@ class Models:
         if op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth') and op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth'):
             return st.write(f"RealESRGAN already exists !")
         else:
+            os.mkdir("src/")
             os.mkdir("src/realesrgan/")
             os.mkdir("src/realesrgan/experiments/")
             os.mkdir("src/realesrgan/experiments/pretrained_models/")
@@ -64,8 +65,8 @@ class Models:
         if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
             return st.write(f"Latent-Diffusion Model already esists !")
         else:
-            #os.system(
-             #   'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
+            os.system(
+               'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
             os.mkdir('src/latent-diffusion/experiments')
             os.mkdir('src/latent-diffusion/experiments/pretrained_models')
             st.write(f"Github Repository cloned !")
