@@ -53,9 +53,6 @@ class Models:
         if op.exists('src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth'):
             return st.write(f"GFPGAN already exists !")
         else:
-            os.mkdir("src/gfpgan/")
-            os.mkdir("src/gfpgan/experiments/")
-            os.mkdir("src/gfpgan/experiments/pretrained_models/")
             os.system(
                 'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.4.pth -o src/gfpgan/experiments/pretrained_models/GFPGANv1.4.pth')
             return st.write(f"GFPGAN installed successfully !")
@@ -65,8 +62,8 @@ class Models:
         if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
             return st.write(f"Latent-Diffusion Model already esists !")
         else:
-            os.system(
-               'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
+            # os.system(
+            #    'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
             os.mkdir('src/latent-diffusion/experiments')
             os.mkdir('src/latent-diffusion/experiments/pretrained_models')
             st.write(f"Github Repository cloned !")
