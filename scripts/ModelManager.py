@@ -85,7 +85,7 @@ def layout():
         Models.modelWD()
 
     if st.button("Waifu Pruned"):
-        Models.modelLD()
+        Models.modelWDP()
 
     if st.button("TrinArt SD"):
         Models.modelTSD()
