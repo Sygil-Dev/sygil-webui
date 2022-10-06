@@ -37,13 +37,13 @@ git+https://github.com/crowsonkb/k-diffusion.git
 pynvml==11.4.1
 omegaconf==2.2.3
 
-Jinja2==3.1.2  # Jinja2 is required by Gradio
+# Jinja2==3.1.2  # Jinja2 is required by Gradio
 # Note: Jinja2 3.x major version required due to breaking changes found in markupsafe==2.1.1; 2.0.1 is incompatible with other upstream dependencies
 # see https://github.com/pallets/markupsafe/issues/304
 
 
 # Environment Dependencies for WebUI (gradio)
-gradio==3.4
+# gradio==3.4
 
 # Environment Dependencies for WebUI (streamlit)
 streamlit==1.13.0
@@ -86,4 +86,3 @@ tensorflow==2.10.0
 
 
 # Orphaned Packages:  No usage found
-
