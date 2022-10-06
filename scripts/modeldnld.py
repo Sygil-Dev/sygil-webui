@@ -71,7 +71,7 @@ class Models:
                     'curl -o src/latent-diffusion/experiments/pretrained_models/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
                 # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
                 os.system(
-                    'wget -O src/latent-diffusion/experiments/pretrained_models/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
+                    'curl -o src/latent-diffusion/experiments/pretrained_models/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
                 # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
                 return st.write(f"Latent Diffusion successfully installed !")
 
