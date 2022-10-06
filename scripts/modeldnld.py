@@ -40,10 +40,6 @@ class Models:
         if op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth') and op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth'):
             return st.write(f"RealESRGAN already exists !")
         else:
-            os.mkdir("src/")
-            os.mkdir("src/realesrgan/")
-            os.mkdir("src/realesrgan/experiments/")
-            os.mkdir("src/realesrgan/experiments/pretrained_models/")
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus.pth -o src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth')
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus_anime_6B.pth -o src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth')
             return st.write(f"ESRGAN upscaler installed successfully !")
