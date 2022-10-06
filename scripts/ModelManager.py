@@ -15,8 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 from scripts.sd_utils import *
-from scripts import mdldnld
-
+from scripts.modeldownload import Models
 # streamlit imports
 
 
@@ -60,6 +59,33 @@ def layout():
         col1.write(x)  # index
         col2.write(df['Model Name'][x])
         col3.write(df['Save Location'][x])
-        col4.write(df['Download Link'][x])
-        
-    mdldnld.st_ui()
+        col4.write(df['Download Link'][x])    
+
+    # mdldnld.st_ui()
+
+    if st.button("Stable Diffusion"):
+        Models.modelSD()
+
+    if st.button("RealESRGAN"):
+        Models.realESRGAN()
+
+    if st.button("GFPGAN"):
+        Models.GFPGAN()
+
+    if st.button("Latent Diffusion"):
+        Models.modelLD()
+
+    if st.button("SD Concept Lib"):
+        Models.SD_conLib()
+
+    if st.button("Blip"):
+        Models.modelBlip()
+
+    if st.button("Waifu Diffusion"):
+        Models.modelWD()
+
+    if st.button("Waifu Pruned"):
+        Models.modelLD()
+
+    if st.button("TrinArt SD"):
+        Models.modelTSD()
