@@ -63,29 +63,29 @@ def layout():
 
     # mdldnld.st_ui()
 
-    if st.button("Stable Diffusion"):
-        Models.modelSD()
+    # if st.button("Stable Diffusion"):
+    #     Models.modelSD()
 
-    if st.button("RealESRGAN"):
-        Models.realESRGAN()
+    # if st.button("RealESRGAN"):
+    #     Models.realESRGAN()
 
-    if st.button("GFPGAN"):
-        Models.GFPGAN()
+    # if st.button("GFPGAN"):
+    #     Models.GFPGAN()
 
-    if st.button("Latent Diffusion"):
-        Models.modelLD()
+    # if st.button("Latent Diffusion"):
+    #     Models.modelLD()
 
-    if st.button("SD Concept Lib"):
-        Models.SD_conLib()
+    # if st.button("SD Concept Lib"):
+    #     Models.SD_conLib()
 
-    if st.button("Blip"):
-        Models.modelBlip()
+    # if st.button("Blip"):
+    #     Models.modelBlip()
 
-    if st.button("Waifu Diffusion"):
-        Models.modelWD()
+    # if st.button("Waifu Diffusion"):
+    #     Models.modelWD()
 
-    if st.button("Waifu Pruned"):
-        Models.modelWDP()
+    # if st.button("Waifu Pruned"):
+    #     Models.modelWDP()
 
     if st.button("TrinArt SD"):
         Models.modelTSD()
