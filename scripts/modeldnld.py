@@ -30,7 +30,7 @@ class Models:
             # os.rename('models/ldm/stable-diffusion-v1/sd-v1-4.ckpt?alt=media','models/ldm/stable-diffusion-v1/model.ckpt')
             # For 7.2GB model
             os.system(
-                'curl -o models/ldm/stable-diffusion-v1/model.ckpt -L https://huggingface.co/kaliansh/sdfull/resolve/main/modelfull.ckpt')
+                'curl -o models/ldm/stable-diffusion-v1/model.ckpt -L https://huggingface.co/kaliansh/sdfull/resolve/main/model.ckpt')
             # os.system('wget -O models/ldm/stable-diffusion-v1/model.ckpt https://cdn-lfs.huggingface.co/repos/ab/41/ab41ccb635cd5bd124c8eac1b5796b4f64049c9453c4e50d51819468ca69ceb8/14749efc0ae8ef0329391ad4436feb781b402f4fece4883c7ad8d10556d8a36a?response-content-disposition=attachment%3B%20filename%3D%22modelfull.ckpt%22')
             # os.rename('models/ldm/stable-diffusion-v1/modelfull.ckpt','models/ldm/stable-diffusion-v1/model.ckpt')
             return st.write(f"Model installed successfully")
@@ -40,6 +40,9 @@ class Models:
         if op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth') and op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth'):
             return st.write(f"RealESRGAN already exists !")
         else:
+            os.mkdir("src/realesrgan/")
+            os.mkdir("src/realesrgan/experiments/")
+            os.mkdir("src/realesrgan/experiments/pretrained_models/")
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus.pth -o src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth')
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus_anime_6B.pth -o src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth')
             return st.write(f"ESRGAN upscaler installed successfully !")
@@ -49,24 +52,23 @@ class Models:
         if op.exists('src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth'):
             return st.write(f"GFPGAN already exists !")
         else:
+            os.mkdir("src/gfpgan/")
+            os.mkdir("src/gfpgan/experiments/")
+            os.mkdir("src/gfpgan/experiments/pretrained_models/")
             os.system(
                 'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.3.pth -o src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth')
             return st.write(f"GFPGAN installed successfully !")
 
     # Latent Diffusion
     def modelLD():
-        if op.exists('src/latent-diffusion'):
+        if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
             return st.write(f"Latent-Diffusion Model already esists !")
         else:
-            os.system(
-                'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
+            #os.system(
+             #   'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
             os.mkdir('src/latent-diffusion/experiments')
             os.mkdir('src/latent-diffusion/experiments/pretrained_models')
             st.write(f"Github Repository cloned !")
-
-        if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
-            st.write(f"Laten Diffusion model already exists!")
-        else:
             os.system(
                 'curl -o src/latent-diffusion/experiments/pretrained_models/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
             # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
@@ -74,6 +76,7 @@ class Models:
                 'curl -o src/latent-diffusion/experiments/pretrained_models/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
             # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
             return st.write(f"Latent Diffusion successfully installed !")
+
 
     # Stable Diffusion Conecpt Library
     def SD_conLib():
