@@ -58,11 +58,11 @@ class Models:
         if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
             return st.write(f"Latent-Diffusion Model already esists !")
         else:
-            # os.system(
-            #    'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
+            os.system(
+               'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
             os.mkdir('src/latent-diffusion/experiments')
             os.mkdir('src/latent-diffusion/experiments/pretrained_models')
-            # st.write(f"Github Repository cloned !")
+            st.write(f"Github Repository cloned !")
             os.system(
                 'curl -o src/latent-diffusion/experiments/pretrained_models/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
             # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
