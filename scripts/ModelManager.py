@@ -16,7 +16,7 @@
 # base webui import and utils.
 from scripts.sd_utils import *
 from scripts import mdldnld
-mdldnld.st_ui()
+
 # streamlit imports
 
 
@@ -60,4 +60,6 @@ def layout():
         col1.write(x)  # index
         col2.write(df['Model Name'][x])
         col3.write(df['Save Location'][x])
-        col4.write(df['Download Link'][x])    
+        col4.write(df['Download Link'][x])
+        
+    mdldnld.st_ui()
