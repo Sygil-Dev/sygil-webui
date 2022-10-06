@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 # base webui import and utils.
 from scripts.sd_utils import *
-from scripts.modeldnld import Models
+from scripts.modeldownload import Models
 # streamlit imports
 
 
