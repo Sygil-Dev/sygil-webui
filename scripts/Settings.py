@@ -332,21 +332,21 @@ def layout():
 			with col5:
 				st.title("Variation Parameters")
 
-				st.session_state["defaults"].txt2img.variant_amount.value = float(st.text_input("Default Variation Amount",
+				st.session_state["defaults"].txt2img.variant_amount.value = st.number_input("Default Variation Amount",
 																								value=st.session_state['defaults'].txt2img.variant_amount.value,
-																								help="Set the default variation to use. Default is: 0.0"))
+																								help="Set the default variation to use. Default is: 0.0")
 
-				st.session_state["defaults"].txt2img.variant_amount.min_value = float(st.text_input("Minimum Variation Amount",
+				st.session_state["defaults"].txt2img.variant_amount.min_value = st.number_input("Minimum Variation Amount",
 																									value=st.session_state['defaults'].txt2img.variant_amount.min_value,
-																									help="Set the default minimum value for the variation slider. Default is: 0.0"))
+																									help="Set the default minimum value for the variation slider. Default is: 0.0")
 
-				st.session_state["defaults"].txt2img.variant_amount.max_value = float(st.text_input("Maximum Variation Amount",
+				st.session_state["defaults"].txt2img.variant_amount.max_value = st.number_input("Maximum Variation Amount",
 																									value=st.session_state['defaults'].txt2img.variant_amount.max_value,
-																									help="Set the default maximum value for the variation slider. Default is: 1.0"))
+																									help="Set the default maximum value for the variation slider. Default is: 1.0")
 
-				st.session_state["defaults"].txt2img.variant_amount.step = float(st.text_input("Variation Slider Steps",
+				st.session_state["defaults"].txt2img.variant_amount.step = st.number_input("Variation Slider Steps",
 																							   value=st.session_state['defaults'].txt2img.variant_amount.step,
-																							   help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+																							   help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
 				st.session_state['defaults'].txt2img.variant_seed = st.text_input("Default Variation Seed", value=st.session_state['defaults'].txt2img.variant_seed,
 																				  help="Default variation seed.")
@@ -358,21 +358,21 @@ def layout():
 				st.title("Image Editing")
 
 				# Denoising
-				st.session_state["defaults"].img2img.denoising_strength.value = float(st.text_input("Default Denoising Amount",
+				st.session_state["defaults"].img2img.denoising_strength.value = st.number_input("Default Denoising Amount",
 																									value=st.session_state['defaults'].img2img.denoising_strength.value,
-																									help="Set the default denoising to use. Default is: 0.75"))
+																									help="Set the default denoising to use. Default is: 0.75")
 
-				st.session_state["defaults"].img2img.denoising_strength.min_value = float(st.text_input("Minimum Denoising Amount",
+				st.session_state["defaults"].img2img.denoising_strength.min_value = st.number_input("Minimum Denoising Amount",
 																										value=st.session_state['defaults'].img2img.denoising_strength.min_value,
-																										help="Set the default minimum value for the denoising slider. Default is: 0.0"))
+																										help="Set the default minimum value for the denoising slider. Default is: 0.0")
 
-				st.session_state["defaults"].img2img.denoising_strength.max_value = float(st.text_input("Maximum Denoising Amount",
+				st.session_state["defaults"].img2img.denoising_strength.max_value = st.number_input("Maximum Denoising Amount",
 																										value=st.session_state['defaults'].img2img.denoising_strength.max_value,
-																										help="Set the default maximum value for the denoising slider. Default is: 1.0"))
+																										help="Set the default maximum value for the denoising slider. Default is: 1.0")
 
-				st.session_state["defaults"].img2img.denoising_strength.step = float(st.text_input("Denoising Slider Steps",
+				st.session_state["defaults"].img2img.denoising_strength.step = st.number_input("Denoising Slider Steps",
 																								   value=st.session_state['defaults'].img2img.denoising_strength.step,
-																								   help="Set the default value for the number of steps on the denoising slider. Default is: 0.01"))
+																								   help="Set the default value for the number of steps on the denoising slider. Default is: 0.01")
 
 				# Masking
 				st.session_state["defaults"].img2img.mask_mode = st.number_input("Default Mask Mode", value=st.session_state['defaults'].img2img.mask_mode,
@@ -408,21 +408,21 @@ def layout():
 																						  help="Set the default maximum value for the height slider. Default is: 2048")
 
 				# CFG
-				st.session_state["defaults"].img2img.cfg_scale.value = float(st.text_input("Default Img2Img CFG Scale", value=st.session_state['defaults'].img2img.cfg_scale.value,
-																						   help="Set the default value for the CFG Scale. Default is: 7.5"))
+				st.session_state["defaults"].img2img.cfg_scale.value = st.number_input("Default Img2Img CFG Scale", value=st.session_state['defaults'].img2img.cfg_scale.value,
+																						   help="Set the default value for the CFG Scale. Default is: 7.5")
 
-				st.session_state["defaults"].img2img.cfg_scale.min_value = float(st.text_input("Minimum Img2Img CFG Scale Value",
+				st.session_state["defaults"].img2img.cfg_scale.min_value = st.number_input("Minimum Img2Img CFG Scale Value",
 																							   value=st.session_state['defaults'].img2img.cfg_scale.min_value,
-																							   help="Set the default minimum value for the CFG scale slider. Default is: 1"))
+																							   help="Set the default minimum value for the CFG scale slider. Default is: 1")
 
-				st.session_state["defaults"].img2img.cfg_scale.max_value = float(st.text_input("Maximum Img2Img CFG Scale Value",
+				st.session_state["defaults"].img2img.cfg_scale.max_value = st.number_input("Maximum Img2Img CFG Scale Value",
 																							   value=st.session_state['defaults'].img2img.cfg_scale.max_value,
-																							   help="Set the default maximum value for the CFG scale slider. Default is: 30"))
+																							   help="Set the default maximum value for the CFG scale slider. Default is: 30")
 
 				with col3:
-					st.session_state["defaults"].img2img.cfg_scale.step = float(st.text_input("Img2Img CFG Slider Steps",
+					st.session_state["defaults"].img2img.cfg_scale.step = st.number_input("Img2Img CFG Slider Steps",
 																							  value=st.session_state['defaults'].img2img.cfg_scale.step,
-																							  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5"))
+																							  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5")
 
 					# Sampling Steps
 					st.session_state["defaults"].img2img.sampling_steps.value = st.number_input("Default Img2Img Sampling Steps",
@@ -531,18 +531,18 @@ def layout():
 
 				st.title("Variation Parameters")
 
-				st.session_state["defaults"].img2img.variant_amount = float(st.text_input("Default Img2Img Variation Amount",
+				st.session_state["defaults"].img2img.variant_amount = st.number_input("Default Img2Img Variation Amount",
 																						  value=st.session_state['defaults'].img2img.variant_amount,
-																						  help="Set the default variation to use. Default is: 0.0"))
+																						  help="Set the default variation to use. Default is: 0.0")
 
 				# I THINK THESE ARE MISSING FROM THE CONFIG FILE
-				# st.session_state["defaults"].img2img.variant_amount.min_value = float(st.text_input("Minimum Img2Img Variation Amount",
+				# st.session_state["defaults"].img2img.variant_amount.min_value = st.number_input("Minimum Img2Img Variation Amount",
 				# value=st.session_state['defaults'].img2img.variant_amount.min_value, help="Set the default minimum value for the variation slider. Default is: 0.0"))
 
-				# st.session_state["defaults"].img2img.variant_amount.max_value = float(st.text_input("Maximum Img2Img Variation Amount",
+				# st.session_state["defaults"].img2img.variant_amount.max_value = st.number_input("Maximum Img2Img Variation Amount",
 				# value=st.session_state['defaults'].img2img.variant_amount.max_value, help="Set the default maximum value for the variation slider. Default is: 1.0"))
 
-				# st.session_state["defaults"].img2img.variant_amount.step = float(st.text_input("Img2Img Variation Slider Steps",
+				# st.session_state["defaults"].img2img.variant_amount.step = st.number_input("Img2Img Variation Slider Steps",
 				# value=st.session_state['defaults'].img2img.variant_amount.step, help="Set the default value for the number of steps on the variation slider. Default is: 1"))
 
 				st.session_state['defaults'].img2img.variant_seed = st.text_input("Default Img2Img Variation Seed",
@@ -593,21 +593,21 @@ def layout():
 																						  help="Set the default maximum value for the height slider. Default is: 2048")
 
 				# CFG
-				st.session_state["defaults"].txt2vid.cfg_scale.value = float(st.text_input("Default txt2vid CFG Scale",
+				st.session_state["defaults"].txt2vid.cfg_scale.value = st.number_input("Default txt2vid CFG Scale",
 																						   value=st.session_state['defaults'].txt2vid.cfg_scale.value,
-																						   help="Set the default value for the CFG Scale. Default is: 7.5"))
+																						   help="Set the default value for the CFG Scale. Default is: 7.5")
 
-				st.session_state["defaults"].txt2vid.cfg_scale.min_value = float(st.text_input("Minimum txt2vid CFG Scale Value",
+				st.session_state["defaults"].txt2vid.cfg_scale.min_value = st.number_input("Minimum txt2vid CFG Scale Value",
 																							   value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
-																							   help="Set the default minimum value for the CFG scale slider. Default is: 1"))
+																							   help="Set the default minimum value for the CFG scale slider. Default is: 1")
 
-				st.session_state["defaults"].txt2vid.cfg_scale.max_value = float(st.text_input("Maximum txt2vid CFG Scale Value",
+				st.session_state["defaults"].txt2vid.cfg_scale.max_value = st.number_input("Maximum txt2vid CFG Scale Value",
 																							   value=st.session_state['defaults'].txt2vid.cfg_scale.max_value,
-																							   help="Set the default maximum value for the CFG scale slider. Default is: 30"))
+																							   help="Set the default maximum value for the CFG scale slider. Default is: 30")
 
-				st.session_state["defaults"].txt2vid.cfg_scale.step = float(st.text_input("txt2vid CFG Slider Steps",
+				st.session_state["defaults"].txt2vid.cfg_scale.step = st.number_input("txt2vid CFG Slider Steps",
 																						  value=st.session_state['defaults'].txt2vid.cfg_scale.step,
-																						  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5"))
+																						  help="Set the default value for the number of steps on the CFG scale slider. Default is: 0.5")
 
 				with col2:
 					# Sampling Steps
@@ -711,21 +711,21 @@ def layout():
 			with col4:
 				st.title("Variation Parameters")
 
-				st.session_state["defaults"].txt2vid.variant_amount.value = float(st.text_input("Default txt2vid Variation Amount",
+				st.session_state["defaults"].txt2vid.variant_amount.value = st.number_input("Default txt2vid Variation Amount",
 																								value=st.session_state['defaults'].txt2vid.variant_amount.value,
-																								help="Set the default variation to use. Default is: 0.0"))
+																								help="Set the default variation to use. Default is: 0.0")
 
-				st.session_state["defaults"].txt2vid.variant_amount.min_value = float(st.text_input("Minimum txt2vid Variation Amount",
+				st.session_state["defaults"].txt2vid.variant_amount.min_value = st.number_input("Minimum txt2vid Variation Amount",
 																									value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
-																									help="Set the default minimum value for the variation slider. Default is: 0.0"))
+																									help="Set the default minimum value for the variation slider. Default is: 0.0")
 
-				st.session_state["defaults"].txt2vid.variant_amount.max_value = float(st.text_input("Maximum txt2vid Variation Amount",
+				st.session_state["defaults"].txt2vid.variant_amount.max_value = st.number_input("Maximum txt2vid Variation Amount",
 																									value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
-																									help="Set the default maximum value for the variation slider. Default is: 1.0"))
+																									help="Set the default maximum value for the variation slider. Default is: 1.0")
 
-				st.session_state["defaults"].txt2vid.variant_amount.step = float(st.text_input("txt2vid Variation Slider Steps",
+				st.session_state["defaults"].txt2vid.variant_amount.step = st.number_input("txt2vid Variation Slider Steps",
 																							   value=st.session_state['defaults'].txt2vid.variant_amount.step,
-																							   help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+																							   help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
 				st.session_state['defaults'].txt2vid.variant_seed = st.text_input("Default txt2vid Variation Seed",
 																				  value=st.session_state['defaults'].txt2vid.variant_seed, help="Default variation seed.")
@@ -735,36 +735,36 @@ def layout():
 				st.title("Beta Parameters")
 
 				# Beta Start
-				st.session_state["defaults"].txt2vid.beta_start.value = float(st.text_input("Default txt2vid Beta Start Value",
+				st.session_state["defaults"].txt2vid.beta_start.value = st.number_input("Default txt2vid Beta Start Value",
 																							value=st.session_state['defaults'].txt2vid.beta_start.value,
-																							help="Set the default variation to use. Default is: 0.0"))
+																							help="Set the default variation to use. Default is: 0.0")
 
-				st.session_state["defaults"].txt2vid.beta_start.min_value = float(st.text_input("Minimum txt2vid Beta Start Amount",
+				st.session_state["defaults"].txt2vid.beta_start.min_value = st.number_input("Minimum txt2vid Beta Start Amount",
 																								value=st.session_state['defaults'].txt2vid.beta_start.min_value,
-																								help="Set the default minimum value for the variation slider. Default is: 0.0"))
+																								help="Set the default minimum value for the variation slider. Default is: 0.0")
 
-				st.session_state["defaults"].txt2vid.beta_start.max_value = float(st.text_input("Maximum txt2vid Beta Start Amount",
+				st.session_state["defaults"].txt2vid.beta_start.max_value = st.number_input("Maximum txt2vid Beta Start Amount",
 																								value=st.session_state['defaults'].txt2vid.beta_start.max_value,
-																								help="Set the default maximum value for the variation slider. Default is: 1.0"))
+																								help="Set the default maximum value for the variation slider. Default is: 1.0")
 
-				st.session_state["defaults"].txt2vid.beta_start.step = float(st.text_input("txt2vid Beta Start Slider Steps", value=st.session_state['defaults'].txt2vid.beta_start.step,
-																						   help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+				st.session_state["defaults"].txt2vid.beta_start.step = st.number_input("txt2vid Beta Start Slider Steps", value=st.session_state['defaults'].txt2vid.beta_start.step,
+																						   help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
 				st.session_state["defaults"].txt2vid.beta_start.format = st.text_input("Default txt2vid Beta Start Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
 																					   help="Set the default Beta Start Format. Default is: %.5\f")
 
 				# Beta End
-				st.session_state["defaults"].txt2vid.beta_end.value = float(st.text_input("Default txt2vid Beta End Value", value=st.session_state['defaults'].txt2vid.beta_end.value,
-																						  help="Set the default variation to use. Default is: 0.0"))
+				st.session_state["defaults"].txt2vid.beta_end.value = st.number_input("Default txt2vid Beta End Value", value=st.session_state['defaults'].txt2vid.beta_end.value,
+																						  help="Set the default variation to use. Default is: 0.0")
 
-				st.session_state["defaults"].txt2vid.beta_end.min_value = float(st.text_input("Minimum txt2vid Beta End Amount", value=st.session_state['defaults'].txt2vid.beta_end.min_value,
-																							  help="Set the default minimum value for the variation slider. Default is: 0.0"))
+				st.session_state["defaults"].txt2vid.beta_end.min_value = st.number_input("Minimum txt2vid Beta End Amount", value=st.session_state['defaults'].txt2vid.beta_end.min_value,
+																							  help="Set the default minimum value for the variation slider. Default is: 0.0")
 
-				st.session_state["defaults"].txt2vid.beta_end.max_value = float(st.text_input("Maximum txt2vid Beta End Amount", value=st.session_state['defaults'].txt2vid.beta_end.max_value,
-																							  help="Set the default maximum value for the variation slider. Default is: 1.0"))
+				st.session_state["defaults"].txt2vid.beta_end.max_value = st.number_input("Maximum txt2vid Beta End Amount", value=st.session_state['defaults'].txt2vid.beta_end.max_value,
+																							  help="Set the default maximum value for the variation slider. Default is: 1.0")
 
-				st.session_state["defaults"].txt2vid.beta_end.step = float(st.text_input("txt2vid Beta End Slider Steps", value=st.session_state['defaults'].txt2vid.beta_end.step,
-																						 help="Set the default value for the number of steps on the variation slider. Default is: 1"))
+				st.session_state["defaults"].txt2vid.beta_end.step = st.number_input("txt2vid Beta End Slider Steps", value=st.session_state['defaults'].txt2vid.beta_end.step,
+																						 help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
 				st.session_state["defaults"].txt2vid.beta_end.format = st.text_input("Default txt2vid Beta End Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
 																					 help="Set the default Beta Start Format. Default is: %.5\f")
