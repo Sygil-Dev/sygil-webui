@@ -16,6 +16,7 @@
 # base webui import and utils.
 from scripts.sd_utils import *
 from scripts import mdldnld
+mdldnld.st_ui()
 # streamlit imports
 
 
