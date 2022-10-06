@@ -17,7 +17,7 @@
 # base webui import and utils.
 #import streamlit as st
 import os
-from scripts.modeldnld import Models
+# from scripts.modeldnld import Models
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 # device = "cuda" #torch.device("cuda:0")
 # We import hydralit like this to replace the previous stuff
@@ -34,15 +34,15 @@ from streamlit_server_state import server_state, server_state_lock
 
 #other imports
 # download all Models
-Models.modelSD()
-Models.realESRGAN()
-Models.GFPGAN()
-Models.modelLD()
-Models.SD_conLib()
-Models.modelBlip()
-Models.modelWD()
-Models.modelWDP()
-Models.modelTSD()
+# Models.modelSD()
+# Models.realESRGAN()
+# Models.GFPGAN()
+# Models.modelLD()
+# Models.SD_conLib()
+# Models.modelBlip()
+# Models.modelWD()
+# Models.modelWDP()
+# Models.modelTSD()
 
 import warnings
 import os, toml
