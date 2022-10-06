@@ -1,3 +1,4 @@
+#!/bin/bash
 # This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
 
 # Copyright 2022 sd-webui team.
@@ -13,20 +14,31 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+#
+# Starts the webserver inside the docker container
+#
 
-# Validate the model files on every container restart
-# (useful to set to false after you're sure the model files are already in place)
-VALIDATE_MODELS=true
+# set -x
 
-# Automatically relaunch the webui on crashes
-WEBUI_RELAUNCH=true
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cd $SCRIPT_DIR
+export PYTHONPATH=$SCRIPT_DIR
 
-# Which webui to launch
-# WEBUI_SCRIPT=webui_streamlit.py
-WEBUI_SCRIPT=webui.py
+if [[ $PUBLIC_KEY ]]
+then
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    cd ~/.ssh
+    echo $PUBLIC_KEY >> authorized_keys
+    chmod 700 -R ~/.ssh
+    cd /
+    service ssh start
+    echo "SSH Service Started"
+fi
 
-# Pass cli arguments to webui.py e.g:
-# WEBUI_ARGS=--optimized --extra-models-cpu --gpu=1 --esrgan-gpu=1 --gfpgan-gpu=1
-WEBUI_ARGS=
+cd $SCRIPT_DIR
+launch_command="streamlit run ${SCRIPT_DIR}/scripts/webui_streamlit.py"
 
-STREAMLIT_SERVER_HEADLESS=true
+$launch_command
+
+sleep infinity

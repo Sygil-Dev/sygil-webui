@@ -100,13 +100,13 @@ def layout():
 		
 	# check if the models exist on their respective folders
 	with server_state_lock["GFPGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, "experiments", "pretrained_models", "GFPGANv1.3.pth")):
+		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, f"{st.session_state['defaults'].general.GFPGAN_model}.pth")):
 			server_state["GFPGAN_available"] = True
 		else:
 			server_state["GFPGAN_available"] = False
 
 	with server_state_lock["RealESRGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, "experiments","pretrained_models", f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
 			server_state["RealESRGAN_available"] = True 
 		else:
 			server_state["RealESRGAN_available"] = False	
@@ -124,7 +124,10 @@ def layout():
 	if tabs =='Stable Diffusion':
 		# set the page url and title
 		st.experimental_set_query_params(page='stable-diffusion')
-		set_page_title("Stable Diffusion Playground")
+		try:
+			set_page_title("Stable Diffusion Playground")
+		except NameError:
+			st.experimental_rerun()
 		
 		txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image", 
 		                                                                      "Text-to-Video", "Image-To-Text",

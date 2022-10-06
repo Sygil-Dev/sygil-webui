@@ -29,7 +29,7 @@ from typing import Union
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
-# Temp imports 
+# Temp imports
 
 
 # end of imports
@@ -95,7 +95,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
             save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = False,
-            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True, LDSR_model: str = "model", 
+            RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True, LDSR_model: str = "model",
             fp = None, variant_amount: float = None,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
@@ -153,7 +153,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
                 use_RealESRGAN=st.session_state["use_RealESRGAN"],
                 realesrgan_model_name=RealESRGAN_model,
                 use_LDSR=st.session_state["use_LDSR"],
-                LDSR_model_name=LDSR_model,                
+                LDSR_model_name=LDSR_model,
                 ddim_eta=ddim_eta,
                 normalize_prompt_weights=normalize_prompt_weights,
                 save_individual_images=save_individual_images,
@@ -173,7 +173,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
         #err_msg = f'CRASHED:<br><textarea rows="5" style="color:white;background: black;width: -webkit-fill-available;font-family: monospace;font-size: small;font-weight: bold;">{str(e)}</textarea><br><br>Please wait while the program restarts.'
         #stats = err_msg
         #return [], seed, 'err', stats
-        
+
 #
 def layout():
     with st.form("txt2img-inputs"):
@@ -200,25 +200,31 @@ def layout():
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 
             with st.expander("Batch Options"):
-                batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
-                                        value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
-                                        help="How many iterations or batches of images to generate in total.")
+                #batch_count = st.slider("Batch count.", min_value=st.session_state['defaults'].txt2img.batch_count.min_value, max_value=st.session_state['defaults'].txt2img.batch_count.max_value,
+                                        #value=st.session_state['defaults'].txt2img.batch_count.value, step=st.session_state['defaults'].txt2img.batch_count.step,
+                                        #help="How many iterations or batches of images to generate in total.")
 
-                batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
-                                       value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
-                                       help="How many images are at once in a batch.\
-                                       It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                       Default: 1")
+                #batch_size = st.slider("Batch size", min_value=st.session_state['defaults'].txt2img.batch_size.min_value, max_value=st.session_state['defaults'].txt2img.batch_size.max_value,
+                                       #value=st.session_state.defaults.txt2img.batch_size.value, step=st.session_state.defaults.txt2img.batch_size.step,
+                                       #help="How many images are at once in a batch.\
+                                       #It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+                                       #Default: 1")
+
+                st.session_state["batch_count"] = int(st.text_input("Batch count.", value=st.session_state['defaults'].txt2img.batch_count.value,
+                                                                help="How many iterations or batches of images to generate in total."))
+
+                st.session_state["batch_size"] = int(st.text_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
+                                                                   help="How many images are at once in a batch.\
+                                                                   It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes \
+                                                                   to finish generation as more images are generated at once.\
+                                                                   Default: 1") )
 
             with st.expander("Preview Settings"):
-                st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2img.update_preview,
-                                                                 help="If enabled the image preview will be updated during the generation instead of at the end. \
-                 You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-                 By default this is enabled and the frequency is set to 1 step.")
 
+                st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
                 st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                              help="Frequency in steps at which the the preview image is updated. By default the frequency \
-                                                                              is set to 1 step.")
+                                                                              is set to 10 step.")
 
         with col2:
             preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])
@@ -232,17 +238,17 @@ def layout():
 
                 # create an empty container for the image, progress bar, etc so we can update it later and use session_state to hold them globally.
                 st.session_state["preview_image"] = st.empty()
-                
+
 
                 st.session_state["progress_bar_text"] = st.empty()
                 st.session_state["progress_bar_text"].info("Nothing but crickets here, try generating something first.")
-                
+
                 st.session_state["progress_bar"] = st.empty()
 
                 message = st.empty()
-                
+
             with gallery_tab:
-                st.session_state["gallery"] = st.empty()  
+                st.session_state["gallery"] = st.empty()
                 st.session_state["gallery"].info("Nothing but crickets here, try generating something first.")
 
         with col3:
@@ -258,44 +264,45 @@ def layout():
                                                                 the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
                                                                 will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
 
-            st.session_state.sampling_steps = st.slider("Sampling Steps", value=st.session_state.defaults.txt2img.sampling_steps.value,
-                                                        min_value=st.session_state.defaults.txt2img.sampling_steps.min_value,
-                                                        max_value=st.session_state['defaults'].txt2img.sampling_steps.max_value,
-                                                        step=st.session_state['defaults'].txt2img.sampling_steps.step)
+            st.session_state.sampling_steps = st.number_input("Sampling Steps", value=st.session_state.defaults.txt2img.sampling_steps.value,
+                                                              min_value=st.session_state.defaults.txt2img.sampling_steps.min_value,
+                                                              step=st.session_state['defaults'].txt2img.sampling_steps.step,
+                                                              help="Set the default number of sampling steps to use. Default is: 30 (with k_euler)")
 
             sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
                                         index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")
 
             with st.expander("Advanced"):
-                separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
-                                               help="Separate multiple prompts using the `|` character, and get all combinations of them.")
-                
-                normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].txt2img.normalize_prompt_weights,
-                                                       help="Ensure the sum of all weights add up to 1.0")
-                
-                save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].txt2img.save_individual_images,
-                                                     help="Save each image generated before any filter or enhancement is applied.")
-                
-                save_grid = st.checkbox("Save grid",value=st.session_state['defaults'].txt2img.save_grid, help="Save a grid with all the images generated into a single image.")
-                group_by_prompt = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2img.group_by_prompt,
-                                              help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
-                
-                write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2img.write_info_files,
-                                               help="Save a file next to the image with informartion about the generation.")
-                
-                save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
-                
+                with st.expander("Output Settings"):
+                    separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
+                                                   help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+
+                    normalize_prompt_weights = st.checkbox("Normalize Prompt Weights.", value=st.session_state['defaults'].txt2img.normalize_prompt_weights,
+                                                           help="Ensure the sum of all weights add up to 1.0")
+
+                    save_individual_images = st.checkbox("Save individual images.", value=st.session_state['defaults'].txt2img.save_individual_images,
+                                                         help="Save each image generated before any filter or enhancement is applied.")
+
+                    save_grid = st.checkbox("Save grid",value=st.session_state['defaults'].txt2img.save_grid, help="Save a grid with all the images generated into a single image.")
+                    group_by_prompt = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2img.group_by_prompt,
+                                                  help="Saves all the images with the same prompt into the same folder. When using a prompt matrix each prompt combination will have its own folder.")
+
+                    write_info_files = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2img.write_info_files,
+                                                   help="Save a file next to the image with informartion about the generation.")
+
+                    save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
+
                 # check if GFPGAN, RealESRGAN and LDSR are available.
-                if "GFPGAN_available" not in st.session_state:
-                    GFPGAN_available()
-            
-                if "RealESRGAN_available" not in st.session_state:
-                    RealESRGAN_available()
-                
-                if "LDSR_available" not in st.session_state:
-                    LDSR_available()
-                        
+                #if "GFPGAN_available" not in st.session_state:
+                GFPGAN_available()
+
+                #if "RealESRGAN_available" not in st.session_state:
+                RealESRGAN_available()
+
+                #if "LDSR_available" not in st.session_state:
+                LDSR_available()
+
                 if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
                     with st.expander("Post-Processing"):
                         face_restoration_tab, upscaling_tab = st.tabs(["Face Restoration", "Upscaling"])
@@ -309,57 +316,73 @@ def layout():
                                                                                  help="Uses the GFPGAN model to improve faces after the generation.\
                                                                                  This greatly improve the quality and consistency of faces but uses\
                                                                                  extra VRAM. Disable if you need the extra VRAM.")
-                                    
+
                                     st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
-                                                                                    index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))  
-                                
+                                                                                    index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))
+
                                 #st.session_state["GFPGAN_strenght"] = st.slider("Effect Strenght", min_value=1, max_value=100, value=1, step=1, help='')
-                                    
+
                             else:
-                                st.session_state["use_GFPGAN"] = False                                 
-                            
+                                st.session_state["use_GFPGAN"] = False
+
                         with upscaling_tab:
-                            #with st.expander("Upscaling"): 
-                            # RealESRGAN and LDSR used for upscaling.     
+                            st.session_state['use_upscaling'] = st.checkbox("Use Upscaling", value=st.session_state['defaults'].txt2img.use_upscaling)
+
+                            # RealESRGAN and LDSR used for upscaling.
                             if st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
-                                
+
                                 upscaling_method_list = []
                                 if st.session_state["RealESRGAN_available"]:
                                     upscaling_method_list.append("RealESRGAN")
                                 if st.session_state["LDSR_available"]:
                                     upscaling_method_list.append("LDSR")
-                                    
+
+                                #print (st.session_state["RealESRGAN_available"])
                                 st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
-                                                                                    index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
-                                
+                                                                                    index=upscaling_method_list.index(str(st.session_state['defaults'].general.upscaling_method)))
+
                                 if st.session_state["RealESRGAN_available"]:
-                                   # with st.expander("RealESRGAN"):
-                                    st.session_state["use_RealESRGAN"] = st.checkbox("Use RealESRGAN", value=st.session_state['defaults'].txt2img.use_RealESRGAN,
-                                                                                     help="Uses the RealESRGAN model to upscale the images after the generation.\
-                                                                                     This greatly improve the quality and lets you have high resolution images but \
-                                                                                     uses extra VRAM. Disable if you need the extra VRAM.")
-                                    
-                                    st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
-                                                                                    index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))  
+                                    with st.expander("RealESRGAN"):
+                                        if st.session_state["upscaling_method"] == "RealESRGAN" and st.session_state['use_upscaling']:
+                                            st.session_state["use_RealESRGAN"] = True
+                                        else:
+                                            st.session_state["use_RealESRGAN"] = False
+
+                                        st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
+                                                                                        index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))
                                 else:
                                     st.session_state["use_RealESRGAN"] = False
                                     st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
-                                    
-                                    
+
+
                                 #
                                 if st.session_state["LDSR_available"]:
-                                    #with st.expander("LDSR"):
-                                    st.session_state["use_LDSR"] = st.checkbox("Use LDSR", value=st.session_state['defaults'].txt2img.use_LDSR,
-                                                                                     help="Uses the LDSR model to upscale the images after the generation.\
-                                                                                     This greatly improve the quality and lets you have high resolution images but \
-                                                                                     uses extra VRAM. Disable if you need the extra VRAM.")
-                                    
-                                    st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
-                                                                                    index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))  
+                                    with st.expander("LDSR"):
+                                        if st.session_state["upscaling_method"] == "LDSR" and st.session_state['use_upscaling']:
+                                            st.session_state["use_LDSR"] = True
+                                        else:
+                                            st.session_state["use_LDSR"] = False
+
+                                        st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
+                                                                                      index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))
+
+                                        st.session_state["ldsr_sampling_steps"] = int(st.text_input("Sampling Steps", value=st.session_state['defaults'].txt2img.LDSR_config.sampling_steps,
+                                                                                      help=""))
+
+                                        st.session_state["preDownScale"] = int(st.text_input("PreDownScale", value=st.session_state['defaults'].txt2img.LDSR_config.preDownScale,
+                                                                               help=""))
+
+                                        st.session_state["postDownScale"] = int(st.text_input("postDownScale", value=st.session_state['defaults'].txt2img.LDSR_config.postDownScale,
+                                                                               help=""))
+
+                                        downsample_method_list = ['Nearest', 'Lanczos']
+                                        st.session_state["downsample_method"] = st.selectbox("Downsample Method", downsample_method_list,
+                                                                                             index=downsample_method_list.index(st.session_state['defaults'].txt2img.LDSR_config.downsample_method))
+
                                 else:
                                     st.session_state["use_LDSR"] = False
-                                    st.session_state["LDSR_model"] = "model"                                
-                    
+                                    st.session_state["LDSR_model"] = "model"
+
                 with st.expander("Variant"):
                     variant_amount = st.slider("Variant Amount:", value=st.session_state['defaults'].txt2img.variant_amount.value,
                                                min_value=st.session_state['defaults'].txt2img.variant_amount.min_value, max_value=st.session_state['defaults'].txt2img.variant_amount.max_value,
@@ -375,13 +398,13 @@ def layout():
         generate_button = generate_col1.form_submit_button("Generate")
 
         #
-        if generate_button:           
-            
+        if generate_button:
+
             with col2:
                 with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
                     load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-                                use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] , 
-                                use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"], 
+                                use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
+                                use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
                                 CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
 
@@ -389,12 +412,12 @@ def layout():
                 #print(st.session_state['use_LDSR'])
                 #try:
                 #
-            
-                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, batch_count, batch_size,
+
+                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["batch_count"], st.session_state["batch_size"],
                                                             cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'], 
+                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'],
                                                             use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
-                                                            use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"], 
+                                                            use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
                                                             variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
 
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
@@ -432,11 +455,11 @@ def layout():
 
 
                     #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
-                    
+
             with gallery_tab:
                 print(seeds)
                 sdGallery(output_images)
-                    
+
 
             #except (StopException, KeyError):
                 #print(f"Received Streamlit StopException")

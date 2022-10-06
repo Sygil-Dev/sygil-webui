@@ -15,3 +15,7 @@ horde_priority_usernames = []
 horde_max_power = 8
 # Set this to false, if you do not want your worker to receive requests for NSFW generations
 horde_nsfw = True
+# A list of words which you do not want to your worker to accept
+horde_blacklist = []
+# A list of words for which you always want to allow the NSFW censor filter, even when this worker is in NSFW mode
+horde_censorlist = []

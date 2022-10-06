@@ -152,21 +152,6 @@ post_processor_model_loading () {
     fi
 }
 
-# Show the user a prompt asking them which version of the WebUI they wish to use, Streamlit or Gradio
-launch_webui () {
-    printf "\n\n########## LAUNCH USING STREAMLIT OR GRADIO? ##########\n\n"
-    printf "Do you wish to run the WebUI using the Gradio or StreamLit Interface?\n\n"
-    printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \nMissing Some Gradio Features\n\n"
-    printf "Gradio: \nCurrently Feature Complete \nUses An Older Interface Style \nWill Not Receive Major Updates\n\n"
-    printf "Which Version of the WebUI Interface do you wish to use?\n"
-    select yn in "Streamlit" "Gradio"; do
-        case $yn in
-            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
-            Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py "$@"; break;;
-        esac
-    done
-}
-
 # Function to initialize the other functions
 start_initialization () {
     conda_env_setup
@@ -177,7 +162,7 @@ start_initialization () {
         echo "Your model file does not exist! Place it in 'models/ldm/stable-diffusion-v1' with the name 'model.ckpt'."
         exit 1
     fi
-    launch_webui "$@"
+    printf "\nStarting Stable Horde Bridg: Please Wait...\n"; python scripts/relauncher.py --bridge -v "$@"; break;
 
 }
 

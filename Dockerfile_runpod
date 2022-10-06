@@ -10,14 +10,16 @@ ENV PYTHONPATH=/sd
 
 EXPOSE 8501
 COPY ./data/DejaVuSans.ttf /usr/share/fonts/truetype/
+COPY ./configs/ /sd/configs/
 COPY ./data/ /sd/data/
-copy ./images/ /sd/images/
-copy ./scripts/ /sd/scripts/
-copy ./ldm/ /sd/ldm/
-copy ./frontend/ /sd/frontend/
-copy ./configs/ /sd/configs/
-copy ./.streamlit/ /sd/.streamlit/
-COPY ./entrypoint.sh /sd/
+COPY ./frontend/ /sd/frontend/
+COPY ./gfpgan/ /sd/gfpgan/
+COPY ./images/ /sd/images/
+COPY ./ldm/ /sd/ldm/
+COPY ./models/ /sd/models/
+COPY ./scripts/ /sd/scripts/
+COPY ./.streamlit/ /sd/.streamlit/
+COPY ./runpod_entrypoint.sh /sd/entrypoint.sh
 ENTRYPOINT /sd/entrypoint.sh
 
 RUN mkdir -p ~/.streamlit/
