@@ -294,14 +294,14 @@ def layout():
                     save_as_jpg = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2img.save_as_jpg, help="Saves the images as jpg instead of png.")
                 
                 # check if GFPGAN, RealESRGAN and LDSR are available.
-                if "GFPGAN_available" not in st.session_state:
-                    GFPGAN_available()
+                #if "GFPGAN_available" not in st.session_state:
+                GFPGAN_available()
             
-                if "RealESRGAN_available" not in st.session_state:
-                    RealESRGAN_available()
+                #if "RealESRGAN_available" not in st.session_state:
+                RealESRGAN_available()
                 
-                if "LDSR_available" not in st.session_state:
-                    LDSR_available()
+                #if "LDSR_available" not in st.session_state:
+                LDSR_available()
                         
                 if st.session_state["GFPGAN_available"] or st.session_state["RealESRGAN_available"] or st.session_state["LDSR_available"]:
                     with st.expander("Post-Processing"):
