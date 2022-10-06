@@ -57,7 +57,7 @@ class Models:
             os.mkdir("src/gfpgan/experiments/")
             os.mkdir("src/gfpgan/experiments/pretrained_models/")
             os.system(
-                'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.3.pth -o src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth')
+                'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.4.pth -o src/gfpgan/experiments/pretrained_models/GFPGANv1.4.pth')
             return st.write(f"GFPGAN installed successfully !")
 
     # Latent Diffusion
