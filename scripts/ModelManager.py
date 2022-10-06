@@ -28,13 +28,14 @@ from sd_utils import *
 def download_file(file_name, file_path, file_url):
     if not os.path.exists(file_path):
         os.makedirs(file_path)
-    if not os.path.exists(file_path + '/' + file_name):
+        
+    if not os.path.exists(os.path.join(file_path , file_name)):
         print('Downloading ' + file_name + '...')
         # TODO - add progress bar in streamlit
         # download file with `requests``
         with requests.get(file_url, stream=True) as r:
             r.raise_for_status()
-            with open(file_path + '/' + file_name, 'wb') as f:
+            with open(os.path.join(file_path, file_name), 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
 
@@ -69,16 +70,16 @@ def layout():
             files_exist = 0
             for file in models[model_name]['files']:
                 if "save_location" in models[model_name]['files'][file]:
-                    os.path.exists(models[model_name]['files'][file]['save_location'] + '/' + models[model_name]['files'][file]['file_name'])
+                    os.path.exists(os.path.join(models[model_name]['files'][file]['save_location'] , models[model_name]['files'][file]['file_name']))
                     files_exist += 1
-                elif os.path.exists(models[model_name]['save_location'] + '/' + models[model_name]['files'][file]['file_name']):
+                elif os.path.exists(os.path.join(models[model_name]['save_location'] , models[model_name]['files'][file]['file_name'])):
                     files_exist += 1
             files_needed = []
             for file in models[model_name]['files']:
                 if "save_location" in models[model_name]['files'][file]:
-                    if not os.path.exists(models[model_name]['files'][file]['save_location'] + '/' + models[model_name]['files'][file]['file_name']):
+                    if not os.path.exists(os.path.join(models[model_name]['files'][file]['save_location'] , models[model_name]['files'][file]['file_name'])):
                         files_needed.append(file)
-                elif not os.path.exists(models[model_name]['save_location'] + '/' + models[model_name]['files'][file]['file_name']):
+                elif not os.path.exists(os.path.join(models[model_name]['save_location'] , models[model_name]['files'][file]['file_name'])):
                     files_needed.append(file)
             if len(files_needed) > 0:
                 if st.button('Download', key=models[model_name]['model_name'], help='Download ' + models[model_name]['model_name']):
