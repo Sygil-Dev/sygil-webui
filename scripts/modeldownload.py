@@ -50,7 +50,7 @@ class Models:
             return st.write(f"GFPGAN already exists !")
         else:
             os.system(
-                'wget https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth -P src/gfpgan/experiments/pretrained_models')
+                'wget https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth -P src/gfpgan/experiments/pretrained_models')
             return st.write(f"GFPGAN installed successfully !")
 
     # Latent Diffusion
