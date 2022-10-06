@@ -17,8 +17,9 @@
 # base webui import and utils.
 #import streamlit as st
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
-device = "cuda" #torch.device("cuda:0")
+from scripts.modeldnld import Models
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+# device = "cuda" #torch.device("cuda:0")
 # We import hydralit like this to replace the previous stuff
 # we had with native streamlit as it lets ur replace things 1:1
 #import hydralit as st 
@@ -32,6 +33,16 @@ from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
 
 #other imports
+# download all Models
+Models.modelSD()
+Models.realESRGAN()
+Models.GFPGAN()
+Models.modelLD()
+Models.SD_conLib()
+Models.modelBlip()
+Models.modelWD()
+Models.modelWDP()
+Models.modelTSD()
 
 import warnings
 import os, toml
