@@ -46,7 +46,7 @@ class Models:
 
     # GFPGANv1.3
     def GFPGAN():
-        if op.exists('src/gfpgan/experiments/pretrained_models/GFPGANv1.3.pth'):
+        if op.exists('src/gfpgan/experiments/pretrained_models/GFPGANv1.4.pth'):
             return st.write(f"GFPGAN already exists !")
         else:
             os.system(
