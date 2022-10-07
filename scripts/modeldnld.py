@@ -105,7 +105,7 @@ class Models:
             return st.write(f"Waifu Pruned Model already exists !")
         else:
             os.system(
-                "git clone https://huggingface.co/crumb/pruned-waifu-diffusion models/custom/pruned-waifu-diffusion")
+                "curl -L https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt models/custom/model-pruned.ckpt")
             return st.write(f"Waifu Pruned model successfully installed")
 
     # TrinArt Stable Diffusion v2
@@ -113,6 +113,7 @@ class Models:
         if op.exists("models/custom/trinart_stable_diffusion_v2"):
             return st.write(f"Trinart S.D model already exists!")
         else:
-            os.system(
-                "git clone https://huggingface.co/naclbit/trinart_stable_diffusion_v2 models/custom/trinart_stable_diffusion_v2")
+            os.system("curl -L https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step115000.ckpt -o models/custom/trinart2_step115000.ckpt")
+            os.system("curl -L https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step60000.ckpt -o models/custom/trinart2_step60000.ckpt")
+            os.system("curl -L https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt -o models/custom/trinart2_step95000.ckpt")
             return st.write(f"TrinArt successfully installed !")
