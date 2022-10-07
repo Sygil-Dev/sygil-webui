@@ -39,7 +39,7 @@ stqdm==0.0.4
 ftfy==6.1.1
 fairscale==0.4.4
 regex
-timm==0.6.7
+timm==0.6.11
 tqdm==4.64.0
 tensorboard==2.10.1
 
@@ -65,7 +65,7 @@ pudb==2019.2
 pytorch-lightning==1.7.7
 realesrgan==0.3.0
 test-tube>=0.7.5
-timm==0.6.7
+timm==0.6.11
 torch-fidelity==0.3.0
 transformers==4.19.2 # do not change
 wget
