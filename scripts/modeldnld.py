@@ -105,7 +105,7 @@ class Models:
             return st.write(f"Waifu Pruned Model already exists !")
         else:
             os.system(
-                "curl -L https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt models/custom/model-pruned.ckpt")
+                "curl -L https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt -o models/custom/model-pruned.ckpt")
             return st.write(f"Waifu Pruned model successfully installed")
 
     # TrinArt Stable Diffusion v2
