@@ -26,14 +26,14 @@ general:
     outdir: outputs
     default_model: "Stable Diffusion v1.4" 
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
-    default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
+    default_model_path: "/pebble_tmp/models/stable_diffusion_models/models/ldm/stable-diffusion-v1/model.ckpt"
     use_sd_concepts_library: True
-    sd_concepts_library_folder: "models/custom/sd-concepts-library"
-    GFPGAN_dir: "./models/gfpgan"
+    sd_concepts_library_folder: "/pebble_tmp/models/stable_diffusion_models/models/custom/sd-concepts-library"
+    GFPGAN_dir: "./pebble_tmp/models/stable_diffusion_models/models/src/gfpgan"
     GFPGAN_model: "GFPGANv1.4"
-    LDSR_dir: "./models/ldsr"
+    LDSR_dir: "/pebble_tmp/models/stable_diffusion_models/models/ldsr"
     LDSR_model: "model"
-    RealESRGAN_dir: "./models/realesrgan"
+    RealESRGAN_dir: "/pebble_tmp/models/stable_diffusion_models/models/src/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
     upscaling_method: "RealESRGAN"
     outdir_txt2img: outputs/txt2img
@@ -307,7 +307,7 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/ldm/stable-diffusion-v1-4"
+    pretrained_model_name_or_path: "/pebble_tmp/models/stable_diffusion_models/models/ldm/stable-diffusion-v1-4"
     tokenizer_name: ""
     
     
