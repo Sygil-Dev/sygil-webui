@@ -101,7 +101,7 @@ class Models:
 
     # Waifu Diffusion v1.2 Pruned
     def modelWDP():
-        if op.exists("models/custom/pruned-waifu-diffusion"):
+        if op.exists("models/custom/model-pruned.ckpt"):
             return st.write(f"Waifu Pruned Model already exists !")
         else:
             os.system(
@@ -110,7 +110,7 @@ class Models:
 
     # TrinArt Stable Diffusion v2
     def modelTSD():
-        if op.exists("models/custom/trinart_stable_diffusion_v2"):
+        if op.exists("models/custom/trinart2_step115000.ckpt"):
             return st.write(f"Trinart S.D model already exists!")
         else:
             os.system("curl -L https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step115000.ckpt -o models/custom/trinart2_step115000.ckpt")
