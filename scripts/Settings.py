@@ -270,7 +270,7 @@ def layout():
 																									  value=st.session_state['defaults'].txt2img.sampling_steps.min_value,
 																									  help="Set the default minimum value for the sampling steps slider. Default is: 1")
 
-					st.session_state["defaults"].txt2img.sampling_steps.step = st.text_input("Sampling Slider Steps",
+					st.session_state["defaults"].txt2img.sampling_steps.step = st.number_input("Sampling Slider Steps",
 																								 value=st.session_state['defaults'].txt2img.sampling_steps.step,
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10")
 
