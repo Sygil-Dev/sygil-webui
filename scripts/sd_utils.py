@@ -588,7 +588,7 @@ def get_matched_noise(_np_src_image, np_mask_rgb, noise_q, color_variation):
     noise_window = _get_gaussian_window(width, height, mode=1)  # start with simple gaussian noise
     noise_rgb = np.random.random_sample((width, height, num_channels))
     noise_grey = (np.sum(noise_rgb, axis=2)/3.)
-    noise_rgb *=  color_variation # the colorfulness of the starting noise is blended to greyscale with a parameter
+    noise_rgb *= color_variation # the colorfulness of the starting noise is blended to greyscale with a parameter
     for c in range(num_channels):
         noise_rgb[:,:,c] += (1. - color_variation) * noise_grey
 
@@ -2471,7 +2471,7 @@ def process_images(
             else:
                 grid = image_grid(output_images, batch_size)
 
-            if grid and (batch_size > 1  or n_iter > 1):
+            if grid and (batch_size > 1 or n_iter > 1):
                 output_images.insert(0, grid)
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
