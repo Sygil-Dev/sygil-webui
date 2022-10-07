@@ -37,37 +37,36 @@ class Models:
 
     # RealESRGAN_x4plus & RealESRGAN_x4plus_anime_6B
     def realESRGAN():
-        if op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth') and op.exists('src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth'):
+        if op.exists('models/realesrgan/RealESRGAN_x4plus.pth') and op.exists('models/realesrgan/RealESRGAN_x4plus_anime_6B.pth'):
             return st.write(f"RealESRGAN already exists !")
         else:
-            os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus.pth -o src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth')
-            os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus_anime_6B.pth -o src/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth')
+            os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus.pth -o models/realesrgan/RealESRGAN_x4plus.pth')
+            os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus_anime_6B.pth -o models/realesrgan/RealESRGAN_x4plus_anime_6B.pth')
             return st.write(f"ESRGAN upscaler installed successfully !")
 
     # GFPGANv1.3
     def GFPGAN():
-        if op.exists('src/gfpgan/experiments/pretrained_models/GFPGANv1.4.pth'):
+        if op.exists('models/gfpgan/GFPGANv1.4.pth'):
             return st.write(f"GFPGAN already exists !")
         else:
             os.system(
-                'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.4.pth -o src/gfpgan/experiments/pretrained_models/GFPGANv1.4.pth')
+                'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.4.pth -o models/gfpgan/GFPGANv1.4.pth')
             return st.write(f"GFPGAN installed successfully !")
 
     # Latent Diffusion
     def modelLD():
-        if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
+        if op.exists('models/ldsr/model.ckpt'):
             return st.write(f"Latent-Diffusion Model already esists !")
         else:
+            # os.system(
+            #    'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
+            os.mkdir('models/ldsr')
+            # st.write(f"Github Repository cloned !")
             os.system(
-               'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
-            os.mkdir('src/latent-diffusion/experiments')
-            os.mkdir('src/latent-diffusion/experiments/pretrained_models')
-            st.write(f"Github Repository cloned !")
-            os.system(
-                'curl -o src/latent-diffusion/experiments/pretrained_models/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
+                'curl -o models/ldsr/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
             # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
             os.system(
-                'curl -o src/latent-diffusion/experiments/pretrained_models/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
+                'curl -o models/ldsr/model.ckpt -L https://huggingface.co/kaliansh/letentDiff/resolve/main/model.ckpt')
             # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/model.ckpt')
             return st.write(f"Latent Diffusion successfully installed !")
 
@@ -111,9 +110,9 @@ class Models:
 
     # TrinArt Stable Diffusion v2
     def modelTSD():
-        if op.exists("models/custom/trinart_stable_diffusion_v2"):
+        if op.exists("models/custom/trinSDv2"):
             return st.write(f"Trinart S.D model already exists!")
         else:
             os.system(
-                "git clone https://huggingface.co/naclbit/trinart_stable_diffusion_v2 models/custom/trinart_stable_diffusion_v2")
+                "git clone https://huggingface.co/naclbit/trinart_stable_diffusion_v2 models/custom/trinSDv2")
             return st.write(f"TrinArt successfully installed !")
