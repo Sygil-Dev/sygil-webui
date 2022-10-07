@@ -36,7 +36,7 @@ class Models:
 
     # RealESRGAN_x4plus & RealESRGAN_x4plus_anime_6B
     def realESRGAN():
-        if op.exists('models/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus.pth') and op.exists('models/realesrgan/experiments/pretrained_models/RealESRGAN_x4plus_anime_6B.pth'):
+        if op.exists('models/realesrgan/RealESRGAN_x4plus.pth') and op.exists('models/realesrgan/RealESRGAN_x4plus_anime_6B.pth'):
             return st.write(f"RealESRGAN already exists !")
         else:
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus.pth -o models/realesrgan/RealESRGAN_x4plus.pth')
