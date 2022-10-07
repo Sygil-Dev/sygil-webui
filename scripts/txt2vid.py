@@ -561,7 +561,7 @@ def txt2vid(
 		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples"), im, extension=".mp4", fps=30)
 		try:
 			video_path = os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid-samples",f"{seeds}_{sanitized_prompt}.mp4")
-			writer = imageio.get_writer(video_path, fps=6)
+			writer = imageio.get_writer(video_path, fps=10)
 			for frame in frames:
 				writer.append_data(frame)
 			writer.close()
@@ -569,8 +569,8 @@ def txt2vid(
 			print("Can't save video, skipping.")
 
 		# show video preview on the UI
-		st.session_state["preview_video"].video(open(video_path, 'rb').read())
-		# st.video(video_path)
+		# st.session_state["preview_video"].video(open(video_path, 'rb').read())
+		st.session_state["preview_video"].video(video_path)
 
 	mem_max_used, mem_total = mem_mon.read_and_stop()
 	time_diff = time.time()- start
