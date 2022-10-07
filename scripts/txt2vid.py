@@ -569,8 +569,8 @@ def txt2vid(
 			print("Can't save video, skipping.")
 
 		# show video preview on the UI
-		# st.session_state["preview_video"].video(open(video_path, 'rb').read())
-		st.session_state["preview_video"].video(video_path)
+		st.session_state["preview_video"].video(open(video_path, 'rb').read())
+		# st.session_state["preview_video"].video(video_path)
 
 	mem_max_used, mem_total = mem_mon.read_and_stop()
 	time_diff = time.time()- start
