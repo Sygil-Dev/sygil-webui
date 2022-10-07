@@ -29,11 +29,11 @@ general:
     default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
     use_sd_concepts_library: True
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
-    GFPGAN_dir: "./models/gfpgan"
+    GFPGAN_dir: "models/gfpgan"
     GFPGAN_model: "GFPGANv1.4"
-    LDSR_dir: "./models/ldsr"
+    LDSR_dir: "models/ldsr"
     LDSR_model: "model"
-    RealESRGAN_dir: "./models/realesrgan"
+    RealESRGAN_dir: "models/realesrgan"
     RealESRGAN_model: "RealESRGAN_x4plus"
     upscaling_method: "RealESRGAN"
     outdir_txt2img: outputs/txt2img
