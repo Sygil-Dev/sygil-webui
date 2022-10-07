@@ -39,6 +39,7 @@ class Models:
         if op.exists('models/realesrgan/RealESRGAN_x4plus.pth') and op.exists('models/realesrgan/RealESRGAN_x4plus_anime_6B.pth'):
             return st.write(f"RealESRGAN already exists !")
         else:
+            os.system("mkdir -p models/realesrgan")
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus.pth -o models/realesrgan/RealESRGAN_x4plus.pth')
             os.system('curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/RealESRGAN_x4plus_anime_6B.pth -o models/realesrgan/RealESRGAN_x4plus_anime_6B.pth')
             return st.write(f"ESRGAN upscaler installed successfully !")
@@ -48,6 +49,7 @@ class Models:
         if op.exists('models/gfpgan/GFPGANv1.4.pth'):
             return st.write(f"GFPGAN already exists !")
         else:
+            os.system("mkdir -p models/gfpgan")
             os.system(
                 'curl -L https://huggingface.co/kaliansh/sdrep/resolve/main/GFPGANv1.4.pth -o models/gfpgan/GFPGANv1.4.pth')
             return st.write(f"GFPGAN installed successfully !")
@@ -59,7 +61,7 @@ class Models:
         else:
             # os.system(
             #    'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
-            os.mkdir('models/ldsr')
+            os.system('mkdir -p models/ldsr')
             os.system(
                 'curl -o models/ldsr/project.yaml -L https://huggingface.co/kaliansh/letentDiff/resolve/main/project.yaml')
             # os.rename('src/latent-diffusion/experiments/pretrained_models/index.html?dl=1', 'src/latent-diffusion/experiments/pretrained_models/project.yaml')
