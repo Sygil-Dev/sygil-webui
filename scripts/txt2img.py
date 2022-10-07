@@ -222,9 +222,11 @@ def layout():
             with st.expander("Preview Settings"):
 
                 st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
-                st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2img.update_preview_frequency,
-                                                                             help="Frequency in steps at which the the preview image is updated. By default the frequency \
-                                                                              is set to 10 step.")
+                st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
+                                                                               min_value=1,
+                                                                               value=st.session_state['defaults'].txt2img.update_preview_frequency,
+                                                                               help="Frequency in steps at which the the preview image is updated. By default the frequency \
+                                                                               is set to 10 step.")
 
         with col2:
             preview_tab, gallery_tab = st.tabs(["Preview", "Gallery"])

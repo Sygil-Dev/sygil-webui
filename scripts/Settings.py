@@ -157,9 +157,11 @@ def layout():
 																					#in steps will be shown, this is helpful to reduce the negative effect this option has on performance. \
 																					#Default: True")
 				st.session_state["defaults"].general.update_preview = True
-				st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency", value=st.session_state['defaults'].general.update_preview_frequency,
-																								  help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
-																								  negative effect updating the preview image has on performance. Default: 10")
+				st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency",
+																								min_value=1,
+																								value=st.session_state['defaults'].general.update_preview_frequency,
+																								help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
+																								negative effect updating the preview image has on performance. Default: 10")
 
 			with col3:
 				st.title("Others")
@@ -326,8 +328,9 @@ def layout():
 
 				st.session_state["defaults"].txt2img.update_preview = True
 				st.session_state["defaults"].txt2img.update_preview_frequency = st.number_input("Preview Image Update Frequency",
-																								  value=st.session_state['defaults'].txt2img.update_preview_frequency,
-																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10")
+																								min_value=1,
+																								value=st.session_state['defaults'].txt2img.update_preview_frequency,
+																								help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
 			with col5:
 				st.title("Variation Parameters")
@@ -526,8 +529,9 @@ def layout():
 
 				st.session_state["defaults"].img2img.update_preview = True
 				st.session_state["defaults"].img2img.update_preview_frequency = st.number_input("Img2Img Preview Image Update Frequency",
-																								  value=st.session_state['defaults'].img2img.update_preview_frequency,
-																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10")
+																								min_value=1,
+																								value=st.session_state['defaults'].img2img.update_preview_frequency,
+																								help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
 				st.title("Variation Parameters")
 
