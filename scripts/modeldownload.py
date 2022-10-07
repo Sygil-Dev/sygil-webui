@@ -55,12 +55,11 @@ class Models:
 
     # Latent Diffusion
     def modelLD():
-        if op.exists('src/latent-diffusion'):
+        if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
             return st.write(f"Latent-Diffusion Model already esists !")
         else:
             os.system(
-                'git clone https://github.com/devilismyfriend/latent-diffusion.git')
-            os.system('mv latent-diffusion src/latent-diffusion')
+                'git clone https://github.com/devilismyfriend/latent-diffusion.git src/latent-diffusion')
             st.write(f"Github Repository cloned !")
             if op.exists('src/latent-diffusion/experiments/pretrained_models/model.ckpt'):
                 st.write(f"Laten Diffusion model already exists!")
