@@ -155,7 +155,7 @@ def diffuse(
 					                                                                                     st.session_state["previous_chunk_speed_list"],
 					                                                                                     st.session_state['defaults'].txt2vid.update_preview_frequency,
 					                                                                                     st.session_state["update_preview_frequency_list"])
-
+																										 
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
 				image = pipe.vae.decode(cond_latents_2)
@@ -613,9 +613,11 @@ def layout():
 					                                         #By default this is enabled and the frequency is set to 1 step.")
 
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
-				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].txt2vid.update_preview_frequency,
-																			 help="Frequency in steps at which the the preview image is updated. By default the frequency \
-																			 is set to 1 step.")
+				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
+				                                                               min_value=1,
+				                                                               value=st.session_state['defaults'].txt2vid.update_preview_frequency,
+				                                                               help="Frequency in steps at which the the preview image is updated. By default the frequency \
+				                                                               is set to 1 step.")
 
 			#
 
