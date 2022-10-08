@@ -90,13 +90,13 @@ class Models:
             os.system("curl -o models/custom/blip/model__base_caption.pth -L https://huggingface.co/kaliansh/sdrep/resolve/main/model__base_caption.pth")
             return st.write(f"Blip model successfully installed")
 
-    # Waifu Diffusion v1.2
+    # Waifu Diffusion v1.3
     def modelWD():
-        if op.exists("models/custom/waifu-diffusion"):
+        if op.exists("models/custom/waifu-V1-3.ckpt"):
             return st.write(f"Waifu Diffusion Model already exists !")
         else:
             os.system(
-                "git clone https://huggingface.co/hakurei/waifu-diffusion models/custom/waifu-diffusion")
+                "curl -L https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt -o models/custom/waifu-V1-3.ckpt")
             return st.write(f"Waifu Diffusion model successfully installed")
 
     # Waifu Diffusion v1.2 Pruned
