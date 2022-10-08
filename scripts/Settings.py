@@ -685,6 +685,10 @@ def layout():
 				st.session_state["defaults"].txt2vid.save_video = st.checkbox("Save Txt2Vid Video", value=st.session_state['defaults'].txt2vid.save_video,
 																			  help="Choose to save the Txt2Vid video. Default: True")
 
+				st.session_state["defaults"].txt2vid.save_video_on_stop = st.checkbox("Save video on Stop",value=st.session_state['defaults'].txt2vid.save_video_on_stop,
+																					  help="Save a video with all the images generated as frames when we hit the stop button \
+																					  during a generation.")
+
 				st.session_state["defaults"].txt2vid.group_by_prompt = st.checkbox("Group By txt2vid Prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
 																				   help="Choose to save images grouped by their prompt. Default: False")
 
