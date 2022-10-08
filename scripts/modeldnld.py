@@ -93,6 +93,7 @@ class Models:
     # Waifu Diffusion v1.3
     def modelWD():
         if op.exists("models/custom/waifu-V1-3.ckpt"):
+            os.rename("models/custom/waifu-V1-3.ckpt","models/custom/Waifu Diffusion V1.3.ckpt")
             return st.write(f"Waifu Diffusion Model already exists !")
         else:
             os.system(
