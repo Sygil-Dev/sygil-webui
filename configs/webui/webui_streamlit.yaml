@@ -175,6 +175,7 @@ txt2vid:
     normalize_prompt_weights: True
     save_individual_images: True
     save_video: True
+    save_video_on_stop: False
     group_by_prompt: True
     write_info_files: True
     do_loop: False
