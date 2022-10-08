@@ -754,7 +754,7 @@ def layout():
 				st.session_state["defaults"].txt2vid.beta_start.step = st.number_input("txt2vid Beta Start Slider Steps", value=st.session_state['defaults'].txt2vid.beta_start.step,
 																						   help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
-				st.session_state["defaults"].txt2vid.beta_start.format = st.text_input("Default txt2vid Beta Start Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
+				st.session_state["defaults"].txt2vid.beta_start.format = st.number_input("Default txt2vid Beta Start Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
 																					   help="Set the default Beta Start Format. Default is: %.5\f")
 
 				# Beta End
@@ -770,7 +770,7 @@ def layout():
 				st.session_state["defaults"].txt2vid.beta_end.step = st.number_input("txt2vid Beta End Slider Steps", value=st.session_state['defaults'].txt2vid.beta_end.step,
 																						 help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
-				st.session_state["defaults"].txt2vid.beta_end.format = st.text_input("Default txt2vid Beta End Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
+				st.session_state["defaults"].txt2vid.beta_end.format = st.number_input("Default txt2vid Beta End Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
 																					 help="Set the default Beta Start Format. Default is: %.5\f")
 
 		with image_processing:

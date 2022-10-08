@@ -436,13 +436,13 @@ def layout():
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 
 			with st.expander("Batch Options"):
-				st.session_state["batch_count"] = int(st.text_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
-																help="How many iterations or batches of images to generate in total."))
+				st.session_state["batch_count"] = st.number_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
+																help="How many iterations or batches of images to generate in total.")
 
-				st.session_state["batch_size"] = int(st.text_input("Batch size", value=st.session_state.defaults.img2img.batch_size.value,
+				st.session_state["batch_size"] = st.number_input("Batch size", value=st.session_state.defaults.img2img.batch_size.value,
 				                            help="How many images are at once in a batch.\
 				                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                            Default: 1"))
+                                            Default: 1")
 
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
@@ -546,14 +546,14 @@ def layout():
 										st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
 																					  index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))
 
-										st.session_state["ldsr_sampling_steps"] = int(st.text_input("Sampling Steps", value=st.session_state['defaults'].img2img.LDSR_config.sampling_steps,
-																									help=""))
+										st.session_state["ldsr_sampling_steps"] = st.number_input("Sampling Steps", value=st.session_state['defaults'].img2img.LDSR_config.sampling_steps,
+																									help="")
 
-										st.session_state["preDownScale"] = int(st.text_input("PreDownScale", value=st.session_state['defaults'].img2img.LDSR_config.preDownScale,
-																							 help=""))
+										st.session_state["preDownScale"] = st.number_input("PreDownScale", value=st.session_state['defaults'].img2img.LDSR_config.preDownScale,
+																							 help="")
 
-										st.session_state["postDownScale"] = int(st.text_input("postDownScale", value=st.session_state['defaults'].img2img.LDSR_config.postDownScale,
-																							  help=""))
+										st.session_state["postDownScale"] = st.number_input("postDownScale", value=st.session_state['defaults'].img2img.LDSR_config.postDownScale,
+																							  help="")
 
 										downsample_method_list = ['Nearest', 'Lanczos']
 										st.session_state["downsample_method"] = st.selectbox("Downsample Method", downsample_method_list,
