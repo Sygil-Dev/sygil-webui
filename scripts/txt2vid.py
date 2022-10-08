@@ -155,7 +155,7 @@ def diffuse(
 					                                                                                     st.session_state["previous_chunk_speed_list"],
 					                                                                                     st.session_state['defaults'].txt2vid.update_preview_frequency,
 					                                                                                     st.session_state["update_preview_frequency_list"])
-																										 
+
 				#scale and decode the image latents with vae
 				cond_latents_2 = 1 / 0.18215 * cond_latents
 				image = pipe.vae.decode(cond_latents_2)
@@ -266,31 +266,31 @@ def load_diffusers_model(weights_path,torch_device):
 #
 def txt2vid(
 	# --------------------------------------
-		# args you probably want to change
+    # args you probably want to change
 	prompts = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
 	gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
 	#name:str = 'test', # name of this project, for the output directory
 	#rootdir:str = st.session_state['defaults'].general.outdir,
 	num_steps:int = 200, # number of steps between each pair of sampled points
-		max_frames:int = 10000, # number of frames to write and then exit the script
-				num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
-				cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
-				do_loop = False,
-				use_lerp_for_text = False,
-				seeds = None,
-				quality:int = 100, # for jpeg compression of the output images
-				eta:float = 0.0,
-				width:int = 256,
-				height:int = 256,
-				weights_path = "CompVis/stable-diffusion-v1-4",
-				scheduler="klms",  # choices: default, ddim, klms
-				disable_tqdm = False,
-				#-----------------------------------------------
-				beta_start = 0.0001,
-				beta_end = 0.00012,
-				beta_schedule = "scaled_linear",
-				starting_image=None
-				):
+    max_frames:int = 10000, # number of frames to write and then exit the script
+    num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
+    cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
+    do_loop = False,
+    use_lerp_for_text = False,
+    seeds = None,
+    quality:int = 100, # for jpeg compression of the output images
+    eta:float = 0.0,
+    width:int = 256,
+    height:int = 256,
+    weights_path = "CompVis/stable-diffusion-v1-4",
+    scheduler="klms",  # choices: default, ddim, klms
+    disable_tqdm = False,
+    #-----------------------------------------------
+    beta_start = 0.0001,
+    beta_end = 0.00012,
+    beta_schedule = "scaled_linear",
+    starting_image=None
+    ):
 	"""
 	prompt = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
 	gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
@@ -344,29 +344,29 @@ def txt2vid(
 	if st.session_state.write_info_files:
 		with open(os.path.join(full_path , f'{slugify(str(seeds))}_config.json' if len(prompts) > 1 else "prompts_config.json"), "w") as outfile:
 			outfile.write(json.dumps(
-				dict(
-						prompts = prompts,
-									gpu = gpu,
-								num_steps = num_steps,
-											max_frames = max_frames,
-											num_inference_steps = num_inference_steps,
-														cfg_scale = cfg_scale,
-															do_loop = do_loop,
-																use_lerp_for_text = use_lerp_for_text,
-														seeds = seeds,
-														quality = quality,
-														eta = eta,
-														width = width,
-														height = height,
-														weights_path = weights_path,
-														scheduler=scheduler,
-														disable_tqdm = disable_tqdm,
-														beta_start = beta_start,
-														beta_end = beta_end,
-														beta_schedule = beta_schedule
-														),
-					indent=2,
-							sort_keys=False,
+			    dict(
+			        prompts = prompts,
+			        gpu = gpu,
+			        num_steps = num_steps,
+			        max_frames = max_frames,
+			        num_inference_steps = num_inference_steps,
+			        cfg_scale = cfg_scale,
+			        do_loop = do_loop,
+			        use_lerp_for_text = use_lerp_for_text,
+			        seeds = seeds,
+			        quality = quality,
+			        eta = eta,
+			        width = width,
+			        height = height,
+			        weights_path = weights_path,
+			        scheduler=scheduler,
+			        disable_tqdm = disable_tqdm,
+			        beta_start = beta_start,
+			        beta_end = beta_end,
+			        beta_schedule = beta_schedule
+			        ),
+			    indent=2,
+			    sort_keys=False,
 			))
 
 	#print(scheduler)
@@ -413,9 +413,10 @@ def txt2vid(
 		#prompts.append(prompts)
 		#seeds.append(first_seed)
 
-	# get the conditional text embeddings based on the prompt
-	text_input = server_state["pipe"].tokenizer(prompts, padding="max_length", max_length=server_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
-	cond_embeddings = server_state["pipe"].text_encoder(text_input.input_ids.to(torch_device))[0] # shape [1, 77, 768]
+	with torch.autocast('cuda'):
+		# get the conditional text embeddings based on the prompt
+		text_input = server_state["pipe"].tokenizer(prompts, padding="max_length", max_length=server_state["pipe"].tokenizer.model_max_length, truncation=True, return_tensors="pt")
+		cond_embeddings = server_state["pipe"].text_encoder(text_input.input_ids.to(torch_device) )[0]
 
 	#
 	if st.session_state.defaults.general.use_sd_concepts_library:
@@ -604,7 +605,7 @@ def layout():
 					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 					#Default: 1")
 
-			st.session_state["max_frames"] = int(st.text_input("Max Frames:", value=st.session_state['defaults'].txt2vid.max_frames, help="Specify the max number of frames you want to generate."))
+			st.session_state["max_frames"] = st.number_input("Max Frames:", value=st.session_state['defaults'].txt2vid.max_frames, help="Specify the max number of frames you want to generate.")
 
 			with st.expander("Preview Settings"):
 				#st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
