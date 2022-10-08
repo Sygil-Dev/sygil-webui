@@ -92,11 +92,11 @@ class Models:
 
     # Waifu Diffusion v1.3
     def modelWD():
-        if op.exists("models/custom/Waifu Diffusion V1.3.ckpt"):
+        if op.exists("models/custom/WaifuDiffusion-V1.3.ckpt"):
             return st.write(f"Waifu Diffusion Model already exists !")
         else:
             os.system(
-                "curl -L https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt -o models/custom/Waifu Diffusion V1.3.ckpt")
+                "curl -L https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt -o models/custom/WaifuDiffusion-V1.3.ckpt")
             return st.write(f"Waifu Diffusion model successfully installed")
 
     # Waifu Diffusion v1.2 Pruned
