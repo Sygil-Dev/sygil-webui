@@ -81,5 +81,9 @@ git+https://github.com/CompVis/latent-diffusion
 ## for monocular depth estimation 
 tensorflow==2.10.0
 
+# Unused Packages: No current usage but will be used in the future.
+
+
 # Orphaned Packages:  No usage found
+
 

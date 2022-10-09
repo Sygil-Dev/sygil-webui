@@ -183,7 +183,7 @@ def layout():
 
         with input_col1:
             #prompt = st.text_area("Input Text","")
-            prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+            prompt = st.text_area("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
 
         # creating the page layout using columns
         col1, col2, col3 = st.columns([1,2,1], gap="large")
