@@ -308,7 +308,7 @@ class Checkpointer:
 				),
 			safety_checker=NoCheck(),
 			feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
-			).to("cuda")
+			).to(f"cuda:{st.session_state['defaults'].general.gpu}")
 	
 		server_state['textual_inversion']["pipeline"].enable_attention_slicing()
 

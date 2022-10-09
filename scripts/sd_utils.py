@@ -406,8 +406,8 @@ class MemUsageMonitor(threading.Thread):
             print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
         print(f"[{self.name}] Recording memory usage...\n")
-        # Missing context
-        #handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
+        # TODO: fix pynvml to work with multiple GPUs
+        # handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
         self.total = pynvml.nvmlDeviceGetMemoryInfo(handle).total
         while not self.stop_flag:
@@ -975,7 +975,7 @@ class LDSR():
                 c = rearrange(c, '1 c h w -> 1 h w c')
                 c = 2. * c - 1.
 
-                c = c.to(torch.device("cuda"))
+                c = c.to(torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
                 example["LR_image"] = c
                 example["image"] = c_up
 
@@ -1428,13 +1428,13 @@ def generation_callback(img, i=0):
         # It can probably be done in a better way for someone who knows what they're doing. I don't.
         #print (img,isinstance(img, torch.Tensor))
         if isinstance(img, torch.Tensor):
-            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
-                              ).decode_first_stage(img).to('cuda')
+            x_samples_ddim = (server_state["model"].to(f'cuda:{st.session_state["defaults"].general.gpu}') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to(f'cuda:{st.session_state["defaults"].general.gpu}')
+                              ).decode_first_stage(img).to(f'cuda:{st.session_state["defaults"].general.gpu}')
         else:
             # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
             # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
-            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
-                              ).decode_first_stage(img["denoised"]).to('cuda')
+            x_samples_ddim = (server_state["model"].to(f'cuda:{st.session_state["defaults"].general.gpu}') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to(f'cuda:{st.session_state["defaults"].general.gpu}')
+                              ).decode_first_stage(img["denoised"]).to(f'cuda:{st.session_state["defaults"].general.gpu}')
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
@@ -1712,7 +1712,7 @@ def draw_prompt_matrix(im, width, height, all_prompts):
 #
 def enable_minimal_memory_usage(model):
     """Moves only unet to fp16 and to CUDA, while keepping lighter models on CPUs"""
-    model.unet.to(torch.float16).to(torch.device("cuda"))
+    model.unet.to(torch.float16).to(torch.device(f"cuda:{st.session_state['defaults'].general.gpu}"))
     model.enable_attention_slicing(1)
 
     torch.cuda.empty_cache()
@@ -2182,7 +2182,7 @@ def process_images(
             if noise_mode == 1 or noise_mode == 3:
                 # TODO params for find_noise_to_image
                 x = torch.cat(batch_size * [find_noise_for_image(
-                                    server_state["model"], server_state["device"],
+                                    server_state["model"], server_state["model"].device,
                                         init_img.convert('RGB'), '', find_noise_steps, 0.0, normalize=True,
                                         generation_callback=generation_callback,
                                         )], dim=0)
