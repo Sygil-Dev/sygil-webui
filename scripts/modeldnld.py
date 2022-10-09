@@ -82,12 +82,12 @@ class Models:
 
     # Blip Model
     def modelBlip():
-        if op.exists('models/custom/blip/model__base_caption.pth'):
+        if op.exists('models/blip/model__base_caption.pth'):
             return st.write(f"Blip Model already exists !")
         else:
             # return st.write(f"Blip Model is to be installed !")
-            os.mkdir("models/custom/blip")
-            os.system("curl -o models/custom/blip/model__base_caption.pth -L https://huggingface.co/kaliansh/sdrep/resolve/main/model__base_caption.pth")
+            os.mkdir("models/blip")
+            os.system("curl -o models/blip/model__base_caption.pth -L https://huggingface.co/kaliansh/sdrep/resolve/main/model__base_caption.pth")
             return st.write(f"Blip model successfully installed")
 
     # Waifu Diffusion v1.3
