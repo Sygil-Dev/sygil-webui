@@ -345,8 +345,10 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
         #trying to disable multiprocessing as it makes it so streamlit cant stop when the
         # model is loaded in memory and you need to kill the process sometimes.
 
-        server_state["model"].args.use_multiprocessing_for_evaluation = False
-
+        try:
+            server_state["model"].args.use_multiprocessing_for_evaluation = False
+        except AttributeError:
+            pass
 
         if st.session_state.defaults.general.enable_attention_slicing:
             server_state["model"].enable_attention_slicing()
