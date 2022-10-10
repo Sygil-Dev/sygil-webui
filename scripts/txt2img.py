@@ -345,7 +345,6 @@ def layout():
                                     st.session_state["use_RealESRGAN"] = False
                                     st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
                                     
-                                    
                                 #
                                 if st.session_state["LDSR_available"]:
                                     #with st.expander("LDSR"):
