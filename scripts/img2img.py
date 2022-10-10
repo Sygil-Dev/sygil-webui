@@ -365,7 +365,7 @@ def layout():
 		img2img_input_col, img2img_generate_col = st.columns([10,1])
 		with img2img_input_col:
 			#prompt = st.text_area("Input Text","")
-			prompt = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+			prompt = st.text_area("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
 
 		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
 		img2img_generate_col.write("")
@@ -436,19 +436,21 @@ def layout():
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 
 			with st.expander("Batch Options"):
-				st.session_state["batch_count"] = int(st.text_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
-																help="How many iterations or batches of images to generate in total."))
+				st.session_state["batch_count"] = st.number_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
+																help="How many iterations or batches of images to generate in total.")
 
-				st.session_state["batch_size"] = int(st.text_input("Batch size", value=st.session_state.defaults.img2img.batch_size.value,
+				st.session_state["batch_size"] = st.number_input("Batch size", value=st.session_state.defaults.img2img.batch_size.value,
 				                            help="How many images are at once in a batch.\
 				                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                            Default: 1"))
+                                            Default: 1")
 
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
-				st.session_state["update_preview_frequency"] = st.text_input("Update Image Preview Frequency", value=st.session_state['defaults'].img2img.update_preview_frequency,
-																					 help="Frequency in steps at which the the preview image is updated. By default the frequency \
-															  is set to 1 step.")
+				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
+																			   min_value=1,
+																			   value=st.session_state['defaults'].img2img.update_preview_frequency,
+																			   help="Frequency in steps at which the the preview image is updated. By default the frequency \
+																			   is set to 1 step.")
 			#
 			with st.expander("Advanced"):
 				with st.expander("Output Settings"):
@@ -544,14 +546,14 @@ def layout():
 										st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
 																					  index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))
 
-										st.session_state["ldsr_sampling_steps"] = int(st.text_input("Sampling Steps", value=st.session_state['defaults'].img2img.LDSR_config.sampling_steps,
-																									help=""))
+										st.session_state["ldsr_sampling_steps"] = st.number_input("Sampling Steps", value=st.session_state['defaults'].img2img.LDSR_config.sampling_steps,
+																									help="")
 
-										st.session_state["preDownScale"] = int(st.text_input("PreDownScale", value=st.session_state['defaults'].img2img.LDSR_config.preDownScale,
-																							 help=""))
+										st.session_state["preDownScale"] = st.number_input("PreDownScale", value=st.session_state['defaults'].img2img.LDSR_config.preDownScale,
+																							 help="")
 
-										st.session_state["postDownScale"] = int(st.text_input("postDownScale", value=st.session_state['defaults'].img2img.LDSR_config.postDownScale,
-																							  help=""))
+										st.session_state["postDownScale"] = st.number_input("postDownScale", value=st.session_state['defaults'].img2img.LDSR_config.postDownScale,
+																							  help="")
 
 										downsample_method_list = ['Nearest', 'Lanczos']
 										st.session_state["downsample_method"] = st.selectbox("Downsample Method", downsample_method_list,

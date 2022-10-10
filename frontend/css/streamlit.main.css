@@ -144,3 +144,9 @@ div.gallery:hover {
 .css-jn99sy {
 	display: none
 	}
+	
+/* Make the text area widget have a similar height as the text input field*/
+.st-ex{
+	height: 54px;
+	min-height: 25px;
+}

@@ -157,9 +157,11 @@ def layout():
 																					#in steps will be shown, this is helpful to reduce the negative effect this option has on performance. \
 																					#Default: True")
 				st.session_state["defaults"].general.update_preview = True
-				st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency", value=st.session_state['defaults'].general.update_preview_frequency,
-																								  help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
-																								  negative effect updating the preview image has on performance. Default: 10")
+				st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency",
+																								min_value=1,
+																								value=st.session_state['defaults'].general.update_preview_frequency,
+																								help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
+																								negative effect updating the preview image has on performance. Default: 10")
 
 			with col3:
 				st.title("Others")
@@ -270,7 +272,7 @@ def layout():
 																									  value=st.session_state['defaults'].txt2img.sampling_steps.min_value,
 																									  help="Set the default minimum value for the sampling steps slider. Default is: 1")
 
-					st.session_state["defaults"].txt2img.sampling_steps.step = st.text_input("Sampling Slider Steps",
+					st.session_state["defaults"].txt2img.sampling_steps.step = st.number_input("Sampling Slider Steps",
 																								 value=st.session_state['defaults'].txt2img.sampling_steps.step,
 																								 help="Set the default value for the number of steps on the sampling steps slider. Default is: 10")
 
@@ -326,8 +328,9 @@ def layout():
 
 				st.session_state["defaults"].txt2img.update_preview = True
 				st.session_state["defaults"].txt2img.update_preview_frequency = st.number_input("Preview Image Update Frequency",
-																								  value=st.session_state['defaults'].txt2img.update_preview_frequency,
-																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10")
+																								min_value=1,
+																								value=st.session_state['defaults'].txt2img.update_preview_frequency,
+																								help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
 			with col5:
 				st.title("Variation Parameters")
@@ -526,8 +529,9 @@ def layout():
 
 				st.session_state["defaults"].img2img.update_preview = True
 				st.session_state["defaults"].img2img.update_preview_frequency = st.number_input("Img2Img Preview Image Update Frequency",
-																								  value=st.session_state['defaults'].img2img.update_preview_frequency,
-																								  help="Set the default value for the frrquency of the preview image updates. Default is: 10")
+																								min_value=1,
+																								value=st.session_state['defaults'].img2img.update_preview_frequency,
+																								help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
 				st.title("Variation Parameters")
 
@@ -681,6 +685,10 @@ def layout():
 				st.session_state["defaults"].txt2vid.save_video = st.checkbox("Save Txt2Vid Video", value=st.session_state['defaults'].txt2vid.save_video,
 																			  help="Choose to save the Txt2Vid video. Default: True")
 
+				st.session_state["defaults"].txt2vid.save_video_on_stop = st.checkbox("Save video on Stop",value=st.session_state['defaults'].txt2vid.save_video_on_stop,
+																					  help="Save a video with all the images generated as frames when we hit the stop button \
+																					  during a generation.")
+
 				st.session_state["defaults"].txt2vid.group_by_prompt = st.checkbox("Group By txt2vid Prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
 																				   help="Choose to save images grouped by their prompt. Default: False")
 
@@ -750,7 +758,7 @@ def layout():
 				st.session_state["defaults"].txt2vid.beta_start.step = st.number_input("txt2vid Beta Start Slider Steps", value=st.session_state['defaults'].txt2vid.beta_start.step,
 																						   help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
-				st.session_state["defaults"].txt2vid.beta_start.format = st.text_input("Default txt2vid Beta Start Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
+				st.session_state["defaults"].txt2vid.beta_start.format = st.number_input("Default txt2vid Beta Start Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
 																					   help="Set the default Beta Start Format. Default is: %.5\f")
 
 				# Beta End
@@ -766,7 +774,7 @@ def layout():
 				st.session_state["defaults"].txt2vid.beta_end.step = st.number_input("txt2vid Beta End Slider Steps", value=st.session_state['defaults'].txt2vid.beta_end.step,
 																						 help="Set the default value for the number of steps on the variation slider. Default is: 1")
 
-				st.session_state["defaults"].txt2vid.beta_end.format = st.text_input("Default txt2vid Beta End Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
+				st.session_state["defaults"].txt2vid.beta_end.format = st.number_input("Default txt2vid Beta End Format", value=st.session_state['defaults'].txt2vid.beta_start.format,
 																					 help="Set the default Beta Start Format. Default is: %.5\f")
 
 		with image_processing:
