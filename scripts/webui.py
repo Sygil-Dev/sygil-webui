@@ -2783,22 +2783,33 @@ if __name__ == '__main__':
     if opt.bridge:
         try:
             import bridgeData as cd
-        except:
+        except ModuleNotFoundError as e:
+            logger.warning("No bridgeData found. Falling back to default where no CLI args are set.")
+            logger.warning(str(e))
+        except SyntaxError as e:
+            logger.warning("bridgeData found, but is malformed. Falling back to default where no CLI args are set.")
+            logger.warning(str(e))
+        except Exception as e:
             logger.warning("No bridgeData found, use default where no CLI args are set")
-            class temp(object):
-                def __init__(self):
-                    random.seed()
-                    self.horde_url = "https://stablehorde.net"
-                    # Give a cool name to your instance
-                    self.horde_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
-                    # The api_key identifies a unique user in the horde
-                    self.horde_api_key = "0000000000"
-                    # Put other users whose prompts you want to prioritize.
-                    # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
-                    self.horde_priority_usernames = []
-                    self.horde_max_power = 8
-                    self.nsfw = True
-            cd = temp()
+            logger.warning(str(e))
+        finally:
+            try: # check if cd exists (i.e. bridgeData loaded properly)
+                cd
+            except: # if not, create defaults
+                class temp(object):
+                    def __init__(self):
+                        random.seed()
+                        self.horde_url = "https://stablehorde.net"
+                        # Give a cool name to your instance
+                        self.horde_name = f"Automated Instance #{random.randint(-100000000, 100000000)}"
+                        # The api_key identifies a unique user in the horde
+                        self.horde_api_key = "0000000000"
+                        # Put other users whose prompts you want to prioritize.
+                        # The owner's username is always included so you don't need to add it here, unless you want it to have lower priority than another user
+                        self.horde_priority_usernames = []
+                        self.horde_max_power = 8
+                        self.nsfw = True
+                cd = temp()
         horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
         horde_name = opt.horde_name if opt.horde_name else cd.horde_name
         horde_url = opt.horde_url if opt.horde_url else cd.horde_url
