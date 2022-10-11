@@ -182,6 +182,9 @@ def layout():
 		
 		from scripts.Settings import layout
 		layout()
-	
+
+# def textimager():
+
+
 if __name__ == '__main__':
 	layout()     
