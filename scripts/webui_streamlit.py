@@ -16,13 +16,14 @@
 
 # base webui import and utils.
 #import streamlit as st
-import torch,os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
-device = torch.device("cuda:0")
+import os
+# from scripts.modeldnld import Models
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+device = "cuda" #torch.device("cuda:0")
 # We import hydralit like this to replace the previous stuff
 # we had with native streamlit as it lets ur replace things 1:1
 #import hydralit as st 
-from sd_utils import *
+from scripts.sd_utils import *
 
 # streamlit imports
 import streamlit_nested_layout
@@ -32,6 +33,16 @@ from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
 
 #other imports
+# download all Models
+# Models.modelSD()
+# Models.realESRGAN()
+# Models.GFPGAN()
+# Models.modelLD()
+# Models.SD_conLib()
+# Models.modelBlip()
+# Models.modelWD()
+# Models.modelWDP()
+# Models.modelTSD()
 
 import warnings
 import os, toml
@@ -136,41 +147,44 @@ def layout():
 			#layout()		
 		
 		with txt2img_tab:
-			from txt2img import layout
+			from scripts.txt2img import layout
 			layout()
 		
 		with img2img_tab:
-			from img2img import layout
+			from scripts.img2img import layout
 			layout()
 		
 		with txt2vid_tab:
-			from txt2vid import layout
+			from scripts.txt2vid import layout
 			layout()
 			
 		with img2txt_tab:
-			from img2txt import layout
+			from scripts.img2txt import layout
 			layout()	
 			
 		with concept_library_tab:
-			from sd_concept_library import layout
+			from scripts.sd_concept_library import layout
 			layout()			
 		
 	#
 	elif tabs == 'Model Manager':
 		set_page_title("Model Manager - Stable Diffusion Playground")
 		
-		from ModelManager import layout
+		from scripts.ModelManager import layout
 		layout()
 	
 	elif tabs == 'Textual Inversion':		
-		from textual_inversion import layout
+		from scripts.textual_inversion import layout
 		layout()
 		
 	elif tabs == 'Settings':
 		set_page_title("Settings - Stable Diffusion Playground")
 		
-		from Settings import layout
+		from scripts.Settings import layout
 		layout()
-	
+
+# def textimager():
+
+
 if __name__ == '__main__':
 	layout()     
