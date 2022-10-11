@@ -21,7 +21,7 @@
 general:
     streamlit_telemetry: False
     default_theme: dark
-    huggingface_token: ""
+    huggingface_token: ''
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.4"
@@ -179,6 +179,7 @@ txt2vid:
     group_by_prompt: True
     write_info_files: True
     do_loop: False
+    use_lerp_for_text: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
@@ -194,16 +195,16 @@ txt2vid:
 
     beta_start:
         value:      0.00085
-        min_value:  0.0001
-        max_value:  0.0300
-        step:       0.0001
+        min_value:  0.00010
+        max_value:  0.03000
+        step:       0.00010
         format:     "%.5f"
 
     beta_end:
-        value:      0.012
-        min_value:  0.0001
-        max_value:  0.0300
-        step:       0.0001
+        value:      0.01200
+        min_value:  0.00010
+        max_value:  0.03000
+        step:       0.00010
         format:     "%.5f"
 
     beta_scheduler_type: "scaled_linear"
