@@ -14,6 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
+
+"""
+Implementation of Text to Video based on the
+https://github.com/nateraw/stable-diffusion-videos
+repo and the original gist script from
+https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
+"""
 from sd_utils import *
 
 # streamlit imports
@@ -228,9 +235,9 @@ def load_diffusers_model(weights_path,torch_device):
 					del st.session_state["weights_path"]
 
 				st.session_state["weights_path"] = weights_path
-				st.session_state['float16'] = st.session_state['defaults'].general.use_float16
-				st.session_state['no_half'] = st.session_state['defaults'].general.no_half
-				st.session_state['optimized'] = st.session_state['defaults'].general.optimized
+				server_state['float16'] = st.session_state['defaults'].general.use_float16
+				server_state['no_half'] = st.session_state['defaults'].general.no_half
+				server_state['optimized'] = st.session_state['defaults'].general.optimized
 
 				#if folder "models/diffusers/stable-diffusion-v1-4" exists, load the model from there
 				if weights_path == "CompVis/stable-diffusion-v1-4":
@@ -266,21 +273,21 @@ def load_diffusers_model(weights_path,torch_device):
 				print("Tx2Vid Model Loaded")
 			else:
 				# if the float16 or no_half options have changed since the last time the model was loaded then we need to reload the model.
-				if ("float16" in st.session_state and st.session_state['float16'] != st.session_state['defaults'].general.use_float16) \
-				   or ("no_half" in st.session_state and st.session_state['no_half'] != st.session_state['defaults'].general.no_half) \
-				   or ("optimized" in st.session_state and st.session_state['optimized'] != st.session_state['defaults'].general.optimized):
+				if ("float16" in server_state and server_state['float16'] != st.session_state['defaults'].general.use_float16) \
+				   or ("no_half" in server_state and server_state['no_half'] != st.session_state['defaults'].general.no_half) \
+				   or ("optimized" in server_state and server_state['optimized'] != st.session_state['defaults'].general.optimized):
 
-					del st.session_state['float16']
-					del st.session_state['no_half']
+					del server_state['float16']
+					del server_state['no_half']
 					with server_state_lock["pipe"]:
 						del server_state["pipe"]
 						torch_gc()
 
-					del st.session_state['optimized']
+					del server_state['optimized']
 
-					st.session_state['float16'] = st.session_state['defaults'].general.use_float16
-					st.session_state['no_half'] = st.session_state['defaults'].general.no_half
-					st.session_state['optimized'] = st.session_state['defaults'].general.optimized
+					server_state['float16'] = st.session_state['defaults'].general.use_float16
+					server_state['no_half'] = st.session_state['defaults'].general.no_half
+					server_state['optimized'] = st.session_state['defaults'].general.optimized
 
 					load_diffusers_model(weights_path, torch_device)
 				else:
@@ -441,14 +448,9 @@ def txt2vid(
 
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
-	#if "pipe" not in server_state:
 	with st.session_state["progress_bar_text"].container():
 		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-			if "model" in st.session_state:
-				del st.session_state["model"]
 			load_diffusers_model(weights_path, torch_device)
-	#else:
-		#print("Model already loaded")
 
 	if "pipe" not in server_state:
 		print('wtf')
@@ -509,14 +511,18 @@ def txt2vid(
 	frames = []
 	frame_index = 0
 
+	second_count = 1
+
 	st.session_state["total_frames_avg_duration"] = []
 	st.session_state["total_frames_avg_speed"] = []
 
 	try:
-		while frame_index < max_frames:
+		while second_count < max_frames:
 			st.session_state["frame_duration"] = 0
 			st.session_state["frame_speed"] = 0
 			st.session_state["current_frame"] = frame_index
+
+			#print(f"Second: {second_count+1}/{max_frames}")
 
 			# sample the destination
 			init2 = torch.randn((1, server_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
@@ -525,12 +531,12 @@ def txt2vid(
 				start = timeit.default_timer()
 				print(f"COUNT: {frame_index+1}/{max_frames}")
 
-				#if use_lerp_for_text:
-					#init = torch.lerp(init1, init2, float(t))
-				#else:
-					#init = slerp(gpu, float(t), init1, init2)
+				if use_lerp_for_text:
+					init = torch.lerp(init1, init2, float(t))
+				else:
+					init = slerp(gpu, float(t), init1, init2)
 
-				init = slerp(gpu, float(t), init1, init2)
+				#init = slerp(gpu, float(t), init1, init2)
 
 				with autocast("cuda"):
 					image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
@@ -773,8 +779,14 @@ def layout():
 
 				st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
 					                                               help="Save a file next to the image with informartion about the generation.")
-				st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
-					                                      help="Do loop")
+
+				#st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop, help="Do loop")
+				st.session_state["use_lerp_for_text"] = st.checkbox("Use Lerp Instead of Slerp", value=st.session_state['defaults'].txt2vid.use_lerp_for_text,
+				                                                    help="Uses torch.lerp() instead of slerp. When interpolating between related prompts. \
+				                                                    e.g. 'a lion in a grassy meadow' -> 'a bear in a grassy meadow' tends to keep the meadow \
+				                                                    the whole way through when lerped, but slerping will often find a path where the meadow \
+				                                                    disappears in the middle")
+
 				st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 			#
@@ -913,7 +925,8 @@ def layout():
 		                                   num_inference_steps=st.session_state.num_inference_steps,
 		                                   cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
 		                                   outdir=st.session_state["defaults"].general.outdir,
-		                                   do_loop=st.session_state["do_loop"],
+		                                   #do_loop=st.session_state["do_loop"],
+		                                   use_lerp_for_text=st.session_state["use_lerp_for_text"],
 		                                   seeds=seed, quality=100, eta=0.0, width=width,
 		                                   height=height, weights_path=custom_model, scheduler=scheduler_name,
 		                                   disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
