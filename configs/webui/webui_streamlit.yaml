@@ -62,6 +62,9 @@ general:
     update_preview: True
     update_preview_frequency: 10
 
+debug:
+    enable_hydralit: False
+
 txt2img:
     prompt:
     width:

@@ -88,10 +88,13 @@ def load_css(isLocal, nameOrURL):
 	else:
 		remote_css(nameOrURL)
 
+@app.addapp("App")
 def layout():
 	"""Layout functions to define all the streamlit layout here."""
-	st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
-	#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded",
+	if not st.session_state["defaults"].debug.enable_hydralit:
+		st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
+
+	#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
 	                  #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
 
 	with st.empty():
@@ -144,6 +147,10 @@ def layout():
 			from img2img import layout
 			layout()
 
+		#with inpainting_tab:
+			#from inpainting import layout
+			#layout()
+
 		with txt2vid_tab:
 			from txt2vid import layout
 			layout()
@@ -174,4 +181,8 @@ def layout():
 		layout()
 
 if __name__ == '__main__':
-	layout()
+
+	if st.session_state["defaults"].debug.enable_hydralit:
+		app.run()
+	else:
+		layout()
