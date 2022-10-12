@@ -88,101 +88,107 @@ def load_css(isLocal, nameOrURL):
 	else:
 		remote_css(nameOrURL)
 
-@app.addapp("App")
-def layout():
-	"""Layout functions to define all the streamlit layout here."""
-	if not st.session_state["defaults"].debug.enable_hydralit:
-		st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
+class HomeApp(HydraHeadApp):
+	#wrap all your code in this method and you should be done
+	def run(self):
 
-	#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
-	                  #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
+#def layout():
+		"""Layout functions to define all the streamlit layout here."""
+		if not st.session_state["defaults"].debug.enable_hydralit:
+			st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
 
-	with st.empty():
-		# load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
-		load_css(True, 'frontend/css/streamlit.main.css')
+		#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
+						  #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
 
-	# check if the models exist on their respective folders
-	with server_state_lock["GFPGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, f"{st.session_state['defaults'].general.GFPGAN_model}.pth")):
-			server_state["GFPGAN_available"] = True
-		else:
-			server_state["GFPGAN_available"] = False
+		with st.empty():
+			# load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
+			load_css(True, 'frontend/css/streamlit.main.css')
 
-	with server_state_lock["RealESRGAN_available"]:
-		if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-			server_state["RealESRGAN_available"] = True
-		else:
-			server_state["RealESRGAN_available"] = False
+		# check if the models exist on their respective folders
+		with server_state_lock["GFPGAN_available"]:
+			if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, f"{st.session_state['defaults'].general.GFPGAN_model}.pth")):
+				server_state["GFPGAN_available"] = True
+			else:
+				server_state["GFPGAN_available"] = False
 
-	with st.sidebar:
-		tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"],
-                        iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
+		with server_state_lock["RealESRGAN_available"]:
+			if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
+				server_state["RealESRGAN_available"] = True
+			else:
+				server_state["RealESRGAN_available"] = False
 
-		# need to see how to get the icons to show for the hydralit option_bar
-		#tabs = hc.option_bar([{'icon':'grid-outline','label':'Stable Diffusion'}, {'label':"Textual Inversion"},
-		                      #{'label':"Model Manager"},{'label':"Settings"}],
-		                     #horizontal_orientation=False,
-		                     #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
+		with st.sidebar:
+			tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"],
+				            iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
 
-	if tabs =='Stable Diffusion':
-		# set the page url and title
-		st.experimental_set_query_params(page='stable-diffusion')
-		try:
-			set_page_title("Stable Diffusion Playground")
-		except NameError:
-			st.experimental_rerun()
+			# need to see how to get the icons to show for the hydralit option_bar
+			#tabs = hc.option_bar([{'icon':'grid-outline','label':'Stable Diffusion'}, {'label':"Textual Inversion"},
+								  #{'label':"Model Manager"},{'label':"Settings"}],
+								 #horizontal_orientation=False,
+								 #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
 
-		txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
-		                                                                                   "Text-to-Video", "Image-To-Text",
-		                                                                                   "Concept Library"])
-		#with home_tab:
-			#from home import layout
-			#layout()
+		if tabs =='Stable Diffusion':
+			# set the page url and title
+			st.experimental_set_query_params(page='stable-diffusion')
+			try:
+				set_page_title("Stable Diffusion Playground")
+			except NameError:
+				st.experimental_rerun()
 
-		with txt2img_tab:
-			from txt2img import layout
+			txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
+				                                                                               "Text-to-Video", "Image-To-Text",
+				                                                                               "Concept Library"])
+			#with home_tab:
+				#from home import layout
+				#layout()
+
+			with txt2img_tab:
+				from txt2img import layout
+				layout()
+
+			with img2img_tab:
+				from img2img import layout
+				layout()
+
+			#with inpainting_tab:
+				#from inpainting import layout
+				#layout()
+
+			with txt2vid_tab:
+				from txt2vid import layout
+				layout()
+
+			with img2txt_tab:
+				from img2txt import layout
+				layout()
+
+			with concept_library_tab:
+				from sd_concept_library import layout
+				layout()
+
+		#
+		elif tabs == 'Model Manager':
+			set_page_title("Model Manager - Stable Diffusion Playground")
+
+			from ModelManager import layout
 			layout()
 
-		with img2img_tab:
-			from img2img import layout
+		elif tabs == 'Textual Inversion':
+			from textual_inversion import layout
 			layout()
 
-		#with inpainting_tab:
-			#from inpainting import layout
-			#layout()
+		elif tabs == 'Settings':
+			set_page_title("Settings - Stable Diffusion Playground")
 
-		with txt2vid_tab:
-			from txt2vid import layout
+			from Settings import layout
 			layout()
-
-		with img2txt_tab:
-			from img2txt import layout
-			layout()
-
-		with concept_library_tab:
-			from sd_concept_library import layout
-			layout()
-
-	#
-	elif tabs == 'Model Manager':
-		set_page_title("Model Manager - Stable Diffusion Playground")
-
-		from ModelManager import layout
-		layout()
-
-	elif tabs == 'Textual Inversion':
-		from textual_inversion import layout
-		layout()
-
-	elif tabs == 'Settings':
-		set_page_title("Settings - Stable Diffusion Playground")
-
-		from Settings import layout
-		layout()
 
 if __name__ == '__main__':
 
 	if st.session_state["defaults"].debug.enable_hydralit:
+		app.add_app("App", HomeApp(), is_unsecure=True)
 		app.run()
 	else:
-		layout()
+		#app.add_app("", HomeApp(), is_unsecure=True)
+		#app.run()
+		HomeApp().run()
