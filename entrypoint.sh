@@ -132,6 +132,6 @@ source ~/.bashrc
 cd $SCRIPT_DIR
 launch_command="streamlit run ${SCRIPT_DIR}/scripts/webui_streamlit.py"
 
-$launch_command
+HSA_OVERRIDE_GFX_VERSION=10.3.0 PYTORCH_CUDA_ALLOC_CONF=garbage_collection_threshold:0.6,max_split_size_mb:128 $launch_command
 
 sleep infinity
