@@ -34,7 +34,13 @@ streamlit-tensorboard==0.0.2
 hydralit==1.0.14
 hydralit_components==1.0.10
 stqdm==0.0.4
+
+# txt2vid
+stable-diffusion-videos==0.5.3
 diffusers==0.4.1
+
+# img2img inpainting
+streamlit-drawable-canvas==0.9.2
 
 # Img2text
 ftfy==6.1.1
