@@ -122,7 +122,7 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
 #
 #if st.session_state["defaults"].debug.enable_hydralit:
 app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
-                  hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
+                  hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False, use_loader=False)
 
 
 # should and will be moved to a settings menu in the UI at some point
