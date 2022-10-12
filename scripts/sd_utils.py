@@ -25,6 +25,7 @@ from streamlit import StopException, StreamlitAPIException
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
 import hydralit_components as hc
+from hydralit import HydraHeadApp
 import streamlit_nested_layout
 
 #other imports
@@ -120,9 +121,11 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
         modeldownload.updateModels()
 
 #
-#if st.session_state["defaults"].debug.enable_hydralit:
-app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
-                  hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False, use_loader=False)
+if st.session_state["defaults"].debug.enable_hydralit:
+    app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
+                      hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False, use_loader=False)
+else:
+    app = None
 
 
 # should and will be moved to a settings menu in the UI at some point
