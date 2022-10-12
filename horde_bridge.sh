@@ -162,7 +162,7 @@ start_initialization () {
         echo "Your model file does not exist! Place it in 'models/ldm/stable-diffusion-v1' with the name 'model.ckpt'."
         exit 1
     fi
-    printf "\nStarting Stable Horde Bridg: Please Wait...\n"; python scripts/relauncher.py --bridge -v "$@"; break;
+    printf "\nStarting Stable Horde Bridge: Please Wait...\n"; python scripts/relauncher.py --bridge -v "$@"; break;
 
 }
 

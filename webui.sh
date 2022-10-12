@@ -154,6 +154,13 @@ post_processor_model_loading () {
 
 # Show the user a prompt asking them which version of the WebUI they wish to use, Streamlit or Gradio
 launch_webui () {
+    # skip the prompt if --bridge command-line argument is detected
+    for arg in "$@"; do
+        if [ "$arg" == "--bridge" ]; then
+           python -u scripts/relauncher.py "$@"
+           return
+        fi
+    done
     printf "\n\n########## LAUNCH USING STREAMLIT OR GRADIO? ##########\n\n"
     printf "Do you wish to run the WebUI using the Gradio or StreamLit Interface?\n\n"
     printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \nMissing Some Gradio Features\n\n"
