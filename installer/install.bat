@@ -63,7 +63,7 @@ if not exist ".git" (
 mkdir models\ldm\stable-diffusion-v1
 
 @rem install the project
-@REM call webui.cmd
+call webui.cmd
 
 @rem finally, tell the user that they need to download the ckpt
 echo.
