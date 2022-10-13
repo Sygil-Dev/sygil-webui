@@ -42,6 +42,15 @@ if "%PACKAGES_TO_INSTALL%" NEQ "" (
     echo "Packages to install:%PACKAGES_TO_INSTALL%"
 
     call "%MAMBA_ROOT_PREFIX%\micromamba.exe" install -y --prefix "%INSTALL_ENV_DIR%" -c conda-forge %PACKAGES_TO_INSTALL%
+
+    @rem !! The next 3 lines will be removed before the PR is merged.
+    @rem !! They are needed so the sd-webui folks can test the installer
+    @rem !! before the PR is merged. Otherwise webui.cmd won't know that it needs
+    @rem !! to also check inside %INSTALL_ENV_DIR%
+    if exist "%INSTALL_ENV_DIR%\etc\profile.d\conda.sh" (
+        echo %INSTALL_ENV_DIR% > custom-conda-path.txt
+    )
+    @rem !! Remove the above 3 lines before merging the PR
 )
 
 set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%PATH%
@@ -50,7 +59,7 @@ set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scrip
 if not exist ".git" (
     call git config --global init.defaultBranch master
     call git init
-    call git remote add origin https://github.com/cmdr2/hkly-webui.git
+    call git remote add origin https://github.com/sd-webui/stable-diffusion-webui.git
     call git fetch
     call git checkout origin/master -ft
 )
