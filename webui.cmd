@@ -31,7 +31,11 @@ IF EXIST custom-conda-path.txt (
   FOR /F %%i IN (custom-conda-path.txt) DO set v_custom_path=%%i
 )
 
-set v_paths=%ProgramData%\miniconda3
+set INSTALL_ENV_DIR=%cd%\installer_files\env
+set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%PATH%
+
+set v_paths=%INSTALL_ENV_DIR%
+set v_paths=%v_paths%;%ProgramData%\miniconda3
 set v_paths=%v_paths%;%USERPROFILE%\miniconda3
 set v_paths=%v_paths%;%ProgramData%\anaconda3
 set v_paths=%v_paths%;%USERPROFILE%\anaconda3
