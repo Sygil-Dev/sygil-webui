@@ -4,8 +4,7 @@
 @rem  using micromamba (an 8mb static-linked single-file binary, conda replacement).
 @rem For users who already have git and conda, this step will be skipped.
 
-@rem Next, it'll checkout the project's git repo, if necessary.
-@rem Finally, it'll create the conda environment and preload the models.
+@rem Then, it'll run the webui.cmd file to continue with the installation as usual.
 
 @rem This enables a user to install this project without manually installing conda and git.
 
