@@ -91,12 +91,14 @@ class plugin_info():
     displayPriority = 1
 
 #
+#@query('test')
+#@GET('txt2img')
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
             save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = False,
             RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True, LDSR_model: str = "model",
-            fp = None, variant_amount: float = None,
+            fp = None, variant_amount: float = 0.0,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
 
     outpath = st.session_state['defaults'].general.outdir_txt2img
@@ -127,8 +129,9 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
 
     def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
         samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
-                                         unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x, img_callback=generation_callback,
-                                                 log_every_t=int(st.session_state.update_preview_frequency))
+                                         unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x,
+                                         img_callback=generation_callback if not server_state["bridge"] else None,
+                                                 log_every_t=int(st.session_state.update_preview_frequency if not server_state["bridge"] else 100))
 
         return samples_ddim
 
@@ -148,11 +151,11 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
                 width=width,
                 height=height,
                 prompt_matrix=separate_prompts,
-                use_GFPGAN=st.session_state["use_GFPGAN"],
-                GFPGAN_model=st.session_state["GFPGAN_model"],
-                use_RealESRGAN=st.session_state["use_RealESRGAN"],
+                use_GFPGAN=use_GFPGAN,
+                GFPGAN_model=GFPGAN_model,
+                use_RealESRGAN=use_RealESRGAN,
                 realesrgan_model_name=RealESRGAN_model,
-                use_LDSR=st.session_state["use_LDSR"],
+                use_LDSR=use_LDSR,
                 LDSR_model_name=LDSR_model,
                 ddim_eta=ddim_eta,
                 normalize_prompt_weights=normalize_prompt_weights,
@@ -276,6 +279,10 @@ def layout():
                                         index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")
 
             with st.expander("Advanced"):
+                #with st.expander("Bridge"):
+                    #use_bridge = st.checkbox("Use Stable Horde bridge", value=False, help="Use the stable horde bridge to generate images.")
+                    #stable_horde_key = st.text_input("Stable Horde Api Key", value='', help="Optional Api Key used for the Stable Horde Bridge.")
+
                 with st.expander("Output Settings"):
                     separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
                                                    help="Separate multiple prompts using the `|` character, and get all combinations of them.")

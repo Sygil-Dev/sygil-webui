@@ -49,7 +49,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	    mask_restore: bool = False, ddim_steps: int = 50, sampler_name: str = 'DDIM',
 	    n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
 	    seed: int = -1, noise_mode: int = 0, find_noise_steps: str = "", height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
-	    variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
+	    variant_amount: float = 0.0, variant_seed: int = None, ddim_eta:float = 0.0,
 	    write_info_files:bool = True, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
 	    save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
 	    save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.4',
@@ -202,7 +202,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched,
 												   extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,
 													       'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False,
-												   callback=generation_callback)
+												   callback=generation_callback if not server_state["bridge"] else None)
 		else:
 
 			x0, z_mask = init_data
