@@ -253,8 +253,8 @@ if __name__ == '__main__':
             horde_url = opt.horde_url if opt.horde_url else cd.horde_url
             horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
             horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
-			# Not used yet
-		    horde_models = [args.horde_model] if args.horde_model else bd.models_to_load
+            # Not used yet
+            horde_models = [args.horde_model] if args.horde_model else bd.models_to_load
             try:
                 horde_nsfw = not opt.horde_sfw if opt.horde_sfw else cd.horde_nsfw
             except AttributeError:
