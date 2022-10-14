@@ -2616,7 +2616,7 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
     print("loaded", placeholder_token)
 
-#
+@logger.catch
 def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist):
     current_id = None
     current_payload = None

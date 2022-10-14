@@ -78,6 +78,8 @@ parser.add_argument('--horde_blacklist', nargs='+', required=False, help="List t
 parser.add_argument('--horde_censorlist', nargs='+', required=False, help="List the words that you want to censor.")
 parser.add_argument('--horde_censor_nsfw', action='store_true', required=False, help="Set to true if you want this bridge worker to censor NSFW images.")
 parser.add_argument('--horde_model', action='store', required=False, help="Which model to run on this horde.")
+parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+parser.add_argument('-q', '--quiet', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
 opt = parser.parse_args()
 
 with server_state_lock["bridge"]:
@@ -254,7 +256,7 @@ if __name__ == '__main__':
             horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
             horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
             # Not used yet
-            horde_models = [args.horde_model] if args.horde_model else bd.models_to_load
+            horde_models = [opt.horde_model] if opt.horde_model else cd.models_to_load
             try:
                 horde_nsfw = not opt.horde_sfw if opt.horde_sfw else cd.horde_nsfw
             except AttributeError:
