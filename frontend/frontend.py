@@ -65,7 +65,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
 
                         txt2img_dimensions_info_text_box = gr.Textbox(
                             label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
-                    with gr.Column():
+                    with gr.Column(elem_id="text2img_col2"):
                         with gr.Box():
                             output_txt2img_gallery = gr.Gallery(label="Images", elem_id="txt2img_gallery_output").style(
                                 grid=[4, 4])
@@ -312,7 +312,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                         label='Batch count (how many batches of images to generate)',
                                                         value=img2img_defaults['n_iter'])
                         img2img_dimensions_info_text_box = gr.Textbox(
-                            label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)")
+                            label="Aspect ratio (4:3 = 1.333 | 16:9 = 1.777 | 21:9 = 2.333)", lines="2")
                     with gr.Column():
                         img2img_steps = gr.Slider(minimum=1, maximum=250, step=1, label="Sampling Steps",
                                                   value=img2img_defaults['ddim_steps'])

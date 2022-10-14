@@ -22,7 +22,7 @@ omegaconf==2.2.3
 Jinja2==3.1.2  # Jinja2 is required by Gradio
 
 # Environment Dependencies for WebUI (gradio)
-gradio==3.1.6
+gradio==3.4.1
 
 # Environment Dependencies for WebUI (streamlit)
 streamlit==1.13.0
