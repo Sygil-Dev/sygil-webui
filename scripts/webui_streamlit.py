@@ -28,7 +28,7 @@ import streamlit_nested_layout
 #streamlit components section
 from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
-from . import logger, set_logger_verbosity, quiesce_logger
+from logger import logger, set_logger_verbosity, quiesce_logger
 
 #other imports
 

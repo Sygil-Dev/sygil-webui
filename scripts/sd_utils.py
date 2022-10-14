@@ -69,8 +69,8 @@ from ldm.util import ismap
 from typing import Dict
 from io import BytesIO
 import librosa
-from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
-from . import logger
+# from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
+from logger import logger
 
 # Temp imports
 #from basicsr.utils.registry import ARCH_REGISTRY

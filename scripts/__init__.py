@@ -1,1 +1,1 @@
-from logger, set_logger_verbosity, quiesce_logger
+from logger import set_logger_verbosity, quiesce_logger
