@@ -32,7 +32,7 @@ from streamlit_server_state import server_state, server_state_lock
 
 #other imports
 
-import os
+import os, sys
 from PIL import Image
 import torch
 import numpy as np
@@ -197,13 +197,16 @@ def diffuse(
 			frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames)/float(
 			    st.session_state.max_frames))
 
-			st.session_state["progress_bar_text"].text(
-				f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
+			if "progress_bar_text" in st.session_state:
+				st.session_state["progress_bar_text"].text(
+				    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
 				    f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
 				        f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames}/{st.session_state.max_frames} "
 				        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
-			)
-			st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+				)
+
+			if "progress_bar" in st.session_state:
+				st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
 
 	except KeyError:
 		raise StopException
@@ -295,12 +298,14 @@ def load_diffusers_model(weights_path,torch_device):
 
 	except (EnvironmentError, OSError) as e:
 		if "huggingface_token" not in st.session_state or st.session_state["defaults"].general.huggingface_token == "None":
-			st.session_state["progress_bar_text"].error(
-			    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
-			)
+			if "progress_bar_text" in st.session_state:
+				st.session_state["progress_bar_text"].error(
+				    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
+				)
 			raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
 		else:
-			st.session_state["progress_bar_text"].error(e)
+			if "progress_bar_text" in st.session_state:
+				st.session_state["progress_bar_text"].error(e)
 
 #
 def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, outdir='outputs'):
@@ -558,7 +563,8 @@ def txt2vid(
 				#if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None and not st.session_state["use_RealESRGAN"]:
 				if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None:
 					#print("Running GFPGAN on image ...")
-					st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
+					if "progress_bar_text" in st.session_state:
+						st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
 					#skip_save = True # #287 >_>
 					torch_gc()
 					cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(np.array(image)[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)

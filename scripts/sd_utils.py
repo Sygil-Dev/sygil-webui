@@ -66,8 +66,10 @@ import piexif.helper
 from tqdm import trange
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
+from typing import Dict
+from io import BytesIO
 import librosa
-
+from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
 
 # Temp imports
 #from basicsr.utils.registry import ARCH_REGISTRY
@@ -121,11 +123,12 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
         modeldownload.updateModels()
 
 #
-if st.session_state["defaults"].debug.enable_hydralit:
-    app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
-                      hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False, use_loader=False)
-else:
-    app = None
+#if st.session_state["defaults"].debug.enable_hydralit:
+    #navbar_theme = {'txc_inactive': '#FFFFFF','menu_background':'#0e1117','txc_active':'black','option_active':'red'}
+    #app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", use_cookie_cache=False, sidebar_state="expanded", layout="wide", navbar_theme=navbar_theme,
+                      #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False, use_loader=False)
+#else:
+    #app = None
 
 
 # should and will be moved to a settings menu in the UI at some point
@@ -288,7 +291,8 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                     # We first remove the variable in case it has something there,
                     # some errors can load the model incorrectly and leave things in memory.
                     del server_state["RealESRGAN"]
-                except KeyError:
+                except KeyError as e:
+                    print (e)
                     pass
 
                 if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
@@ -339,7 +343,8 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                     del server_state["modelFS"]
                     del server_state["loaded_model"]
 
-                except KeyError:
+                except KeyError as e:
+                    print (e)
                     pass
 
         # if the model from txt2vid is in memory we need to remove it to improve performance.
@@ -373,7 +378,8 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
 
         try:
             server_state["model"].args.use_multiprocessing_for_evaluation = False
-        except AttributeError:
+        except AttributeError as e:
+            print (e)
             pass
 
         if st.session_state.defaults.general.enable_attention_slicing:
@@ -966,6 +972,7 @@ class LDSR():
                 log["sample_noquant"] = x_sample_noquant
                 log["sample_diff"] = torch.abs(x_sample_noquant - x_sample)
             except:
+                print("Error with LDSR")
                 pass
 
             log["sample"] = x_sample
@@ -1443,7 +1450,8 @@ def generation_callback(img, i=0):
     try:
         if i == 0:
             if img['i']: i = img['i']
-    except TypeError:
+    except TypeError as e:
+        #print (e)
         pass
 
     if st.session_state.update_preview and\
@@ -1474,28 +1482,40 @@ def generation_callback(img, i=0):
 
 
         # update image on the UI so we can see the progress
-        st.session_state["preview_image"].image(pil_image)
+        if "preview_image" in st.session_state:
+            st.session_state["preview_image"].image(pil_image)
 
     # Show a progress bar so we can keep track of the progress even when the image progress is not been shown,
     # Dont worry, it doesnt affect the performance.
     if st.session_state["generation_mode"] == "txt2img":
         percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
-        st.session_state["progress_bar_text"].text(
-                    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
+
+        if "progress_bar_text" in st.session_state:
+            st.session_state["progress_bar_text"].text(
+                f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
     else:
         if st.session_state["generation_mode"] == "img2img":
             round_sampling_steps = round(st.session_state.sampling_steps * st.session_state["denoising_strength"])
             percent = int(100 * float(i+1 if i+1 < round_sampling_steps else round_sampling_steps)/float(round_sampling_steps))
-            st.session_state["progress_bar_text"].text(
-                            f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")
+
+            if "progress_bar_text" in st.session_state:
+                st.session_state["progress_bar_text"].text(
+                    f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")
         else:
             if st.session_state["generation_mode"] == "txt2vid":
                 percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
-                st.session_state["progress_bar_text"].text(
-                                    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps}"
-                                        f"{percent if percent < 100 else 100}%")
 
-    st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+                if "progress_bar_text" in st.session_state:
+                    st.session_state["progress_bar_text"].text(
+                        f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps}"
+                        f"{percent if percent < 100 else 100}%")
+
+    if "progress_bar" in st.session_state:
+        try:
+            st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+        except UnboundLocalError as e:
+            #print(e)
+            pass
 
 
 prompt_parser = re.compile("""
@@ -2242,7 +2262,9 @@ def process_images(
                 sanitized_prompt = slugify(prompts[i])
 
                 percent = i / len(x_samples_ddim)
-                st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+
+                if "progress_bar" in st.session_state:
+                    st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
 
                 if sort_samples:
                     full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
@@ -2269,11 +2291,13 @@ def process_images(
                 original_sample = x_sample
                 original_filename = filename
 
-                st.session_state["preview_image"].image(image)
+                if "preview_image" in st.session_state:
+                    st.session_state["preview_image"].image(image)
 
                 #
                 if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN and not use_LDSR:
-                    st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
 
                     if server_state["GFPGAN"].name != GFPGAN_model:
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
@@ -2304,7 +2328,8 @@ def process_images(
 
                 #
                 elif use_RealESRGAN and server_state["RealESRGAN"] is not None and not use_GFPGAN:
-                    st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
 
@@ -2334,7 +2359,8 @@ def process_images(
                 #
                 elif use_LDSR and "LDSR" in server_state and not use_GFPGAN:
                     print ("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
-                    st.session_state["progress_bar_text"].text("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
 
@@ -2367,7 +2393,8 @@ def process_images(
                 #
                 elif use_LDSR and "LDSR" in server_state and use_GFPGAN and "GFPGAN" in server_state:
                     print ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
-                    st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
 
                     if server_state["GFPGAN"].name != GFPGAN_model:
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
@@ -2406,7 +2433,8 @@ def process_images(
                         grid_captions.append( captions[i] + "\ngfpgan-ldsr" )
 
                 elif use_RealESRGAN and server_state["RealESRGAN"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
-                    st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
@@ -2483,8 +2511,11 @@ def process_images(
             # Constrain the final preview image to 1440x900 so we're not sending huge amounts of data
             # to the browser
             preview_image = constrain_image(preview_image, 1440, 900)
-            st.session_state["progress_bar_text"].text("Finished!")
-            st.session_state["preview_image"].image(preview_image)
+            if "progress_bar_text" in st.session_state:
+                st.session_state["progress_bar_text"].text("Finished!")
+
+            if "preview_image" in st.session_state:
+                st.session_state["preview_image"].image(preview_image)
 
         if prompt_matrix or save_grid:
             if prompt_matrix:
@@ -2583,3 +2614,144 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     torch.save(params_dict, "learned_embeds.bin")
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
     print("loaded", placeholder_token)
+
+#
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist):
+    current_id = None
+    current_payload = None
+    loop_retry = 0
+    while True:
+        if loop_retry > 10 and current_id:
+            print(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
+            current_id = None
+            current_payload = None
+            current_generation = None
+            loop_retry = 0
+        elif current_id:
+            print(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
+        gen_dict = {
+            "name": horde_name,
+            "max_pixels": horde_max_pixels,
+            "priority_usernames": priority_usernames,
+            "nsfw": horde_nsfw,
+            "blacklist": horde_blacklist,
+        }
+        headers = {"apikey": api_key}
+        if current_id:
+            loop_retry += 1
+        else:
+            try:
+                pop_req = requests.post(horde_url + '/api/v2/generate/pop', json = gen_dict, headers = headers)
+            except requests.exceptions.ConnectionError:
+                print(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            except requests.exceptions.JSONDecodeError():
+                print(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            try:
+                pop = pop_req.json()
+            except json.decoder.JSONDecodeError:
+                print(f"Could not decode response from {horde_url} as json. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if pop == None:
+                print(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if not pop_req.ok:
+                message = pop['message']
+                print(f"During gen pop, server {horde_url} responded with status code {pop_req.status_code}: {pop['message']}. Waiting for 10 seconds...")
+                if 'errors' in pop:
+                    print(f"Detailed Request Errors: {pop['errors']}")
+                time.sleep(10)
+                continue
+            if not pop.get("id"):
+                skipped_info = pop.get('skipped')
+                if skipped_info and len(skipped_info):
+                    skipped_info = f" Skipped Info: {skipped_info}."
+                else:
+                    skipped_info = ''
+                print(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
+                time.sleep(interval)
+                continue
+            current_id = pop['id']
+            print(f"Request with id {current_id} picked up. Initiating work...")
+            current_payload = pop['payload']
+            if 'toggles' in current_payload and current_payload['toggles'] == None:
+                print(f"Received Bad payload: {pop}")
+                current_id = None
+                current_payload = None
+                current_generation = None
+                loop_retry = 0
+                time.sleep(10)
+                continue
+
+        print (current_payload)
+        current_payload['toggles'] = current_payload.get('toggles', [1,4])
+        # In bridge-mode, matrix is prepared on the horde and split in multiple nodes
+        if 0 in current_payload['toggles']:
+            current_payload['toggles'].remove(0)
+        if 8 not in current_payload['toggles']:
+            if horde_censor_nsfw and not horde_nsfw:
+                current_payload['toggles'].append(8)
+            elif any(word in current_payload['prompt'] for word in horde_censorlist):
+                current_payload['toggles'].append(8)
+
+        # load the model for stable horde if its not in memory already
+        load_models(use_GFPGAN=True)
+
+        from txt2img import txt2img
+
+
+        """{'prompt': 'Centred Husky, inside spiral with circular patterns, trending on dribbble, knotwork, spirals, key patterns,
+        zoomorphics, ', 'ddim_steps': 30, 'n_iter': 1, 'sampler_name': 'DDIM', 'cfg_scale': 16.0, 'seed': '3405278433', 'height': 512, 'width': 512}"""
+
+        #images, seed, info, stats = txt2img(**current_payload)
+        images, seed, info, stats = txt2img(str(current_payload['prompt']), int(current_payload['ddim_steps']), str(current_payload['sampler_name']),
+                                                    int(current_payload['n_iter']), 1, float(current_payload["cfg_scale"]), str(current_payload["seed"]),
+                                                    int(current_payload["height"]), int(current_payload["width"]))
+
+        buffer = BytesIO()
+        # We send as WebP to avoid using all the horde bandwidth
+        images[0].save(buffer, format="WebP", quality=90)
+        # logger.info(info)
+        submit_dict = {
+            "id": current_id,
+            "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
+            "api_key": api_key,
+            "seed": seed,
+            "max_pixels": horde_max_pixels,
+        }
+        current_generation = seed
+        while current_id and current_generation != None:
+            try:
+                submit_req = requests.post(horde_url + '/api/v2/generate/submit', json = submit_dict, headers = headers)
+                try:
+                    submit = submit_req.json()
+                except json.decoder.JSONDecodeError:
+                    print(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!  (Retry {loop_retry}/10)")
+                    time.sleep(interval)
+                    continue
+                if submit_req.status_code == 404:
+                    print(f"The generation we were working on got stale. Aborting!")
+                elif not submit_req.ok:
+                    print(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...  (Retry {loop_retry}/10)")
+                    if 'errors' in submit:
+                        print(f"Detailed Request Errors: {submit['errors']}")
+                    time.sleep(10)
+                    continue
+                else:
+                    print(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
+                current_id = None
+                current_payload = None
+                current_generation = None
+                loop_retry = 0
+            except requests.exceptions.ConnectionError:
+                print(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...  (Retry {loop_retry}/10)")
+                time.sleep(10)
+                continue
+        time.sleep(interval)
+
+
