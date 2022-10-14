@@ -63,7 +63,7 @@ einops==0.3.1
 facexlib>=0.2.3
 imageio-ffmpeg==0.4.2
 imageio==2.9.0
-kornia==0.6
+kornia==0.6.8
 loguru
 opencv-python-headless==4.6.0.66
 open-clip-torch==2.0.2
