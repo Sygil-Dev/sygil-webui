@@ -44,6 +44,7 @@ general:
     extra_models_gpu: False
     gfpgan_gpu: 0
     esrgan_gpu: 0
+    keep_all_models_loaded: False
     save_metadata: True
     save_format: "png"
     skip_grid: False
