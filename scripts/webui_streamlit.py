@@ -117,6 +117,7 @@ def load_css(isLocal, nameOrURL):
     else:
         remote_css(nameOrURL)
 
+@logger.catch
 def layout():
         """Layout functions to define all the streamlit layout here."""
         if not st.session_state["defaults"].debug.enable_hydralit:
@@ -212,6 +213,7 @@ def layout():
 if __name__ == '__main__':
     set_logger_verbosity(opt.verbosity)
     quiesce_logger(opt.quiet)
+
     if not opt.headless:
         layout()
 
@@ -277,13 +279,16 @@ if __name__ == '__main__':
                 horde_max_power = 2
             horde_max_pixels = 64*64*8*horde_max_power
             print(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
+
+
+
             try:
-                #thread = threading.Thread(target=run_bridge(1, horde_api_key, horde_name, horde_url,
-                                                            #horde_priority_usernames, horde_max_pixels,
-                                                            #horde_nsfw, horde_censor_nsfw, horde_blacklist,
-                                                            #horde_censorlist), args=())
-                #thread.daemon = True
-                #thread.start()
-                run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist)
+                thread = threading.Thread(target=run_bridge(1, horde_api_key, horde_name, horde_url,
+                                                            horde_priority_usernames, horde_max_pixels,
+                                                            horde_nsfw, horde_censor_nsfw, horde_blacklist,
+                                                            horde_censorlist), args=())
+                thread.daemon = True
+                thread.start()
+                #run_bridge(1, horde_api_key, horde_name, horde_url, horde_priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist)
             except KeyboardInterrupt:
                 print(f"Keyboard Interrupt Received. Ending Bridge")
