@@ -278,7 +278,7 @@ if __name__ == '__main__':
             if horde_max_power < 2:
                 horde_max_power = 2
             horde_max_pixels = 64*64*8*horde_max_power
-            print(f"Joining Horde with parameters: API Key '{horde_api_key}'. Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
+            logger.info(f"Joining Horde with parameters: Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
 
 
 
