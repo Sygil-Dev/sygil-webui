@@ -34,7 +34,6 @@ streamlit-tensorboard==0.0.2
 hydralit==1.0.14
 hydralit_components==1.0.10
 stqdm==0.0.4
-decorest==0.1.0
 
 # txt2vid
 stable-diffusion-videos==0.5.3
