@@ -2713,7 +2713,8 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
         #images, seed, info, stats = txt2img(**current_payload)
         images, seed, info, stats = txt2img(str(current_payload['prompt']), int(current_payload['ddim_steps']), str(current_payload['sampler_name']),
                                                     int(current_payload['n_iter']), 1, float(current_payload["cfg_scale"]), str(current_payload["seed"]),
-                                                    int(current_payload["height"]), int(current_payload["width"]))
+                                                    int(current_payload["height"]), int(current_payload["width"]), save_grid=False, group_by_prompt=False,
+                                                    save_individual_images=False,write_info_files=False)
 
         buffer = BytesIO()
         # We send as WebP to avoid using all the horde bandwidth
