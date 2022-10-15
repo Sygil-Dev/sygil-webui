@@ -91,8 +91,7 @@ class plugin_info():
     displayPriority = 1
 
 #
-#@query('test')
-#@GET('txt2img')
+@logger.catch
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
@@ -279,9 +278,9 @@ def layout():
                                         index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")
 
             with st.expander("Advanced"):
-                #with st.expander("Bridge"):
-                    #use_bridge = st.checkbox("Use Stable Horde bridge", value=False, help="Use the stable horde bridge to generate images.")
-                    #stable_horde_key = st.text_input("Stable Horde Api Key", value='', help="Optional Api Key used for the Stable Horde Bridge.")
+                with st.expander("Stable Horde"):
+                    use_bridge = st.checkbox("Use Stable Horde", value=False, help="Use the Stable Horde to generate images. More info can be found at https://stablehorde.net/")
+                    stable_horde_key = st.text_input("Stable Horde Api Key", value='', help="Optional Api Key used for the Stable Horde Bridge.")
 
                 with st.expander("Output Settings"):
                     separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
@@ -466,7 +465,7 @@ def layout():
                     #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
 
             with gallery_tab:
-                print(seeds)
+                logger.info(seeds)
                 sdGallery(output_images)
 
 

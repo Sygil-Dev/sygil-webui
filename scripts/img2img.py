@@ -234,7 +234,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			from skimage import exposure
 			do_color_correction = True
 		except:
-			print("Install scikit-image to perform color correction on loopback")
+			logger.error("Install scikit-image to perform color correction on loopback")
 
 		for i in range(n_iter):
 			if do_color_correction and i == 0:
@@ -687,7 +687,7 @@ def layout():
 					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
 				except (StopException, KeyError):
-					print(f"Received Streamlit StopException")
+					logger.info(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
