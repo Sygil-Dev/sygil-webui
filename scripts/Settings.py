@@ -836,3 +836,4 @@ def layout():
 
 		if reset_button:
 			st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+			st.experimental_rerun()
