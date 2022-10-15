@@ -69,7 +69,6 @@ from ldm.util import ismap
 from typing import Dict
 from io import BytesIO
 #import librosa
-from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
 from logger import logger
 
 # Temp imports
@@ -79,10 +78,9 @@ from logger import logger
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
-
 # we make a log file where we store the logs
 logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip")    # Once the file is too old, it's rotated
-
+#logger.add(sys.stderr, format="{time} {level} {message}")
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -140,7 +138,6 @@ if "keep_all_models_loaded" in st.session_state:
 #else:
     #app = None
 
-
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
 grid_lossless = False
@@ -183,8 +180,6 @@ elif save_format[0] == 'webp':
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
-
-#
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
 # TODO, maybe look into async loading the file especially for remote fetching
