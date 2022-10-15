@@ -273,7 +273,7 @@ def load_diffusers_model(weights_path,torch_device):
 				if st.session_state.defaults.general.enable_minimal_memory_usage:
 					server_state["pipe"].enable_minimal_memory_usage()
 
-				print("Tx2Vid Model Loaded")
+				logger.info("Tx2Vid Model Loaded")
 			else:
 				# if the float16 or no_half options have changed since the last time the model was loaded then we need to reload the model.
 				if ("float16" in server_state and server_state['float16'] != st.session_state['defaults'].general.use_float16) \
@@ -294,7 +294,7 @@ def load_diffusers_model(weights_path,torch_device):
 
 					load_diffusers_model(weights_path, torch_device)
 				else:
-					print("Tx2Vid Model already Loaded")
+					logger.info("Tx2Vid Model already Loaded")
 
 	except (EnvironmentError, OSError) as e:
 		if "huggingface_token" not in st.session_state or st.session_state["defaults"].general.huggingface_token == "None":
@@ -458,7 +458,7 @@ def txt2vid(
 			load_diffusers_model(weights_path, torch_device)
 
 	if "pipe" not in server_state:
-		print('wtf')
+		logger.error('wtf')
 
 	server_state["pipe"].scheduler = SCHEDULERS[scheduler]
 
@@ -534,7 +534,7 @@ def txt2vid(
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				print(f"COUNT: {frame_index+1}/{max_frames}")
+				logger.info(f"COUNT: {frame_index+1}/{max_frames}")
 
 				if use_lerp_for_text:
 					init = torch.lerp(init1, init2, float(t))
@@ -579,7 +579,7 @@ def txt2vid(
 					try:
 						st.session_state["preview_image"].image(gfpgan_image)
 					except KeyError:
-						print ("Cant get session_state, skipping image preview.")
+						logger.error ("Cant get session_state, skipping image preview.")
 				#except (AttributeError, KeyError):
 					#print("Cant perform GFPGAN, skipping.")
 
@@ -606,7 +606,7 @@ def txt2vid(
 
 	except StopException:
 		if save_video_on_stop:
-			print ("Streamlit Stop Exception Received. Saving video")
+			logger.info("Streamlit Stop Exception Received. Saving video")
 			video_path = save_video_to_disk(frames, seeds, sanitized_prompt, save_video=save_video, outdir=outdir)
 		else:
 			video_path = None
@@ -907,7 +907,7 @@ def layout():
 
 		if st.session_state["use_GFPGAN"]:
 			if "GFPGAN" in server_state:
-				print("GFPGAN already loaded")
+				logger.info("GFPGAN already loaded")
 			else:
 				with col2:
 					with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
@@ -915,11 +915,11 @@ def layout():
 						if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
 							try:
 								load_GFPGAN()
-								print("Loaded GFPGAN")
+								logger.info("Loaded GFPGAN")
 							except Exception:
 								import traceback
-								print("Error loading GFPGAN:", file=sys.stderr)
-								print(traceback.format_exc(), file=sys.stderr)
+								logger.error("Error loading GFPGAN:", file=sys.stderr)
+								logger.error(traceback.format_exc(), file=sys.stderr)
 		else:
 			if "GFPGAN" in server_state:
 				del server_state["GFPGAN"]

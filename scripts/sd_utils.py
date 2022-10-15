@@ -79,6 +79,11 @@ from logger import logger
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
+
+# we make a log file where we store the logs
+logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip")    # Once the file is too old, it's rotated
+
+
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
     from transformers import logging
@@ -123,10 +128,9 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
         import modeldownload
         modeldownload.updateModels()
 
-
-# we make a log file where we store the logs
-logger.add("logs/log_{time}.log", rotation=20, compression="zip")    # Once the file is too old, it's rotated
-
+if "keep_all_models_loaded" in st.session_state:
+    with server_state_lock["keep_all_models_loaded"]:
+        server_state["keep_all_models_loaded"] = st.session_state["defaults"].general.keep_all_models_loaded
 
 #
 #if st.session_state["defaults"].debug.enable_hydralit:
@@ -239,7 +243,7 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
 
-    print ("Loading models.")
+    logger.info("Loading models.")
 
     if "progress_bar_text" in st.session_state:
         st.session_state["progress_bar_text"].text("")
@@ -248,7 +252,7 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
     with server_state_lock["LDSR"]:
         if use_LDSR:
             if "LDSR" in server_state and server_state["LDSR"].name == LDSR_model:
-                print("LDSR already loaded")
+                logger.info("LDSR already loaded")
             else:
                 if "LDSR" in server_state:
                     del server_state["LDSR"]
@@ -257,19 +261,21 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                 if os.path.exists(st.session_state["defaults"].general.LDSR_dir):
                     try:
                         server_state["LDSR"] = load_LDSR(model_name=LDSR_model)
-                        print(f"Loaded LDSR")
+                        logger.info(f"Loaded LDSR")
                     except Exception:
                         import traceback
-                        print(f"Error loading LDSR:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
+                        logger.error(f"Error loading LDSR:", file=sys.stderr)
+                        logger.error(traceback.format_exc(), file=sys.stderr)
         else:
-            if "LDSR" in server_state:
+            if "LDSR" in server_state and not server_state["keep_all_models_loaded"]:
+                logger.debug("LDSR was in memory but we won't use it. Removing to save VRAM.")
                 del server_state["LDSR"]
+
 
     with server_state_lock["GFPGAN"]:
         if use_GFPGAN:
             if "GFPGAN" in server_state and server_state["GFPGAN"].name == GFPGAN_model:
-                print("GFPGAN already loaded")
+                logger.info("GFPGAN already loaded")
             else:
                 if "GFPGAN" in server_state:
                     del server_state["GFPGAN"]
@@ -278,19 +284,19 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                 if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
                     try:
                         server_state["GFPGAN"] = load_GFPGAN(GFPGAN_model)
-                        print(f"Loaded GFPGAN: {GFPGAN_model}")
+                        logger.info(f"Loaded GFPGAN: {GFPGAN_model}")
                     except Exception:
                         import traceback
-                        print(f"Error loading GFPGAN:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
+                        logger.error(f"Error loading GFPGAN:", file=sys.stderr)
+                        logger.error(traceback.format_exc(), file=sys.stderr)
         else:
-            if "GFPGAN" in server_state:
+            if "GFPGAN" in server_state and not server_state["keep_all_models_loaded"]:
                 del server_state["GFPGAN"]
 
     with server_state_lock["RealESRGAN"]:
         if use_RealESRGAN:
             if "RealESRGAN" in server_state and server_state["RealESRGAN"].model.name == RealESRGAN_model:
-                print("RealESRGAN already loaded")
+                logger.info("RealESRGAN already loaded")
             else:
                 #Load RealESRGAN
                 try:
@@ -298,16 +304,16 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                     # some errors can load the model incorrectly and leave things in memory.
                     del server_state["RealESRGAN"]
                 except KeyError as e:
-                    print (e)
+                    logger.error(e)
                     pass
 
                 if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
                     # st.session_state is used for keeping the models in memory across multiple pages or runs.
                     server_state["RealESRGAN"] = load_RealESRGAN(RealESRGAN_model)
-                    print("Loaded RealESRGAN with model "+ server_state["RealESRGAN"].model.name)
+                    logger.info("Loaded RealESRGAN with model "+ server_state["RealESRGAN"].model.name)
 
         else:
-            if "RealESRGAN" in server_state:
+            if "RealESRGAN" in server_state and not server_state["keep_all_models_loaded"]:
                 del server_state["RealESRGAN"]
 
     with server_state_lock["model"], server_state_lock["modelCS"], server_state_lock["modelFS"], server_state_lock["loaded_model"]:
@@ -319,7 +325,8 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                    or ("no_half" in server_state and server_state['no_half'] != st.session_state['defaults'].general.no_half) \
                    or ("optimized" in server_state and server_state['optimized'] != st.session_state['defaults'].general.optimized):
 
-                    print ("Model options changed, deleting the model from memory.")
+                    logger.info("Model options changed, deleting the model from memory.")
+
                     del server_state['float16']
                     del server_state['no_half']
 
@@ -339,7 +346,7 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                                 use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
                                 CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
                 else:
-                    print("Model already loaded")
+                    logger.info("Model already loaded")
 
                 return
             else:
@@ -350,15 +357,15 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                     del server_state["loaded_model"]
 
                 except KeyError as e:
-                    print (e)
+                    logger.error(e)
                     pass
 
         # if the model from txt2vid is in memory we need to remove it to improve performance.
         with server_state_lock["pipe"]:
-            if "pipe" in server_state:
+            if "pipe" in server_state and not server_state["keep_all_models_loaded"]:
                 del server_state["pipe"]
 
-        if "textual_inversion" in st.session_state:
+        if "textual_inversion" in st.session_state and not server_state["keep_all_models_loaded"]:
             del st.session_state['textual_inversion']
 
         # At this point the model is either
@@ -385,7 +392,7 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
         try:
             server_state["model"].args.use_multiprocessing_for_evaluation = False
         except AttributeError as e:
-            print (e)
+            logger.error(e)
             pass
 
         if st.session_state.defaults.general.enable_attention_slicing:
@@ -394,27 +401,27 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
         if st.session_state.defaults.general.enable_minimal_memory_usage:
             server_state["model"].enable_minimal_memory_usage()
 
-        print("Model loaded.")
+        logger.info("Model loaded.")
 
     return True
 
 
 def load_model_from_config(config, ckpt, verbose=False):
 
-    print(f"Loading model from {ckpt}")
+    logger.info(f"Loading model from {ckpt}")
 
     pl_sd = torch.load(ckpt, map_location="cpu")
     if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
+        logger.info(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
     model = instantiate_from_config(config.model)
     m, u = model.load_state_dict(sd, strict=False)
     if len(m) > 0 and verbose:
-        print("missing keys:")
-        print(m)
+        logger.info("missing keys:")
+        logger.info(m)
     if len(u) > 0 and verbose:
-        print("unexpected keys:")
-        print(u)
+        logger.info("unexpected keys:")
+        logger.info(u)
 
     model.cuda()
     model.eval()
@@ -422,10 +429,10 @@ def load_model_from_config(config, ckpt, verbose=False):
 
 
 def load_sd_from_config(ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
+    logger.info(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
     if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
+        logger.info(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
     return sd
 
@@ -443,9 +450,9 @@ class MemUsageMonitor(threading.Thread):
         try:
             pynvml.nvmlInit()
         except:
-            print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
+            logger.debug(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
-        print(f"[{self.name}] Recording memory usage...\n")
+        logger.info(f"[{self.name}] Recording memory usage...\n")
         # Missing context
         #handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
@@ -453,9 +460,9 @@ class MemUsageMonitor(threading.Thread):
         while not self.stop_flag:
             m = pynvml.nvmlDeviceGetMemoryInfo(handle)
             self.max_usage = max(self.max_usage, m.used)
-            # print(self.max_usage)
+            # logger.info(self.max_usage)
             time.sleep(0.1)
-        print(f"[{self.name}] Stopped recording.\n")
+        logger.info(f"[{self.name}] Stopped recording.\n")
         pynvml.nvmlShutdown()
 
     def read(self):
@@ -682,7 +689,7 @@ def find_noise_for_image(model, device, init_image, prompt, steps=200, cond_scal
     sigmas = dnw.get_sigmas(steps).flip(0)
 
     if verbose:
-        print(sigmas)
+        logger.info(sigmas)
 
     for i in trange(1, len(sigmas)):
         x_in = torch.cat([x] * 2)
@@ -978,7 +985,7 @@ class LDSR():
                 log["sample_noquant"] = x_sample_noquant
                 log["sample_diff"] = torch.abs(x_sample_noquant - x_sample)
             except:
-                print("Error with LDSR")
+                logger.error("Error with LDSR")
                 pass
 
             log["sample"] = x_sample
@@ -994,7 +1001,7 @@ class LDSR():
             ddim = DDIMSampler(model)
             bs = shape[0]  # dont know where this comes from but wayne
             shape = shape[1:]  # cut batch dim
-            print(f"Sampling with eta = {eta}; steps: {steps}")
+            logger.info(f"Sampling with eta = {eta}; steps: {steps}")
             samples, intermediates = ddim.sample(steps, batch_size=bs, shape=shape, conditioning=cond, callback=callback,
                                                 normals_sequence=normals_sequence, quantize_x0=quantize_x0, eta=eta,
                                                 mask=mask, x0=x0, temperature=temperature, verbose=False,
@@ -1138,7 +1145,7 @@ class LDSR():
         width_downsampled_pre = width_og//downsample_rate
         height_downsampled_pre = height_og//downsample_rate
         if downsample_rate != 1:
-            print(f'Downsampling from [{width_og}, {height_og}] to [{width_downsampled_pre}, {height_downsampled_pre}]')
+            logger.info(f'Downsampling from [{width_og}, {height_og}] to [{width_downsampled_pre}, {height_downsampled_pre}]')
             im_og = im_og.resize((width_downsampled_pre, height_downsampled_pre), Image.LANCZOS)
 
         logs = self.run(model["model"], im_og, diffMode, diffusion_steps, eta)
@@ -1165,17 +1172,17 @@ class LDSR():
             aliasing = Image.NEAREST
 
         if downsample_rate != 1:
-            print(f'Downsampling from [{width}, {height}] to [{width_downsampled_post}, {height_downsampled_post}]')
+            logger.info(f'Downsampling from [{width}, {height}] to [{width_downsampled_post}, {height_downsampled_post}]')
             a = a.resize((width_downsampled_post, height_downsampled_post), aliasing)
         elif post_downsample == 'Original Size':
-            print(f'Downsampling from [{width}, {height}] to Original Size [{width_og}, {height_og}]')
+            logger.info(f'Downsampling from [{width}, {height}] to Original Size [{width_og}, {height_og}]')
             a = a.resize((width_og, height_og), aliasing)
 
         del model
         gc.collect()
         torch.cuda.empty_cache()
 
-        print(f'Processing finished!')
+        logger.info(f'Processing finished!')
         return a
 
 
@@ -1424,7 +1431,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
                         del global_vars[m+'CS']
                 if m == 'model':
                     m = 'Stable Diffusion'
-                print('Unloaded ' + m)
+                logger.info('Unloaded ' + m)
     if load:
         for m in models:
             if m not in global_vars or m in global_vars and type(global_vars[m]) == bool:
@@ -1443,7 +1450,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
                     global_vars[m] = load_LDSR()
                 if m =='model':
                     m='Stable Diffusion'
-                print('Loaded ' + m)
+                logger.info('Loaded ' + m)
     torch_gc()
 
 
@@ -1457,7 +1464,7 @@ def generation_callback(img, i=0):
         if i == 0:
             if img['i']: i = img['i']
     except TypeError as e:
-        #print (e)
+        logger.error(e)
         pass
 
     if st.session_state.update_preview and\
@@ -1520,7 +1527,7 @@ def generation_callback(img, i=0):
         try:
             st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
         except UnboundLocalError as e:
-            #print(e)
+            logger.error(e)
             pass
 
 
@@ -2159,7 +2166,7 @@ def process_images(
             n_iter = math.ceil(len(all_prompts) / batch_size)
             all_seeds = len(all_prompts) * [seed]
 
-        print(f"Prompt matrix will create {len(all_prompts)} images using a total of {n_iter} batches.")
+        logger.info(f"Prompt matrix will create {len(all_prompts)} images using a total of {n_iter} batches.")
     else:
 
         if not st.session_state['defaults'].general.no_verify_input:
@@ -2167,8 +2174,8 @@ def process_images(
                 check_prompt_length(prompt, comments)
             except:
                 import traceback
-                print("Error verifying input:", file=sys.stderr)
-                print(traceback.format_exc(), file=sys.stderr)
+                logger.info("Error verifying input:", file=sys.stderr)
+                logger.info(traceback.format_exc(), file=sys.stderr)
 
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
@@ -2195,12 +2202,12 @@ def process_images(
                 all_seeds[si] += target_seed_randomizer
 
         for n in range(n_iter):
-            print(f"Iteration: {n+1}/{n_iter}")
+            logger.info(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
             captions = prompt_matrix_parts[n * batch_size:(n + 1) * batch_size]
             seeds = all_seeds[n * batch_size:(n + 1) * batch_size]
 
-            print(prompt)
+            logger.info(prompt)
 
             if st.session_state['defaults'].general.optimized:
                 server_state["modelCS"].to(st.session_state['defaults'].general.gpu)
@@ -2364,7 +2371,7 @@ def process_images(
 
                 #
                 elif use_LDSR and "LDSR" in server_state and not use_GFPGAN:
-                    print ("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    logger.info ("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     if "progress_bar_text" in st.session_state:
                         st.session_state["progress_bar_text"].text("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
@@ -2398,7 +2405,7 @@ def process_images(
 
                 #
                 elif use_LDSR and "LDSR" in server_state and use_GFPGAN and "GFPGAN" in server_state:
-                    print ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    logger.info ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     if "progress_bar_text" in st.session_state:
                         st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
 
@@ -2533,8 +2540,8 @@ def process_images(
                         grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
                     except:
                         import traceback
-                        print("Error creating prompt_matrix text:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
+                        logger.error("Error creating prompt_matrix text:", file=sys.stderr)
+                        logger.error(traceback.format_exc(), file=sys.stderr)
             else:
                 grid = image_grid(output_images, batch_size)
 
@@ -2619,7 +2626,7 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     }
     torch.save(params_dict, "learned_embeds.bin")
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
-    print("loaded", placeholder_token)
+    logger.info("loaded", placeholder_token)
 
 @logger.catch
 def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist):
@@ -2640,7 +2647,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             current_generation = None
             loop_retry = 0
         elif current_id:
-            print(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
+            logger.info(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
         gen_dict = {
             "name": horde_name,
             "max_pixels": horde_max_pixels,
@@ -2746,7 +2753,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                     time.sleep(interval)
                     continue
                 if submit_req.status_code == 404:
-                    print(f"The generation we were working on got stale. Aborting!")
+                    logger.info(f"The generation we were working on got stale. Aborting!")
                 elif not submit_req.ok:
                     logger.error(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...  (Retry {loop_retry}/10)")
                     if 'errors' in submit:
