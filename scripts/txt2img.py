@@ -90,83 +90,287 @@ class plugin_info():
     isTab = True
     displayPriority = 1
 
+#@logger.catch
+def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
+                 n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, GFPGAN_model,
+                 use_RealESRGAN, realesrgan_model_name, use_LDSR,
+                 LDSR_model_name, ddim_eta, normalize_prompt_weights,
+                 save_individual_images, sort_samples, write_info_files,
+                 jpg_sample, variant_amount, variant_seed, api_key,
+                 nsfw=True, censor_nsfw=False):
+
+    st.session_state["progress_bar_text"].info("Generating image with Stable Horde.")
+
+    # start time after garbage collection (or before?)
+    start_time = time.time()
+
+    # We will use this date here later for the folder name, need to start_time if not need
+    run_start_dt = datetime.datetime.now()
+
+    mem_mon = MemUsageMonitor('MemMon')
+    mem_mon.start()
+
+    os.makedirs(outpath, exist_ok=True)
+
+    sample_path = os.path.join(outpath, "samples")
+    os.makedirs(sample_path, exist_ok=True)
+
+    params = {
+        "sampler_name": "k_euler",
+        "toggles": [1,4],
+        "cfg_scale": cfg_scale,
+        "seed": str(seed),
+        "width": width,
+        "height": height,
+        "seed_variation": variant_seed if variant_seed else 1,
+        "steps": int(steps),
+        "n": int(n_iter)
+        # You can put extra params here if you wish
+    }
+
+    final_submit_dict = {
+        "prompt": prompt,
+        "params": params,
+        "nsfw": nsfw,
+        "censor_nsfw": censor_nsfw,
+        "trusted_workers": True,
+        "workers": []
+    }
+
+    headers = {"apikey": api_key}
+    logger.debug(final_submit_dict)
+    horde_url = "https://stablehorde.net"
+    submit_req = requests.post(f'{horde_url}/api/v2/generate/async', json = final_submit_dict, headers = headers)
+    if submit_req.ok:
+        submit_results = submit_req.json()
+        logger.debug(submit_results)
+        req_id = submit_results['id']
+        is_done = False
+        while not is_done:
+            chk_req = requests.get(f'{horde_url}/api/v2/generate/check/{req_id}')
+            if not chk_req.ok:
+                logger.error(chk_req.text)
+                return
+            chk_results = chk_req.json()
+            logger.info(chk_results)
+            is_done = chk_results['done']
+            time.sleep(1)
+        retrieve_req = requests.get(f'{horde_url}/api/v2/generate/status/{req_id}')
+        if not retrieve_req.ok:
+            logger.error(retrieve_req.text)
+            return
+        results_json = retrieve_req.json()
+        # logger.debug(results_json)
+        results = results_json['generations']
+
+        output_images = []
+        comments = []
+        prompt_matrix_parts = []
+
+        if not st.session_state['defaults'].general.no_verify_input:
+            try:
+                check_prompt_length(prompt, comments)
+            except:
+                import traceback
+                logger.info("Error verifying input:", file=sys.stderr)
+                logger.info(traceback.format_exc(), file=sys.stderr)
+
+        all_prompts = batch_size * n_iter * [prompt]
+        all_seeds = [seed + x for x in range(len(all_prompts))]
+
+        for iter in range(len(results)):
+            b64img = results[iter]["img"]
+            base64_bytes = b64img.encode('utf-8')
+            img_bytes = base64.b64decode(base64_bytes)
+            img = Image.open(BytesIO(img_bytes))
+
+            sanitized_prompt = slugify(prompt)
+
+            prompts = all_prompts[iter * batch_size:(iter + 1) * batch_size]
+            #captions = prompt_matrix_parts[n * batch_size:(n + 1) * batch_size]
+            seeds = all_seeds[iter * batch_size:(iter + 1) * batch_size]
+
+            if sort_samples:
+                full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
+
+
+                sanitized_prompt = sanitized_prompt[:200-len(full_path)]
+                sample_path_i = os.path.join(sample_path, sanitized_prompt)
+
+                #print(f"output folder length: {len(os.path.join(os.getcwd(), sample_path_i))}")
+                #print(os.path.join(os.getcwd(), sample_path_i))
+
+                os.makedirs(sample_path_i, exist_ok=True)
+                base_count = get_next_sequence_number(sample_path_i)
+                filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[iter]}"
+            else:
+                full_path = os.path.join(os.getcwd(), sample_path)
+                sample_path_i = sample_path
+                base_count = get_next_sequence_number(sample_path_i)
+                filename = f"{base_count:05}-{steps}_{sampler_name}_{seed}_{sanitized_prompt}"[:200-len(full_path)] #same as before
+
+            save_sample(img, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
+                                            normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img=None,
+                                            denoising_strength=0.75, resize_mode=None, uses_loopback=False, uses_random_seed_loopback=False,
+                                            save_grid=save_grid,
+                                            sort_samples=sampler_name, sampler_name=sampler_name, ddim_eta=ddim_eta, n_iter=n_iter,
+                                            batch_size=batch_size, i=iter, save_individual_images=save_individual_images,
+                                            model_name="Stable Diffusion v1.4")
+
+            output_images.append(img)
+
+            # update image on the UI so we can see the progress
+            if "preview_image" in st.session_state:
+                st.session_state["preview_image"].image(img)
+
+            if "progress_bar_text" in st.session_state:
+                st.session_state["progress_bar_text"].empty()
+
+            #if len(results) > 1:
+                #final_filename = f"{iter}_{filename}"
+            #img.save(final_filename)
+            #logger.info(f"Saved {final_filename}")
+    else:
+        if "progress_bar_text" in st.session_state:
+            st.session_state["progress_bar_text"].error(submit_req.text)
+
+        logger.error(submit_req.text)
+
+    mem_max_used, mem_total = mem_mon.read_and_stop()
+    time_diff = time.time()-start_time
+
+    info = f"""
+            {prompt}
+            Steps: {steps}, Sampler: {sampler_name}, CFG scale: {cfg_scale}, Seed: {seed}{', GFPGAN' if use_GFPGAN else ''}{', '+realesrgan_model_name if use_RealESRGAN else ''}
+            {', Prompt Matrix Mode.' if prompt_matrix else ''}""".strip()
+
+    stats = f'''
+            Took { round(time_diff, 2) }s total ({ round(time_diff/(len(all_prompts)),2) }s per image)
+            Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+
+    for comment in comments:
+        info += "\n\n" + comment
+
+    #mem_mon.stop()
+    #del mem_mon
+    torch_gc()
+
+    return output_images, seed, info, stats
+
+
 #
-@logger.catch
+#@logger.catch
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
             save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.3', use_RealESRGAN: bool = False,
             RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True, LDSR_model: str = "model",
             fp = None, variant_amount: float = 0.0,
-            variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True):
+            variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True,
+            use_stable_horde: bool = False, stable_horde_key:str = ''):
 
     outpath = st.session_state['defaults'].general.outdir_txt2img
 
     seed = seed_to_int(seed)
 
-    if sampler_name == 'PLMS':
-        sampler = PLMSSampler(server_state["model"])
-    elif sampler_name == 'DDIM':
-        sampler = DDIMSampler(server_state["model"])
-    elif sampler_name == 'k_dpm_2_a':
-        sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
-    elif sampler_name == 'k_dpm_2':
-        sampler = KDiffusionSampler(server_state["model"],'dpm_2')
-    elif sampler_name == 'k_euler_a':
-        sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
-    elif sampler_name == 'k_euler':
-        sampler = KDiffusionSampler(server_state["model"],'euler')
-    elif sampler_name == 'k_heun':
-        sampler = KDiffusionSampler(server_state["model"],'heun')
-    elif sampler_name == 'k_lms':
-        sampler = KDiffusionSampler(server_state["model"],'lms')
+    if not use_stable_horde:
+
+        if sampler_name == 'PLMS':
+            sampler = PLMSSampler(server_state["model"])
+        elif sampler_name == 'DDIM':
+            sampler = DDIMSampler(server_state["model"])
+        elif sampler_name == 'k_dpm_2_a':
+            sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
+        elif sampler_name == 'k_dpm_2':
+            sampler = KDiffusionSampler(server_state["model"],'dpm_2')
+        elif sampler_name == 'k_euler_a':
+            sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
+        elif sampler_name == 'k_euler':
+            sampler = KDiffusionSampler(server_state["model"],'euler')
+        elif sampler_name == 'k_heun':
+            sampler = KDiffusionSampler(server_state["model"],'heun')
+        elif sampler_name == 'k_lms':
+            sampler = KDiffusionSampler(server_state["model"],'lms')
+        else:
+            raise Exception("Unknown sampler: " + sampler_name)
+
+        def init():
+            pass
+
+        def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
+            samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
+                                             unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x,
+                                             img_callback=generation_callback if not server_state["bridge"] else None,
+                                                     log_every_t=int(st.session_state.update_preview_frequency if not server_state["bridge"] else 100))
+
+            return samples_ddim
+
+
+    if use_stable_horde:
+        output_images, seed, info, stats = stable_horde(
+            prompt=prompt,
+            seed=seed,
+            outpath=outpath,
+            sampler_name=sampler_name,
+            save_grid=save_grid,
+            batch_size=batch_size,
+            n_iter=n_iter,
+            steps=ddim_steps,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            prompt_matrix=separate_prompts,
+            use_GFPGAN=use_GFPGAN,
+            GFPGAN_model=GFPGAN_model,
+            use_RealESRGAN=use_RealESRGAN,
+            realesrgan_model_name=RealESRGAN_model,
+            use_LDSR=use_LDSR,
+            LDSR_model_name=LDSR_model,
+            ddim_eta=ddim_eta,
+            normalize_prompt_weights=normalize_prompt_weights,
+            save_individual_images=save_individual_images,
+            sort_samples=group_by_prompt,
+            write_info_files=write_info_files,
+            jpg_sample=save_as_jpg,
+            variant_amount=variant_amount,
+            variant_seed=variant_seed,
+            api_key=stable_horde_key
+        )
     else:
-        raise Exception("Unknown sampler: " + sampler_name)
 
-    def init():
-        pass
+        #try:
+        output_images, seed, info, stats = process_images(
+            outpath=outpath,
+            func_init=init,
+            func_sample=sample,
+            prompt=prompt,
+            seed=seed,
+            sampler_name=sampler_name,
+            save_grid=save_grid,
+            batch_size=batch_size,
+            n_iter=n_iter,
+            steps=ddim_steps,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+            prompt_matrix=separate_prompts,
+            use_GFPGAN=use_GFPGAN,
+            GFPGAN_model=GFPGAN_model,
+            use_RealESRGAN=use_RealESRGAN,
+            realesrgan_model_name=RealESRGAN_model,
+            use_LDSR=use_LDSR,
+            LDSR_model_name=LDSR_model,
+            ddim_eta=ddim_eta,
+            normalize_prompt_weights=normalize_prompt_weights,
+            save_individual_images=save_individual_images,
+            sort_samples=group_by_prompt,
+            write_info_files=write_info_files,
+            jpg_sample=save_as_jpg,
+            variant_amount=variant_amount,
+            variant_seed=variant_seed,
+        )
 
-    def sample(init_data, x, conditioning, unconditional_conditioning, sampler_name):
-        samples_ddim, _ = sampler.sample(S=ddim_steps, conditioning=conditioning, batch_size=int(x.shape[0]), shape=x[0].shape, verbose=False, unconditional_guidance_scale=cfg_scale,
-                                         unconditional_conditioning=unconditional_conditioning, eta=ddim_eta, x_T=x,
-                                         img_callback=generation_callback if not server_state["bridge"] else None,
-                                                 log_every_t=int(st.session_state.update_preview_frequency if not server_state["bridge"] else 100))
-
-        return samples_ddim
-
-    #try:
-    output_images, seed, info, stats = process_images(
-        outpath=outpath,
-                func_init=init,
-                func_sample=sample,
-                prompt=prompt,
-                seed=seed,
-                sampler_name=sampler_name,
-                save_grid=save_grid,
-                batch_size=batch_size,
-                n_iter=n_iter,
-                steps=ddim_steps,
-                cfg_scale=cfg_scale,
-                width=width,
-                height=height,
-                prompt_matrix=separate_prompts,
-                use_GFPGAN=use_GFPGAN,
-                GFPGAN_model=GFPGAN_model,
-                use_RealESRGAN=use_RealESRGAN,
-                realesrgan_model_name=RealESRGAN_model,
-                use_LDSR=use_LDSR,
-                LDSR_model_name=LDSR_model,
-                ddim_eta=ddim_eta,
-                normalize_prompt_weights=normalize_prompt_weights,
-                save_individual_images=save_individual_images,
-                sort_samples=group_by_prompt,
-                write_info_files=write_info_files,
-                jpg_sample=save_as_jpg,
-                variant_amount=variant_amount,
-                variant_seed=variant_seed,
-    )
-
-    del sampler
+        del sampler
 
     return output_images, seed, info, stats
 
@@ -177,6 +381,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
         #return [], seed, 'err', stats
 
 #
+#@logger.catch
 def layout():
     with st.form("txt2img-inputs"):
         st.session_state["generation_mode"] = "txt2img"
@@ -279,8 +484,9 @@ def layout():
 
             with st.expander("Advanced"):
                 with st.expander("Stable Horde"):
-                    use_bridge = st.checkbox("Use Stable Horde", value=False, help="Use the Stable Horde to generate images. More info can be found at https://stablehorde.net/")
-                    stable_horde_key = st.text_input("Stable Horde Api Key", value='', help="Optional Api Key used for the Stable Horde Bridge.")
+                    use_stable_horde = st.checkbox("Use Stable Horde", value=False, help="Use the Stable Horde to generate images. More info can be found at https://stablehorde.net/")
+                    stable_horde_key = st.text_input("Stable Horde Api Key", value='', type="password",
+                                                     help="Optional Api Key used for the Stable Horde Bridge, if no api key is added the horde will be used anonymously.")
 
                 with st.expander("Output Settings"):
                     separate_prompts = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2img.separate_prompts,
@@ -409,12 +615,12 @@ def layout():
         if generate_button:
 
             with col2:
-                with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                    load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-                                use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
-                                use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
-                                CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
-
+                if not use_stable_horde:
+                    with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                        load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+                                    use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
+                                    use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+                                    CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
                 #print(st.session_state['use_RealESRGAN'])
                 #print(st.session_state['use_LDSR'])
@@ -426,7 +632,8 @@ def layout():
                                                             save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'],
                                                             use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
                                                             use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files)
+                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files,
+                                                            use_stable_horde=use_stable_horde, stable_horde_key=stable_horde_key)
 
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 

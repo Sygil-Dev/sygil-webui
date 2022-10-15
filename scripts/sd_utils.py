@@ -79,8 +79,10 @@ from logger import logger
 #---------------------------------------------------------------------------------------------------------------
 
 # we make a log file where we store the logs
-logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip")    # Once the file is too old, it's rotated
-#logger.add(sys.stderr, format="{time} {level} {message}")
+logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
+logger.add(sys.stderr, diagnose=True)
+#logger.add(sys.stderr, format="{time} {level} {message}", level='INFO')
+logger.enable("")
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -1924,7 +1926,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
                             target="txt2img" if init_img is None else "img2img",
                                 prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
                                 ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=server_state["loaded_model"])
+                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=model_name)
         # Not yet any use for these, but they bloat up the files:
         # info_dict["init_img"] = init_img
         # info_dict["init_mask"] = init_mask
