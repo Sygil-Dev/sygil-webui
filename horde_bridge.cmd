@@ -65,11 +65,13 @@ IF "%HasChanges%" == "0" GOTO SKIP_RESTORE
 
 set /P restore="Do you want to restore changes you made before updating? (Y/N): "
 IF /I "%restore%" == "N" (
-  echo Removing changes please wait...
+  echo Removing changes...
   call git stash drop
+  echo "Changes removed"
 ) ELSE IF /I "%restore%" == "Y" (
-  echo Restoring changes, please wait...
+  echo Restoring changes...
   call git stash pop --quiet
+  echo "Changes restored"
 )
 
 :SKIP_RESTORE
