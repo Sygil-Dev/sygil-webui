@@ -69,7 +69,8 @@ from ldm.util import ismap
 from typing import Dict
 from io import BytesIO
 import librosa
-from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
+# from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
+from logger import logger
 
 # Temp imports
 #from basicsr.utils.registry import ARCH_REGISTRY
@@ -2615,14 +2616,14 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
     print("loaded", placeholder_token)
 
-#
+@logger.catch
 def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist):
     current_id = None
     current_payload = None
     loop_retry = 0
     while True:
         if loop_retry > 10 and current_id:
-            print(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
+            logger.info(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
             current_id = None
             current_payload = None
             current_generation = None
@@ -2635,6 +2636,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             "priority_usernames": priority_usernames,
             "nsfw": horde_nsfw,
             "blacklist": horde_blacklist,
+            "models": ["stable_diffusion"],
         }
         headers = {"apikey": api_key}
         if current_id:
@@ -2643,28 +2645,28 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             try:
                 pop_req = requests.post(horde_url + '/api/v2/generate/pop', json = gen_dict, headers = headers)
             except requests.exceptions.ConnectionError:
-                print(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
                 time.sleep(10)
                 continue
             except requests.exceptions.JSONDecodeError():
-                print(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
                 time.sleep(10)
                 continue
             try:
                 pop = pop_req.json()
             except json.decoder.JSONDecodeError:
-                print(f"Could not decode response from {horde_url} as json. Please inform its administrator!")
+                logger.warning(f"Could not decode response from {horde_url} as json. Please inform its administrator!")
                 time.sleep(interval)
                 continue
             if pop == None:
-                print(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                logger.warning(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
                 time.sleep(interval)
                 continue
             if not pop_req.ok:
                 message = pop['message']
-                print(f"During gen pop, server {horde_url} responded with status code {pop_req.status_code}: {pop['message']}. Waiting for 10 seconds...")
+                logger.warning(f"During gen pop, server {horde_url} responded with status code {pop_req.status_code}: {pop['message']}. Waiting for 10 seconds...")
                 if 'errors' in pop:
-                    print(f"Detailed Request Errors: {pop['errors']}")
+                    logger.debug(f"Detailed Request Errors: {pop['errors']}")
                 time.sleep(10)
                 continue
             if not pop.get("id"):
@@ -2673,14 +2675,14 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                     skipped_info = f" Skipped Info: {skipped_info}."
                 else:
                     skipped_info = ''
-                print(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
+                logger.info(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
                 time.sleep(interval)
                 continue
             current_id = pop['id']
-            print(f"Request with id {current_id} picked up. Initiating work...")
+            logger.info(f"Request with id {current_id} picked up. Initiating work...")
             current_payload = pop['payload']
             if 'toggles' in current_payload and current_payload['toggles'] == None:
-                print(f"Received Bad payload: {pop}")
+                logger.error(f"Received Bad payload: {pop}")
                 current_id = None
                 current_payload = None
                 current_generation = None
@@ -2688,7 +2690,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 time.sleep(10)
                 continue
 
-        print (current_payload)
+        logger.debug(current_payload)
         current_payload['toggles'] = current_payload.get('toggles', [1,4])
         # In bridge-mode, matrix is prepared on the horde and split in multiple nodes
         if 0 in current_payload['toggles']:
@@ -2731,25 +2733,25 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 try:
                     submit = submit_req.json()
                 except json.decoder.JSONDecodeError:
-                    print(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!  (Retry {loop_retry}/10)")
+                    logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!  (Retry {loop_retry}/10)")
                     time.sleep(interval)
                     continue
                 if submit_req.status_code == 404:
                     print(f"The generation we were working on got stale. Aborting!")
                 elif not submit_req.ok:
-                    print(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...  (Retry {loop_retry}/10)")
+                    logger.error(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...  (Retry {loop_retry}/10)")
                     if 'errors' in submit:
-                        print(f"Detailed Request Errors: {submit['errors']}")
+                        logger.debug(f"Detailed Request Errors: {submit['errors']}")
                     time.sleep(10)
                     continue
                 else:
-                    print(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
+                    logger.info(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
                 current_id = None
                 current_payload = None
                 current_generation = None
                 loop_retry = 0
             except requests.exceptions.ConnectionError:
-                print(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...  (Retry {loop_retry}/10)")
+                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...  (Retry {loop_retry}/10)")
                 time.sleep(10)
                 continue
         time.sleep(interval)

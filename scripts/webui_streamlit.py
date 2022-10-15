@@ -28,6 +28,7 @@ import streamlit_nested_layout
 #streamlit components section
 from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
+from logger import logger, set_logger_verbosity, quiesce_logger
 
 #other imports
 
@@ -76,6 +77,9 @@ parser.add_argument('--horde_sfw', action='store_true', required=False, help="Se
 parser.add_argument('--horde_blacklist', nargs='+', required=False, help="List the words that you want to blacklist.")
 parser.add_argument('--horde_censorlist', nargs='+', required=False, help="List the words that you want to censor.")
 parser.add_argument('--horde_censor_nsfw', action='store_true', required=False, help="Set to true if you want this bridge worker to censor NSFW images.")
+parser.add_argument('--horde_model', action='store', required=False, help="Which model to run on this horde.")
+parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
+parser.add_argument('-q', '--quiet', action='count', default=0, help="The default logging level is ERROR or higher. This value decreases the amount of logging seen in your screen")
 opt = parser.parse_args()
 
 with server_state_lock["bridge"]:
@@ -206,6 +210,8 @@ def layout():
 
 
 if __name__ == '__main__':
+    set_logger_verbosity(opt.verbosity)
+    quiesce_logger(opt.quiet)
     if not opt.headless:
         layout()
 
@@ -214,14 +220,14 @@ if __name__ == '__main__':
             try:
                 import bridgeData as cd
             except ModuleNotFoundError as e:
-                print("No bridgeData found. Falling back to default where no CLI args are set.")
-                print(str(e))
+                logger.warning("No bridgeData found. Falling back to default where no CLI args are set.")
+                logger.debug(str(e))
             except SyntaxError as e:
-                print("bridgeData found, but is malformed. Falling back to default where no CLI args are set.")
-                print(str(e))
+                logger.warning("bridgeData found, but is malformed. Falling back to default where no CLI args are set.")
+                logger.debug(str(e))
             except Exception as e:
-                print("No bridgeData found, use default where no CLI args are set")
-                print(str(e))
+                logger.warning("No bridgeData found, use default where no CLI args are set")
+                logger.debug(str(e))
             finally:
                 try: # check if cd exists (i.e. bridgeData loaded properly)
                     cd
@@ -239,12 +245,18 @@ if __name__ == '__main__':
                             self.horde_priority_usernames = []
                             self.horde_max_power = 8
                             self.nsfw = True
+                            self.censor_nsfw = False
+                            self.blacklist = []
+                            self.censorlist = []
+                            self.models_to_load = ["stable_diffusion"]
                     cd = temp()
             horde_api_key = opt.horde_api_key if opt.horde_api_key else cd.horde_api_key
             horde_name = opt.horde_name if opt.horde_name else cd.horde_name
             horde_url = opt.horde_url if opt.horde_url else cd.horde_url
             horde_priority_usernames = opt.horde_priority_usernames if opt.horde_priority_usernames else cd.horde_priority_usernames
             horde_max_power = opt.horde_max_power if opt.horde_max_power else cd.horde_max_power
+            # Not used yet
+            horde_models = [opt.horde_model] if opt.horde_model else cd.models_to_load
             try:
                 horde_nsfw = not opt.horde_sfw if opt.horde_sfw else cd.horde_nsfw
             except AttributeError:
