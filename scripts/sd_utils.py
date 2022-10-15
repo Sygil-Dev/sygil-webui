@@ -68,8 +68,8 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
 from typing import Dict
 from io import BytesIO
-import librosa
-# from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
+#import librosa
+from decorest import backend, RestClient, GET, query, PUT, POST, DELETE, HEAD, OPTIONS
 from logger import logger
 
 # Temp imports
@@ -122,6 +122,11 @@ if st.session_state["defaults"].daisi_app.running_on_daisi_io:
     if os.path.exists("scripts/modeldownload.py"):
         import modeldownload
         modeldownload.updateModels()
+
+
+# we make a log file where we store the logs
+logger.add("logs/log_{time}.log", rotation=20, compression="zip")    # Once the file is too old, it's rotated
+
 
 #
 #if st.session_state["defaults"].debug.enable_hydralit:
@@ -2622,6 +2627,12 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
     current_payload = None
     loop_retry = 0
     while True:
+        # load the model for stable horde if its not in memory already
+        # we should load it after we get the request from the API in
+        # case the model is different from the loaded in memory but
+        # for now we can load it here so its read right away.
+        load_models(use_GFPGAN=True)
+
         if loop_retry > 10 and current_id:
             logger.info(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
             current_id = None
@@ -2701,9 +2712,6 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             elif any(word in current_payload['prompt'] for word in horde_censorlist):
                 current_payload['toggles'].append(8)
 
-        # load the model for stable horde if its not in memory already
-        load_models(use_GFPGAN=True)
-
         from txt2img import txt2img
 
 
@@ -2758,3 +2766,4 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
         time.sleep(interval)
 
 
+#
