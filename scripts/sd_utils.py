@@ -126,7 +126,9 @@ if (os.path.exists(".streamlit/config.toml")):
 if st.session_state["defaults"].daisi_app.running_on_daisi_io:
     if os.path.exists("scripts/modeldownload.py"):
         import modeldownload
-        modeldownload.updateModels()
+        modeldownload.update_models(
+            models=st.session_state["defaults"].model_manager.models,
+        )
 
 if "keep_all_models_loaded" in st.session_state:
     with server_state_lock["keep_all_models_loaded"]:
