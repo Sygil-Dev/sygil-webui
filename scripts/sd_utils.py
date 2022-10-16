@@ -79,10 +79,9 @@ from logger import logger
 #---------------------------------------------------------------------------------------------------------------
 
 # we make a log file where we store the logs
-logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
-logger.add(sys.stderr, diagnose=True)
-#logger.add(sys.stderr, format="{time} {level} {message}", level='INFO')
-logger.enable("")
+# logger.add(sys.stderr, diagnose=True)
+# logger.add(sys.stderr, format="{time} {level} {message}", level='INFO')
+# logger.enable("")
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -1497,6 +1496,7 @@ def generation_callback(img, i=0):
 
     # Show a progress bar so we can keep track of the progress even when the image progress is not been shown,
     # Dont worry, it doesnt affect the performance.
+    percent = 0
     if st.session_state["generation_mode"] == "txt2img":
         percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
 
@@ -2631,12 +2631,6 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
     current_payload = None
     loop_retry = 0
     while True:
-        # load the model for stable horde if its not in memory already
-        # we should load it after we get the request from the API in
-        # case the model is different from the loaded in memory but
-        # for now we can load it here so its read right away.
-        load_models(use_GFPGAN=True)
-
         if loop_retry > 10 and current_id:
             logger.info(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
             current_id = None
@@ -2652,6 +2646,7 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
             "nsfw": horde_nsfw,
             "blacklist": horde_blacklist,
             "models": ["stable_diffusion"],
+            "bridge_version": 2,
         }
         headers = {"apikey": api_key}
         if current_id:
@@ -2715,6 +2710,14 @@ def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, hor
                 current_payload['toggles'].append(8)
             elif any(word in current_payload['prompt'] for word in horde_censorlist):
                 current_payload['toggles'].append(8)
+
+        # load the model for stable horde if its not in memory already
+        # we should load it after we get the request from the API in
+        # case the model is different from the loaded in memory but
+        # for now we can load it here so its read right away.
+        logger.info(pop)
+        use_gfpgan = pop.get("use_gfpgan", True)
+        load_models(use_GFPGAN=use_gfpgan)
 
         from txt2img import txt2img
 
