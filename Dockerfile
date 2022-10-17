@@ -1,4 +1,4 @@
-ARG IMAGE=hlky/sd-webui:base
+ARG IMAGE=digburn/sd-webui:base
 
 FROM ${IMAGE}
 
@@ -8,18 +8,14 @@ SHELL ["/bin/bash", "-c"]
 
 ENV PYTHONPATH=/sd
 
-EXPOSE 8501
+EXPOSE 7860
 COPY ./data/DejaVuSans.ttf /usr/share/fonts/truetype/
 COPY ./data/ /sd/data/
-copy ./images/ /sd/images/
-copy ./scripts/ /sd/scripts/
-copy ./ldm/ /sd/ldm/
-copy ./frontend/ /sd/frontend/
-copy ./configs/ /sd/configs/
-copy ./.streamlit/ /sd/.streamlit/
-COPY ./entrypoint.sh /sd/
+COPY ./images/ /sd/images/
+COPY ./scripts/ /sd/scripts/
+COPY ./ldm/ /sd/ldm/
+COPY ./frontend/ /sd/frontend/
+COPY ./configs/ /sd/configs/
+COPY ./runpod_entrypoint.sh /sd/entrypoint.sh
+RUN chmod +x /sd/entrypoint.sh
 ENTRYPOINT /sd/entrypoint.sh
-
-RUN mkdir -p ~/.streamlit/
-RUN echo "[general]"  > ~/.streamlit/credentials.toml
-RUN echo "email = \"\""  >> ~/.streamlit/credentials.toml

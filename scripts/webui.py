@@ -386,7 +386,7 @@ def load_LDSR(checking=False):
     LDSRObject = LDSR(model_path, yaml_path)
     return LDSRObject
 def load_GFPGAN(checking=False):
-    model_name = 'GFPGANv1.3'
+    model_name = 'GFPGANv1.4'
     model_path = os.path.join(GFPGAN_dir, model_name + '.pth')
     if not os.path.isfile(model_path):
         raise Exception("GFPGAN model not found at path "+model_path)
