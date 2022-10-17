@@ -58,20 +58,23 @@ IF "%v_conda_path%"=="" (
 
 :CONDA_FOUND
 echo Stashing local changes and pulling latest update...
+git status --porcelain=1 -uno | findstr . && set "HasChanges=1" || set "HasChanges=0"
 call git stash
 call git pull
+IF "%HasChanges%" == "0" GOTO SKIP_RESTORE
+
 set /P restore="Do you want to restore changes you made before updating? (Y/N): "
 IF /I "%restore%" == "N" (
-  echo Removing changes please wait...
+  echo Removing changes...
   call git stash drop
-  echo Changes removed, press any key to continue...
-  pause >nul
+  echo Changes removed
 ) ELSE IF /I "%restore%" == "Y" (
-  echo Restoring changes, please wait...
+  echo Restoring changes...
   call git stash pop --quiet
-  echo Changes restored, press any key to continue...
-  pause >nul
+  echo Changes restored
 )
+
+:SKIP_RESTORE
 call "%v_conda_path%\Scripts\activate.bat"
 
 for /f "delims=" %%a in ('git log -1 --format^="%%H" -- environment.yaml')  DO set v_cur_hash=%%a
