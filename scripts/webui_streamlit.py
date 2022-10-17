@@ -28,7 +28,6 @@ import streamlit_nested_layout
 #streamlit components section
 from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
-from logger import logger, set_logger_verbosity, quiesce_logger
 
 #other imports
 
@@ -279,9 +278,6 @@ if __name__ == '__main__':
                 horde_max_power = 2
             horde_max_pixels = 64*64*8*horde_max_power
             logger.info(f"Joining Horde with parameters: Server Name '{horde_name}'. Horde URL '{horde_url}'. Max Pixels {horde_max_pixels}")
-
-
-
 
             try:
                 thread = threading.Thread(target=run_bridge(1, horde_api_key, horde_name, horde_url,
