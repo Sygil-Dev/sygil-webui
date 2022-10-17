@@ -90,7 +90,7 @@ class plugin_info():
     isTab = True
     displayPriority = 1
 
-#@logger.catch
+@logger.catch(reraise=True)
 def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
                  n_iter, steps, cfg_scale, width, height, prompt_matrix, use_GFPGAN, GFPGAN_model,
                  use_RealESRGAN, realesrgan_model_name, use_LDSR,
@@ -99,7 +99,11 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
                  jpg_sample, variant_amount, variant_seed, api_key,
                  nsfw=True, censor_nsfw=False):
 
-    st.session_state["progress_bar_text"].info("Generating image with Stable Horde.")
+    log = []
+
+    log.append("Generating image with Stable Horde.")
+
+    st.session_state["progress_bar_text"].code('\n'.join(log), language='')
 
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -136,14 +140,22 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
         "trusted_workers": True,
         "workers": []
     }
+    log.append(final_submit_dict)
 
     headers = {"apikey": api_key}
     logger.debug(final_submit_dict)
+    st.session_state["progress_bar_text"].code('\n'.join(log), language='')
+
     horde_url = "https://stablehorde.net"
+
     submit_req = requests.post(f'{horde_url}/api/v2/generate/async', json = final_submit_dict, headers = headers)
     if submit_req.ok:
         submit_results = submit_req.json()
         logger.debug(submit_results)
+
+        log.append(submit_results)
+        st.session_state["progress_bar_text"].code('\n'.join(log), language='')
+
         req_id = submit_results['id']
         is_done = False
         while not is_done:
@@ -259,7 +271,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
 
 
 #
-#@logger.catch
+@logger.catch(reraise=True)
 def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_size: int, cfg_scale: float, seed: Union[int, str, None],
             height: int, width: int, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
             save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
@@ -381,7 +393,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
         #return [], seed, 'err', stats
 
 #
-#@logger.catch
+@logger.catch(reraise=True)
 def layout():
     with st.form("txt2img-inputs"):
         st.session_state["generation_mode"] = "txt2img"

@@ -64,9 +64,12 @@ blip_image_eval_size = 512
 server_state["clip_models"] = {}
 server_state["preprocesses"] = {}
 
+st.session_state["log"] = []
+
 def load_blip_model():
     logger.info("Loading BLIP Model")
-    st.session_state["log_message"].code("Loading BLIP Model", language='')
+    st.session_state.append("Loading BLIP Model")
+    st.session_state["log_message"].code('\n'.join(st.session_state), language='')
 
     if "blip_model" not in server_state:
         with server_state_lock['blip_model']:
@@ -79,10 +82,12 @@ def load_blip_model():
             server_state["blip_model"] = server_state["blip_model"].to(device).half()
 
             logger.info("BLIP Model Loaded")
-            st.session_state["log_message"].code("BLIP Model Loaded", language='')
+            st.session_state.append("BLIP Model Loaded")
+            st.session_state["log_message"].code('\n'.join(st.session_state), language='')
     else:
         logger.info("BLIP Model already loaded")
-        st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
+        st.session_state.append("BLIP Model already loaded")
+        st.session_state["log_message"].code('\n'.join(st.session_state), language='')
 
     #return server_state["blip_model"]
 
@@ -193,7 +198,8 @@ def interrogate(image, models):
     load_blip_model()
 
     logger.info("Generating Caption")
-    st.session_state["log_message"].code("Generating Caption", language='')
+    st.session_state.append("Generating Caption")
+    st.session_state["log_message"].code('\n'.join(st.session_state), language='')
     caption = generate_caption(image)
 
     if st.session_state["defaults"].general.optimized:
@@ -201,13 +207,14 @@ def interrogate(image, models):
         clear_cuda()
 
     logger.info("Caption Generated")
-    st.session_state["log_message"].code("Caption Generated", language='')
+    st.session_state.append("Caption Generated")
+    st.session_state["log_message"].code('\n'.join(st.session_state), language='')
 
     if len(models) == 0:
         logger.info(f"\n\n{caption}")
         return
 
-    table = []
+    table = [].sort(key=lambda x: int(''.join(filter(str.isdigit, x))))
     bests = [[('', 0)]]*5
 
     logger.info("Ranking Text")
@@ -220,7 +227,8 @@ def interrogate(image, models):
     for model_name in models:
         with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
             logger.info(f"Interrogating with {model_name}...")
-            st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
+            st.session_state.append(f"Interrogating with {model_name}...")
+            st.session_state["log_message"].code('\n'.join(st.session_state), language='')
 
             if model_name not in server_state["clip_models"]:
                 if not st.session_state["defaults"].img2txt.keep_all_models_loaded:
@@ -233,9 +241,13 @@ def interrogate(image, models):
                         del server_state["preprocesses"][model]
                         clear_cuda()
                 if model_name == 'ViT-H-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k', cache_dir='models/clip')
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name,
+                                                                                                                                                 pretrained='laion2b_s32b_b79k',
+                                                                                                                                                 cache_dir='models/clip')
                 elif model_name == 'ViT-g-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k', cache_dir='models/clip')
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name,
+                                                                                                                                                 pretrained='laion2b_s12b_b42k',
+                                                                                                                                                 cache_dir='models/clip')
                 else:
                     server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = clip.load(model_name, device=device, download_root='models/clip')
                 server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda().eval()
@@ -265,6 +277,9 @@ def interrogate(image, models):
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["themes"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["keywords"]))
 
+            #print (bests)
+            #print (ranks)
+
             for i in range(len(ranks)):
                 confidence_sum = 0
                 for ci in range(len(ranks[i])):
@@ -288,6 +303,7 @@ def interrogate(image, models):
 
     flaves = ', '.join([f"{x[0]}" for x in bests[4]])
     medium = bests[0][0][0]
+
     if caption.startswith(medium):
         st.session_state["text_result"][st.session_state["processed_image_count"]].code(
             f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
@@ -297,7 +313,8 @@ def interrogate(image, models):
 
     #
     logger.info("Finished Interrogating.")
-    st.session_state["log_message"].code("Finished Interrogating.", language="")
+    st.session_state.append("Finished Interrogating.")
+    st.session_state["log_message"].code('\n'.join(st.session_state), language='')
 #
 
 
