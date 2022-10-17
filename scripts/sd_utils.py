@@ -69,7 +69,7 @@ from ldm.util import ismap
 from typing import Dict
 from io import BytesIO
 #import librosa
-from logger import logger
+from logger import logger, set_logger_verbosity, quiesce_logger
 #from loguru import logger
 
 # Temp imports
@@ -82,7 +82,7 @@ from logger import logger
 # we make a log file where we store the logs
 logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
 #logger.add(sys.stderr, diagnose=True)
-logger.add(sys.stdout)
+#logger.add(sys.stdout)
 logger.enable("")
 
 try:
