@@ -38,6 +38,7 @@ general:
     upscaling_method: "RealESRGAN"
     outdir_txt2img: outputs/txt2img
     outdir_img2img: outputs/img2img
+    outdir_img2txt: outputs/img2txt
     gfpgan_cpu: False
     esrgan_cpu: False
     extra_models_cpu: False
@@ -83,7 +84,6 @@ txt2img:
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
 
     seed: ""
@@ -148,7 +148,6 @@ txt2vid:
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
 
     batch_count:
@@ -253,8 +252,7 @@ img2img:
 
     cfg_scale:
         value:      7.5
-        min_value:  1.0
-        max_value:  30.0
+        min_value:  1.0       
         step:       0.5
 
     batch_count:
@@ -277,9 +275,8 @@ img2img:
 
     find_noise_steps:
         value:      100
-        min_value:  0
-        max_value:  500
-        step:       10
+        min_value:  100
+        step:       100
 
     LDSR_config:
         sampling_steps: 50
