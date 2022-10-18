@@ -651,9 +651,10 @@ def layout():
 							  value=st.session_state['defaults'].txt2vid.width.value, step=st.session_state['defaults'].txt2vid.width.step)
 			height = st.slider("Height:", min_value=st.session_state['defaults'].txt2vid.height.min_value, max_value=st.session_state['defaults'].txt2vid.height.max_value,
 							   value=st.session_state['defaults'].txt2vid.height.value, step=st.session_state['defaults'].txt2vid.height.step)
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
-								  max_value=st.session_state['defaults'].txt2vid.cfg_scale.max_value, value=st.session_state['defaults'].txt2vid.cfg_scale.value,
-								  step=st.session_state['defaults'].txt2vid.cfg_scale.step, help="How strongly the image should follow the prompt.")
+			cfg_scale = st.number_input("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
+			                            value=st.session_state['defaults'].txt2vid.cfg_scale.value,
+			                            step=st.session_state['defaults'].txt2vid.cfg_scale.step,
+			                            help="How strongly the image should follow the prompt.")
 
 			#uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
 												#help="Upload an image which will be used for the image to image generation.")

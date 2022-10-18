@@ -405,23 +405,23 @@ def layout():
 									   value=st.session_state['defaults'].img2img.height.value, step=st.session_state['defaults'].img2img.height.step)
 			seed = st.text_input("Seed:", value=st.session_state['defaults'].img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
-											  max_value=st.session_state['defaults'].img2img.cfg_scale.max_value, value=st.session_state['defaults'].img2img.cfg_scale.value,
-											  step=st.session_state['defaults'].img2img.cfg_scale.step, help="How strongly the image should follow the prompt.")
+			cfg_scale = st.number_input("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
+					      step=st.session_state['defaults'].img2img.cfg_scale.step,
+					      help="How strongly the image should follow the prompt.")
 
 			st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength.value,
-																		   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
-														   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
-														   step=st.session_state['defaults'].img2img.denoising_strength.step)
+									   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
+									   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
+									   step=st.session_state['defaults'].img2img.denoising_strength.step)
 
 
 			mask_expander = st.empty()
 			with mask_expander.expander("Mask"):
 				mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
 				mask_mode = st.selectbox("Mask Mode", mask_mode_list,
-									 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
-									 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
-									 )
+							 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
+							 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
+							 )
 				mask_mode = mask_mode_list.index(mask_mode)
 
 
@@ -431,26 +431,26 @@ def layout():
 							help=""
 						)
 				noise_mode = noise_mode_list.index(noise_mode)
-				find_noise_steps = st.slider("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
-											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value, max_value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
+				find_noise_steps = st.number_input("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
+											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value,
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 
 			with st.expander("Batch Options"):
 				st.session_state["batch_count"] = st.number_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
-																help="How many iterations or batches of images to generate in total.")
+										  help="How many iterations or batches of images to generate in total.")
 
 				st.session_state["batch_size"] = st.number_input("Batch size", value=st.session_state.defaults.img2img.batch_size.value,
-				                            help="How many images are at once in a batch.\
-				                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                            Default: 1")
+										 help="How many images are at once in a batch.\
+										 It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+										 Default: 1")
 
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
-																			   min_value=1,
-																			   value=st.session_state['defaults'].img2img.update_preview_frequency,
-																			   help="Frequency in steps at which the the preview image is updated. By default the frequency \
-																			   is set to 1 step.")
+											       min_value=1,
+											       value=st.session_state['defaults'].img2img.update_preview_frequency,
+											       help="Frequency in steps at which the the preview image is updated. By default the frequency \
+											       is set to 1 step.")
 			#
 			with st.expander("Advanced"):
 				with st.expander("Output Settings"):
