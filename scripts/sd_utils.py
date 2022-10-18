@@ -118,14 +118,14 @@ def load_configs():
 
         if "version" in user_defaults.general:
             if version.parse(user_defaults.general.version) < version.parse(st.session_state["defaults"].general.version):
-                logger.error("The version of the user config file is older than the version on the defaults config file. " \
-                             "This means there were big changes we made on the config."\
+                logger.error("The version of the user config file is older than the version on the defaults config file. "
+                             "This means there were big changes we made on the config."
                          "We are removing this file and recreating it from the defaults in order to make sure things work properly.")
                 os.remove("configs/webui/userconfig_streamlit.yaml")
                 st.experimental_rerun()
         else:
-            logger.error("The version of the user config file is older than the version on the defaults config file. " \
-                         "This means there were big changes we made on the config."\
+            logger.error("The version of the user config file is older than the version on the defaults config file. "
+                         "This means there were big changes we made on the config."
                          "We are removing this file and recreating it from the defaults in order to make sure things work properly.")
             os.remove("configs/webui/userconfig_streamlit.yaml")
             st.experimental_rerun()
