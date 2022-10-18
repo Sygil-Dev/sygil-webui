@@ -19,6 +19,7 @@
 # You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
 # of the properties below.
 general:
+    version: 1.17.2
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''

@@ -37,24 +37,11 @@ import k_diffusion as K
 from omegaconf import OmegaConf
 import argparse
 
-if not "defaults" in st.session_state:
-    st.session_state["defaults"] = {}
-
-st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
-
-if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
-    user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-    st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
-else:
-    OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
-    loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-    assert st.session_state.defaults == loaded
-
-if (os.path.exists(".streamlit/config.toml")):
-    st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
+
+load_configs()
 
 help = """
 A double dash (`--`) is used to separate streamlit arguments from app arguments.
