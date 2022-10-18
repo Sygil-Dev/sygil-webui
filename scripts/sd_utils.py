@@ -68,6 +68,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
 from typing import Dict
 from io import BytesIO
+from packaging import version
 #import librosa
 from logger import logger, set_logger_verbosity, quiesce_logger
 #from loguru import logger
@@ -81,8 +82,8 @@ from logger import logger, set_logger_verbosity, quiesce_logger
 
 # we make a log file where we store the logs
 logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
-#logger.add(sys.stderr, diagnose=True)
-#logger.add(sys.stdout)
+logger.add(sys.stderr, diagnose=True)
+logger.add(sys.stdout)
 logger.enable("")
 
 try:
@@ -105,33 +106,52 @@ mimetypes.add_type('application/javascript', '.js')
 opt_C = 4
 opt_f = 8
 
-if not "defaults" in st.session_state:
-    st.session_state["defaults"] = {}
 
-st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+def load_configs():
+    if not "defaults" in st.session_state:
+        st.session_state["defaults"] = {}
 
-if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
-    user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-    try:
-        st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
-    except KeyError:
-        st.experimental_rerun()
-else:
-    OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
-    loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-    assert st.session_state.defaults == loaded
+    st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
 
-if (os.path.exists(".streamlit/config.toml")):
-    st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
+    if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
+        user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
 
-if st.session_state["defaults"].daisi_app.running_on_daisi_io:
-    if os.path.exists("scripts/modeldownload.py"):
-        import modeldownload
-        modeldownload.updateModels()
+        if "version" in user_defaults.general:
+            if version.parse(user_defaults.general.version) < version.parse(st.session_state["defaults"].general.version):
+                logger.error("The version of the user config file is older than the version on the defaults config file. " \
+                             "This means there were big changes we made on the config."\
+                         "We are removing this file and recreating it from the defaults in order to make sure things work properly.")
+                os.remove("configs/webui/userconfig_streamlit.yaml")
+                st.experimental_rerun()
+        else:
+            logger.error("The version of the user config file is older than the version on the defaults config file. " \
+                         "This means there were big changes we made on the config."\
+                         "We are removing this file and recreating it from the defaults in order to make sure things work properly.")
+            os.remove("configs/webui/userconfig_streamlit.yaml")
+            st.experimental_rerun()
 
-if "keep_all_models_loaded" in st.session_state:
-    with server_state_lock["keep_all_models_loaded"]:
-        server_state["keep_all_models_loaded"] = st.session_state["defaults"].general.keep_all_models_loaded
+        try:
+            st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+        except KeyError:
+            st.experimental_rerun()
+    else:
+        OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
+        loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+        assert st.session_state.defaults == loaded
+
+    if (os.path.exists(".streamlit/config.toml")):
+        st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
+
+    if st.session_state["defaults"].daisi_app.running_on_daisi_io:
+        if os.path.exists("scripts/modeldownload.py"):
+            import modeldownload
+            modeldownload.updateModels()
+
+    if "keep_all_models_loaded" in st.session_state:
+        with server_state_lock["keep_all_models_loaded"]:
+            server_state["keep_all_models_loaded"] = st.session_state["defaults"].general.keep_all_models_loaded
+
+load_configs()
 
 #
 #if st.session_state["defaults"].debug.enable_hydralit:
