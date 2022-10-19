@@ -83,7 +83,7 @@ wget
 basicsr==1.4.2  # required by RealESRGAN
 gfpgan==1.3.8  # GFPGAN
 realesrgan==0.3.0  # RealESRGAN brings in GFPGAN as a requirement
-git+https://github.com/CompVis/latent-diffusion
+-e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion
 
 ## for monocular depth estimation 
 tensorflow==2.10.0
