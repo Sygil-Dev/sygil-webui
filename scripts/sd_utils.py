@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
+import collections.abc
 #from webui_streamlit import st
 import gfpgan
 import hydralit as st
@@ -85,6 +86,8 @@ logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="z
 logger.add(sys.stderr, diagnose=True)
 logger.add(sys.stdout)
 logger.enable("")
+
+#
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
