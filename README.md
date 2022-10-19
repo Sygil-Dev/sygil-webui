@@ -153,7 +153,7 @@ More powerful upscalers that uses a seperate Latent Diffusion model to more clea
 
 
 
-Please see the [Image Enhancers Documentation](docs/5.image_enhancers.md) to learn more.
+Please see the [Image Enhancers Documentation](docs/6.image_enhancers.md) to learn more.
 
 -----
 

@@ -25,6 +25,8 @@ from streamlit import StopException, StreamlitAPIException
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
 import hydralit_components as hc
+from hydralit import HydraHeadApp
+import streamlit_nested_layout
 
 #other imports
 
@@ -64,7 +66,12 @@ import piexif.helper
 from tqdm import trange
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
-
+from typing import Dict
+from io import BytesIO
+from packaging import version
+#import librosa
+from logger import logger, set_logger_verbosity, quiesce_logger
+#from loguru import logger
 
 # Temp imports
 #from basicsr.utils.registry import ARCH_REGISTRY
@@ -72,6 +79,12 @@ from ldm.util import ismap
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
+
+# we make a log file where we store the logs
+logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
+logger.add(sys.stderr, diagnose=True)
+logger.add(sys.stdout)
+logger.enable("")
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -93,34 +106,60 @@ mimetypes.add_type('application/javascript', '.js')
 opt_C = 4
 opt_f = 8
 
-if not "defaults" in st.session_state:
-    st.session_state["defaults"] = {}
 
-st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
+def load_configs():
+    if not "defaults" in st.session_state:
+        st.session_state["defaults"] = {}
 
-if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
-    user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-    try:
-        st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
-    except KeyError:
-        st.experimental_rerun()
-else:
-    OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
-    loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
-    assert st.session_state.defaults == loaded
+    st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
 
-if (os.path.exists(".streamlit/config.toml")):
-    st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
+    if (os.path.exists("configs/webui/userconfig_streamlit.yaml")):
+        user_defaults = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
 
-if st.session_state["defaults"].daisi_app.running_on_daisi_io:
-    if os.path.exists("scripts/modeldownload.py"):
-        import modeldownload
-        modeldownload.updateModels()
+        if "version" in user_defaults.general:
+            if version.parse(user_defaults.general.version) < version.parse(st.session_state["defaults"].general.version):
+                logger.error("The version of the user config file is older than the version on the defaults config file. "
+                             "This means there were big changes we made on the config."
+                         "We are removing this file and recreating it from the defaults in order to make sure things work properly.")
+                os.remove("configs/webui/userconfig_streamlit.yaml")
+                st.experimental_rerun()
+        else:
+            logger.error("The version of the user config file is older than the version on the defaults config file. "
+                         "This means there were big changes we made on the config."
+                         "We are removing this file and recreating it from the defaults in order to make sure things work properly.")
+            os.remove("configs/webui/userconfig_streamlit.yaml")
+            st.experimental_rerun()
+
+        try:
+            st.session_state["defaults"] = OmegaConf.merge(st.session_state["defaults"], user_defaults)
+        except KeyError:
+            st.experimental_rerun()
+    else:
+        OmegaConf.save(config=st.session_state.defaults, f="configs/webui/userconfig_streamlit.yaml")
+        loaded = OmegaConf.load("configs/webui/userconfig_streamlit.yaml")
+        assert st.session_state.defaults == loaded
+
+    if (os.path.exists(".streamlit/config.toml")):
+        st.session_state["streamlit_config"] = toml.load(".streamlit/config.toml")
+
+    if st.session_state["defaults"].daisi_app.running_on_daisi_io:
+        if os.path.exists("scripts/modeldownload.py"):
+            import modeldownload
+            modeldownload.updateModels()
+
+    if "keep_all_models_loaded" in st.session_state:
+        with server_state_lock["keep_all_models_loaded"]:
+            server_state["keep_all_models_loaded"] = st.session_state["defaults"].general.keep_all_models_loaded
+
+load_configs()
 
 #
-#app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded",
-                  #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
-
+#if st.session_state["defaults"].debug.enable_hydralit:
+    #navbar_theme = {'txc_inactive': '#FFFFFF','menu_background':'#0e1117','txc_active':'black','option_active':'red'}
+    #app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", use_cookie_cache=False, sidebar_state="expanded", layout="wide", navbar_theme=navbar_theme,
+                      #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False, use_loader=False)
+#else:
+    #app = None
 
 # should and will be moved to a settings menu in the UI at some point
 grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
@@ -164,8 +203,6 @@ elif save_format[0] == 'webp':
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
 
-
-#
 
 # functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
 # TODO, maybe look into async loading the file especially for remote fetching
@@ -224,24 +261,16 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                 CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
 
-    print ("Loading models.")
+    logger.info("Loading models.")
 
     if "progress_bar_text" in st.session_state:
         st.session_state["progress_bar_text"].text("")
-
-
-    # Generate random run ID
-    # Used to link runs linked w/ continue_prev_run which is not yet implemented
-    # Use URL and filesystem safe version just in case.
-    st.session_state["run_id"] = base64.urlsafe_b64encode(
-            os.urandom(6)
-                ).decode("ascii")
 
     # check what models we want to use and if the they are already loaded.
     with server_state_lock["LDSR"]:
         if use_LDSR:
             if "LDSR" in server_state and server_state["LDSR"].name == LDSR_model:
-                print("LDSR already loaded")
+                logger.info("LDSR already loaded")
             else:
                 if "LDSR" in server_state:
                     del server_state["LDSR"]
@@ -250,19 +279,21 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                 if os.path.exists(st.session_state["defaults"].general.LDSR_dir):
                     try:
                         server_state["LDSR"] = load_LDSR(model_name=LDSR_model)
-                        print(f"Loaded LDSR")
+                        logger.info(f"Loaded LDSR")
                     except Exception:
                         import traceback
-                        print(f"Error loading LDSR:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
+                        logger.error(f"Error loading LDSR:", file=sys.stderr)
+                        logger.error(traceback.format_exc(), file=sys.stderr)
         else:
-            if "LDSR" in server_state:
+            if "LDSR" in server_state and not server_state["keep_all_models_loaded"]:
+                logger.debug("LDSR was in memory but we won't use it. Removing to save VRAM.")
                 del server_state["LDSR"]
+
 
     with server_state_lock["GFPGAN"]:
         if use_GFPGAN:
             if "GFPGAN" in server_state and server_state["GFPGAN"].name == GFPGAN_model:
-                print("GFPGAN already loaded")
+                logger.info("GFPGAN already loaded")
             else:
                 if "GFPGAN" in server_state:
                     del server_state["GFPGAN"]
@@ -271,43 +302,69 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                 if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
                     try:
                         server_state["GFPGAN"] = load_GFPGAN(GFPGAN_model)
-                        print(f"Loaded GFPGAN: {GFPGAN_model}")
+                        logger.info(f"Loaded GFPGAN: {GFPGAN_model}")
                     except Exception:
                         import traceback
-                        print(f"Error loading GFPGAN:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
+                        logger.error(f"Error loading GFPGAN:", file=sys.stderr)
+                        logger.error(traceback.format_exc(), file=sys.stderr)
         else:
-            if "GFPGAN" in server_state:
+            if "GFPGAN" in server_state and not server_state["keep_all_models_loaded"]:
                 del server_state["GFPGAN"]
 
     with server_state_lock["RealESRGAN"]:
         if use_RealESRGAN:
             if "RealESRGAN" in server_state and server_state["RealESRGAN"].model.name == RealESRGAN_model:
-                print("RealESRGAN already loaded")
+                logger.info("RealESRGAN already loaded")
             else:
                 #Load RealESRGAN
                 try:
                     # We first remove the variable in case it has something there,
                     # some errors can load the model incorrectly and leave things in memory.
                     del server_state["RealESRGAN"]
-                except KeyError:
+                except KeyError as e:
+                    logger.error(e)
                     pass
 
                 if os.path.exists(st.session_state["defaults"].general.RealESRGAN_dir):
                     # st.session_state is used for keeping the models in memory across multiple pages or runs.
                     server_state["RealESRGAN"] = load_RealESRGAN(RealESRGAN_model)
-                    print("Loaded RealESRGAN with model "+ server_state["RealESRGAN"].model.name)
+                    logger.info("Loaded RealESRGAN with model "+ server_state["RealESRGAN"].model.name)
 
         else:
-            if "RealESRGAN" in server_state:
+            if "RealESRGAN" in server_state and not server_state["keep_all_models_loaded"]:
                 del server_state["RealESRGAN"]
 
     with server_state_lock["model"], server_state_lock["modelCS"], server_state_lock["modelFS"], server_state_lock["loaded_model"]:
 
         if "model" in server_state:
             if "model" in server_state and server_state["loaded_model"] == custom_model:
-                # TODO: check if the optimized mode was changed?
-                print("Model already loaded")
+                # if the float16 or no_half options have changed since the last time the model was loaded then we need to reload the model.
+                if ("float16" in server_state and server_state['float16'] != st.session_state['defaults'].general.use_float16) \
+                   or ("no_half" in server_state and server_state['no_half'] != st.session_state['defaults'].general.no_half) \
+                   or ("optimized" in server_state and server_state['optimized'] != st.session_state['defaults'].general.optimized):
+
+                    logger.info("Model options changed, deleting the model from memory.")
+
+                    del server_state['float16']
+                    del server_state['no_half']
+
+                    del server_state["model"]
+                    del server_state["modelCS"]
+                    del server_state["modelFS"]
+                    del server_state["loaded_model"]
+
+                    del server_state['optimized']
+
+                    server_state['float16'] = st.session_state['defaults'].general.use_float16
+                    server_state['no_half'] = st.session_state['defaults'].general.no_half
+                    server_state['optimized'] = st.session_state['defaults'].general.optimized
+
+                    load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+                                use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
+                                use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+                                CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
+                else:
+                    logger.info("Model already loaded")
 
                 return
             else:
@@ -317,19 +374,20 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
                     del server_state["modelFS"]
                     del server_state["loaded_model"]
 
-                except KeyError:
+                except KeyError as e:
+                    logger.error(e)
                     pass
 
         # if the model from txt2vid is in memory we need to remove it to improve performance.
         with server_state_lock["pipe"]:
-            if "pipe" in server_state:
+            if "pipe" in server_state and not server_state["keep_all_models_loaded"]:
                 del server_state["pipe"]
 
-        if "textual_inversion" in st.session_state:
+        if "textual_inversion" in st.session_state and not server_state["keep_all_models_loaded"]:
             del st.session_state['textual_inversion']
 
         # At this point the model is either
-        # not loaded yet or have been evicted:
+        # not loaded yet or have been deleted from memory:
         # load new model into memory
         server_state["custom_model"] = custom_model
 
@@ -342,12 +400,17 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
         server_state["modelFS"] = modelFS
         server_state["loaded_model"] = custom_model
 
+        server_state['float16'] = st.session_state['defaults'].general.use_float16
+        server_state['no_half'] = st.session_state['defaults'].general.no_half
+        server_state['optimized'] = st.session_state['defaults'].general.optimized
+
         #trying to disable multiprocessing as it makes it so streamlit cant stop when the
         # model is loaded in memory and you need to kill the process sometimes.
 
         try:
             server_state["model"].args.use_multiprocessing_for_evaluation = False
-        except AttributeError:
+        except AttributeError as e:
+            logger.error(e)
             pass
 
         if st.session_state.defaults.general.enable_attention_slicing:
@@ -356,27 +419,27 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
         if st.session_state.defaults.general.enable_minimal_memory_usage:
             server_state["model"].enable_minimal_memory_usage()
 
-        print("Model loaded.")
+        logger.info("Model loaded.")
 
     return True
 
 
 def load_model_from_config(config, ckpt, verbose=False):
 
-    print(f"Loading model from {ckpt}")
+    logger.info(f"Loading model from {ckpt}")
 
     pl_sd = torch.load(ckpt, map_location="cpu")
     if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
+        logger.info(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
     model = instantiate_from_config(config.model)
     m, u = model.load_state_dict(sd, strict=False)
     if len(m) > 0 and verbose:
-        print("missing keys:")
-        print(m)
+        logger.info("missing keys:")
+        logger.info(m)
     if len(u) > 0 and verbose:
-        print("unexpected keys:")
-        print(u)
+        logger.info("unexpected keys:")
+        logger.info(u)
 
     model.cuda()
     model.eval()
@@ -384,10 +447,10 @@ def load_model_from_config(config, ckpt, verbose=False):
 
 
 def load_sd_from_config(ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
+    logger.info(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
     if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
+        logger.info(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
     return sd
 
@@ -405,9 +468,9 @@ class MemUsageMonitor(threading.Thread):
         try:
             pynvml.nvmlInit()
         except:
-            print(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
+            logger.debug(f"[{self.name}] Unable to initialize NVIDIA management. No memory stats. \n")
             return
-        print(f"[{self.name}] Recording memory usage...\n")
+        logger.info(f"[{self.name}] Recording memory usage...\n")
         # Missing context
         #handle = pynvml.nvmlDeviceGetHandleByIndex(st.session_state['defaults'].general.gpu)
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
@@ -415,9 +478,9 @@ class MemUsageMonitor(threading.Thread):
         while not self.stop_flag:
             m = pynvml.nvmlDeviceGetMemoryInfo(handle)
             self.max_usage = max(self.max_usage, m.used)
-            # print(self.max_usage)
+            # logger.info(self.max_usage)
             time.sleep(0.1)
-        print(f"[{self.name}] Stopped recording.\n")
+        logger.info(f"[{self.name}] Stopped recording.\n")
         pynvml.nvmlShutdown()
 
     def read(self):
@@ -644,7 +707,7 @@ def find_noise_for_image(model, device, init_image, prompt, steps=200, cond_scal
     sigmas = dnw.get_sigmas(steps).flip(0)
 
     if verbose:
-        print(sigmas)
+        logger.info(sigmas)
 
     for i in trange(1, len(sigmas)):
         x_in = torch.cat([x] * 2)
@@ -940,6 +1003,7 @@ class LDSR():
                 log["sample_noquant"] = x_sample_noquant
                 log["sample_diff"] = torch.abs(x_sample_noquant - x_sample)
             except:
+                logger.error("Error with LDSR")
                 pass
 
             log["sample"] = x_sample
@@ -955,7 +1019,7 @@ class LDSR():
             ddim = DDIMSampler(model)
             bs = shape[0]  # dont know where this comes from but wayne
             shape = shape[1:]  # cut batch dim
-            print(f"Sampling with eta = {eta}; steps: {steps}")
+            logger.info(f"Sampling with eta = {eta}; steps: {steps}")
             samples, intermediates = ddim.sample(steps, batch_size=bs, shape=shape, conditioning=cond, callback=callback,
                                                 normals_sequence=normals_sequence, quantize_x0=quantize_x0, eta=eta,
                                                 mask=mask, x0=x0, temperature=temperature, verbose=False,
@@ -1099,7 +1163,7 @@ class LDSR():
         width_downsampled_pre = width_og//downsample_rate
         height_downsampled_pre = height_og//downsample_rate
         if downsample_rate != 1:
-            print(f'Downsampling from [{width_og}, {height_og}] to [{width_downsampled_pre}, {height_downsampled_pre}]')
+            logger.info(f'Downsampling from [{width_og}, {height_og}] to [{width_downsampled_pre}, {height_downsampled_pre}]')
             im_og = im_og.resize((width_downsampled_pre, height_downsampled_pre), Image.LANCZOS)
 
         logs = self.run(model["model"], im_og, diffMode, diffusion_steps, eta)
@@ -1126,17 +1190,17 @@ class LDSR():
             aliasing = Image.NEAREST
 
         if downsample_rate != 1:
-            print(f'Downsampling from [{width}, {height}] to [{width_downsampled_post}, {height_downsampled_post}]')
+            logger.info(f'Downsampling from [{width}, {height}] to [{width_downsampled_post}, {height_downsampled_post}]')
             a = a.resize((width_downsampled_post, height_downsampled_post), aliasing)
         elif post_downsample == 'Original Size':
-            print(f'Downsampling from [{width}, {height}] to Original Size [{width_og}, {height_og}]')
+            logger.info(f'Downsampling from [{width}, {height}] to Original Size [{width_og}, {height_og}]')
             a = a.resize((width_og, height_og), aliasing)
 
         del model
         gc.collect()
         torch.cuda.empty_cache()
 
-        print(f'Processing finished!')
+        logger.info(f'Processing finished!')
         return a
 
 
@@ -1385,7 +1449,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
                         del global_vars[m+'CS']
                 if m == 'model':
                     m = 'Stable Diffusion'
-                print('Unloaded ' + m)
+                logger.info('Unloaded ' + m)
     if load:
         for m in models:
             if m not in global_vars or m in global_vars and type(global_vars[m]) == bool:
@@ -1404,7 +1468,7 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
                     global_vars[m] = load_LDSR()
                 if m =='model':
                     m='Stable Diffusion'
-                print('Loaded ' + m)
+                logger.info('Loaded ' + m)
     torch_gc()
 
 
@@ -1417,7 +1481,8 @@ def generation_callback(img, i=0):
     try:
         if i == 0:
             if img['i']: i = img['i']
-    except TypeError:
+    except TypeError as e:
+        logger.error(e)
         pass
 
     if st.session_state.update_preview and\
@@ -1448,28 +1513,40 @@ def generation_callback(img, i=0):
 
 
         # update image on the UI so we can see the progress
-        st.session_state["preview_image"].image(pil_image)
+        if "preview_image" in st.session_state:
+            st.session_state["preview_image"].image(pil_image)
 
     # Show a progress bar so we can keep track of the progress even when the image progress is not been shown,
     # Dont worry, it doesnt affect the performance.
     if st.session_state["generation_mode"] == "txt2img":
         percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
-        st.session_state["progress_bar_text"].text(
-                    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
+
+        if "progress_bar_text" in st.session_state:
+            st.session_state["progress_bar_text"].text(
+                f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} {percent if percent < 100 else 100}%")
     else:
         if st.session_state["generation_mode"] == "img2img":
             round_sampling_steps = round(st.session_state.sampling_steps * st.session_state["denoising_strength"])
             percent = int(100 * float(i+1 if i+1 < round_sampling_steps else round_sampling_steps)/float(round_sampling_steps))
-            st.session_state["progress_bar_text"].text(
-                            f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")
+
+            if "progress_bar_text" in st.session_state:
+                st.session_state["progress_bar_text"].text(
+                    f"""Running step: {i+1 if i+1 < round_sampling_steps else round_sampling_steps}/{round_sampling_steps} {percent if percent < 100 else 100}%""")
         else:
             if st.session_state["generation_mode"] == "txt2vid":
                 percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
-                st.session_state["progress_bar_text"].text(
-                                    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps}"
-                                        f"{percent if percent < 100 else 100}%")
 
-    st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+                if "progress_bar_text" in st.session_state:
+                    st.session_state["progress_bar_text"].text(
+                        f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps}"
+                        f"{percent if percent < 100 else 100}%")
+
+    if "progress_bar" in st.session_state:
+        try:
+            st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+        except UnboundLocalError as e:
+            #logger.error(e)
+            pass
 
 
 prompt_parser = re.compile("""
@@ -1870,7 +1947,7 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
                             target="txt2img" if init_img is None else "img2img",
                                 prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
                                 ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=server_state["loaded_model"])
+                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=model_name)
         # Not yet any use for these, but they bloat up the files:
         # info_dict["init_img"] = init_img
         # info_dict["init_mask"] = init_mask
@@ -2107,7 +2184,7 @@ def process_images(
             n_iter = math.ceil(len(all_prompts) / batch_size)
             all_seeds = len(all_prompts) * [seed]
 
-        print(f"Prompt matrix will create {len(all_prompts)} images using a total of {n_iter} batches.")
+        logger.info(f"Prompt matrix will create {len(all_prompts)} images using a total of {n_iter} batches.")
     else:
 
         if not st.session_state['defaults'].general.no_verify_input:
@@ -2115,8 +2192,8 @@ def process_images(
                 check_prompt_length(prompt, comments)
             except:
                 import traceback
-                print("Error verifying input:", file=sys.stderr)
-                print(traceback.format_exc(), file=sys.stderr)
+                logger.info("Error verifying input:", file=sys.stderr)
+                logger.info(traceback.format_exc(), file=sys.stderr)
 
         all_prompts = batch_size * n_iter * [prompt]
         all_seeds = [seed + x for x in range(len(all_prompts))]
@@ -2143,12 +2220,12 @@ def process_images(
                 all_seeds[si] += target_seed_randomizer
 
         for n in range(n_iter):
-            print(f"Iteration: {n+1}/{n_iter}")
+            logger.info(f"Iteration: {n+1}/{n_iter}")
             prompts = all_prompts[n * batch_size:(n + 1) * batch_size]
             captions = prompt_matrix_parts[n * batch_size:(n + 1) * batch_size]
             seeds = all_seeds[n * batch_size:(n + 1) * batch_size]
 
-            print(prompt)
+            logger.info(prompt)
 
             if st.session_state['defaults'].general.optimized:
                 server_state["modelCS"].to(st.session_state['defaults'].general.gpu)
@@ -2216,7 +2293,9 @@ def process_images(
                 sanitized_prompt = slugify(prompts[i])
 
                 percent = i / len(x_samples_ddim)
-                st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+
+                if "progress_bar" in st.session_state:
+                    st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
 
                 if sort_samples:
                     full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
@@ -2243,17 +2322,21 @@ def process_images(
                 original_sample = x_sample
                 original_filename = filename
 
-                st.session_state["preview_image"].image(image)
+                if "preview_image" in st.session_state:
+                    st.session_state["preview_image"].image(image)
 
                 #
                 if use_GFPGAN and server_state["GFPGAN"] is not None and not use_RealESRGAN and not use_LDSR:
-                    st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running GFPGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
 
                     if server_state["GFPGAN"].name != GFPGAN_model:
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
 
                     torch_gc()
-                    cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
+
+                    with torch.autocast('cuda'):
+                        cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
 
                     gfpgan_sample = restored_img[:,:,::-1]
                     gfpgan_image = Image.fromarray(gfpgan_sample)
@@ -2276,7 +2359,8 @@ def process_images(
 
                 #
                 elif use_RealESRGAN and server_state["RealESRGAN"] is not None and not use_GFPGAN:
-                    st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
 
@@ -2305,8 +2389,9 @@ def process_images(
 
                 #
                 elif use_LDSR and "LDSR" in server_state and not use_GFPGAN:
-                    print ("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
-                    st.session_state["progress_bar_text"].text("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    logger.info ("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
 
@@ -2338,8 +2423,9 @@ def process_images(
 
                 #
                 elif use_LDSR and "LDSR" in server_state and use_GFPGAN and "GFPGAN" in server_state:
-                    print ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
-                    st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    logger.info ("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running GFPGAN+LDSR on image %d of %d..." % (i+1, len(x_samples_ddim)))
 
                     if server_state["GFPGAN"].name != GFPGAN_model:
                         load_models(use_LDSR=use_LDSR, LDSR_model=LDSR_model_name, use_GFPGAN=use_GFPGAN, use_RealESRGAN=use_RealESRGAN, RealESRGAN_model=realesrgan_model_name)
@@ -2378,7 +2464,8 @@ def process_images(
                         grid_captions.append( captions[i] + "\ngfpgan-ldsr" )
 
                 elif use_RealESRGAN and server_state["RealESRGAN"] is not None and use_GFPGAN and server_state["GFPGAN"] is not None:
-                    st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
+                    if "progress_bar_text" in st.session_state:
+                        st.session_state["progress_bar_text"].text("Running GFPGAN+RealESRGAN on image %d of %d..." % (i+1, len(x_samples_ddim)))
                     #skip_save = True # #287 >_>
                     torch_gc()
                     cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(x_sample[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
@@ -2455,8 +2542,11 @@ def process_images(
             # Constrain the final preview image to 1440x900 so we're not sending huge amounts of data
             # to the browser
             preview_image = constrain_image(preview_image, 1440, 900)
-            st.session_state["progress_bar_text"].text("Finished!")
-            st.session_state["preview_image"].image(preview_image)
+            if "progress_bar_text" in st.session_state:
+                st.session_state["progress_bar_text"].text("Finished!")
+
+            if "preview_image" in st.session_state:
+                st.session_state["preview_image"].image(preview_image)
 
         if prompt_matrix or save_grid:
             if prompt_matrix:
@@ -2468,8 +2558,8 @@ def process_images(
                         grid = draw_prompt_matrix(grid, width, height, prompt_matrix_parts)
                     except:
                         import traceback
-                        print("Error creating prompt_matrix text:", file=sys.stderr)
-                        print(traceback.format_exc(), file=sys.stderr)
+                        logger.error("Error creating prompt_matrix text:", file=sys.stderr)
+                        logger.error(traceback.format_exc(), file=sys.stderr)
             else:
                 grid = image_grid(output_images, batch_size)
 
@@ -2554,4 +2644,151 @@ def convert_pt_to_bin_and_load(input_file, text_encoder, tokenizer, placeholder_
     }
     torch.save(params_dict, "learned_embeds.bin")
     load_learned_embed_in_clip("learned_embeds.bin", text_encoder, tokenizer, placeholder_token)
-    print("loaded", placeholder_token)
+    logger.info("loaded", placeholder_token)
+
+@logger.catch(reraise=True)
+def run_bridge(interval, api_key, horde_name, horde_url, priority_usernames, horde_max_pixels, horde_nsfw, horde_censor_nsfw, horde_blacklist, horde_censorlist):
+    current_id = None
+    current_payload = None
+    loop_retry = 0
+    # load the model for stable horde if its not in memory already
+    # we should load it after we get the request from the API in
+    # case the model is different from the loaded in memory but
+    # for now we can load it here so its read right away.
+    load_models(use_GFPGAN=True)
+    while True:
+
+        if loop_retry > 10 and current_id:
+            logger.info(f"Exceeded retry count {loop_retry} for generation id {current_id}. Aborting generation!")
+            current_id = None
+            current_payload = None
+            current_generation = None
+            loop_retry = 0
+        elif current_id:
+            logger.info(f"Retrying ({loop_retry}/10) for generation id {current_id}...")
+        gen_dict = {
+            "name": horde_name,
+            "max_pixels": horde_max_pixels,
+            "priority_usernames": priority_usernames,
+            "nsfw": horde_nsfw,
+            "blacklist": horde_blacklist,
+            "models": ["stable_diffusion"],
+        }
+        headers = {"apikey": api_key}
+        if current_id:
+            loop_retry += 1
+        else:
+            try:
+                pop_req = requests.post(horde_url + '/api/v2/generate/pop', json = gen_dict, headers = headers)
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            except requests.exceptions.JSONDecodeError():
+                logger.warning(f"Server {horde_url} unavailable during pop. Waiting 10 seconds...")
+                time.sleep(10)
+                continue
+            try:
+                pop = pop_req.json()
+            except json.decoder.JSONDecodeError:
+                logger.warning(f"Could not decode response from {horde_url} as json. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if pop == None:
+                logger.warning(f"Something has gone wrong with {horde_url}. Please inform its administrator!")
+                time.sleep(interval)
+                continue
+            if not pop_req.ok:
+                message = pop['message']
+                logger.warning(f"During gen pop, server {horde_url} responded with status code {pop_req.status_code}: {pop['message']}. Waiting for 10 seconds...")
+                if 'errors' in pop:
+                    logger.debug(f"Detailed Request Errors: {pop['errors']}")
+                time.sleep(10)
+                continue
+            if not pop.get("id"):
+                skipped_info = pop.get('skipped')
+                if skipped_info and len(skipped_info):
+                    skipped_info = f" Skipped Info: {skipped_info}."
+                else:
+                    skipped_info = ''
+                logger.info(f"Server {horde_url} has no valid generations to do for us.{skipped_info}")
+                time.sleep(interval)
+                continue
+            current_id = pop['id']
+            logger.info(f"Request with id {current_id} picked up. Initiating work...")
+            current_payload = pop['payload']
+            if 'toggles' in current_payload and current_payload['toggles'] == None:
+                logger.error(f"Received Bad payload: {pop}")
+                current_id = None
+                current_payload = None
+                current_generation = None
+                loop_retry = 0
+                time.sleep(10)
+                continue
+
+        logger.debug(current_payload)
+        current_payload['toggles'] = current_payload.get('toggles', [1,4])
+        # In bridge-mode, matrix is prepared on the horde and split in multiple nodes
+        if 0 in current_payload['toggles']:
+            current_payload['toggles'].remove(0)
+        if 8 not in current_payload['toggles']:
+            if horde_censor_nsfw and not horde_nsfw:
+                current_payload['toggles'].append(8)
+            elif any(word in current_payload['prompt'] for word in horde_censorlist):
+                current_payload['toggles'].append(8)
+
+        from txt2img import txt2img
+
+
+        """{'prompt': 'Centred Husky, inside spiral with circular patterns, trending on dribbble, knotwork, spirals, key patterns,
+        zoomorphics, ', 'ddim_steps': 30, 'n_iter': 1, 'sampler_name': 'DDIM', 'cfg_scale': 16.0, 'seed': '3405278433', 'height': 512, 'width': 512}"""
+
+        #images, seed, info, stats = txt2img(**current_payload)
+        images, seed, info, stats = txt2img(str(current_payload['prompt']), int(current_payload['ddim_steps']), str(current_payload['sampler_name']),
+                                                    int(current_payload['n_iter']), 1, float(current_payload["cfg_scale"]), str(current_payload["seed"]),
+                                                    int(current_payload["height"]), int(current_payload["width"]), save_grid=False, group_by_prompt=False,
+                                                    save_individual_images=False,write_info_files=False)
+
+        buffer = BytesIO()
+        # We send as WebP to avoid using all the horde bandwidth
+        images[0].save(buffer, format="WebP", quality=90)
+        # logger.info(info)
+        submit_dict = {
+            "id": current_id,
+            "generation": base64.b64encode(buffer.getvalue()).decode("utf8"),
+            "api_key": api_key,
+            "seed": seed,
+            "max_pixels": horde_max_pixels,
+        }
+        current_generation = seed
+        while current_id and current_generation != None:
+            try:
+                submit_req = requests.post(horde_url + '/api/v2/generate/submit', json = submit_dict, headers = headers)
+                try:
+                    submit = submit_req.json()
+                except json.decoder.JSONDecodeError:
+                    logger.error(f"Something has gone wrong with {horde_url} during submit. Please inform its administrator!  (Retry {loop_retry}/10)")
+                    time.sleep(interval)
+                    continue
+                if submit_req.status_code == 404:
+                    logger.info(f"The generation we were working on got stale. Aborting!")
+                elif not submit_req.ok:
+                    logger.error(f"During gen submit, server {horde_url} responded with status code {submit_req.status_code}: {submit['message']}. Waiting for 10 seconds...  (Retry {loop_retry}/10)")
+                    if 'errors' in submit:
+                        logger.debug(f"Detailed Request Errors: {submit['errors']}")
+                    time.sleep(10)
+                    continue
+                else:
+                    logger.info(f'Submitted generation with id {current_id} and contributed for {submit_req.json()["reward"]}')
+                current_id = None
+                current_payload = None
+                current_generation = None
+                loop_retry = 0
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Server {horde_url} unavailable during submit. Waiting 10 seconds...  (Retry {loop_retry}/10)")
+                time.sleep(10)
+                continue
+        time.sleep(interval)
+
+
+#

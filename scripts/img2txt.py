@@ -18,7 +18,7 @@
 """
 CLIP Interrogator made by @pharmapsychotic modified to work with our WebUI.
 
-# CLIP Interrogator by @pharmapsychotic 
+# CLIP Interrogator by @pharmapsychotic
 Twitter: https://twitter.com/pharmapsychotic
 Github: https://github.com/pharmapsychotic/clip-interrogator
 
@@ -54,6 +54,7 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 from ldm.models.blip import blip_decoder
+#import hashlib
 
 # end of imports
 # ---------------------------------------------------------------------------------------------------------------
@@ -64,25 +65,30 @@ blip_image_eval_size = 512
 server_state["clip_models"] = {}
 server_state["preprocesses"] = {}
 
+st.session_state["log"] = []
+
 def load_blip_model():
-    print("Loading BLIP Model")
-    st.session_state["log_message"].code("Loading BLIP Model", language='')
+    logger.info("Loading BLIP Model")
+    st.session_state["log"].append("Loading BLIP Model")
+    st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
     if "blip_model" not in server_state:
         with server_state_lock['blip_model']:
             server_state["blip_model"] = blip_decoder(pretrained="models/blip/model__base_caption.pth",
                                                         image_size=blip_image_eval_size, vit='base', med_config="configs/blip/med_config.json")
-            
+
             server_state["blip_model"] = server_state["blip_model"].eval()
-            
+
             #if not st.session_state["defaults"].general.optimized:
             server_state["blip_model"] = server_state["blip_model"].to(device).half()
-            
-            print("BLIP Model Loaded")
-            st.session_state["log_message"].code("BLIP Model Loaded", language='')
+
+            logger.info("BLIP Model Loaded")
+            st.session_state["log"].append("BLIP Model Loaded")
+            st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
     else:
-        print("BLIP Model already loaded")
-        st.session_state["log_message"].code("BLIP Model Already Loaded", language='')
+        logger.info("BLIP Model already loaded")
+        st.session_state["log"].append("BLIP Model already loaded")
+        st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
     #return server_state["blip_model"]
 
@@ -92,54 +98,54 @@ def artstation_links():
     """Find and save every artstation link for the first 500 pages of the explore page."""
     # collecting links to the list()
     links = []
-    
+
     with open('data/img2txt/artstation_links.txt', 'w') as f:
         for page_num in range(1,500):
             response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
             # open json response
             data = json.loads(response)
-            
+
             # loopinh through json response
             for result in data['data']:
                 # still looping and grabbing url's
                 url = result['url']
                 links.append(url)
                 # writing each link on the new line (\n)
-                f.write(f'{url}\n')  
+                f.write(f'{url}\n')
     return links
 #
 def artstation_users():
     """Get all the usernames and full name of the users on the first 500 pages of artstation explore page."""
     # collect username and full name
     artists = []
-    
+
     # opening a .txt file
     with open('data/img2txt/artstation_artists.txt', 'w') as f:
         for page_num in range(1,500):
             response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
             # open json response
             data = json.loads(response)
-    
-    
+
+
             # loopinh through json response
             for item in data['data']:
                 #print (item['user'])
                 username = item['user']['username']
                 full_name = item['user']['full_name']
-    
+
                 # still looping and grabbing url's
                 artists.append(username)
                 artists.append(full_name)
                 # writing each link on the new line (\n)
                 f.write(f'{slugify(username)}\n')
                 f.write(f'{slugify(full_name)}\n')
-    
+
     return artists
 
 def generate_caption(pil_image):
 
     load_blip_model()
-    
+
     gpu_image = transforms.Compose([  # type: ignore
         transforms.Resize((blip_image_eval_size, blip_image_eval_size), interpolation=InterpolationMode.BICUBIC),  # type: ignore
         transforms.ToTensor(),  # type: ignore
@@ -189,39 +195,42 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
 
 def interrogate(image, models):
 
-    #server_state["blip_model"] = 
+    #server_state["blip_model"] =
     load_blip_model()
-    
-    print("Generating Caption")
-    st.session_state["log_message"].code("Generating Caption", language='')
+
+    logger.info("Generating Caption")
+    st.session_state["log"].append("Generating Caption")
+    st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
     caption = generate_caption(image)
 
     if st.session_state["defaults"].general.optimized:
         del server_state["blip_model"]
         clear_cuda()
 
-    print("Caption Generated")
-    st.session_state["log_message"].code("Caption Generated", language='')
+    logger.info("Caption Generated")
+    st.session_state["log"].append("Caption Generated")
+    st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
     if len(models) == 0:
-        print(f"\n\n{caption}")
+        logger.info(f"\n\n{caption}")
         return
 
     table = []
     bests = [[('', 0)]]*5
 
-    print("Ranking Text")
-    
+    logger.info("Ranking Text")
+
     #if "clip_model" in server_state:
         #print (server_state["clip_model"])
-        
+
     #print (st.session_state["log_message"])
-        
+
     for model_name in models:
         with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
-            print(f"Interrogating with {model_name}...")
-            st.session_state["log_message"].code(f"Interrogating with {model_name}...", language='')
-            
+            logger.info(f"Interrogating with {model_name}...")
+            st.session_state["log"].append(f"Interrogating with {model_name}...")
+            st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
+
             if model_name not in server_state["clip_models"]:
                 if not st.session_state["defaults"].img2txt.keep_all_models_loaded:
                     model_to_delete = []
@@ -233,23 +242,27 @@ def interrogate(image, models):
                         del server_state["preprocesses"][model]
                         clear_cuda()
                 if model_name == 'ViT-H-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k', cache_dir='models/clip')
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name,
+                                                                                                                                                 pretrained='laion2b_s32b_b79k',
+                                                                                                                                                 cache_dir='models/clip')
                 elif model_name == 'ViT-g-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k', cache_dir='models/clip')
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name,
+                                                                                                                                                 pretrained='laion2b_s12b_b42k',
+                                                                                                                                                 cache_dir='models/clip')
                 else:
                     server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = clip.load(model_name, device=device, download_root='models/clip')
                 server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda().eval()
-            
+
             images = server_state["preprocesses"][model_name](image).unsqueeze(0).cuda()
-                    
-            
+
+
             image_features = server_state["clip_models"][model_name].encode_image(images).float()
-                
+
             image_features /= image_features.norm(dim=-1, keepdim=True)
 
             if st.session_state["defaults"].general.optimized:
                 clear_cuda()
-                
+
             ranks = []
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["mediums"]))
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, ["by "+artist for artist in server_state["artists"]]))
@@ -264,6 +277,9 @@ def interrogate(image, models):
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["moods"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["themes"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["keywords"]))
+
+            #print (bests)
+            #print (ranks)
 
             for i in range(len(ranks)):
                 confidence_sum = 0
@@ -288,6 +304,7 @@ def interrogate(image, models):
 
     flaves = ', '.join([f"{x[0]}" for x in bests[4]])
     medium = bests[0][0][0]
+
     if caption.startswith(medium):
         st.session_state["text_result"][st.session_state["processed_image_count"]].code(
             f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
@@ -296,8 +313,11 @@ def interrogate(image, models):
             f"\n\n{caption}, {medium} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
 
     #
-    print("Finished Interrogating.")
-    st.session_state["log_message"].code("Finished Interrogating.", language="")
+    logger.info("Finished Interrogating.")
+    st.session_state["log"].append("Finished Interrogating.")
+    st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
+
+    del st.session_state["log"]
 #
 
 
@@ -329,12 +349,12 @@ def img2txt():
         models.append('ViT-H-14')
     if st.session_state["ViT-g-14"]:
         models.append('ViT-g-14')
-        
+
     if st.session_state["ViTB32"]:
         models.append('ViT-B/32')
     if st.session_state['ViTB16']:
-        models.append('ViT-B/16')  
-        
+        models.append('ViT-B/16')
+
     if st.session_state["ViTL14_336px"]:
         models.append('ViT-L/14@336px')
     if st.session_state["RN101"]:
@@ -346,7 +366,7 @@ def img2txt():
     if st.session_state["RN50x16"]:
         models.append('RN50x16')
     if st.session_state["RN50x64"]:
-        models.append('RN50x64')    
+        models.append('RN50x64')
 
     # if str(image_path_or_url).startswith('http://') or str(image_path_or_url).startswith('https://'):
         #image = Image.open(requests.get(image_path_or_url, stream=True).raw).convert('RGB')
@@ -389,11 +409,11 @@ def layout():
                 st.session_state["ViT-H-14"] = st.checkbox("ViT-H-14", value=False, help="ViT-H-14 model.")
                 st.session_state["ViT-g-14"] = st.checkbox("ViT-g-14", value=False, help="ViT-g-14 model.")
 
-            
-                
+
+
             with st.expander("Others"):
-                st.info("For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images.")   
-                
+                st.info("For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images.")
+
                 st.session_state["ViTL14_336px"] = st.checkbox("ViTL14_336px", value=False, help="ViTL14_336px model.")
                 st.session_state["ViTB16"] = st.checkbox("ViTB16", value=False, help="ViTB16 model.")
                 st.session_state["ViTB32"] = st.checkbox("ViTB32", value=False, help="ViTB32 model.")
@@ -401,8 +421,8 @@ def layout():
                 st.session_state["RN50x4"] = st.checkbox("RN50x4", value=False, help="RN50x4 model.")
                 st.session_state["RN50x16"] = st.checkbox("RN50x16", value=False, help="RN50x16 model.")
                 st.session_state["RN50x64"] = st.checkbox("RN50x64", value=False, help="RN50x64 model.")
-                st.session_state["RN101"] = st.checkbox("RN101", value=False, help="RN101 model.")      
-                
+                st.session_state["RN101"] = st.checkbox("RN101", value=False, help="RN101 model.")
+
             #
             # st.subheader("Logs:")
 

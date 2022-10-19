@@ -88,3 +88,11 @@ input[type=number]:disabled { -moz-appearance: textfield; }
     /* fix buttons layouts */
 
 }
+
+/* Gradio 3.4 FIXES */
+#prompt_row button {
+    max-width: 20ch;
+}
+#text2img_col2 {
+    flex-grow: 2 !important;
+}
