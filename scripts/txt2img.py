@@ -25,7 +25,6 @@ from streamlit.elements.image import image_to_url
 
 #other imports
 import uuid
-from typing import Union
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
