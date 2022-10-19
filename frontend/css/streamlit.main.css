@@ -26,8 +26,8 @@ button[data-baseweb="tab"] {
 }
 
 /* Image Container (only appear after run finished)//center the image, especially better looks in wide screen */
-.css-du1fp8 {
-  justify-content: center;
+.css-1kyxreq{
+	justify-content: center;
 }
 
 /* Streamlit header */
