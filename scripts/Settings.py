@@ -28,9 +28,9 @@ from omegaconf import OmegaConf
 # end of imports
 # ---------------------------------------------------------------------------------------------------------------
 
-
+@logger.catch(reraise=True)
 def layout():
-    st.header("Settings")
+    #st.header("Settings")
 
     with st.form("Settings"):
         general_tab, txt2img_tab, img2img_tab, img2txt_tab, txt2vid_tab, image_processing, textual_inversion_tab, concepts_library_tab = st.tabs(
@@ -64,17 +64,17 @@ def layout():
                     st.session_state.default_model = st.selectbox("Default Model:", server_state["custom_models"],
                                                                   index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
                                                                   help="Select the model you want to use. If you have placed custom models \
-																			on your 'models/custom' folder they will be shown here as well. The model name that will be shown here \
-																			is the same as the name the file for the model has on said folder, \
-																			it is recommended to give the .ckpt file a name that \
-																			will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+                                                                  on your 'models/custom' folder they will be shown here as well. The model name that will be shown here \
+                                                                  is the same as the name the file for the model has on said folder, \
+                                                                  it is recommended to give the .ckpt file a name that \
+                                                                  will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
                 else:
                     st.session_state.default_model = st.selectbox("Default Model:", [st.session_state['defaults'].general.default_model],
                                                                   help="Select the model you want to use. If you have placed custom models \
-																			on your 'models/custom' folder they will be shown here as well. \
-																			The model name that will be shown here is the same as the name\
-																			the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-																			will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+                                                                  on your 'models/custom' folder they will be shown here as well. \
+                                                                  The model name that will be shown here is the same as the name\
+                                                                  the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
+                                                                  will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
 
                 st.session_state['defaults'].general.default_model_config = st.text_input("Default Model Config", value=st.session_state['defaults'].general.default_model_config,
                                                                                           help="Default model config file for inference. Default: 'configs/stable-diffusion/v1-inference.yaml'")
@@ -94,7 +94,7 @@ def layout():
                                                                                      help="Default RealESRGAN model. Default: 'RealESRGAN_x4plus'")
                 Upscaler_list = ["RealESRGAN", "LDSR"]
                 st.session_state['defaults'].general.upscaling_method = st.selectbox("Upscaler", Upscaler_list, index=Upscaler_list.index(
-                st.session_state['defaults'].general.upscaling_method), help="Default upscaling method. Default: 'RealESRGAN'")
+                    st.session_state['defaults'].general.upscaling_method), help="Default upscaling method. Default: 'RealESRGAN'")
 
             with col2:
                 st.title("Performance")
@@ -110,7 +110,7 @@ def layout():
 
                 st.session_state["defaults"].general.extra_models_gpu = st.checkbox("Extra Models - GPU", value=st.session_state['defaults'].general.extra_models_gpu,
                                                                                     help="Run extra models (GFGPAN/ESRGAN) on gpu. \
-																					Check and save in order to be able to select the GPU that each model will use. Default: False")
+                                                                                    Check and save in order to be able to select the GPU that each model will use. Default: False")
                 if st.session_state["defaults"].general.extra_models_gpu:
                     st.session_state['defaults'].general.gfpgan_gpu = int(st.selectbox("GFGPAN GPU", device_list, index=st.session_state['defaults'].general.gfpgan_gpu,
                                                                                        help=f"Select which GPU to use. Default: {device_list[st.session_state['defaults'].general.gfpgan_gpu]}",
@@ -136,7 +136,7 @@ def layout():
 
                 st.session_state["defaults"].general.optimized_turbo = st.checkbox("Optimized Turbo Mode", value=st.session_state['defaults'].general.optimized_turbo,
                                                                                    help="Alternative optimization mode that does not save as much VRAM but \
-																						   runs siginificantly faster. Default: False")
+                                                                                   runs siginificantly faster. Default: False")
 
                 st.session_state["defaults"].general.optimized_config = st.text_input("Optimized Config", value=st.session_state['defaults'].general.optimized_config,
                                                                                       help=f"Loads alternative optimized configuration for inference. \
@@ -144,13 +144,13 @@ def layout():
 
                 st.session_state["defaults"].general.enable_attention_slicing = st.checkbox("Enable Attention Slicing", value=st.session_state['defaults'].general.enable_attention_slicing,
                                                                                             help="Enable sliced attention computation. When this option is enabled, the attention module will \
-																						   split the input tensor in slices, to compute attention in several steps. This is useful to save some \
-																						   memory in exchange for a small speed decrease. Only works the txt2vid tab right now. Default: False")
+                                                                                            split the input tensor in slices, to compute attention in several steps. This is useful to save some \
+                                                                                            memory in exchange for a small speed decrease. Only works the txt2vid tab right now. Default: False")
 
                 st.session_state["defaults"].general.enable_minimal_memory_usage = st.checkbox("Enable Minimal Memory Usage", value=st.session_state['defaults'].general.enable_minimal_memory_usage,
                                                                                                help="Moves only unet to fp16 and to CUDA, while keepping lighter models on CPUs \
-																							(Not properly implemented and currently not working, check this \
-																							link 'https://github.com/huggingface/diffusers/pull/537' for more information on it ). Default: False")
+                                                                                               (Not properly implemented and currently not working, check this \
+                                                                                               link 'https://github.com/huggingface/diffusers/pull/537' for more information on it ). Default: False")
 
                 # st.session_state["defaults"].general.update_preview = st.checkbox("Update Preview Image", value=st.session_state['defaults'].general.update_preview,
                 # help="Enables the preview image to be updated and shown to the user on the UI during the generation.\
@@ -162,19 +162,19 @@ def layout():
                                                                                                 min_value=1,
                                                                                                 value=st.session_state['defaults'].general.update_preview_frequency,
                                                                                                 help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
-																								negative effect updating the preview image has on performance. Default: 10")
+                                                                                                negative effect updating the preview image has on performance. Default: 10")
 
             with col3:
                 st.title("Others")
                 st.session_state["defaults"].general.use_sd_concepts_library = st.checkbox("Use the Concepts Library", value=st.session_state['defaults'].general.use_sd_concepts_library,
                                                                                            help="Use the embeds Concepts Library, if checked, once the settings are saved an option will\
-																									  appear to specify the directory where the concepts are stored. Default: True)")
+                                                                                           appear to specify the directory where the concepts are stored. Default: True)")
 
                 if st.session_state["defaults"].general.use_sd_concepts_library:
                     st.session_state['defaults'].general.sd_concepts_library_folder = st.text_input("Concepts Library Folder",
                                                                                                     value=st.session_state['defaults'].general.sd_concepts_library_folder,
                                                                                                     help="Relative folder on which the concepts library embeds are stored. \
-																									Default: 'models/custom/sd-concepts-library'")
+                                                                                                    Default: 'models/custom/sd-concepts-library'")
 
                 st.session_state['defaults'].general.LDSR_dir = st.text_input("LDSR Folder", value=st.session_state['defaults'].general.LDSR_dir,
                                                                               help="Folder where LDSR is located. Default: './models/ldsr'")
@@ -219,9 +219,9 @@ def layout():
                 st.title("Huggingface")
                 st.session_state["defaults"].general.huggingface_token = st.text_input("Huggingface Token", value=st.session_state['defaults'].general.huggingface_token, type="password",
                                                                                        help="Your Huggingface Token, it's used to download the model for the diffusers library which \
-																							is used on the Text To Video tab. This token will be saved to your user config file\
-																							and WILL NOT be share with us or anyone. You can get your access token \
-																							at https://huggingface.co/settings/tokens. Default: None")
+                                                                                       is used on the Text To Video tab. This token will be saved to your user config file\
+                                                                                       and WILL NOT be share with us or anyone. You can get your access token \
+                                                                                       at https://huggingface.co/settings/tokens. Default: None")
 
         with txt2img_tab:
             col1, col2, col3, col4, col5 = st.columns(5, gap='medium')
@@ -280,9 +280,9 @@ def layout():
 
                 st.session_state["defaults"].txt2img.batch_size.value = st.number_input("Batch size", value=st.session_state.defaults.txt2img.batch_size.value,
                                                                                         help="How many images are at once in a batch.\
-																					 It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
-																					 takes to finish generation as more images are generated at once.\
-																					 Default: 1")
+                                                                                        It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+                                                                                        takes to finish generation as more images are generated at once.\
+                                                                                        Default: 1")
 
                 default_sampler_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_heun", "PLMS", "DDIM"]
                 st.session_state["defaults"].txt2img.default_sampler = st.selectbox("Default Sampler",
@@ -618,9 +618,9 @@ def layout():
 
                     st.session_state["defaults"].txt2vid.batch_size.value = st.number_input("txt2vid Batch size", value=st.session_state.defaults.txt2vid.batch_size.value,
                                                                                             help="How many images are at once in a batch.\
-																							  It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
-																							  takes to finish generation as more images are generated at once.\
-																							  Default: 1")
+                                                                                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it \
+                                                                                            takes to finish generation as more images are generated at once.\
+                                                                                            Default: 1")
 
                     # Inference Steps
                     st.session_state["defaults"].txt2vid.num_inference_steps.value = st.number_input("Default Txt2Vid Inference Steps",

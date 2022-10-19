@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
+import collections.abc
 #from webui_streamlit import st
 import gfpgan
 import hydralit as st
@@ -21,6 +22,7 @@ import hydralit as st
 
 # streamlit imports
 from streamlit import StopException, StreamlitAPIException
+from streamlit.runtime.scriptrunner import script_run_context
 
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
@@ -66,7 +68,8 @@ import piexif.helper
 from tqdm import trange
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
-from typing import Dict
+from abc import ABC, abstractmethod
+from typing import Dict, Union
 from io import BytesIO
 from packaging import version
 #import librosa
@@ -85,6 +88,8 @@ logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="z
 logger.add(sys.stderr, diagnose=True)
 logger.add(sys.stdout)
 logger.enable("")
+
+#
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
