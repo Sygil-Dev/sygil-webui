@@ -150,3 +150,9 @@ div.gallery:hover {
 	height: 54px;
 	min-height: 25px;
 }
+
+/* Remove some empty spaces to make the UI more compact. */
+.css-18e3th9{
+	padding-left: 10px;
+	padding-right: 10px;
+}
