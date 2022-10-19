@@ -1,0 +1,85 @@
+{
+    "Photo": [
+        "Kodak Portra 400",
+        "Kodak Ektar 100",
+        "Kodak Portra 160 Professional",
+        "Ilford HP5 Plus",
+        "Kodak TRI-X 400",
+        "Ilford XP2S",
+        "Lomography Lady Grey",
+        "Fujifilm Velvia 50",
+        "Kodak Ektachrome E100",
+        "Fujifilm Velvia 100",
+        "Ilford Delta 3200",
+        "Fujicolor Superia 1600",
+        "Kodak T-Max P3200",
+        "Fujifilm Instax Film",
+        "Polaroid i\u2011Type Instant Film",
+        "Polaroid 600 Instant Film",
+        "Polaroid SX-70 Instant Film",
+        "focused",
+        "out of focus",
+        "sharp focus"
+    ],
+    "Lighting": [
+        "blue hour",
+        "golden hour",
+        "dramatic backlighting",
+        "midday",
+        "volumetric lighting",
+        "subsurface scattering",
+        "cool twilight lighting",
+        "warm lighting",
+        "sunrise",
+        "beams of sunlight",
+        "god rays",
+        "light shafts",
+        "harsh sunlight",
+        "radiant glow",
+        "backlighting"
+    ],
+    "Genre": [
+        "cyberpunk",
+        "steampunk",
+        "dieselpunk",
+        "fantasy",
+        "dark fantasy",
+        "scify"
+    ],
+    "Style": [
+        "in the style of",
+        "silhouetted",
+        "noir",
+        "infographic",
+        "hyperrealistic"
+    ],
+    "Abstract Concept": [
+        "hope",
+        "progressive",
+        "sainted",
+        "adequate",
+        "sufficient",
+        "reality",
+        "faithfulness",
+        "sensation",
+        "intend",
+        "likability",
+        "agnosticism",
+        "controllability",
+        "determinate",
+        "dignify",
+        "standpoint",
+        "imperative",
+        "absurd"
+    ],
+    "Painting": [
+        "expressionist painting",
+        "detailed oil painting"
+    ],
+    "Details": [
+        "intricate details",
+        "higly detailed",
+        "blurred",
+        "smooth"
+    ]
+}

@@ -30,12 +30,17 @@ import torch
 import skimage
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
+
+# streamlit components
+from custom_components import key_phrase_suggestions
+
 # Temp imports
 
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
+key_phrase_suggestions.init()
 
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -365,7 +370,9 @@ def layout():
 		img2img_input_col, img2img_generate_col = st.columns([10,1])
 		with img2img_input_col:
 			#prompt = st.text_area("Input Text","")
-			prompt = st.text_area("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+			placeholder = "A corgi wearing a top hat as an oil painting."
+			prompt = st.text_area("Input Text","", placeholder=placeholder)
+			key_phrase_suggestions.suggestion_area(placeholder)
 
 		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
 		img2img_generate_col.write("")

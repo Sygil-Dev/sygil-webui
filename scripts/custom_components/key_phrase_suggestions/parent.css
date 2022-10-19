@@ -1,0 +1,22 @@
+.suggestion-frame
+{
+	/* make as small as possible */
+	padding: 0px !important;
+	margin: 0px !important;
+	min-height: 0px !important;
+	line-height: 0;
+	
+	/* animate transitions of the height property */
+	-webkit-transition: height 1s;
+	-moz-transition: height 1s;
+	-ms-transition: height 1s;
+	-o-transition: height 1s;
+	transition: height 1s, y-overflow 300ms;
+	
+	/* block selection */
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+}

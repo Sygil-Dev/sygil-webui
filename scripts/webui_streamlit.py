@@ -37,6 +37,8 @@ import k_diffusion as K
 from omegaconf import OmegaConf
 import argparse
 
+# import custom components
+from custom_components import dragable_number_input
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
@@ -194,6 +196,9 @@ def layout():
 
             from Settings import layout
             layout()
+
+        # calling dragable input component module at the end, so it works on all pages
+        dragable_number_input.load()
 
 
 if __name__ == '__main__':
