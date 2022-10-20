@@ -27,7 +27,7 @@ from sd_utils import *
 import streamlit_nested_layout
 
 #streamlit components section
-from st_on_hover_tabs import on_hover_tabs
+#from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
 
 #other imports
@@ -125,8 +125,9 @@ def layout():
             {'id': 'Stable Diffusion', 'label': 'Stable Diffusion', 'icon': 'bi bi-grid-1x2-fill'},
             {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
             {'id': 'Model Manager', 'label': 'Model Manager', 'icon': 'bi bi-cloud-arrow-down-fill'},
+            #{'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
+            {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
             {'id': 'Settings', 'label': 'Settings', 'icon': 'bi bi-gear-fill'},
-            #{'id':'Copy','icon':"🐙",'label':"Copy"},
             #{'icon': "fa-solid fa-radar",'label':"Dropdown1", 'submenu':[
             #    {'id':' subid11','icon': "fa fa-paperclip", 'label':"Sub-item 1"},{'id':'subid12','icon': "💀", 'label':"Sub-item 2"},{'id':'subid13','icon': "fa fa-database", 'label':"Sub-item 3"}]},
             #{'icon': "far fa-chart-bar", 'label':"Chart"},#no tooltip message
@@ -219,6 +220,11 @@ def layout():
 
         elif menu_id == 'Textual Inversion':
             from textual_inversion import layout
+            layout()
+
+        elif menu_id == 'API Server':
+            set_page_title("API Server - Stable Diffusion Playground")
+            from APIServer import layout
             layout()
 
         elif menu_id == 'Settings':
