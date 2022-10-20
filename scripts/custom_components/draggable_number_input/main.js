@@ -9,9 +9,8 @@ var havePointerLock = 'pointerLockElement' in parentDoc ||
 // the pointer locking exit function
 parentDoc.exitPointerLock = parentDoc.exitPointerLock || parentDoc.mozExitPointerLock || parentDoc.webkitExitPointerLock;
 
-// how far should the mouse travel for a step 50 pixel
-var pixelPerStep = 50;
-
+// how far should the mouse travel for a step in pixel
+var pixelPerStep = %%pixelPerStep%%;
 // how many steps did the mouse move in as float
 var movementDelta = 0.0;
 // value when drag started
@@ -25,6 +24,35 @@ var lockedStep = 0;
 // the currently locked in field
 var lockedField = null;
 
+// lock box to just request pointer lock for one element
+var lockBox = document.createElement("div");
+lockBox.classList.add("lockbox");
+parentDoc.body.appendChild(lockBox);
+lockBox.requestPointerLock = lockBox.requestPointerLock || lockBox.mozRequestPointerLock || lockBox.webkitRequestPointerLock;
+
+function Lock(field)
+{
+	var rect = field.getBoundingClientRect();
+	lockBox.style.left = (rect.left-2.5)+"px";
+	lockBox.style.top = (rect.top-2.5)+"px";
+	
+	lockBox.style.width = (rect.width+2.5)+"px";
+	lockBox.style.height = (rect.height+5)+"px";
+	
+	lockBox.requestPointerLock();
+}
+
+function Unlock()
+{
+	parentDoc.exitPointerLock();
+	lockBox.style.left = "0px";
+	lockBox.style.top = "0px";
+	
+	lockBox.style.width = "0px";
+	lockBox.style.height = "0px";
+	lockedField.focus();
+}
+
 parentDoc.addEventListener('mousedown', (e) => {
 	// if middle is down
 	if(e.button === 1)
@@ -34,7 +62,7 @@ parentDoc.addEventListener('mousedown', (e) => {
 			e.preventDefault();
 			var field = e.target;
 			if(havePointerLock)
-				field.requestPointerLock = field.requestPointerLock || field.mozRequestPointerLock || field.webkitRequestPointerLock;
+				Lock(field);
 
 			// save current field
 			lockedField = e.target;
@@ -66,7 +94,7 @@ parentDoc.addEventListener('mousedown', (e) => {
 			
 			// lock pointer if available
 			if(havePointerLock)
-				lockedField.requestPointerLock();
+				Lock(lockedField);
 			
 			// add drag event
 			parentDoc.addEventListener("mousemove", onDrag, false);
@@ -74,7 +102,8 @@ parentDoc.addEventListener('mousedown', (e) => {
 	}
 });
 
-onDrag = (e) => {
+function onDrag(e)
+{
 	if(lockedField !== null)
 	{
 		// add movement to delta
@@ -87,7 +116,7 @@ onDrag = (e) => {
 		lockedField.select();
 		parentDoc.execCommand('insertText', false /*no UI*/, Math.min(Math.max(value, lockedMin), lockedMax));
 	}
-};
+}
 
 parentDoc.addEventListener('mouseup', (e) => {
 	// if mouse is up
@@ -95,7 +124,7 @@ parentDoc.addEventListener('mouseup', (e) => {
 	{
 		// release pointer lock if available
 		if(havePointerLock)
-			parentDoc.exitPointerLock();
+			Unlock();
 		
 		if(lockedField !== null && lockedField !== NaN)
 		{
@@ -108,3 +137,56 @@ parentDoc.addEventListener('mouseup', (e) => {
 		}
 	}
 });
+
+// only execute once (even though multiple iframes exist)
+if(!parentDoc.hasOwnProperty("dragableInitialized"))
+{
+	var parentCSS =
+`
+/* Make input-instruction not block mouse events */
+.input-instructions,.input-instructions > *{
+	pointer-events: none;
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+}
+
+.lockbox {
+	background-color: transparent;
+	position: absolute;
+	pointer-events: none;
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+	border-left: dotted 2px rgb(255,75,75);
+	border-top: dotted 2px rgb(255,75,75);
+	border-bottom: dotted 2px rgb(255,75,75);
+	border-right: dotted 1px rgba(255,75,75,0.2);
+	border-top-left-radius: 0.25rem;
+	border-bottom-left-radius: 0.25rem;
+	z-index: 1000;
+}
+`;
+	
+	// get parent document head
+	var head = parentDoc.getElementsByTagName('head')[0];
+	// add style tag
+	var s = document.createElement('style');
+    // set type attribute
+	s.setAttribute('type', 'text/css');
+    // add css forwarded from python
+	if (s.styleSheet) {   // IE
+        s.styleSheet.cssText = parentCSS;
+    } else {                // the world
+        s.appendChild(document.createTextNode(parentCSS));
+    }
+	// add style to head
+    head.appendChild(s);
+	// set flag so this only runs once
+	parentDoc["dragableInitialized"] = true;
+}
+

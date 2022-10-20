@@ -39,7 +39,7 @@ from omegaconf import OmegaConf
 import argparse
 
 # import custom components
-from custom_components import dragable_number_input
+from custom_components import draggable_number_input
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
@@ -234,7 +234,7 @@ def layout():
             layout()
 
         # calling dragable input component module at the end, so it works on all pages
-        dragable_number_input.load()
+        draggable_number_input.load()
 
 
 if __name__ == '__main__':
