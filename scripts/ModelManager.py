@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 from sd_utils import *
 # streamlit imports
@@ -20,7 +20,7 @@ from sd_utils import *
 
 #other imports
 
-# Temp imports 
+# Temp imports
 
 
 # end of imports
@@ -28,7 +28,7 @@ from sd_utils import *
 def download_file(file_name, file_path, file_url):
     if not os.path.exists(file_path):
         os.makedirs(file_path)
-        
+
     if not os.path.exists(os.path.join(file_path , file_name)):
         print('Downloading ' + file_name + '...')
         # TODO - add progress bar in streamlit
@@ -51,16 +51,16 @@ def download_model(models, model_name):
 
 def layout():
     #search = st.text_input(label="Search", placeholder="Type the name of the model you want to search for.", help="")
-    
+
     colms = st.columns((1, 3, 5, 5))
     columns = ["№",'Model Name','Save Location','Download Link']
-    
+
     models = st.session_state["defaults"].model_manager.models
 
     for col, field_name in zip(colms, columns):
         # table header
         col.write(field_name)
-        
+
     for x, model_name in enumerate(models):
         col1, col2, col3, col4 = st.columns((1, 3, 4, 6))
         col1.write(x)  # index
@@ -88,6 +88,7 @@ def layout():
                             download_file(models[model_name]['files'][file]['file_name'], models[model_name]['files'][file]['save_location'], models[model_name]['files'][file]['download_link'])
                         else:
                             download_file(models[model_name]['files'][file]['file_name'], models[model_name]['save_location'], models[model_name]['files'][file]['download_link'])
+                    st.experimental_rerun()
                 else:
                     st.empty()
             else:
