@@ -642,7 +642,7 @@ def layout():
 		with input_col1:
 			#prompt = st.text_area("Input Text","")
 			placeholder = "A corgi wearing a top hat as an oil painting."
-			prompt = st.text_area("Input Text","", placeholder=placeholder)
+			prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
 			key_phrase_suggestions.suggestion_area(placeholder)
 
 		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
