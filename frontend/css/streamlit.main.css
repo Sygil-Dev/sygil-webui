@@ -30,6 +30,7 @@ button[data-baseweb="tab"] {
 	justify-content: center;
 }
 
+
 /* Streamlit header */
 .css-1avcm0n {
   background-color: transparent;
@@ -135,6 +136,7 @@ div.gallery:hover {
 /********************************************************************
     Hide anchor links on titles
 *********************************************************************/
+/*
 .css-15zrgzn {
 	display: none
 	}
@@ -159,6 +161,7 @@ div.gallery:hover {
 .css-18e3th9{
 	padding-left: 10px;
 	padding-right: 10px;
+	position: unset !important; /* Fixes the layout/page going up when an expander or another item is expanded and then collapsed */ 
 }
 .css-k1vhr4{
 	padding-top: initial;
@@ -168,4 +171,8 @@ div.gallery:hover {
 	padding-right: 25px;
 	gap: initial;
 	display: initial;
+}
+
+.css-w5z5an{
+	gap: 1px;
 }
