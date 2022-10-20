@@ -152,7 +152,11 @@ def load_configs():
             import modeldownload
             modeldownload.updateModels()
 
-    if "keep_all_models_loaded" in st.session_state:
+    if "keep_all_models_loaded" in st.session_state.defaults.general:
+        with server_state_lock["keep_all_models_loaded"]:
+            server_state["keep_all_models_loaded"] = st.session_state["defaults"].general.keep_all_models_loaded
+    else:
+        st.session_state["defaults"].general.keep_all_models_loaded = False
         with server_state_lock["keep_all_models_loaded"]:
             server_state["keep_all_models_loaded"] = st.session_state["defaults"].general.keep_all_models_loaded
 
