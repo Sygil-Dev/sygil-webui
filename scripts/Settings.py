@@ -61,7 +61,7 @@ def layout():
                 custom_models_available()
 
                 if server_state["CustomModel_available"]:
-                    st.session_state.default_model = st.selectbox("Default Model:", server_state["custom_models"],
+                    st.session_state.defaults.general.default_model = st.selectbox("Default Model:", server_state["custom_models"],
                                                                   index=server_state["custom_models"].index(st.session_state['defaults'].general.default_model),
                                                                   help="Select the model you want to use. If you have placed custom models \
                                                                   on your 'models/custom' folder they will be shown here as well. The model name that will be shown here \
@@ -69,7 +69,7 @@ def layout():
                                                                   it is recommended to give the .ckpt file a name that \
                                                                   will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
                 else:
-                    st.session_state.default_model = st.selectbox("Default Model:", [st.session_state['defaults'].general.default_model],
+                    st.session_state.defaults.general.default_model = st.selectbox("Default Model:", [st.session_state['defaults'].general.default_model],
                                                                   help="Select the model you want to use. If you have placed custom models \
                                                                   on your 'models/custom' folder they will be shown here as well. \
                                                                   The model name that will be shown here is the same as the name\
