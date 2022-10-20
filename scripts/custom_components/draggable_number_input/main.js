@@ -14,13 +14,13 @@ var pixelPerStep = %%pixelPerStep%%;
 // how many steps did the mouse move in as float
 var movementDelta = 0.0;
 // value when drag started
-var lockedValue = 0;
+var lockedValue = 0.0;
 // minimum value from field
-var lockedMin = 0;
+var lockedMin = 0.0;
 // maximum value from field
-var lockedMax = 0;
+var lockedMax = 0.0;
 // how big should the field steps be
-var lockedStep = 0;
+var lockedStep = 0.0;
 // the currently locked in field
 var lockedField = null;
 
@@ -72,25 +72,25 @@ parentDoc.addEventListener('mousedown', (e) => {
 			movementDelta = 0.0;
 			// set to 0 if field is empty
 			if(lockedField.value === '')
-				lockedField.value = 0;
+				lockedField.value = 0.0;
 				
 			// save current field value
-			lockedValue = parseInt(lockedField.value);
+			lockedValue = parseFloat(lockedField.value);
 			
 			if(lockedField.min === '' || lockedField.min === '-Infinity')
-				lockedMin = -99999999;
+				lockedMin = -99999999.0;
 			else
-				lockedMin = parseInt(lockedField.min);
+				lockedMin = parseFloat(lockedField.min);
 			
 			if(lockedField.max === '' || lockedField.max === 'Infinity')
-				lockedMax = 99999999;
+				lockedMax = 99999999.0;
 			else
-				lockedMax = parseInt(lockedField.max);
+				lockedMax = parseFloat(lockedField.max);
 			
 			if(lockedField.step === '' || lockedField.step === 'Infinity')
-				lockedStep = 1;
+				lockedStep = 1.0;
 			else
-				lockedStep = parseInt(lockedField.step);
+				lockedStep = parseFloat(lockedField.step);
 			
 			// lock pointer if available
 			if(havePointerLock)
