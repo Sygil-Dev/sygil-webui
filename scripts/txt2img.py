@@ -406,7 +406,7 @@ def layout():
         with input_col1:
             #prompt = st.text_area("Input Text","")
             placeholder = "A corgi wearing a top hat as an oil painting."
-            prompt = st.text_area("Input Text","", placeholder=placeholder)
+            prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
             key_phrase_suggestions.suggestion_area(placeholder)
 
         # creating the page layout using columns
