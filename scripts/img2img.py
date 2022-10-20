@@ -381,7 +381,7 @@ def layout():
 
 
 		# creating the page layout using columns
-		col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([1,2,2], gap="small")
+		col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([1,2,2], gap="medium")
 
 		with col1_img2img_layout:
 			# If we have custom models available on the "models/custom"
