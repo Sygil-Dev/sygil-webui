@@ -24,12 +24,15 @@ body
 
 span
 {
-	border: 1px solid black;
-	border-radius: 5px;
+	border: 1px solid rgba(250, 250, 250, 0.2);
+	border-radius: 0.25rem;
+	font-size: 1rem;
+	font-family: "Source Sans Pro", sans-serif;
+	
 	background-color: rgb(38, 39, 48);
 	color: white;
 	display: inline-block;
-	padding: 5px;
+	padding: 0.5rem;
 	margin-right: 3px;
 	cursor: pointer;
 	user-select: none;
@@ -37,4 +40,10 @@ span
 	-khtml-user-select: none;
 	-webkit-user-select: none;
 	-o-user-select: none;
+}
+
+span:hover
+{
+	color: rgb(255,75,75);
+	border-color: rgb(255,75,75);
 }
