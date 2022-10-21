@@ -393,9 +393,9 @@ def layout():
 							    help="Select the model you want to use. This option is only available if you have custom models \
 							    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 							    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-							    will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+							    will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.5")
 			else:
-				st.session_state["custom_model"] = "Stable Diffusion v1.4"
+				st.session_state["custom_model"] = "Stable Diffusion v1.5"
 
 
 			st.session_state["sampling_steps"] = st.number_input("Sampling Steps", value=st.session_state['defaults'].img2img.sampling_steps.value,

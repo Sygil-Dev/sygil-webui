@@ -267,7 +267,7 @@ def human_readable_size(size, decimal_places=3):
 
 
 def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_model='GFPGANv1.4', use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
-                CustomModel_available=False, custom_model="Stable Diffusion v1.4"):
+                CustomModel_available=False, custom_model="Stable Diffusion v1.5"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
 
     logger.info("Loading models.")
@@ -437,22 +437,33 @@ def load_model_from_config(config, ckpt, verbose=False):
 
     logger.info(f"Loading model from {ckpt}")
 
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        logger.info(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(sd, strict=False)
-    if len(m) > 0 and verbose:
-        logger.info("missing keys:")
-        logger.info(m)
-    if len(u) > 0 and verbose:
-        logger.info("unexpected keys:")
-        logger.info(u)
+    try:
+        pl_sd = torch.load(ckpt, map_location="cpu")
+        if "global_step" in pl_sd:
+            logger.info(f"Global Step: {pl_sd['global_step']}")
+        sd = pl_sd["state_dict"]
+        model = instantiate_from_config(config.model)
+        m, u = model.load_state_dict(sd, strict=False)
+        if len(m) > 0 and verbose:
+            logger.info("missing keys:")
+            logger.info(m)
+        if len(u) > 0 and verbose:
+            logger.info("unexpected keys:")
+            logger.info(u)
 
-    model.cuda()
-    model.eval()
-    return model
+        model.cuda()
+        model.eval()
+
+        return model
+
+    except FileNotFoundError:
+        if "progress_bar_text" in st.session_state:
+            st.session_state["progress_bar_text"].error(
+                "You need to download the Stable Diffusion model in order to use the UI. Use the Model Manager page in order to download the model."
+            )
+
+        raise FileNotFoundError("You need to download the Stable Diffusion model in order to use the UI. Use the Model Manager page in order to download the model.")
+
 
 
 def load_sd_from_config(ckpt, verbose=False):
@@ -1841,7 +1852,7 @@ def custom_models_available():
         with server_state_lock["CustomModel_available"]:
             if len(server_state["custom_models"]) > 0:
                 server_state["CustomModel_available"] = True
-                server_state["custom_models"].append("Stable Diffusion v1.4")
+                server_state["custom_models"].append("Stable Diffusion v1.5")
             else:
                 server_state["CustomModel_available"] = False
 

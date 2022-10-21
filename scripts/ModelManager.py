@@ -19,6 +19,8 @@ from sd_utils import *
 
 
 #other imports
+from requests.auth import HTTPBasicAuth
+from stqdm import stqdm
 
 # Temp imports
 
@@ -33,10 +35,18 @@ def download_file(file_name, file_path, file_url):
         print('Downloading ' + file_name + '...')
         # TODO - add progress bar in streamlit
         # download file with `requests``
-        with requests.get(file_url, stream=True) as r:
+        if file_name == "Stable Diffusion v1.5":
+            if "huggingface_token" not in st.session_state or st.session_state["defaults"].general.huggingface_token == "None":
+                if "progress_bar_text" in st.session_state:
+                    st.session_state["progress_bar_text"].error(
+                        "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
+                                    )
+                raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
+
+        with requests.get(file_url, auth = HTTPBasicAuth('token', st.session_state.defaults.general.huggingface_token), stream=True) as r:
             r.raise_for_status()
             with open(os.path.join(file_path, file_name), 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
+                for chunk in stqdm(r.iter_content(chunk_size=8192), backend=True, unit="kb"):
                     f.write(chunk)
 
     else:
@@ -52,8 +62,8 @@ def download_model(models, model_name):
 def layout():
     #search = st.text_input(label="Search", placeholder="Type the name of the model you want to search for.", help="")
 
-    colms = st.columns((1, 3, 5, 5))
-    columns = ["№",'Model Name','Save Location','Download Link']
+    colms = st.columns((1, 3, 3, 5, 5))
+    columns = ["№", 'Model Name', 'Save Location', "Download", 'Download Link']
 
     models = st.session_state["defaults"].model_manager.models
 
@@ -62,7 +72,7 @@ def layout():
         col.write(field_name)
 
     for x, model_name in enumerate(models):
-        col1, col2, col3, col4 = st.columns((1, 3, 4, 6))
+        col1, col2, col3, col4, col5 = st.columns((1, 3, 3, 3, 6))
         col1.write(x)  # index
         col2.write(models[model_name]['model_name'])
         col3.write(models[model_name]['save_location'])
@@ -93,3 +103,5 @@ def layout():
                     st.empty()
             else:
                 st.write('✅')
+
+        #

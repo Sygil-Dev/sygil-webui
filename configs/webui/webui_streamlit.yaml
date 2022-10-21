@@ -19,15 +19,15 @@
 # You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
 # of the properties below.
 general:
-    version: 1.17.2
+    version: 1.20.0
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''
     gpu: 0
     outdir: outputs
-    default_model: "Stable Diffusion v1.4"
+    default_model: "Stable Diffusion v1.5"
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
-    default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
+    default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
     use_sd_concepts_library: True
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./models/gfpgan"
@@ -131,8 +131,8 @@ txt2img:
     write_info_files: True
 
 txt2vid:
-    default_model: "CompVis/stable-diffusion-v1-4"
-    custom_models_list: ["CompVis/stable-diffusion-v1-4"]
+    default_model: "runwayml/stable-diffusion-v1-5"
+    custom_models_list: ["runwayml/stable-diffusion-v1-5", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
     prompt:
     width:
         value:      512
@@ -325,12 +325,17 @@ daisi_app:
 model_manager:
     models:
         stable_diffusion:
-            model_name:     "Stable Diffusion v1.4"
+            model_name:     "Stable Diffusion v1.5"
             save_location:  "./models/ldm/stable-diffusion-v1"
             files:
                 model_ckpt:
+                    file_name:  "Stable Diffusion v1.5.ckpt"
+                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
+
+                old_model_ckpt:
                     file_name:  "model.ckpt"
                     download_link:  "https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media"
+
 
         gfpgan:
             model_name:     "GFPGAN"
@@ -362,12 +367,12 @@ model_manager:
 
 
         waifu_diffusion:
-            model_name:     "Waifu Diffusion v1.2"
+            model_name:     "Waifu Diffusion v1.3"
             save_location:  "./models/custom"
             files:
                 waifu_diffusion:
-                    file_name: "waifu-diffusion.ckpt"
-                    download_link:  "https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt"
+                    file_name: "Waifu-Diffusion-v1-3 Full ema.ckpt"
+                    download_link:  "https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt"
 
 
         trinart_stable_diffusion:
