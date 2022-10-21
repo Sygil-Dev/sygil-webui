@@ -251,6 +251,9 @@ def load_diffusers_model(weights_path,torch_device):
 				if weights_path == "CompVis/stable-diffusion-v1-4":
 					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-4")
 
+				if weights_path == "runwayml/stable-diffusion-v1-5":
+					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-5")
+
 				if not os.path.exists(model_path + "/model_index.json"):
 					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
 							weights_path,
@@ -351,7 +354,7 @@ def txt2vid(
     eta:float = 0.0,
     width:int = 256,
     height:int = 256,
-    weights_path = "CompVis/stable-diffusion-v1-4",
+    weights_path = "runwayml/stable-diffusion-v1-5",
     scheduler="klms",  # choices: default, ddim, klms
     disable_tqdm = False,
     #-----------------------------------------------
@@ -376,7 +379,7 @@ def txt2vid(
 	eta:float = 0.0,
 	width:int = 256,
 	height:int = 256,
-	weights_path = "CompVis/stable-diffusion-v1-4",
+	weights_path = "runwayml/stable-diffusion-v1-5",
 	scheduler="klms",  # choices: default, ddim, klms
 	disable_tqdm = False,
 	beta_start = 0.0001,
@@ -734,13 +737,13 @@ def layout():
 											help="Select the model you want to use. This option is only available if you have custom models \
 				                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 				                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-				                        will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+				                        will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.5")
 		else:
-			custom_model = "CompVis/stable-diffusion-v1-4"
+			custom_model = "runwayml/stable-diffusion-v1-5"
 
 		#st.session_state["weights_path"] = custom_model
 		#else:
-			#custom_model = "CompVis/stable-diffusion-v1-4"
+			#custom_model = "runwayml/stable-diffusion-v1-5"
 			#st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 
 		st.session_state.sampling_steps = st.number_input("Sampling Steps", value=st.session_state['defaults'].txt2vid.sampling_steps.value,

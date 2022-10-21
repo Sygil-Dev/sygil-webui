@@ -230,7 +230,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
                                             save_grid=save_grid,
                                             sort_samples=sampler_name, sampler_name=sampler_name, ddim_eta=ddim_eta, n_iter=n_iter,
                                             batch_size=batch_size, i=iter, save_individual_images=save_individual_images,
-                                            model_name="Stable Diffusion v1.4")
+                                            model_name="Stable Diffusion v1.5")
 
             output_images.append(img)
 
@@ -488,7 +488,7 @@ def layout():
                                                                 help="Select the model you want to use. This option is only available if you have custom models \
                                                                 on your 'models/custom' folder. The model name that will be shown here is the same as the name\
                                                                 the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-                                                                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+                                                                will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.5")
 
             st.session_state.sampling_steps = st.number_input("Sampling Steps", value=st.session_state.defaults.txt2img.sampling_steps.value,
                                                               min_value=st.session_state.defaults.txt2img.sampling_steps.min_value,
