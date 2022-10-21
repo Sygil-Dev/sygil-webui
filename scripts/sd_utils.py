@@ -451,7 +451,6 @@ def load_model_from_config(config, ckpt, verbose=False):
             logger.info("unexpected keys:")
             logger.info(u)
 
-        model.cuda()
         model.eval()
 
         return model
@@ -890,7 +889,6 @@ class LDSR():
         config = OmegaConf.load(self.yamlPath)
         model = instantiate_from_config(config.model)
         m, u = model.load_state_dict(sd, strict=False)
-        model.cuda()
         model.eval()
         return {"model": model}#, global_step
 
@@ -1060,8 +1058,8 @@ class LDSR():
                 c_up = rearrange(c_up, '1 c h w -> 1 h w c')
                 c = rearrange(c, '1 c h w -> 1 h w c')
                 c = 2. * c - 1.
-
-                c = c.to(torch.device("cuda"))
+                device = f"cuda:{st.session_state['defaults'].general.gpu}" if torch.cuda.is_available() else "cpu"
+                c = c.to(torch.device(device))
                 example["LR_image"] = c
                 example["image"] = c_up
 
@@ -1420,7 +1418,6 @@ def load_sd_model(model_name: str):
 
         model = instantiate_from_config(config.modelUNet)
         _, _ = model.load_state_dict(sd, strict=False)
-        model.cuda()
         model.eval()
         model.turbo = st.session_state.defaults.general.optimized_turbo
 
@@ -1504,7 +1501,7 @@ def generation_callback(img, i=0):
     except TypeError as e:
         logger.error(e)
         pass
-
+    device = f"cuda:{st.session_state.defaults.general.gpu}"
     if st.session_state.update_preview and\
         int(st.session_state.update_preview_frequency) > 0 and\
         i % int(st.session_state.update_preview_frequency) == 0 and\
@@ -1515,13 +1512,13 @@ def generation_callback(img, i=0):
         # It can probably be done in a better way for someone who knows what they're doing. I don't.
         #print (img,isinstance(img, torch.Tensor))
         if isinstance(img, torch.Tensor):
-            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
-                              ).decode_first_stage(img).to('cuda')
+            x_samples_ddim = (server_state["model"].to(device) if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to(device)
+                              ).decode_first_stage(img).to(device)
         else:
             # When using the k Diffusion samplers they return a dict instead of a tensor that look like this:
             # {'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised}
-            x_samples_ddim = (server_state["model"].to('cuda') if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to('cuda')
-                              ).decode_first_stage(img["denoised"]).to('cuda')
+            x_samples_ddim = (server_state["model"].to(device) if not st.session_state['defaults'].general.optimized else server_state["modelFS"].to(device)
+                              ).decode_first_stage(img["denoised"]).to(device)
 
         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
 
@@ -1811,7 +1808,8 @@ def draw_prompt_matrix(im, width, height, all_prompts):
 #
 def enable_minimal_memory_usage(model):
     """Moves only unet to fp16 and to CUDA, while keepping lighter models on CPUs"""
-    model.unet.to(torch.float16).to(torch.device("cuda"))
+    device = f"cuda:{st.session_state['defaults'].general.gpu}" if torch.cuda.is_available() else "cpu"
+    model.unet.to(torch.float16).to(torch.device(device))
     model.enable_attention_slicing(1)
 
     torch.cuda.empty_cache()
