@@ -332,11 +332,6 @@ model_manager:
                     file_name:  "Stable Diffusion v1.5.ckpt"
                     download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
 
-                old_model_ckpt:
-                    file_name:  "model.ckpt"
-                    download_link:  "https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media"
-
-
         gfpgan:
             model_name:     "GFPGAN"
             save_location:  "./models/gfpgan"
