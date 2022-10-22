@@ -1711,15 +1711,20 @@ def image_grid(imgs, batch_size, force_n_rows=None, captions=None):
     w, h = imgs[0].size
     grid = Image.new('RGB', size=(cols * w, rows * h), color='black')
 
-    fnt = get_font(30)
+    try:
+        fnt = get_font(30)
+    except Exception:
+        pass
 
     for i, img in enumerate(imgs):
         grid.paste(img, box=(i % cols * w, i // cols * h))
-        if captions and i<len(captions):
-            d = ImageDraw.Draw( grid )
-            size = d.textbbox( (0,0), captions[i], font=fnt, stroke_width=2, align="center" )
-            d.multiline_text((i % cols * w + w/2, i // cols * h + h - size[3]), captions[i], font=fnt, fill=(255,255,255), stroke_width=2, stroke_fill=(0,0,0), anchor="mm", align="center")
-
+        try:
+            if captions and i<len(captions):
+                d = ImageDraw.Draw( grid )
+                size = d.textbbox( (0,0), captions[i], font=fnt, stroke_width=2, align="center" )
+                d.multiline_text((i % cols * w + w/2, i // cols * h + h - size[3]), captions[i], font=fnt, fill=(255,255,255), stroke_width=2, stroke_fill=(0,0,0), anchor="mm", align="center")
+        except Exception:
+            pass
     return grid
 
 def seed_to_int(s):
