@@ -317,7 +317,7 @@ def interrogate(image, models):
     st.session_state["log"].append("Finished Interrogating.")
     st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
-    del st.session_state["log"]
+    st.session_state["log"] = []
 #
 
 
