@@ -106,7 +106,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
 
     log.append("Generating image with Stable Horde.")
 
-    st.session_state["progress_bar_text"].code('\n'.join(log), language='')
+    st.session_state["progress_bar_text"].code('\n'.join(str(log)), language='')
 
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -147,7 +147,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
 
     headers = {"apikey": api_key}
     logger.debug(final_submit_dict)
-    st.session_state["progress_bar_text"].code('\n'.join(log), language='')
+    st.session_state["progress_bar_text"].code('\n'.join(str(log)), language='')
 
     horde_url = "https://stablehorde.net"
 
@@ -157,7 +157,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
         logger.debug(submit_results)
 
         log.append(submit_results)
-        st.session_state["progress_bar_text"].code('\n'.join(log), language='')
+        st.session_state["progress_bar_text"].code('\n'.join(str(log)), language='')
 
         req_id = submit_results['id']
         is_done = False
