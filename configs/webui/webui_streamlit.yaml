@@ -19,7 +19,7 @@
 # You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
 # of the properties below.
 general:
-    version: 1.20.0
+    version: 1.24.6
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''
@@ -212,7 +212,7 @@ txt2vid:
         format:     "%.5f"
 
     beta_scheduler_type: "scaled_linear"
-    max_frames: 100
+    max_duration_in_seconds: 30
 
     LDSR_config:
         sampling_steps: 50

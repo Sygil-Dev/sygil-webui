@@ -684,8 +684,8 @@ def layout():
                 st.session_state["defaults"].txt2vid.do_loop = st.checkbox("Loop Generations", value=st.session_state['defaults'].txt2vid.do_loop,
                                                                            help="Choose to loop or something, IDK.... Default: False")
 
-                st.session_state["defaults"].txt2vid.max_frames = st.number_input("Txt2Vid Max Video Frames", value=st.session_state['defaults'].txt2vid.max_frames,
-                                                                                  help="Set the default value for the number of video frames generated. Default is: 100")
+                st.session_state["defaults"].txt2vid.max_duration_in_seconds = st.number_input("Txt2Vid Max Duration in Seconds", value=st.session_state['defaults'].txt2vid.max_duration_in_seconds,
+                                                                                  help="Set the default value for the max duration in seconds for the video generated. Default is: 30")
 
                 st.session_state["defaults"].txt2vid.write_info_files = st.checkbox("Write Info Files For txt2vid Images", value=st.session_state['defaults'].txt2vid.write_info_files,
                                                                                     help="Choose to write the info files along with the generated images. Default: True")
