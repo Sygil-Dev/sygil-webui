@@ -1,6 +1,6 @@
 #!/bin/bash -i
 
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of stable-diffusion-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
 # Copyright 2022 sd-webui team.
 # This program is free software: you can redistribute it and/or modify
