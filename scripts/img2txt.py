@@ -58,8 +58,7 @@ from ldm.models.blip import blip_decoder
 
 # end of imports
 # ---------------------------------------------------------------------------------------------------------------
-
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = f"cuda:{st.session_state['defaults'].general.gpu}" if torch.cuda.is_available() else "cpu"
 blip_image_eval_size = 512
 #blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'
 server_state["clip_models"] = {}
@@ -165,7 +164,7 @@ def load_list(filename):
 
 def rank(model, image_features, text_array, top_count=1):
     top_count = min(top_count, len(text_array))
-    text_tokens = clip.tokenize([text for text in text_array]).cuda()
+    text_tokens = clip.tokenize([text for text in text_array]).cuda(device)
     with torch.no_grad():
         text_features = model.encode_text(text_tokens).float()
     text_features /= text_features.norm(dim=-1, keepdim=True)
@@ -251,9 +250,9 @@ def interrogate(image, models):
                                                                                                                                                  cache_dir='models/clip')
                 else:
                     server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = clip.load(model_name, device=device, download_root='models/clip')
-                server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda().eval()
+                server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda(device).eval()
 
-            images = server_state["preprocesses"][model_name](image).unsqueeze(0).cuda()
+            images = server_state["preprocesses"][model_name](image).unsqueeze(0).cuda(device)
 
 
             image_features = server_state["clip_models"][model_name].encode_image(images).float()

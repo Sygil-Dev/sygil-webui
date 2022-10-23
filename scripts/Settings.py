@@ -40,6 +40,7 @@ def layout():
             col1, col2, col3, col4, col5 = st.columns(5, gap='large')
 
             device_list = []
+            selected_device = None
             device_properties = [(i, torch.cuda.get_device_properties(i)) for i in range(torch.cuda.device_count())]
             for device in device_properties:
                 id = device[0]
@@ -47,11 +48,15 @@ def layout():
                 total_memory = device[1].total_memory
 
                 device_list.append(f"{id}: {name} ({human_readable_size(total_memory, decimal_places=0)})")
+                if str(id) == str(st.session_state.defaults.general.gpu):
+                    selected_device = f"{id}: {name} ({human_readable_size(total_memory, decimal_places=0)})"
+            if selected_device is None:
+                selected_device = device_list[0]
 
             with col1:
                 st.title("General")
                 st.session_state['defaults'].general.gpu = int(st.selectbox("GPU", device_list,
-                                                                            help=f"Select which GPU to use. Default: {device_list[0]}").split(":")[0])
+                 index=st.session_state.defaults.general.gpu, help=f"Select which GPU to use. Default: {device_list[0]}").split(":")[0])
 
                 st.session_state['defaults'].general.outdir = str(st.text_input("Output directory", value=st.session_state['defaults'].general.outdir,
                                                                                 help="Relative directory on which the output images after a generation will be placed. Default: 'outputs'"))
@@ -817,6 +822,7 @@ def layout():
             if (os.path.exists(".streamlit/config.toml")):
                 with open(".streamlit/config.toml", "w") as toml_file:
                     toml.dump(st.session_state["streamlit_config"], toml_file)
+            load_configs()
 
         if reset_button:
             st.session_state["defaults"] = OmegaConf.load("configs/webui/webui_streamlit.yaml")
