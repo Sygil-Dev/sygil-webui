@@ -327,7 +327,7 @@ def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, o
 		#output = io.BytesIO()
 		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid"), im, extension=".mp4", fps=30)
 		#try:
-		video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}.mp4")
+		video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}{datetime.now().strftime('%Y%m-%d%H-%M%S-') + str(uuid4())[:8]}.mp4")
 		writer = imageio.get_writer(video_path, fps=fps)
 		for frame in frames:
 			writer.append_data(frame)
