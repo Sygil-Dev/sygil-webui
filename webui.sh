@@ -1,4 +1,5 @@
 #!/bin/bash -i
+
 # This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
 
 # Copyright 2022 sd-webui team.
@@ -93,22 +94,6 @@ conda_env_activation () {
     conda info | grep active
 }
 
-# Check to see if the SD model already exists, if not then it creates it and prompts the user to add the SD AI models to the repo directory
-sd_model_loading () {
-    if [ -f "$DIRECTORY/models/ldm/stable-diffusion-v1/model.ckpt" ]; then
-        printf "AI Model already in place. Continuing...\n\n"
-    else
-        printf "\n\n########## MOVE MODEL FILE ##########\n\n"
-        printf "Please download the 1.4 AI Model from Huggingface (or another source) and place it inside of the stable-diffusion-webui folder\n\n"
-        read -p "Once you have sd-v1-4.ckpt in the project root, Press Enter...\n\n"
-        
-        # Check to make sure checksum of models is the original one from HuggingFace and not a fake model set
-        printf "fe4efff1e174c627256e44ec2991ba279b3816e364b49f9be2abc0b3ff3f8556 sd-v1-4.ckpt" | sha256sum --check || exit 1
-        mv sd-v1-4.ckpt $DIRECTORY/models/ldm/stable-diffusion-v1/model.ckpt
-        rm -r ./Models
-    fi
-}
-
 # Checks to see if the upscaling models exist in their correct locations. If they do not they will be downloaded as required
 post_processor_model_loading () {
     # Check to see if GFPGAN has been added yet, if not it will download it and place it in the proper directory
@@ -162,6 +147,13 @@ post_processor_model_loading () {
 
 # Show the user a prompt asking them which version of the WebUI they wish to use, Streamlit or Gradio
 launch_webui () {
+    # skip the prompt if --bridge command-line argument is detected
+    for arg in "$@"; do
+        if [ "$arg" == "--bridge" ]; then
+           python -u scripts/relauncher.py "$@"
+           return
+        fi
+    done
     printf "\n\n########## LAUNCH USING STREAMLIT OR GRADIO? ##########\n\n"
     printf "Do you wish to run the WebUI using the Gradio or StreamLit Interface?\n\n"
     printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \nMissing Some Gradio Features\n\n"
@@ -181,9 +173,9 @@ start_initialization () {
     sd_model_loading
     post_processor_model_loading
     conda_env_activation
-    if [ ! -e "models/ldm/stable-diffusion-v1/model.ckpt" ]; then
-        echo "Your model file does not exist! Place it in 'models/ldm/stable-diffusion-v1' with the name 'model.ckpt'."
-        exit 1
+    if [ ! -e "models/ldm/stable-diffusion-v1/*.ckpt" ]; then
+        echo "Your model file does not exist! Streamlit will handle this automatically, however Gradio still requires this file be placed manually. If you intend to use the Gradio interface, place it in 'models/ldm/stable-diffusion-v1' with the name 'model.ckpt'."
+        read -p "Once you have sd-v1-4.ckpt in the project root, if you are going to use Gradio, Press Enter...\n\n"
     fi
     launch_webui "$@"
 

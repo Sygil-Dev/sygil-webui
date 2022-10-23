@@ -14,6 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
+
+"""
+Implementation of Text to Video based on the
+https://github.com/nateraw/stable-diffusion-videos
+repo and the original gist script from
+https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
+"""
 from sd_utils import *
 
 # streamlit imports
@@ -25,7 +32,7 @@ from streamlit_server_state import server_state, server_state_lock
 
 #other imports
 
-import os
+import os, sys
 from PIL import Image
 import torch
 import numpy as np
@@ -40,10 +47,15 @@ from diffusers import StableDiffusionPipeline
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
      PNDMScheduler
 
+# streamlit components
+from custom_components import key_phrase_suggestions
+
 # Temp imports
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
+
+key_phrase_suggestions.init()
 
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -190,13 +202,16 @@ def diffuse(
 			frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames)/float(
 			    st.session_state.max_frames))
 
-			st.session_state["progress_bar_text"].text(
-				f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
+			if "progress_bar_text" in st.session_state:
+				st.session_state["progress_bar_text"].text(
+				    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
 				    f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
 				        f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames}/{st.session_state.max_frames} "
 				        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
-			)
-			st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+				)
+
+			if "progress_bar" in st.session_state:
+				st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
 
 	except KeyError:
 		raise StopException
@@ -224,13 +239,20 @@ def load_diffusers_model(weights_path,torch_device):
 	try:
 		with server_state_lock["pipe"]:
 			if "pipe" not in server_state:
-				if ("weights_path" in st.session_state) and st.session_state["weights_path"] != weights_path:
+				if "weights_path" in st.session_state and st.session_state["weights_path"] != weights_path:
 					del st.session_state["weights_path"]
 
 				st.session_state["weights_path"] = weights_path
-				# if folder "models/diffusers/stable-diffusion-v1-4" exists, load the model from there
+				server_state['float16'] = st.session_state['defaults'].general.use_float16
+				server_state['no_half'] = st.session_state['defaults'].general.no_half
+				server_state['optimized'] = st.session_state['defaults'].general.optimized
+
+				#if folder "models/diffusers/stable-diffusion-v1-4" exists, load the model from there
 				if weights_path == "CompVis/stable-diffusion-v1-4":
 					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-4")
+
+				if weights_path == "runwayml/stable-diffusion-v1-5":
+					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-5")
 
 				if not os.path.exists(model_path + "/model_index.json"):
 					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
@@ -259,14 +281,40 @@ def load_diffusers_model(weights_path,torch_device):
 				if st.session_state.defaults.general.enable_minimal_memory_usage:
 					server_state["pipe"].enable_minimal_memory_usage()
 
-				print("Tx2Vid Model Loaded")
+				logger.info("Tx2Vid Model Loaded")
 			else:
-				print("Tx2Vid Model already Loaded")
-	except (EnvironmentError, OSError):
-		st.session_state["progress_bar_text"].error(
-		    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
-		)
-		raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
+				# if the float16 or no_half options have changed since the last time the model was loaded then we need to reload the model.
+				if ("float16" in server_state and server_state['float16'] != st.session_state['defaults'].general.use_float16) \
+				   or ("no_half" in server_state and server_state['no_half'] != st.session_state['defaults'].general.no_half) \
+				   or ("optimized" in server_state and server_state['optimized'] != st.session_state['defaults'].general.optimized):
+
+					del server_state['float16']
+					del server_state['no_half']
+					with server_state_lock["pipe"]:
+						del server_state["pipe"]
+						torch_gc()
+
+					del server_state['optimized']
+
+					server_state['float16'] = st.session_state['defaults'].general.use_float16
+					server_state['no_half'] = st.session_state['defaults'].general.no_half
+					server_state['optimized'] = st.session_state['defaults'].general.optimized
+
+					load_diffusers_model(weights_path, torch_device)
+				else:
+					logger.info("Tx2Vid Model already Loaded")
+
+	except (EnvironmentError, OSError) as e:
+		if "huggingface_token" not in st.session_state or st.session_state["defaults"].general.huggingface_token == "None":
+			if "progress_bar_text" in st.session_state:
+				st.session_state["progress_bar_text"].error(
+				    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
+				)
+			raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
+		else:
+			if "progress_bar_text" in st.session_state:
+				st.session_state["progress_bar_text"].error(e)
+
 #
 def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, outdir='outputs'):
 	if save_video:
@@ -306,7 +354,7 @@ def txt2vid(
     eta:float = 0.0,
     width:int = 256,
     height:int = 256,
-    weights_path = "CompVis/stable-diffusion-v1-4",
+    weights_path = "runwayml/stable-diffusion-v1-5",
     scheduler="klms",  # choices: default, ddim, klms
     disable_tqdm = False,
     #-----------------------------------------------
@@ -331,7 +379,7 @@ def txt2vid(
 	eta:float = 0.0,
 	width:int = 256,
 	height:int = 256,
-	weights_path = "CompVis/stable-diffusion-v1-4",
+	weights_path = "runwayml/stable-diffusion-v1-5",
 	scheduler="klms",  # choices: default, ddim, klms
 	disable_tqdm = False,
 	beta_start = 0.0001,
@@ -413,17 +461,12 @@ def txt2vid(
 
 	SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
-	if "pipe" not in server_state:
-		with st.session_state["progress_bar_text"].container():
-			with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-				if "model" in st.session_state:
-					del st.session_state["model"]
-				load_diffusers_model(weights_path, torch_device)
-	else:
-		print("Model already loaded")
+	with st.session_state["progress_bar_text"].container():
+		with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+			load_diffusers_model(weights_path, torch_device)
 
 	if "pipe" not in server_state:
-		print('wtf')
+		logger.error('wtf')
 
 	server_state["pipe"].scheduler = SCHEDULERS[scheduler]
 
@@ -481,28 +524,32 @@ def txt2vid(
 	frames = []
 	frame_index = 0
 
+	second_count = 1
+
 	st.session_state["total_frames_avg_duration"] = []
 	st.session_state["total_frames_avg_speed"] = []
 
 	try:
-		while frame_index < max_frames:
+		while second_count < max_frames:
 			st.session_state["frame_duration"] = 0
 			st.session_state["frame_speed"] = 0
 			st.session_state["current_frame"] = frame_index
+
+			#print(f"Second: {second_count+1}/{max_frames}")
 
 			# sample the destination
 			init2 = torch.randn((1, server_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				print(f"COUNT: {frame_index+1}/{max_frames}")
+				logger.info(f"COUNT: {frame_index+1}/{max_frames}")
 
-				#if use_lerp_for_text:
-					#init = torch.lerp(init1, init2, float(t))
-				#else:
-					#init = slerp(gpu, float(t), init1, init2)
+				if use_lerp_for_text:
+					init = torch.lerp(init1, init2, float(t))
+				else:
+					init = slerp(gpu, float(t), init1, init2)
 
-				init = slerp(gpu, float(t), init1, init2)
+				#init = slerp(gpu, float(t), init1, init2)
 
 				with autocast("cuda"):
 					image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
@@ -524,7 +571,8 @@ def txt2vid(
 				#if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None and not st.session_state["use_RealESRGAN"]:
 				if st.session_state["use_GFPGAN"] and server_state["GFPGAN"] is not None:
 					#print("Running GFPGAN on image ...")
-					st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
+					if "progress_bar_text" in st.session_state:
+						st.session_state["progress_bar_text"].text("Running GFPGAN on image ...")
 					#skip_save = True # #287 >_>
 					torch_gc()
 					cropped_faces, restored_faces, restored_img = server_state["GFPGAN"].enhance(np.array(image)[:,:,::-1], has_aligned=False, only_center_face=False, paste_back=True)
@@ -539,7 +587,7 @@ def txt2vid(
 					try:
 						st.session_state["preview_image"].image(gfpgan_image)
 					except KeyError:
-						print ("Cant get session_state, skipping image preview.")
+						logger.error ("Cant get session_state, skipping image preview.")
 				#except (AttributeError, KeyError):
 					#print("Cant perform GFPGAN, skipping.")
 
@@ -566,7 +614,7 @@ def txt2vid(
 
 	except StopException:
 		if save_video_on_stop:
-			print ("Streamlit Stop Exception Received. Saving video")
+			logger.info("Streamlit Stop Exception Received. Saving video")
 			video_path = save_video_to_disk(frames, seeds, sanitized_prompt, save_video=save_video, outdir=outdir)
 		else:
 			video_path = None
@@ -596,7 +644,9 @@ def layout():
 		input_col1, generate_col1 = st.columns([10,1])
 		with input_col1:
 			#prompt = st.text_area("Input Text","")
-			prompt = st.text_area("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+			placeholder = "A corgi wearing a top hat as an oil painting."
+			prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
+			key_phrase_suggestions.suggestion_area(placeholder)
 
 		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
 		generate_col1.write("")
@@ -611,9 +661,10 @@ def layout():
 							  value=st.session_state['defaults'].txt2vid.width.value, step=st.session_state['defaults'].txt2vid.width.step)
 			height = st.slider("Height:", min_value=st.session_state['defaults'].txt2vid.height.min_value, max_value=st.session_state['defaults'].txt2vid.height.max_value,
 							   value=st.session_state['defaults'].txt2vid.height.value, step=st.session_state['defaults'].txt2vid.height.step)
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
-								  max_value=st.session_state['defaults'].txt2vid.cfg_scale.max_value, value=st.session_state['defaults'].txt2vid.cfg_scale.value,
-								  step=st.session_state['defaults'].txt2vid.cfg_scale.step, help="How strongly the image should follow the prompt.")
+			cfg_scale = st.number_input("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
+			                            value=st.session_state['defaults'].txt2vid.cfg_scale.value,
+			                            step=st.session_state['defaults'].txt2vid.cfg_scale.step,
+			                            help="How strongly the image should follow the prompt.")
 
 			#uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
 												#help="Upload an image which will be used for the image to image generation.")
@@ -686,13 +737,13 @@ def layout():
 											help="Select the model you want to use. This option is only available if you have custom models \
 				                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 				                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-				                        will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+				                        will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.5")
 		else:
-			custom_model = "CompVis/stable-diffusion-v1-4"
+			custom_model = "runwayml/stable-diffusion-v1-5"
 
 		#st.session_state["weights_path"] = custom_model
 		#else:
-			#custom_model = "CompVis/stable-diffusion-v1-4"
+			#custom_model = "runwayml/stable-diffusion-v1-5"
 			#st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 
 		st.session_state.sampling_steps = st.number_input("Sampling Steps", value=st.session_state['defaults'].txt2vid.sampling_steps.value,
@@ -745,8 +796,14 @@ def layout():
 
 				st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
 					                                               help="Save a file next to the image with informartion about the generation.")
-				st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
-					                                      help="Do loop")
+
+				#st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop, help="Do loop")
+				st.session_state["use_lerp_for_text"] = st.checkbox("Use Lerp Instead of Slerp", value=st.session_state['defaults'].txt2vid.use_lerp_for_text,
+				                                                    help="Uses torch.lerp() instead of slerp. When interpolating between related prompts. \
+				                                                    e.g. 'a lion in a grassy meadow' -> 'a bear in a grassy meadow' tends to keep the meadow \
+				                                                    the whole way through when lerped, but slerping will often find a path where the meadow \
+				                                                    disappears in the middle")
+
 				st.session_state["save_as_jpg"] = st.checkbox("Save samples as jpg", value=st.session_state['defaults'].txt2vid.save_as_jpg, help="Saves the images as jpg instead of png.")
 
 			#
@@ -861,7 +918,7 @@ def layout():
 
 		if st.session_state["use_GFPGAN"]:
 			if "GFPGAN" in server_state:
-				print("GFPGAN already loaded")
+				logger.info("GFPGAN already loaded")
 			else:
 				with col2:
 					with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
@@ -869,11 +926,11 @@ def layout():
 						if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
 							try:
 								load_GFPGAN()
-								print("Loaded GFPGAN")
+								logger.info("Loaded GFPGAN")
 							except Exception:
 								import traceback
-								print("Error loading GFPGAN:", file=sys.stderr)
-								print(traceback.format_exc(), file=sys.stderr)
+								logger.error("Error loading GFPGAN:", file=sys.stderr)
+								logger.error(traceback.format_exc(), file=sys.stderr)
 		else:
 			if "GFPGAN" in server_state:
 				del server_state["GFPGAN"]
@@ -885,7 +942,8 @@ def layout():
 		                                   num_inference_steps=st.session_state.num_inference_steps,
 		                                   cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
 		                                   outdir=st.session_state["defaults"].general.outdir,
-		                                   do_loop=st.session_state["do_loop"],
+		                                   #do_loop=st.session_state["do_loop"],
+		                                   use_lerp_for_text=st.session_state["use_lerp_for_text"],
 		                                   seeds=seed, quality=100, eta=0.0, width=width,
 		                                   height=height, weights_path=custom_model, scheduler=scheduler_name,
 		                                   disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
