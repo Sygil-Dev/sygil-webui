@@ -1,27 +1,27 @@
 # <center>Web-based UI for Stable Diffusion</center>
 
-## Created by [sd-webui](https://github.com/sd-webui)
+## Created by [Sygil-Dev](https://github.com/Sygil-Dev)
 
-## [Visit sd-webui's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
+## [Visit Sygil-Dev's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
 
 ## Installation instructions for:
 
-- **[Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.windows-installation.html)** 
-- **[Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.html)**
+- **[Windows](https://Sygil-Dev.github.io/stable-diffusion-webui/docs/1.windows-installation.html)** 
+- **[Linux](https://Sygil-Dev.github.io/stable-diffusion-webui/docs/2.linux-installation.html)**
 
 ### Want to ask a question or request a feature?
 
-Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sd-webui/stable-diffusion-webui/discussions).
+Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/Sygil-Dev/stable-diffusion-webui/discussions).
 
 ## Documentation
 
-[Documentation is located here](https://sd-webui.github.io/stable-diffusion-webui/)
+[Documentation is located here](https://Sygil-Dev.github.io/stable-diffusion-webui/)
 
 ## Want to contribute?
 
 Check the [Contribution Guide](CONTRIBUTING.md)
 
-[sd-webui](https://github.com/sd-webui) main devs:
+[Sygil-Dev](https://github.com/Sygil-Dev) main devs:
 
 * ![hlky's avatar](https://avatars.githubusercontent.com/u/106811348?s=40&v=4) [hlky](https://github.com/hlky)
 * ![ZeroCool940711's avatar](https://avatars.githubusercontent.com/u/5977640?s=40&v=4)[ZeroCool940711](https://github.com/ZeroCool940711)
