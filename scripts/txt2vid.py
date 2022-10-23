@@ -159,7 +159,7 @@ def diffuse(
 			if st.session_state["update_preview"]:
 				step_counter += 1
 
-				if st.session_state["update_preview_frequency"] == step_counter or step_counter == st.session_state.sampling_steps:
+				if step_counter == st.session_state["update_preview_frequency"]:
 					if st.session_state.dynamic_preview_frequency:
 						st.session_state["current_chunk_speed"],
 						st.session_state["previous_chunk_speed_list"],
@@ -191,6 +191,10 @@ def diffuse(
 				speed = "it/s"
 				duration = 1 / duration
 
+			#
+			total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
+			total_steps = st.session_state.sampling_steps + st.session_state.num_inference_steps
+
 			if i > st.session_state.sampling_steps:
 				inference_counter += 1
 				inference_percent = int(100 * float(inference_counter + 1 if inference_counter < num_inference_steps else num_inference_steps)/float(num_inference_steps))
@@ -198,20 +202,22 @@ def diffuse(
 			else:
 				inference_progress = ""
 
-			percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
-			frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_duration_in_seconds else st.session_state.max_duration_in_seconds)/float(
-			    st.session_state.max_duration_in_seconds))
+			total_percent = int(100 * float(i+1 if i+1 < (num_inference_steps + st.session_state.sampling_steps)
+			                          else (num_inference_steps + st.session_state.sampling_steps))/float((num_inference_steps + st.session_state.sampling_steps)))
+
+			percent = int(100 * float(i+1 if i+1 < num_inference_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
+			frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < total_frames else total_frames)/float(total_frames))
 
 			if "progress_bar_text" in st.session_state:
 				st.session_state["progress_bar_text"].text(
 				    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
 				    f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
-				        f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < st.session_state.max_duration_in_seconds else st.session_state.max_duration_in_seconds}/{st.session_state.max_duration_in_seconds} "
+				        f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < total_frames else total_frames}/{total_frames} "
 				        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
 				)
 
 			if "progress_bar" in st.session_state:
-				st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+				st.session_state["progress_bar"].progress(total_percent if total_percent < 100 else 100)
 
 	except KeyError:
 		raise StopException
@@ -547,7 +553,7 @@ def txt2vid(
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				logger.info(f"COUNT: {frame_index+1}/{max_duration_in_seconds}")
+				logger.info(f"COUNT: {frame_index+1}/{num_steps}")
 
 				if use_lerp_for_text:
 					init = torch.lerp(init1, init2, float(t))
@@ -634,7 +640,7 @@ def txt2vid(
 
 	info = f"""
 		{prompts}
-		Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Frames: {max_duration_in_seconds}""".strip()
+		Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Duration In Seconds: {max_duration_in_seconds}""".strip()
 	stats = f'''
 		Took { round(time_diff, 2) }s total ({ round(time_diff/(max_duration_in_seconds),2) }s per image)
 		Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
