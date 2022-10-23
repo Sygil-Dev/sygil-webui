@@ -202,7 +202,7 @@ def diffuse(
 			else:
 				inference_progress = ""
 
-			total_percent = int(100 * float(i+1 if i+1 < (num_inference_steps + st.session_state.sampling_steps) \
+			total_percent = int(100 * float(i+1 if i+1 < (num_inference_steps + st.session_state.sampling_steps)
 			                          else (num_inference_steps + st.session_state.sampling_steps))/float((num_inference_steps + st.session_state.sampling_steps)))
 
 			percent = int(100 * float(i+1 if i+1 < num_inference_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
