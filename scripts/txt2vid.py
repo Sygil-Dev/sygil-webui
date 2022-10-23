@@ -547,7 +547,7 @@ def txt2vid(
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				logger.info(f"COUNT: {frame_index+1}/{max_duration_in_seconds}")
+				logger.info(f"COUNT: {frame_index+1}/{num_steps}")
 
 				if use_lerp_for_text:
 					init = torch.lerp(init1, init2, float(t))
@@ -634,7 +634,7 @@ def txt2vid(
 
 	info = f"""
 		{prompts}
-		Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Frames: {max_duration_in_seconds}""".strip()
+		Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Duration In Seconds: {max_duration_in_seconds}""".strip()
 	stats = f'''
 		Took { round(time_diff, 2) }s total ({ round(time_diff/(max_duration_in_seconds),2) }s per image)
 		Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
