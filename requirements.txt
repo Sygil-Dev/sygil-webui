@@ -54,7 +54,7 @@ ftfy==6.1.1
 fairscale==0.4.4
 regex
 timm==0.6.7
-tqdm==4.64.0
+tqdm==4.64.1
 tensorboard==2.10.1
 
 
