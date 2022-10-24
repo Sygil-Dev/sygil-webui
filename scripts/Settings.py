@@ -159,7 +159,7 @@ def layout():
                 # Default: True")
                 st.session_state["defaults"].general.update_preview = True
                 st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].general.update_preview_frequency,
                                                                                                 help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
                                                                                                 negative effect updating the preview image has on performance. Default: 10")
@@ -327,7 +327,7 @@ def layout():
 
                 st.session_state["defaults"].txt2img.update_preview = True
                 st.session_state["defaults"].txt2img.update_preview_frequency = st.number_input("Preview Image Update Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                                                 help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
@@ -520,7 +520,7 @@ def layout():
 
                 st.session_state["defaults"].img2img.update_preview = True
                 st.session_state["defaults"].img2img.update_preview_frequency = st.number_input("Img2Img Preview Image Update Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].img2img.update_preview_frequency,
                                                                                                 help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 

@@ -455,7 +455,7 @@ def layout():
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
-											       min_value=1,
+											       min_value=0,
 											       value=st.session_state['defaults'].img2img.update_preview_frequency,
 											       help="Frequency in steps at which the the preview image is updated. By default the frequency \
 											       is set to 1 step.")
