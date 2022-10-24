@@ -1,5 +1,5 @@
 #!/bin/bash -i
-# This file is part of stable-diffusion-webui (https://github.com/Sygil-Dev/sygil-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
 # Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
@@ -91,7 +91,7 @@ sd_model_loading () {
         printf "AI Model already in place. Continuing...\n\n"
     else
         printf "\n\n########## MOVE MODEL FILE ##########\n\n"
-        printf "Please download the 1.4 AI Model from Huggingface (or another source) and place it inside of the stable-diffusion-webui folder\n\n"
+        printf "Please download the 1.4 AI Model from Huggingface (or another source) and place it inside of the sygil-webui folder\n\n"
         read -p "Once you have sd-v1-4.ckpt in the project root, Press Enter...\n\n"
         
         # Check to make sure checksum of models is the original one from HuggingFace and not a fake model set
