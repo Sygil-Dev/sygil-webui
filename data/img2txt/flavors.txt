@@ -1,10 +1,3 @@
-+81 magazine
--12p
--8k
--999mm macro lens
--photorealistic
-. post processing
-. smooth
 1 female
 1 male
 1 petapixel image
@@ -61,6 +54,7 @@
 128k
 12k
 12k ursa
+12p
 130mm
 135 mm
 135mm
@@ -571,195 +565,7 @@
 38mm photography
 39mm lens
 3d
-3d + digital art
-3d 4k
-3d 8k
-3d 8k hd trending on art station
-3d 8k octan render
-3d 8k octane rendered
-3d abstract render overlayed
-3d advanced digital art
-3d animated
-3d animated movie
-3d animation
-3d animation demo reel
-3d anime
-3d anime girl
-3d anime poster
-3d ar vr art
-3d art
-3d artist
-3d artistic render
-3d artwork
-3d asset
-3d bee made of metal
-3d blender
-3d bold
-3d cartoon
-3d cg
-3d cgi
-3d cgi render
-3d character
-3d character art
-3d character concept
-3d character concept artwork
-3d character model
-3d character reference sheet
-3d cinematic lighting
-3d cinematic scene
-3d cinematic volume light
-3d cinematic volumetric light
-3d city
-3d clay figure
-3d clay render
-3d clay sculpture
-3d close - up
-3d collage
-3d computer render
-3d concept
-3d concept art
-3d concept render
-3d cyberpunk apocalyptic city
-3d daz occlusion
-3d demo reel avatar
-3d depth
-3d design
-3d digital art
-3d digital art 4k
-3d effect
-3d epic illustrations
-3d feeling
-3d female character model
-3d film
-3d final render
-3d finalrender
-3d fluid simulation render
-3d fractal
-3d fractals
-3d game
-3d game art
-3d geometric abstract art
-3d geometric shapes
-3d giant orchid flower
-3d goggles
-3d graffiti texture
-3d graphics
-3d gun model
-3d hammer modeling
-3d head of green hedgehog
-3d high definition
-3d houdini
-3d hyper realistic render
-3d icon for mobile game
-3d illustration
-3d illutration
-3d intricate shapes
-3d isometric
-3d landscape
-3d littlest pet shop
-3d littlest pet shop animal
-3d littlest pet shop cat
-3d littlest pet shop horse
-3d logo
-3d low poly render
-3d mario 64 castle aerial view
-3d marketplace
-3d masterpiece
-3d material
-3d matte illustration
-3d matte painting
-3d matte render
-3d maya
-3d maya render
-3d mesh
-3d minimalistic
-3d minimalistic art
-3d model
-3d model human
-3d model rigged
-3d model rip
-3d modeling
-3d modeling concept sheet
-3d modelling
-3d models
-3d neon art of a womens body
-3d nft
-3d object
-3d occlusion
-3d octane blender render
-3d octane cycle unreal engine 5
-3d octane remder
-3d octane render
-3d octane render 8k
-3d octane render conceptart
-3d oil painting
-3d painter photoshop
-3d perspective
-3d photorealistic
-3d photorealistic render
-3d platonic solids
-3d point perspective
-3d primitives
-3d print
-3d printed
-3d printed building
-3d printing
-3d quality
-3d ray traced crystals and gems
-3d ray tracing
-3d raytracing
-3d realism
-3d realistic
-3d render
-3d render 8k
-3d render beeple
-3d render even lit
-3d render in octane
-3d render octane
-3d render of a shaman
-3d render of intricate wasp
-3d render of jerma 985
-3d render official art
-3d render senior artist
-3d render trending on artstation
-3d rendered
-3d rendered in octane
-3d rendered model
-3d rendered steampunk
-3d rendering
-3d rim light
-3d scene
-3d scifi art
-3d sculpt
-3d sculpture
-3d sculpture 8k octane render
-3d sculpture octane render 8k
-3d sculpture of carving marble
-3d shaded
-3d shading
-3d shadowing
-3d shadowing effect
-3d shadows
-3d shapes
-3d society
-3d software
-3d still designs
-3d structure
-3d studio max
-3d stylize scene
-3d ue5
-3d unreal 5
-3d unreal engine
-3d unreal engine render
-3d vector
-3d video game
-3d videogame render
-3d vray render
-3d white shiny thick
-3d with depth of field
-3dcg
 3dcoat
-3dcoat h 648
 3dexcite
 3do magazine
 3ds max
@@ -1271,6 +1077,7 @@
 80s style
 80s style synthwave
 80s style tomasz alen kopera
+81 magazine
 815
 82 mm sigma art
 82 mm sigma art -
@@ -1479,6 +1286,7 @@
 99 designs
 99% artistic
 999 mm lens
+999mm macro lens
 9k
 :10 gas grenades
 :14 flcl + akira
@@ -2317,20 +2125,8 @@ air technology
 airbnb
 airborn studios
 airbrush
-airbrush art
-airbrush dark dress
-airbrush digital art
-airbrush digital oil painting
-airbrush fantasy 80s
-airbrush on canvas
-airbrush painted
-airbrush painting
-airbrush render
-airbrush style
-airbrushed
-airbrushed painting
 aircraft
-aircraft carrier scene
+aircraft carrier
 airforce gear
 airplane
 airplane cockpit
@@ -12359,292 +12155,10 @@ colonnade
 colonnade ornate headdress
 colony
 color
-color  sony a 7 r iv
-color - out - of - space
-color accents
-color aerial photo drone
-color airbrush
-color and contrast corrected
-color balance
-color balance harmony
-color bleed
-color bleeding
-color block
-color blocking
-color comic
-color comics style
-color contrast
-color corrected
-color correction
-color dispersion
-color displacement
-color ektachrome photograph
-color field painting
-color film
-color film camera
-color film grain
-color film photography
-color film still
-color gel
-color glow
-color grade
-color graded
-color gradient
-color gradients
-color grading
-color graflex macro photograph
-color grain 35mm
-color harmony
-color hues
-color image
-color kodak
-color kodak film stock
-color kodak stock
-color kodakcrhome 64
-color leaves
-color light
-color light waves
-color limit
-color manga panel
-color negative
-color out of space
-color page
-color painting
-color palette
-color pencil
-color pencil drawing
-color pencil sketch
-color photo
-color photo of josip broz tito
-color photograph
-color photography
-color picture
-color pigments spread out in air
-color polaroid photo
-color portrait
-color red
-color restoration
-color rich
-color scheme
-color slide
-color smoke
-color spectrum refraction
-color splash
-color splashes
-color splotches
-color studio portrait
-color tearing
-color theory
-color triads
-color vector
-color vhs picture quality
-color vibe
-color video footage
-color vintage
 colorado
 colored
-colored accurately
-colored background
-colored daguerreotype
-colored dots
-colored drawing
-colored feathers
-colored flowers
-colored fog
-colored gel lighting
-colored gels
-colored gems
-colored hair
-colored illustration
-colored illustration for tattoo
-colored in
-colored ink
-colored ink drawing
-colored layers
-colored light
-colored lighting
-colored lights
-colored lineart
-colored manga
-colored manga panel
-colored marker
-colored market stand
-colored paint
-colored pen
-colored pencil
-colored pencil art
-colored pencil art on paper
-colored pencil drawing
-colored pencil illustration
-colored pencil on paper
-colored pencil sketch
-colored pencils
-colored photo
-colored photography
-colored projections
-colored screentone
-colored sketch
-colored sketch anime manga panel
-colored smoke
-colored smoke clouds
-colored spotlights
-colored spots
-colored vibrantly
-colored woodblock print
-colored woodcut
-colored zbrush render
 colorful
-colorful - patterns
-colorful 8k
-colorful accents
-colorful acrylic
-colorful alien flora
-colorful and bright
-colorful and dark
-colorful and grayish palette
-colorful and psychedelic
-colorful architectural drawing
-colorful architecture
-colorful art
-colorful aura
-colorful backdrop
-colorful background
-colorful bird with a long
-colorful birds
-colorful buildings
-colorful caparisons
-colorful character faces
-colorful chromatic abberation
-colorful city
-colorful clothes
-colorful clothing
-colorful clouds
-colorful coctail
-colorful comics style
-colorful contrast
-colorful copper brass accents
-colorful coral
-colorful crowd
-colorful crystals
-colorful detailed projections
-colorful details
-colorful digital art
-colorful digital painting
-colorful dots
-colorful drawing
-colorful dream
-colorful dress
-colorful dystopian futurism
-colorful eyes
-colorful feathers
-colorful fish
-colorful flat design
-colorful flat surreal
-colorful flat surreal design
-colorful flat surreal ethereal
-colorful flowers
-colorful galaxy theme colors
-colorful gems
-colorful geometric pattern
-colorful glass wall
-colorful glow
-colorful hair
-colorful haze
-colorful hd picure
-colorful high contrast
-colorful high contrast hd
-colorful hilt
-colorful hyperbolic background
-colorful hyperrealism
-colorful ideas
-colorful illustration
-colorful image
-colorful impasto brush strokes
-colorful ink
-colorful intricate masterpiece
-colorful kids book illustration
-colorful kitsune city
-colorful landscape painting
-colorful lanterns
-colorful lens flares
-colorful lenses
-colorful light
-colorful lighting
-colorful lights
-colorful magic
-colorful magic effects
-colorful mandala
-colorful medical equipment
-colorful melting human head
-colorful modern
-colorful mold
-colorful mood
-colorful mosaic
-colorful muscular robot
-colorful mushrooms
-colorful nebula
-colorful nebula background
-colorful neon lighting
-colorful neon lights
-colorful neon signs
-colorful octane render
-colorful oil painting
-colorful paint
-colorful painting
-colorful palette
-colorful palette illustration
-colorful paper lanterns
-colorful pastel
-colorful patterns
-colorful photo
-colorful photograph
-colorful picture
-colorful pigtail
-colorful plastic
-colorful plumage
-colorful rave makeup
-colorful ravine
-colorful redshift render
-colorful reflective eyes
-colorful refracted sparkles
-colorful refractive adornments
-colorful retrofutur
-colorful rich fantasy clothing
-colorful scene
-colorful signs
-colorful skies
-colorful sky
-colorful smoke
-colorful smoke in the background
-colorful splatters
-colorful stars
-colorful static
-colorful striped pavillions
-colorful sunset
-colorful swirls of paint
-colorful swirly magic ripples
-colorful swirly magical ripples
-colorful swirly ripples
-colorful torn nebulas
-colorful trees
-colorful tropical plants
-colorful twirling smoke trails
-colorful umbrella
-colorful vapor
-colorful vines
-colorful vivid octane render
-colorful warcraft architecture
-colorful watercolor
-colorful wildflowers
-colorful wires
-colorfulcharacter design
-colorfull
-colorfull digital fantasy art
-colorfull illustration
-colorfull painting
 colorfully
-colorfully background
-colorfully ominous background
 colorgrading
 coloring book
 coloring book page
@@ -12653,17 +12167,8 @@ coloring page
 coloring pages
 colorised
 colorized
-colorized neon lights
-colorized pencil
-colorized pencil sketch
-colorized photo
-colorized photograph
-colorized photon
 colorless
-colorless and silent
 colors
-colors are strong but calm
-colors of mark rothko
 colors orange
 colors red
 colors reflecting on lake
@@ -12698,47 +12203,8 @@ colour print
 colour shift
 colour splash
 coloured
-coloured comic
-coloured film photography
-coloured in blueberra and orange
-coloured in orange fire
-coloured in teal and orange
-coloured lineart
-coloured lithograph engraving
-coloured marker
-coloured polaroid photograph
-coloured with lots of colour
-coloured woodcut
 colourful
-colourful 3d crystals
-colourful 3d crystals and gems
-colourful 4k hd
-colourful apples
-colourful artwork
-colourful background
-colourful biomorphic temple
-colourful close up shot
-colourful clothes
-colourful digital art
-colourful drawing
-colourful explosion
-colourful flat surreal design
-colourful flowers
-colourful flowers bouquet
-colourful hand drawing
-colourful light
-colourful lighting
-colourful long hair
-colourful movie art
-colourful pastel
-colourful roses and gladioli
-colourful sky
-colourful slime
-colourfull
-colouring - in sheet
-colouring page
-colouring pages
-colourised
+colouring
 colourized
 colours
 colours of the sunset
@@ -12746,10 +12212,9 @@ columbo
 columns
 colurful
 combat
-combat and adventure photography
 combat armor
 combat boots
-combat drone strike war footage
+combat drone
 combat gear
 combat helmet
 combat photography
@@ -35596,7 +35061,7 @@ lol
 lol style
 lola dupre
 lolish
-lolita fashion
+lolita
 lolita style
 lollipop
 lollipops
@@ -37591,6 +37056,7 @@ mark kostabi
 mark lee
 mark miner
 mark riddick
+mark rothko
 mark ryden
 mark ryden and lisa frank
 mark ryden in the style of
@@ -41934,7 +41400,6 @@ octane 4k render
 octane 8
 octane 8k
 octane 8k render
-octane cgsociety
 octane cinema 4 d render
 octane cinema 4d render
 octane engine
@@ -51070,7 +50535,6 @@ second world war
 secondhand
 secondlife
 secret
-secret 
 secret agent
 secret cypher
 secret entrance
@@ -55606,6 +55070,7 @@ strong body
 strong bokeh
 strong brush stroke
 strong brushwork
+strong but calm
 strong chest
 strong chin
 strong cinematic light
