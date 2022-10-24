@@ -2,7 +2,7 @@
 
 # This file is part of stable-diffusion-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -31,7 +31,7 @@ LSDR_CONFIG="https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
 LSDR_MODEL="https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
 REALESRGAN_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
 REALESRGAN_ANIME_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
-SD_CONCEPT_REPO="https://github.com/sd-webui/sd-concepts-library/archive/refs/heads/main.zip"
+SD_CONCEPT_REPO="https://github.com/Sygil-Dev/sd-concepts-library/archive/refs/heads/main.zip"
 
 
 if [[ -f $ENV_MODIFED_FILE ]]; then 
@@ -153,7 +153,7 @@ launch_webui () {
     printf "Which Version of the WebUI Interface do you wish to use?\n"
     select yn in "Streamlit" "Gradio"; do
         case $yn in
-            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
+            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py --theme.base dark --server.address localhost; break;;
             Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py "$@"; break;;
         esac
     done
