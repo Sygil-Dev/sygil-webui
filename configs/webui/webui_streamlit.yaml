@@ -51,7 +51,7 @@ general:
     save_format: "png"
     skip_grid: False
     skip_save: False
-    grid_format: "jpg:95"
+    grid_quality: 95
     n_rows: -1
     no_verify_input: False
     no_half: False

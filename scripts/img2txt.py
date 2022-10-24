@@ -92,56 +92,6 @@ def load_blip_model():
 
     #return server_state["blip_model"]
 
-
-#
-def artstation_links():
-    """Find and save every artstation link for the first 500 pages of the explore page."""
-    # collecting links to the list()
-    links = []
-
-    with open('data/img2txt/artstation_links.txt', 'w') as f:
-        for page_num in range(1,500):
-            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
-            # open json response
-            data = json.loads(response)
-
-            # loopinh through json response
-            for result in data['data']:
-                # still looping and grabbing url's
-                url = result['url']
-                links.append(url)
-                # writing each link on the new line (\n)
-                f.write(f'{url}\n')
-    return links
-#
-def artstation_users():
-    """Get all the usernames and full name of the users on the first 500 pages of artstation explore page."""
-    # collect username and full name
-    artists = []
-
-    # opening a .txt file
-    with open('data/img2txt/artstation_artists.txt', 'w') as f:
-        for page_num in range(1,500):
-            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
-            # open json response
-            data = json.loads(response)
-
-
-            # loopinh through json response
-            for item in data['data']:
-                #print (item['user'])
-                username = item['user']['username']
-                full_name = item['user']['full_name']
-
-                # still looping and grabbing url's
-                artists.append(username)
-                artists.append(full_name)
-                # writing each link on the new line (\n)
-                f.write(f'{slugify(username)}\n')
-                f.write(f'{slugify(full_name)}\n')
-
-    return artists
-
 def generate_caption(pil_image):
 
     load_blip_model()
@@ -185,6 +135,10 @@ def clear_cuda():
 
 
 def batch_rank(model, image_features, text_array, batch_size=st.session_state["defaults"].img2txt.batch_size):
+    #logger.info("Ranking")
+    #st.session_state["log"].append("Ranking")
+    #st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
+
     batch_size = min(batch_size, len(text_array))
     batch_count = int(len(text_array) / batch_size)
     batches = [text_array[i*batch_size:(i+1)*batch_size] for i in range(batch_count)]
@@ -216,7 +170,7 @@ def interrogate(image, models):
         return
 
     table = []
-    bests = [[('', 0)]]*5
+    bests = [[('', 0)]]*7
 
     logger.info("Ranking Text")
 
@@ -269,9 +223,13 @@ def interrogate(image, models):
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["trending_list"]))
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["movements"]))
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["flavors"]))
+            #ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["domains"]))
+            #ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["subreddits"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["techniques"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["tags"]))
+
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["genres"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["styles"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["techniques"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["subjects"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["colors"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["moods"]))
@@ -300,7 +258,7 @@ def interrogate(image, models):
 
     # for i in range(len(st.session_state["uploaded_image"])):
     st.session_state["prediction_table"][st.session_state["processed_image_count"]].dataframe(pd.DataFrame(
-        table, columns=["Model", "Medium", "Artist", "Trending", "Movement", "Flavors"]))
+        table, columns=["Model", "Medium", "Artist", "Trending", "Movement", "Flavors", "Techniques", "Tags"]))
 
     flaves = ', '.join([f"{x[0]}" for x in bests[4]])
     medium = bests[0][0][0]
@@ -329,9 +287,12 @@ def img2txt():
     server_state["mediums"] = load_list(os.path.join(data_path, 'img2txt', 'mediums.txt'))
     server_state["movements"] = load_list(os.path.join(data_path, 'img2txt', 'movements.txt'))
     server_state["sites"] = load_list(os.path.join(data_path, 'img2txt', 'sites.txt'))
-    # server_state["genres"] = load_list(os.path.join(data_path, 'img2txt', 'genres.txt'))
+    #server_state["domains"] = load_list(os.path.join(data_path, 'img2txt', 'domains.txt'))
+    #server_state["subreddits"] = load_list(os.path.join(data_path, 'img2txt', 'subreddits.txt'))
+    server_state["techniques"] = load_list(os.path.join(data_path, 'img2txt', 'techniques.txt'))
+    server_state["tags"] = load_list(os.path.join(data_path, 'img2txt', 'tags.txt'))
+    #server_state["genres"] = load_list(os.path.join(data_path, 'img2txt', 'genres.txt'))
     # server_state["styles"] = load_list(os.path.join(data_path, 'img2txt', 'styles.txt'))
-    # server_state["techniques"] = load_list(os.path.join(data_path, 'img2txt', 'techniques.txt'))
     # server_state["subjects"] = load_list(os.path.join(data_path, 'img2txt', 'subjects.txt'))
 
     server_state["trending_list"] = [site for site in server_state["sites"]]
@@ -402,7 +363,7 @@ def layout():
             #url = st.text_area("Input Text","")
             #url = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
             #st.subheader("Input Image")
-            st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+            st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg', 'jfif'], accept_multiple_files=True)
 
             with st.expander("CLIP models", expanded=True):
                 st.session_state["ViT-L/14"] = st.checkbox("ViT-L/14", value=True, help="ViT-L/14 model.")
