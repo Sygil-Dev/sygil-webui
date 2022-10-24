@@ -246,10 +246,15 @@ def interrogate(image, models):
                 if confidence_sum > sum(bests[i][t][1] for t in range(len(bests[i]))):
                     bests[i] = ranks[i]
 
-            row = [model_name]
-            for r in ranks:
-                row.append(', '.join([f"{x[0]} ({x[1]:0.1f}%)" for x in r]))
+            for best in bests:
+                best.sort(key=lambda x: x[1], reverse=True)
+                # prune to 3 
+                best = best[:3]
 
+            row = [model_name]
+            for rank in ranks:
+                rank.sort(key=lambda x: x[1], reverse=True)
+                row.append(f'{rank[0][0]} {rank[0][1]:.2f}%')
             table.append(row)
 
             if st.session_state["defaults"].general.optimized:
@@ -260,15 +265,23 @@ def interrogate(image, models):
     st.session_state["prediction_table"][st.session_state["processed_image_count"]].dataframe(pd.DataFrame(
         table, columns=["Model", "Medium", "Artist", "Trending", "Movement", "Flavors", "Techniques", "Tags"]))
 
-    flaves = ', '.join([f"{x[0]}" for x in bests[4]])
     medium = bests[0][0][0]
+    artist = bests[1][0][0]
+    trending = bests[2][0][0]
+    movement = bests[3][0][0]
+    flavors = bests[4][0][0]
+    #domains = bests[5][0][0]
+    #subreddits = bests[6][0][0]
+    techniques = bests[5][0][0]
+    tags = bests[6][0][0]
+
 
     if caption.startswith(medium):
         st.session_state["text_result"][st.session_state["processed_image_count"]].code(
-            f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
+            f"\n\n{caption} {artist}, {trending}, {movement}, {techniques}, {flavors}, {tags}", language="")
     else:
         st.session_state["text_result"][st.session_state["processed_image_count"]].code(
-            f"\n\n{caption}, {medium} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
+            f"\n\n{caption}, {medium} {artist}, {trending}, {movement}, {techniques}, {flavors}, {tags}", language="")
 
     #
     logger.info("Finished Interrogating.")
