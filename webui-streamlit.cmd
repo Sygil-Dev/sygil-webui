@@ -1,7 +1,7 @@
 @echo off
-:: This file is part of stable-diffusion-webui (https://github.com/Sygil-Dev/sygil-webui/).
+:: This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 :: 
-:: Copyright 2022 sd-webui team.
+:: Copyright 2022 Sygil-Dev team.
 :: This program is free software: you can redistribute it and/or modify
 :: it under the terms of the GNU Affero General Public License as published by
 :: the Free Software Foundation, either version 3 of the License, or
@@ -99,7 +99,7 @@ call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
 ) ELSE (
   echo Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
   pause
