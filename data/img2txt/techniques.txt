@@ -3,7 +3,8 @@ Diagrammatic
 Geometric
 Architectural
 Analytic
-3D / Anamorphic
+3D
+Anamorphic
 Pencil
 Color Pencil
 Charcoal
@@ -38,7 +39,6 @@ Photorealism
 Photo realistic
 Doodling
 Wordtoons
-Tattoo
 Cartoon
 Anime
 Manga
@@ -48,21 +48,16 @@ Calligraphy
 Mosaic
 Figurative
 Anatomy
-Caricature
 Life
 Still life
 Portrait
 Landscape
 Perspective
-Cartoon
 Funny
 Surreal
 Wall Mural
 Street
-3D
-Anamorphic
 Realistic
 Photo Realistic
 Hyper Realistic
 Doodle
-Scribble
