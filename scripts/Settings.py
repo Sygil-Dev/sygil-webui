@@ -181,15 +181,17 @@ def layout():
 
                 st.session_state["defaults"].general.save_metadata = st.checkbox("Save Metadata", value=st.session_state['defaults'].general.save_metadata,
                                                                                  help="Save metadata on the output image. Default: True")
-                save_format_list = ["png"]
+                save_format_list = ["png","jpg", "jpeg","webp"]
                 st.session_state["defaults"].general.save_format = st.selectbox("Save Format", save_format_list, index=save_format_list.index(st.session_state['defaults'].general.save_format),
                                                                                 help="Format that will be used whens saving the output images. Default: 'png'")
 
                 st.session_state["defaults"].general.skip_grid = st.checkbox("Skip Grid", value=st.session_state['defaults'].general.skip_grid,
                                                                              help="Skip saving the grid output image. Default: False")
                 if not st.session_state["defaults"].general.skip_grid:
-                    st.session_state["defaults"].general.grid_format = st.text_input("Grid Format", value=st.session_state['defaults'].general.grid_format,
-                                                                                     help="Format for saving the grid output image. Default: 'jpg:95'")
+
+
+                    st.session_state["defaults"].general.grid_quality = st.number_input("Grid Quality", value=st.session_state['defaults'].general.grid_quality,
+                                                                                        help="Format for saving the grid output image. Default: 95")
 
                 st.session_state["defaults"].general.skip_save = st.checkbox("Skip Save", value=st.session_state['defaults'].general.skip_save,
                                                                              help="Skip saving the output image. Default: False")

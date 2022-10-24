@@ -1,4 +1,4 @@
-# This file is part of stable-diffusion-webui (https://github.com/Sygil-Dev/sygil-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
 # Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
@@ -171,38 +171,38 @@ load_configs()
 #else:
     #app = None
 
-# should and will be moved to a settings menu in the UI at some point
-grid_format = [s.lower() for s in st.session_state["defaults"].general.grid_format.split(':')]
+#
+grid_format = st.session_state["defaults"].general.save_format
 grid_lossless = False
-grid_quality = 100
-if grid_format[0] == 'png':
+grid_quality = st.session_state["defaults"].general.grid_quality
+if grid_format == 'png':
     grid_ext = 'png'
     grid_format = 'png'
-elif grid_format[0] in ['jpg', 'jpeg']:
-    grid_quality = int(grid_format[1]) if len(grid_format) > 1 else 100
+elif grid_format in ['jpg', 'jpeg']:
+    grid_quality = int(grid_format) if len(grid_format) > 1 else 100
     grid_ext = 'jpg'
     grid_format = 'jpeg'
 elif grid_format[0] == 'webp':
-    grid_quality = int(grid_format[1]) if len(grid_format) > 1 else 100
+    grid_quality = int(grid_format) if len(grid_format) > 1 else 100
     grid_ext = 'webp'
     grid_format = 'webp'
     if grid_quality < 0: # e.g. webp:-100 for lossless mode
         grid_lossless = True
         grid_quality = abs(grid_quality)
 
-# should and will be moved to a settings menu in the UI at some point
-save_format = [s.lower() for s in st.session_state["defaults"].general.save_format.split(':')]
+#
+save_format = st.session_state["defaults"].general.save_format
 save_lossless = False
 save_quality = 100
-if save_format[0] == 'png':
+if save_format == 'png':
     save_ext = 'png'
     save_format = 'png'
-elif save_format[0] in ['jpg', 'jpeg']:
-    save_quality = int(save_format[1]) if len(save_format) > 1 else 100
+elif save_format in ['jpg', 'jpeg']:
+    save_quality = int(save_format) if len(save_format) > 1 else 100
     save_ext = 'jpg'
     save_format = 'jpeg'
-elif save_format[0] == 'webp':
-    save_quality = int(save_format[1]) if len(save_format) > 1 else 100
+elif save_format == 'webp':
+    save_quality = int(save_format) if len(save_format) > 1 else 100
     save_ext = 'webp'
     save_format = 'webp'
     if save_quality < 0: # e.g. webp:-100 for lossless mode
@@ -2327,7 +2327,7 @@ def process_images(
                     full_path = os.path.join(os.getcwd(), sample_path, sanitized_prompt)
 
 
-                    sanitized_prompt = sanitized_prompt[:200-len(full_path)]
+                    sanitized_prompt = sanitized_prompt[:120-len(full_path)]
                     sample_path_i = os.path.join(sample_path, sanitized_prompt)
 
                     #print(f"output folder length: {len(os.path.join(os.getcwd(), sample_path_i))}")
@@ -2340,7 +2340,7 @@ def process_images(
                     full_path = os.path.join(os.getcwd(), sample_path)
                     sample_path_i = sample_path
                     base_count = get_next_sequence_number(sample_path_i)
-                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:200-len(full_path)] #same as before
+                    filename = f"{base_count:05}-{steps}_{sampler_name}_{seeds[i]}_{sanitized_prompt}"[:120-len(full_path)] #same as before
 
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 x_sample = x_sample.astype(np.uint8)
@@ -2593,7 +2593,7 @@ def process_images(
                 output_images.insert(0, grid)
 
             grid_count = get_next_sequence_number(outpath, 'grid-')
-            grid_file = f"grid-{grid_count:05}-{seed}_{slugify(prompts[i].replace(' ', '_')[:200-len(full_path)])}.{grid_ext}"
+            grid_file = f"grid-{grid_count:05}-{seed}_{slugify(prompts[i].replace(' ', '_')[:120-len(full_path)])}.{grid_ext}"
             grid.save(os.path.join(outpath, grid_file), grid_format, quality=grid_quality, lossless=grid_lossless, optimize=True)
 
         toc = time.time()
