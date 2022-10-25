@@ -37,8 +37,6 @@ then
 fi
 
 cd $SCRIPT_DIR
-launch_command="streamlit run ${SCRIPT_DIR}/scripts/webui_streamlit.py"
+launch_command="python ${SCRIPT_DIR}/scripts/webui.py"
 
 $launch_command
-
-sleep infinity
