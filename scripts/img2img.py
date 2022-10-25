@@ -589,7 +589,7 @@ def layout():
 			st.form_submit_button("Refresh")
 
 			uploaded_images = st.file_uploader(
-						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
+						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an image which will be used for the image to image generation.",
 					)
 			if uploaded_images:
@@ -600,7 +600,7 @@ def layout():
 			mask_holder = st.empty()
 
 			uploaded_masks = st.file_uploader(
-						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
+						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an mask image which will be used for masking the image to image generation.",
 					)
 			if uploaded_masks:
