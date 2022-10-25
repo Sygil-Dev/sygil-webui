@@ -258,6 +258,17 @@ def set_page_title(title):
                             </script>" />
                             """)
 
+
+def make_grid(n_items=5, n_cols=5):
+    n_rows = 1 + n_items // int(n_cols)
+
+    rows = [st.container() for _ in range(n_rows)]
+
+    cols_per_row = [r.columns(n_cols) for r in rows]
+    cols = [column for row in cols_per_row for column in row]
+
+    return cols
+
 def human_readable_size(size, decimal_places=3):
     """Return a human readable size from bytes."""
     for unit in ['B','KB','MB','GB','TB']:
@@ -474,7 +485,6 @@ def load_sd_from_config(ckpt, verbose=False):
         logger.info(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
     return sd
-
 
 class MemUsageMonitor(threading.Thread):
     stop_flag = False
