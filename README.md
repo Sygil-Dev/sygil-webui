@@ -15,7 +15,7 @@ Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions]
 
 ## Documentation
 
-[Documentation is located here](https://Sygil-Dev.github.io/stable-diffusion-webui/)
+[Documentation is located here](https://sygil-dev.github.io/sygil-webui/)
 
 ## Want to contribute?
 
