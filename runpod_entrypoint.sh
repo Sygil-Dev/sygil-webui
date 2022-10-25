@@ -37,6 +37,6 @@ then
 fi
 
 cd $SCRIPT_DIR
-launch_command="python ${SCRIPT_DIR}/scripts/webui.py"
+launch_command="python ${SCRIPT_DIR}/scripts/webui.py --no-job-manager"
 
 $launch_command
