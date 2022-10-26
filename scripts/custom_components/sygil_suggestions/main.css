@@ -1,0 +1,81 @@
+*
+{
+	padding: 0px;
+	margin: 0px;
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+}
+
+body
+{
+	width: 100%;
+	height: 100%;
+	padding-left: calc( 1em - 1px );
+	padding-top: calc( 1em - 1px );
+	overflow: hidden;
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: rgb(10, 13, 19); 
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #6c6e72; 
+  border-radius: 3px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #6c6e72; 
+}
+
+#scroll_area
+{
+	display: flex;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+#suggestion_area
+{
+	overflow-x: hidden;
+	width: calc( 100% - 2em - 2px );
+	margin-bottom: calc( 1em + 13px );
+	min-height: 50px;
+}
+
+span
+{
+	border: 1px solid rgba(250, 250, 250, 0.2);
+	border-radius: 0.25rem;
+	font-size: 1rem;
+	font-family: "Source Sans Pro", sans-serif;
+	
+	background-color: rgb(38, 39, 48);
+	color: white;
+	display: inline-block;
+	padding: 0.5rem;
+	margin-right: 3px;
+	cursor: pointer;
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+}
+
+span:hover
+{
+	color: rgb(255,75,75);
+	border-color: rgb(255,75,75);
+}
