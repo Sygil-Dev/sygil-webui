@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -43,7 +43,7 @@ from io import BytesIO
 import imageio
 from slugify import slugify
 
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionPipeline, DiffusionPipeline
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
      PNDMScheduler
 
@@ -76,13 +76,13 @@ class plugin_info():
 
 @torch.no_grad()
 def diffuse(
-    pipe,
-    cond_embeddings, # text conditioning, should be (1, 77, 768)
-    cond_latents,    # image conditioning, should be (1, 4, 64, 64)
-    num_inference_steps,
-    cfg_scale,
-    eta,
-    ):
+        pipe,
+        cond_embeddings, # text conditioning, should be (1, 77, 768)
+        cond_latents,    # image conditioning, should be (1, 4, 64, 64)
+        num_inference_steps,
+        cfg_scale,
+        eta,
+        ):
 
 	torch_device = cond_latents.get_device()
 
@@ -159,7 +159,7 @@ def diffuse(
 			if st.session_state["update_preview"]:
 				step_counter += 1
 
-				if st.session_state["update_preview_frequency"] == step_counter or step_counter == st.session_state.sampling_steps:
+				if step_counter == st.session_state["update_preview_frequency"]:
 					if st.session_state.dynamic_preview_frequency:
 						st.session_state["current_chunk_speed"],
 						st.session_state["previous_chunk_speed_list"],
@@ -191,6 +191,10 @@ def diffuse(
 				speed = "it/s"
 				duration = 1 / duration
 
+			#
+			total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
+			total_steps = st.session_state.sampling_steps + st.session_state.num_inference_steps
+
 			if i > st.session_state.sampling_steps:
 				inference_counter += 1
 				inference_percent = int(100 * float(inference_counter + 1 if inference_counter < num_inference_steps else num_inference_steps)/float(num_inference_steps))
@@ -198,20 +202,22 @@ def diffuse(
 			else:
 				inference_progress = ""
 
-			percent = int(100 * float(i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
-			frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames)/float(
-			    st.session_state.max_frames))
+			total_percent = int(100 * float(i+1 if i+1 < (num_inference_steps + st.session_state.sampling_steps)
+			                          else (num_inference_steps + st.session_state.sampling_steps))/float((num_inference_steps + st.session_state.sampling_steps)))
+
+			percent = int(100 * float(i+1 if i+1 < num_inference_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
+			frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < total_frames else total_frames)/float(total_frames))
 
 			if "progress_bar_text" in st.session_state:
 				st.session_state["progress_bar_text"].text(
 				    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
 				    f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
-				        f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < st.session_state.max_frames else st.session_state.max_frames}/{st.session_state.max_frames} "
+				        f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < total_frames else total_frames}/{total_frames} "
 				        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
 				)
 
 			if "progress_bar" in st.session_state:
-				st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+				st.session_state["progress_bar"].progress(total_percent if total_percent < 100 else 100)
 
 	except KeyError:
 		raise StopException
@@ -255,20 +261,25 @@ def load_diffusers_model(weights_path,torch_device):
 					model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-5")
 
 				if not os.path.exists(model_path + "/model_index.json"):
-					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-							weights_path,
-							use_local_file=True,
-							use_auth_token=st.session_state["defaults"].general.huggingface_token,
-							torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+					server_state["pipe"] = DiffusionPipeline.from_pretrained(
+					        weights_path,
+					        use_local_file=True,
+					        use_auth_token=st.session_state["defaults"].general.huggingface_token,
+					        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+					        revision="fp16" if not st.session_state['defaults'].general.no_half else None,
+					        safety_checker=None,  # Very important for videos...lots of false positives while interpolating
+					        custom_pipeline="interpolate_stable_diffusion",
 						)
-					StableDiffusionPipeline.save_pretrained(server_state["pipe"], model_path)
+
+					DiffusionPipeline.save_pretrained(server_state["pipe"], model_path)
 				else:
-					server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-							model_path,
-							use_local_file=True,
-							torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-							revision="fp16" if not st.session_state['defaults'].general.no_half else None
+					server_state["pipe"] = DiffusionPipeline.from_pretrained(
+					        model_path,
+					        use_local_file=True,
+					        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+					        revision="fp16" if not st.session_state['defaults'].general.no_half else None,
+					        safety_checker=None,  # Very important for videos...lots of false positives while interpolating
+					        custom_pipeline="interpolate_stable_diffusion",
 						)
 
 				server_state["pipe"].unet.to(torch_device)
@@ -322,7 +333,7 @@ def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, o
 		#output = io.BytesIO()
 		#writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid"), im, extension=".mp4", fps=30)
 		#try:
-		video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}.mp4")
+		video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}{datetime.now().strftime('%Y%m-%d%H-%M%S-') + str(uuid4())[:8]}.mp4")
 		writer = imageio.get_writer(video_path, fps=fps)
 		for frame in frames:
 			writer.append_data(frame)
@@ -334,42 +345,42 @@ def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, o
 	return video_path
 #
 def txt2vid(
-	# --------------------------------------
-    # args you probably want to change
+        # --------------------------------------
+        # args you probably want to change
 	prompts = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
 	gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
 	#name:str = 'test', # name of this project, for the output directory
 	#rootdir:str = st.session_state['defaults'].general.outdir,
 	num_steps:int = 200, # number of steps between each pair of sampled points
-    max_frames:int = 10000, # number of frames to write and then exit the script
-    num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
-    cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
-    save_video = True,
-    save_video_on_stop = False,
-    outdir='outputs',
-    do_loop = False,
-    use_lerp_for_text = False,
-    seeds = None,
-    quality:int = 100, # for jpeg compression of the output images
-    eta:float = 0.0,
-    width:int = 256,
-    height:int = 256,
-    weights_path = "runwayml/stable-diffusion-v1-5",
-    scheduler="klms",  # choices: default, ddim, klms
-    disable_tqdm = False,
-    #-----------------------------------------------
-    beta_start = 0.0001,
-    beta_end = 0.00012,
-    beta_schedule = "scaled_linear",
-    starting_image=None
-    ):
+        max_duration_in_seconds:int = 30, # number of frames to write and then exit the script
+        num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
+        cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
+        save_video = True,
+        save_video_on_stop = False,
+        outdir='outputs',
+        do_loop = False,
+        use_lerp_for_text = False,
+        seeds = None,
+        quality:int = 100, # for jpeg compression of the output images
+        eta:float = 0.0,
+        width:int = 256,
+        height:int = 256,
+        weights_path = "runwayml/stable-diffusion-v1-5",
+        scheduler="klms",  # choices: default, ddim, klms
+        disable_tqdm = False,
+        #-----------------------------------------------
+        beta_start = 0.0001,
+        beta_end = 0.00012,
+        beta_schedule = "scaled_linear",
+        starting_image=None
+        ):
 	"""
 	prompt = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
 	gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
 	#name:str = 'test', # name of this project, for the output directory
 	#rootdir:str = st.session_state['defaults'].general.outdir,
 	num_steps:int = 200, # number of steps between each pair of sampled points
-	max_frames:int = 10000, # number of frames to write and then exit the script
+	max_duration_in_seconds:int = 10000, # number of frames to write and then exit the script
 	num_inference_steps:int = 50, # more (e.g. 100, 200 etc) can create slightly better images
 	cfg_scale:float = 5.0, # can depend on the prompt. usually somewhere between 3-10 is good
 	do_loop = False,
@@ -394,7 +405,7 @@ def txt2vid(
 
 	# We add an extra frame because most
 	# of the time the first frame is just the noise.
-	#max_frames +=1
+	#max_duration_in_seconds +=1
 
 	assert torch.cuda.is_available()
 	assert height % 8 == 0 and width % 8 == 0
@@ -420,7 +431,7 @@ def txt2vid(
 			        prompts = prompts,
 			        gpu = gpu,
 			        num_steps = num_steps,
-			        max_frames = max_frames,
+			        max_duration_in_seconds = max_duration_in_seconds,
 			        num_inference_steps = num_inference_steps,
 			        cfg_scale = cfg_scale,
 			        do_loop = do_loop,
@@ -530,19 +541,19 @@ def txt2vid(
 	st.session_state["total_frames_avg_speed"] = []
 
 	try:
-		while second_count < max_frames:
+		while second_count < max_duration_in_seconds:
 			st.session_state["frame_duration"] = 0
 			st.session_state["frame_speed"] = 0
 			st.session_state["current_frame"] = frame_index
 
-			#print(f"Second: {second_count+1}/{max_frames}")
+			#print(f"Second: {second_count+1}/{max_duration_in_seconds}")
 
 			# sample the destination
 			init2 = torch.randn((1, server_state["pipe"].unet.in_channels, height // 8, width // 8), device=torch_device)
 
 			for i, t in enumerate(np.linspace(0, 1, num_steps)):
 				start = timeit.default_timer()
-				logger.info(f"COUNT: {frame_index+1}/{max_frames}")
+				logger.info(f"COUNT: {frame_index+1}/{num_steps}")
 
 				if use_lerp_for_text:
 					init = torch.lerp(init1, init2, float(t))
@@ -629,9 +640,9 @@ def txt2vid(
 
 	info = f"""
 		{prompts}
-		Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Frames: {max_frames}""".strip()
+		Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Duration In Seconds: {max_duration_in_seconds}""".strip()
 	stats = f'''
-		Took { round(time_diff, 2) }s total ({ round(time_diff/(max_frames),2) }s per image)
+		Took { round(time_diff, 2) }s total ({ round(time_diff/(max_duration_in_seconds),2) }s per image)
 		Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
 
 	return video_path, seeds, info, stats
@@ -676,7 +687,8 @@ def layout():
 					#It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
 					#Default: 1")
 
-			st.session_state["max_frames"] = st.number_input("Max Frames:", value=st.session_state['defaults'].txt2vid.max_frames, help="Specify the max number of frames you want to generate.")
+			st.session_state["max_duration_in_seconds"] = st.number_input("Max Duration In Seconds:", value=st.session_state['defaults'].txt2vid.max_duration_in_seconds,
+			                                                 help="Specify the max duration in seconds you want your video to be.")
 
 			with st.expander("Preview Settings"):
 				#st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
@@ -686,7 +698,7 @@ def layout():
 
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
-				                                                               min_value=1,
+				                                                               min_value=0,
 				                                                               value=st.session_state['defaults'].txt2vid.update_preview_frequency,
 				                                                               help="Frequency in steps at which the the preview image is updated. By default the frequency \
 				                                                               is set to 1 step.")
@@ -797,7 +809,9 @@ def layout():
 				st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
 					                                               help="Save a file next to the image with informartion about the generation.")
 
-				#st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop, help="Do loop")
+				st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
+				                                          help="Loop the prompt making two prompts from a single one.")
+
 				st.session_state["use_lerp_for_text"] = st.checkbox("Use Lerp Instead of Slerp", value=st.session_state['defaults'].txt2vid.use_lerp_for_text,
 				                                                    help="Uses torch.lerp() instead of slerp. When interpolating between related prompts. \
 				                                                    e.g. 'a lion in a grassy meadow' -> 'a bear in a grassy meadow' tends to keep the meadow \
@@ -938,11 +952,11 @@ def layout():
 		#try:
 		# run video generation
 		video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
-	                                       num_steps=st.session_state.sampling_steps, max_frames=st.session_state.max_frames,
+		                                   num_steps=st.session_state.sampling_steps, max_duration_in_seconds=st.session_state.max_duration_in_seconds,
 		                                   num_inference_steps=st.session_state.num_inference_steps,
 		                                   cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
 		                                   outdir=st.session_state["defaults"].general.outdir,
-		                                   #do_loop=st.session_state["do_loop"],
+		                                   do_loop=st.session_state["do_loop"],
 		                                   use_lerp_for_text=st.session_state["use_lerp_for_text"],
 		                                   seeds=seed, quality=100, eta=0.0, width=width,
 		                                   height=height, weights_path=custom_model, scheduler=scheduler_name,

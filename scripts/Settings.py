@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -159,7 +159,7 @@ def layout():
                 # Default: True")
                 st.session_state["defaults"].general.update_preview = True
                 st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].general.update_preview_frequency,
                                                                                                 help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
                                                                                                 negative effect updating the preview image has on performance. Default: 10")
@@ -181,15 +181,17 @@ def layout():
 
                 st.session_state["defaults"].general.save_metadata = st.checkbox("Save Metadata", value=st.session_state['defaults'].general.save_metadata,
                                                                                  help="Save metadata on the output image. Default: True")
-                save_format_list = ["png"]
+                save_format_list = ["png","jpg", "jpeg","webp"]
                 st.session_state["defaults"].general.save_format = st.selectbox("Save Format", save_format_list, index=save_format_list.index(st.session_state['defaults'].general.save_format),
                                                                                 help="Format that will be used whens saving the output images. Default: 'png'")
 
                 st.session_state["defaults"].general.skip_grid = st.checkbox("Skip Grid", value=st.session_state['defaults'].general.skip_grid,
                                                                              help="Skip saving the grid output image. Default: False")
                 if not st.session_state["defaults"].general.skip_grid:
-                    st.session_state["defaults"].general.grid_format = st.text_input("Grid Format", value=st.session_state['defaults'].general.grid_format,
-                                                                                     help="Format for saving the grid output image. Default: 'jpg:95'")
+
+
+                    st.session_state["defaults"].general.grid_quality = st.number_input("Grid Quality", value=st.session_state['defaults'].general.grid_quality,
+                                                                                        help="Format for saving the grid output image. Default: 95")
 
                 st.session_state["defaults"].general.skip_save = st.checkbox("Skip Save", value=st.session_state['defaults'].general.skip_save,
                                                                              help="Skip saving the output image. Default: False")
@@ -325,7 +327,7 @@ def layout():
 
                 st.session_state["defaults"].txt2img.update_preview = True
                 st.session_state["defaults"].txt2img.update_preview_frequency = st.number_input("Preview Image Update Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                                                 help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
@@ -518,7 +520,7 @@ def layout():
 
                 st.session_state["defaults"].img2img.update_preview = True
                 st.session_state["defaults"].img2img.update_preview_frequency = st.number_input("Img2Img Preview Image Update Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].img2img.update_preview_frequency,
                                                                                                 help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
@@ -684,8 +686,8 @@ def layout():
                 st.session_state["defaults"].txt2vid.do_loop = st.checkbox("Loop Generations", value=st.session_state['defaults'].txt2vid.do_loop,
                                                                            help="Choose to loop or something, IDK.... Default: False")
 
-                st.session_state["defaults"].txt2vid.max_frames = st.number_input("Txt2Vid Max Video Frames", value=st.session_state['defaults'].txt2vid.max_frames,
-                                                                                  help="Set the default value for the number of video frames generated. Default is: 100")
+                st.session_state["defaults"].txt2vid.max_duration_in_seconds = st.number_input("Txt2Vid Max Duration in Seconds", value=st.session_state['defaults'].txt2vid.max_duration_in_seconds,
+                                                                                  help="Set the default value for the max duration in seconds for the video generated. Default is: 30")
 
                 st.session_state["defaults"].txt2vid.write_info_files = st.checkbox("Write Info Files For txt2vid Images", value=st.session_state['defaults'].txt2vid.write_info_files,
                                                                                     help="Choose to write the info files along with the generated images. Default: True")

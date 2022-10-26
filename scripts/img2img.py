@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -455,7 +455,7 @@ def layout():
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
-											       min_value=1,
+											       min_value=0,
 											       value=st.session_state['defaults'].img2img.update_preview_frequency,
 											       help="Frequency in steps at which the the preview image is updated. By default the frequency \
 											       is set to 1 step.")
@@ -589,7 +589,7 @@ def layout():
 			st.form_submit_button("Refresh")
 
 			uploaded_images = st.file_uploader(
-						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
+						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an image which will be used for the image to image generation.",
 					)
 			if uploaded_images:
@@ -600,7 +600,7 @@ def layout():
 			mask_holder = st.empty()
 
 			uploaded_masks = st.file_uploader(
-						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
+						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an mask image which will be used for masking the image to image generation.",
 					)
 			if uploaded_masks:
