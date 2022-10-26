@@ -8,31 +8,39 @@
 
 # This enables a user to install this project without manually installing conda and git.
 
+echo "Installing Sygil WebUI.."
+echo ""
+
 OS_ARCH=$(uname -m)
 case "${OS_ARCH}" in
-    x86_64*)    OS_ARCH="x64";;
-    arm64*)     OS_ARCH="arm64";;
+    x86_64*)    OS_ARCH="64";;
+    arm64*)     OS_ARCH="aarch64";;
     *)          echo "Unknown system architecture: $OS_ARCH! This script runs only on x86_64 or arm64" && exit
 esac
 
 # config
 export MAMBA_ROOT_PREFIX="$(pwd)/installer_files/mamba"
 INSTALL_ENV_DIR="$(pwd)/installer_files/env"
-MICROMAMBA_BINARY_FILE="$(pwd)/installer_files/micromamba_linux_${OS_ARCH}"
+MICROMAMBA_DOWNLOAD_URL="https://micro.mamba.pm/api/micromamba/linux-${OS_ARCH}/latest"
 
 # figure out whether git and conda needs to be installed
+if [ -e "$INSTALL_ENV_DIR" ]; then export PATH="$INSTALL_ENV_DIR/bin:$PATH"; fi
+
 PACKAGES_TO_INSTALL=""
 
 if ! hash "conda" &>/dev/null; then PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL conda"; fi
 if ! hash "git" &>/dev/null; then PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL git"; fi
-if ! hash "curl" &>/dev/null; then PACKAGES_TO_INSTALL="$PACKAGES_TO_INSTALL curl"; fi
 
 # (if necessary) install git and conda into a contained environment
 if [ "$PACKAGES_TO_INSTALL" != "" ]; then
-    # initialize micromamba
-    if [ ! -e "$MAMBA_ROOT_PREFIX" ]; then
+    # download micromamba
+    if [ ! -e "$MAMBA_ROOT_PREFIX/micromamba" ]; then
+        echo "Downloading micromamba from $MICROMAMBA_DOWNLOAD_URL to $MAMBA_ROOT_PREFIX/micromamba"
+
         mkdir -p "$MAMBA_ROOT_PREFIX"
-        cp "$MICROMAMBA_BINARY_FILE" "$MAMBA_ROOT_PREFIX/micromamba"
+        curl -L "$MICROMAMBA_DOWNLOAD_URL" | tar -xvj bin/micromamba -O > "$MAMBA_ROOT_PREFIX/micromamba"
+
+        chmod u+x "$MAMBA_ROOT_PREFIX/micromamba"
 
         # test the mamba binary
         echo "Micromamba version:"
@@ -47,9 +55,19 @@ if [ "$PACKAGES_TO_INSTALL" != "" ]; then
     echo "Packages to install:$PACKAGES_TO_INSTALL"
 
     "$MAMBA_ROOT_PREFIX/micromamba" install -y --prefix "$INSTALL_ENV_DIR" -c conda-forge $PACKAGES_TO_INSTALL
+
+    if [ ! -e "$INSTALL_ENV_DIR" ]; then
+        echo "There was a problem while initializing micromamba. Cannot continue."
+        exit
+    fi
 fi
 
 if [ -e "$INSTALL_ENV_DIR" ]; then export PATH="$INSTALL_ENV_DIR/bin:$PATH"; fi
+
+CONDA_BASEPATH=$(conda info --base)
+source "$CONDA_BASEPATH/etc/profile.d/conda.sh" # otherwise conda complains about 'shell not initialized' (needed when running in a script)
+
+conda activate
 
 # run the installer script for linux
 curl "https://raw.githubusercontent.com/JoshuaKimsey/Linux-StableDiffusion-Script/main/linux-sd.sh" > linux-sd.sh

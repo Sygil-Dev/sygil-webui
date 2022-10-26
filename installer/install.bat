@@ -8,12 +8,22 @@
 
 @rem This enables a user to install this project without manually installing conda and git.
 
+echo "Installing Sygil WebUI.."
+echo.
+
 @rem config
 set MAMBA_ROOT_PREFIX=%cd%\installer_files\mamba
 set INSTALL_ENV_DIR=%cd%\installer_files\env
-set MICROMAMBA_BINARY_FILE=%cd%\installer_files\micromamba_win_x64.exe
+set MICROMAMBA_DOWNLOAD_URL=https://github.com/cmdr2/stable-diffusion-ui/releases/download/v1.1/micromamba.exe
+set REPO_URL=https://github.com/cmdr2/hlky-webui.git
+@rem Change the download URL to Sygil repo's release URL
+@rem We need to mirror micromamba.exe, because the official download URL uses tar.bz2 compression
+@rem  which Windows can't unzip natively.
+@rem https://mamba.readthedocs.io/en/latest/installation.html#windows
 
 @rem figure out whether git and conda needs to be installed
+if exist "%INSTALL_ENV_DIR%" set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%INSTALL_ENV_DIR%\Library\usr\bin;%PATH%
+
 set PACKAGES_TO_INSTALL=
 
 call conda --version >.tmp1 2>.tmp2
@@ -24,10 +34,12 @@ if "%ERRORLEVEL%" NEQ "0" set PACKAGES_TO_INSTALL=%PACKAGES_TO_INSTALL% git
 
 @rem (if necessary) install git and conda into a contained environment
 if "%PACKAGES_TO_INSTALL%" NEQ "" (
-    @rem initialize micromamba
-    if not exist "%MAMBA_ROOT_PREFIX%" (
+    @rem download micromamba
+    if not exist "%MAMBA_ROOT_PREFIX%\micromamba.exe" (
+        echo "Downloading micromamba from %MICROMAMBA_DOWNLOAD_URL% to %MAMBA_ROOT_PREFIX%\micromamba.exe"
+
         mkdir "%MAMBA_ROOT_PREFIX%"
-        copy "%MICROMAMBA_BINARY_FILE%" "%MAMBA_ROOT_PREFIX%\micromamba.exe"
+        call curl -L "%MICROMAMBA_DOWNLOAD_URL%" > "%MAMBA_ROOT_PREFIX%\micromamba.exe"
 
         @rem test the mamba binary
         echo Micromamba version:
@@ -43,14 +55,11 @@ if "%PACKAGES_TO_INSTALL%" NEQ "" (
 
     call "%MAMBA_ROOT_PREFIX%\micromamba.exe" install -y --prefix "%INSTALL_ENV_DIR%" -c conda-forge %PACKAGES_TO_INSTALL%
 
-    @rem !! The next 3 lines will be removed before the PR is merged.
-    @rem !! They are needed so the sd-webui folks can test the installer
-    @rem !! before the PR is merged. Otherwise webui.cmd won't know that it needs
-    @rem !! to also check inside %INSTALL_ENV_DIR%
-    if exist "%INSTALL_ENV_DIR%\etc\profile.d\conda.sh" (
-        echo %INSTALL_ENV_DIR% > custom-conda-path.txt
+    if not exist "%INSTALL_ENV_DIR%" (
+        echo "There was a problem while installing%PACKAGES_TO_INSTALL% using micromamba. Cannot continue."
+        pause
+        exit /b
     )
-    @rem !! Remove the above 3 lines before merging the PR
 )
 
 set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%PATH%
@@ -59,10 +68,13 @@ set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scrip
 if not exist ".git" (
     call git config --global init.defaultBranch master
     call git init
-    call git remote add origin https://github.com/sd-webui/stable-diffusion-webui.git
+    call git remote add origin %REPO_URL%
     call git fetch
     call git checkout origin/master -ft
 )
+
+@rem activate the base env
+call conda activate
 
 @rem make the models dir
 mkdir models\ldm\stable-diffusion-v1
