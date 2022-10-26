@@ -205,13 +205,19 @@ def chunk(it, size):
     return iter(lambda: tuple(islice(it, size)), ())
 
 
-def load_model_from_config(config, ckpt, verbose=False):
-    print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
-    if "global_step" in pl_sd:
-        print(f"Global Step: {pl_sd['global_step']}")
-    sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
+state_dicts = {}
+def load_model_weights(ckpt):
+    ckpt_path = "models/ldm/stable-diffusion-v1/" + ckpt + ".ckpt"
+    print(f"Loading model from {ckpt_path}")
+    if ckpt not in state_dicts:
+        pl_sd = torch.load(ckpt_path, map_location="cpu")
+        if "global_step" in pl_sd:
+            print(f"Global Step: {pl_sd['global_step']}")
+        state_dicts[ckpt] = pl_sd["state_dict"].copy()
+    return state_dicts[ckpt]
+
+def load_state_dict(model, ckpt, verbose=False):
+    sd = state_dicts[ckpt]
     m, u = model.load_state_dict(sd, strict=False)
     if len(m) > 0 and verbose:
         print("missing keys:")
@@ -223,6 +229,12 @@ def load_model_from_config(config, ckpt, verbose=False):
     model.cuda()
     model.eval()
     return model
+
+def load_model_from_config(config, ckpts, verbose=False):
+    model = instantiate_from_config(config.model)
+    for ckpt in ckpts:
+        load_model_weights(ckpt)
+    return load_state_dict(model, ckpts[0], verbose)
 
 def load_sd_from_config(ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
@@ -520,7 +532,7 @@ def load_SD_model():
         return model,modelCS,modelFS,device, config
     else:
         config = OmegaConf.load(opt.config)
-        model = load_model_from_config(config, opt.ckpt)
+        model = load_model_from_config(config, ["sd", "gg1342", "waifu", "yiffy"])
 
         device = torch.device(f"cuda:{opt.gpu}") if torch.cuda.is_available() else torch.device("cpu")
         model = (model if opt.no_half else model.half()).to(device)
@@ -1388,6 +1400,7 @@ def txt2img(
         prompt: str, 
         ddim_steps: int = 50, 
         sampler_name: str = 'k_lms', 
+        txt2img_checkpoint: str = "sd",
         toggles: List[int] = [1, 4], 
         realesrgan_model_name: str = '',
         ddim_eta: float = 0.0, 
@@ -1401,6 +1414,9 @@ def txt2img(
         variant_amount: float = 0.0, 
         variant_seed: int = None, 
         job_info: JobInfo = None):
+
+    load_state_dict(model, txt2img_checkpoint)
+
     outpath = opt.outdir_txt2img or opt.outdir or "outputs/txt2img-samples"
     err = False
     seed = seed_to_int(seed)

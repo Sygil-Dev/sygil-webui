@@ -113,6 +113,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                        choices=["DDIM", "PLMS", 'k_dpm_2_a', 'k_dpm_2', 'k_euler_a',
                                                                 'k_euler', 'k_heun', 'k_lms'],
                                                        value=txt2img_defaults['sampler_name'])
+
+                        txt2img_checkpoint = gr.Dropdown(label='Checkpoint',
+                                choices=["sd", "waifu", "gg1342", "yiffy"],
+                                value="sd")
+
                         with gr.Tabs():
                             with gr.TabItem('Simple'):
                                 txt2img_submit_on_enter = gr.Radio(['Yes', 'No'],
@@ -141,7 +146,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                                      visible=show_embeddings)
 
                 txt2img_func = txt2img
-                txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_toggles,
+                txt2img_inputs = [txt2img_prompt, txt2img_steps, txt2img_sampling, txt2img_checkpoint, txt2img_toggles,
                                   txt2img_realesrgan_model_name, txt2img_ddim_eta, txt2img_batch_count,
                                   txt2img_batch_size, txt2img_cfg, txt2img_seed, txt2img_height, txt2img_width,
                                   txt2img_embeddings, txt2img_variant_amount, txt2img_variant_seed]
