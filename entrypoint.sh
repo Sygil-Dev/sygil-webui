@@ -1,7 +1,7 @@
 #!/bin/bash
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -111,7 +111,7 @@ if [[ -e "${MODEL_DIR}/sd-concepts-library" ]]; then
 else
     # concept library does not exist, clone
     cd ${MODEL_DIR}
-    git clone https://github.com/sd-webui/sd-concepts-library.git
+    git clone https://github.com/Sygil-Dev/sd-concepts-library.git
 fi
 # create directory and link concepts library
 mkdir -p ${SCRIPT_DIR}/models/custom

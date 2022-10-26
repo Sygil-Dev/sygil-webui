@@ -1,7 +1,7 @@
 /*
-This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-Copyright 2022 sd-webui team.
+Copyright 2022 Sygil-Dev team.
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -26,9 +26,10 @@ button[data-baseweb="tab"] {
 }
 
 /* Image Container (only appear after run finished)//center the image, especially better looks in wide screen */
-.css-du1fp8 {
-  justify-content: center;
+.css-1kyxreq{
+	justify-content: center;
 }
+
 
 /* Streamlit header */
 .css-1avcm0n {
@@ -135,6 +136,7 @@ div.gallery:hover {
 /********************************************************************
     Hide anchor links on titles
 *********************************************************************/
+/*
 .css-15zrgzn {
 	display: none
 	}
@@ -145,8 +147,32 @@ div.gallery:hover {
 	display: none
 	}
 	
-/* Make the text area widget have a similar height as the text input field*/
-.st-ex{
+/* Make the text area widget have a similar height as the text input field */
+.st-dy{
 	height: 54px;
 	min-height: 25px;
+}
+.css-17useex{
+	gap: 3px;
+	
+}
+
+/* Remove some empty spaces to make the UI more compact. */
+.css-18e3th9{
+	padding-left: 10px;
+	padding-right: 10px;
+	position: unset !important; /* Fixes the layout/page going up when an expander or another item is expanded and then collapsed */ 
+}
+.css-k1vhr4{
+	padding-top: initial;
+}
+.css-ret2ud{
+	padding-left: 10px;
+	padding-right: 25px;
+	gap: initial;
+	display: initial;
+}
+
+.css-w5z5an{
+	gap: 1px;
 }

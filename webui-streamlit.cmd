@@ -1,7 +1,7 @@
 @echo off
-:: This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+:: This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 :: 
-:: Copyright 2022 sd-webui team.
+:: Copyright 2022 Sygil-Dev team.
 :: This program is free software: you can redistribute it and/or modify
 :: it under the terms of the GNU Affero General Public License as published by
 :: the Free Software Foundation, either version 3 of the License, or
@@ -58,20 +58,23 @@ IF "%v_conda_path%"=="" (
 
 :CONDA_FOUND
 echo Stashing local changes and pulling latest update...
+git status --porcelain=1 -uno | findstr . && set "HasChanges=1" || set "HasChanges=0"
 call git stash
 call git pull
+IF "%HasChanges%" == "0" GOTO SKIP_RESTORE
+
 set /P restore="Do you want to restore changes you made before updating? (Y/N): "
 IF /I "%restore%" == "N" (
-  echo Removing changes please wait...
+  echo Removing changes...
   call git stash drop
-  echo Changes removed, press any key to continue...
-  pause >nul
+  echo Changes removed
 ) ELSE IF /I "%restore%" == "Y" (
-  echo Restoring changes, please wait...
+  echo Restoring changes...
   call git stash pop --quiet
-  echo Changes restored, press any key to continue...
-  pause >nul
+  echo Changes restored
 )
+
+:SKIP_RESTORE
 call "%v_conda_path%\Scripts\activate.bat"
 
 for /f "delims=" %%a in ('git log -1 --format^="%%H" -- environment.yaml')  DO set v_cur_hash=%%a
@@ -96,7 +99,7 @@ call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
 ) ELSE (
   echo Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
   pause

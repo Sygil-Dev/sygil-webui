@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -19,14 +19,15 @@
 # You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
 # of the properties below.
 general:
+    version: 1.24.6
     streamlit_telemetry: False
     default_theme: dark
-    huggingface_token: ""
+    huggingface_token: ''
     gpu: 0
     outdir: outputs
-    default_model: "Stable Diffusion v1.4"
+    default_model: "Stable Diffusion v1.5"
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
-    default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
+    default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
     use_sd_concepts_library: True
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./models/gfpgan"
@@ -38,17 +39,19 @@ general:
     upscaling_method: "RealESRGAN"
     outdir_txt2img: outputs/txt2img
     outdir_img2img: outputs/img2img
+    outdir_img2txt: outputs/img2txt
     gfpgan_cpu: False
     esrgan_cpu: False
     extra_models_cpu: False
     extra_models_gpu: False
     gfpgan_gpu: 0
     esrgan_gpu: 0
+    keep_all_models_loaded: False
     save_metadata: True
     save_format: "png"
     skip_grid: False
     skip_save: False
-    grid_format: "jpg:95"
+    grid_quality: 95
     n_rows: -1
     no_verify_input: False
     no_half: False
@@ -61,6 +64,9 @@ general:
     enable_minimal_memory_usage: False
     update_preview: True
     update_preview_frequency: 10
+
+debug:
+    enable_hydralit: False
 
 txt2img:
     prompt:
@@ -79,7 +85,6 @@ txt2img:
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
 
     seed: ""
@@ -126,8 +131,8 @@ txt2img:
     write_info_files: True
 
 txt2vid:
-    default_model: "CompVis/stable-diffusion-v1-4"
-    custom_models_list: ["CompVis/stable-diffusion-v1-4"]
+    default_model: "runwayml/stable-diffusion-v1-5"
+    custom_models_list: ["runwayml/stable-diffusion-v1-5", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
     prompt:
     width:
         value:      512
@@ -144,7 +149,6 @@ txt2vid:
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
 
     batch_count:
@@ -179,6 +183,7 @@ txt2vid:
     group_by_prompt: True
     write_info_files: True
     do_loop: False
+    use_lerp_for_text: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
@@ -194,20 +199,20 @@ txt2vid:
 
     beta_start:
         value:      0.00085
-        min_value:  0.0001
-        max_value:  0.0300
-        step:       0.0001
+        min_value:  0.00010
+        max_value:  0.03000
+        step:       0.00010
         format:     "%.5f"
 
     beta_end:
-        value:      0.012
-        min_value:  0.0001
-        max_value:  0.0300
-        step:       0.0001
+        value:      0.01200
+        min_value:  0.00010
+        max_value:  0.03000
+        step:       0.00010
         format:     "%.5f"
 
     beta_scheduler_type: "scaled_linear"
-    max_frames: 100
+    max_duration_in_seconds: 30
 
     LDSR_config:
         sampling_steps: 50
@@ -249,7 +254,6 @@ img2img:
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
 
     batch_count:
@@ -272,9 +276,8 @@ img2img:
 
     find_noise_steps:
         value:      100
-        min_value:  0
-        max_value:  500
-        step:       10
+        min_value:  100
+        step:       100
 
     LDSR_config:
         sampling_steps: 50
@@ -301,7 +304,7 @@ img2img:
     write_info_files: True
 
 img2txt:
-    batch_size: 420
+    batch_size: 2000
     blip_image_eval_size: 512
     keep_all_models_loaded: False
 
@@ -322,12 +325,12 @@ daisi_app:
 model_manager:
     models:
         stable_diffusion:
-            model_name:     "Stable Diffusion v1.4"
+            model_name:     "Stable Diffusion v1.5"
             save_location:  "./models/ldm/stable-diffusion-v1"
             files:
                 model_ckpt:
-                    file_name:  "model.ckpt"
-                    download_link:  "https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media"
+                    file_name:  "Stable Diffusion v1.5.ckpt"
+                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
 
         gfpgan:
             model_name:     "GFPGAN"
@@ -359,12 +362,12 @@ model_manager:
 
 
         waifu_diffusion:
-            model_name:     "Waifu Diffusion v1.2"
+            model_name:     "Waifu Diffusion v1.3"
             save_location:  "./models/custom"
             files:
                 waifu_diffusion:
-                    file_name: "waifu-diffusion.ckpt"
-                    download_link:  "https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt"
+                    file_name: "Waifu-Diffusion-v1-3 Full ema.ckpt"
+                    download_link:  "https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt"
 
 
         trinart_stable_diffusion:
@@ -375,13 +378,21 @@ model_manager:
                     file_name: "trinart.ckpt"
                     download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
 
+        sd_wd_ld_trinart_merged:
+            model_name:     "SD1.5-WD1.3-LD-Trinart-Merged"
+            save_location:  "./models/custom"
+            files:
+                sd_wd_ld_trinart_merged:
+                    file_name: "SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+                    download_link:  "https://huggingface.co/ZeroCool94/sd1.5-wd1.3-ld-trinart-merged/resolve/main/SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+
         stable_diffusion_concept_library:
             model_name:     "Stable Diffusion Concept Library"
             save_location:  "./models/custom/sd-concepts-library/"
             files:
                 concept_library:
                     file_name: ""
-                    download_link:  "https://github.com/sd-webui/sd-concepts-library"
+                    download_link:  "https://github.com/Sygil-Dev/sd-concepts-library"
 
         blip_model:
             model_name:     "Blip Model"

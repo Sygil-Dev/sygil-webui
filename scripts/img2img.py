@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -30,12 +30,17 @@ import torch
 import skimage
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
+
+# streamlit components
+from custom_components import sygil_suggestions
+
 # Temp imports
 
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
+sygil_suggestions.init()
 
 try:
 	# this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -49,7 +54,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 	    mask_restore: bool = False, ddim_steps: int = 50, sampler_name: str = 'DDIM',
 	    n_iter: int = 1,  cfg_scale: float = 7.5, denoising_strength: float = 0.8,
 	    seed: int = -1, noise_mode: int = 0, find_noise_steps: str = "", height: int = 512, width: int = 512, resize_mode: int = 0, fp = None,
-	    variant_amount: float = None, variant_seed: int = None, ddim_eta:float = 0.0,
+	    variant_amount: float = 0.0, variant_seed: int = None, ddim_eta:float = 0.0,
 	    write_info_files:bool = True, separate_prompts:bool = False, normalize_prompt_weights:bool = True,
 	    save_individual_images: bool = True, save_grid: bool = True, group_by_prompt: bool = True,
 	    save_as_jpg: bool = True, use_GFPGAN: bool = True, GFPGAN_model: str = 'GFPGANv1.4',
@@ -202,7 +207,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			samples_ddim = K.sampling.__dict__[f'sample_{sampler.get_sampler_name()}'](model_wrap_cfg, xi, sigma_sched,
 												   extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,
 													       'cond_scale': cfg_scale, 'mask': z_mask, 'x0': x0, 'xi': xi}, disable=False,
-												   callback=generation_callback)
+												   callback=generation_callback if not server_state["bridge"] else None)
 		else:
 
 			x0, z_mask = init_data
@@ -234,7 +239,7 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 			from skimage import exposure
 			do_color_correction = True
 		except:
-			print("Install scikit-image to perform color correction on loopback")
+			logger.error("Install scikit-image to perform color correction on loopback")
 
 		for i in range(n_iter):
 			if do_color_correction and i == 0:
@@ -365,7 +370,9 @@ def layout():
 		img2img_input_col, img2img_generate_col = st.columns([10,1])
 		with img2img_input_col:
 			#prompt = st.text_area("Input Text","")
-			prompt = st.text_area("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
+			placeholder = "A corgi wearing a top hat as an oil painting."
+			prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
+			sygil_suggestions.suggestion_area(placeholder)
 
 		# Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
 		img2img_generate_col.write("")
@@ -374,7 +381,7 @@ def layout():
 
 
 		# creating the page layout using columns
-		col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([1,2,2], gap="small")
+		col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([1,2,2], gap="medium")
 
 		with col1_img2img_layout:
 			# If we have custom models available on the "models/custom"
@@ -386,9 +393,9 @@ def layout():
 							    help="Select the model you want to use. This option is only available if you have custom models \
 							    on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 							    the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
-							    will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.4")
+							    will make it easier for you to distinguish it from other models. Default: Stable Diffusion v1.5")
 			else:
-				st.session_state["custom_model"] = "Stable Diffusion v1.4"
+				st.session_state["custom_model"] = "Stable Diffusion v1.5"
 
 
 			st.session_state["sampling_steps"] = st.number_input("Sampling Steps", value=st.session_state['defaults'].img2img.sampling_steps.value,
@@ -405,23 +412,24 @@ def layout():
 									   value=st.session_state['defaults'].img2img.height.value, step=st.session_state['defaults'].img2img.height.step)
 			seed = st.text_input("Seed:", value=st.session_state['defaults'].img2img.seed, help=" The seed to use, if left blank a random seed will be generated.")
 
-			cfg_scale = st.slider("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
-											  max_value=st.session_state['defaults'].img2img.cfg_scale.max_value, value=st.session_state['defaults'].img2img.cfg_scale.value,
-											  step=st.session_state['defaults'].img2img.cfg_scale.step, help="How strongly the image should follow the prompt.")
+			cfg_scale = st.number_input("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].img2img.cfg_scale.min_value,
+						  value=st.session_state['defaults'].img2img.cfg_scale.value,
+					      step=st.session_state['defaults'].img2img.cfg_scale.step,
+					      help="How strongly the image should follow the prompt.")
 
 			st.session_state["denoising_strength"] = st.slider("Denoising Strength:", value=st.session_state['defaults'].img2img.denoising_strength.value,
-																		   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
-														   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
-														   step=st.session_state['defaults'].img2img.denoising_strength.step)
+									   min_value=st.session_state['defaults'].img2img.denoising_strength.min_value,
+									   max_value=st.session_state['defaults'].img2img.denoising_strength.max_value,
+									   step=st.session_state['defaults'].img2img.denoising_strength.step)
 
 
 			mask_expander = st.empty()
 			with mask_expander.expander("Mask"):
 				mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
 				mask_mode = st.selectbox("Mask Mode", mask_mode_list,
-									 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
-									 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
-									 )
+							 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
+							 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
+							 )
 				mask_mode = mask_mode_list.index(mask_mode)
 
 
@@ -431,26 +439,26 @@ def layout():
 							help=""
 						)
 				noise_mode = noise_mode_list.index(noise_mode)
-				find_noise_steps = st.slider("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
-											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value, max_value=st.session_state['defaults'].img2img.find_noise_steps.max_value,
+				find_noise_steps = st.number_input("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
+											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value,
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
 
 			with st.expander("Batch Options"):
 				st.session_state["batch_count"] = st.number_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
-																help="How many iterations or batches of images to generate in total.")
+										  help="How many iterations or batches of images to generate in total.")
 
 				st.session_state["batch_size"] = st.number_input("Batch size", value=st.session_state.defaults.img2img.batch_size.value,
-				                            help="How many images are at once in a batch.\
-				                            It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
-                                            Default: 1")
+										 help="How many images are at once in a batch.\
+										 It increases the VRAM usage a lot but if you have enough VRAM it can reduce the time it takes to finish generation as more images are generated at once.\
+										 Default: 1")
 
 			with st.expander("Preview Settings"):
 				st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
 				st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
-																			   min_value=1,
-																			   value=st.session_state['defaults'].img2img.update_preview_frequency,
-																			   help="Frequency in steps at which the the preview image is updated. By default the frequency \
-																			   is set to 1 step.")
+											       min_value=0,
+											       value=st.session_state['defaults'].img2img.update_preview_frequency,
+											       help="Frequency in steps at which the the preview image is updated. By default the frequency \
+											       is set to 1 step.")
 			#
 			with st.expander("Advanced"):
 				with st.expander("Output Settings"):
@@ -581,7 +589,7 @@ def layout():
 			st.form_submit_button("Refresh")
 
 			uploaded_images = st.file_uploader(
-						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
+						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an image which will be used for the image to image generation.",
 					)
 			if uploaded_images:
@@ -592,7 +600,7 @@ def layout():
 			mask_holder = st.empty()
 
 			uploaded_masks = st.file_uploader(
-						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
+						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an mask image which will be used for masking the image to image generation.",
 					)
 			if uploaded_masks:
@@ -687,7 +695,7 @@ def layout():
 					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
 				except (StopException, KeyError):
-					print(f"Received Streamlit StopException")
+					logger.info(f"Received Streamlit StopException")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
