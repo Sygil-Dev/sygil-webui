@@ -29,7 +29,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 
 # streamlit components
-from custom_components import key_phrase_suggestions
+from custom_components import sygil_suggestions
 
 # Temp imports
 
@@ -37,7 +37,7 @@ from custom_components import key_phrase_suggestions
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
 
-key_phrase_suggestions.init()
+sygil_suggestions.init()
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -407,7 +407,7 @@ def layout():
             #prompt = st.text_area("Input Text","")
             placeholder = "A corgi wearing a top hat as an oil painting."
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
-            key_phrase_suggestions.suggestion_area(placeholder)
+            sygil_suggestions.suggestion_area(placeholder)
 
         # creating the page layout using columns
         col1, col2, col3 = st.columns([1,2,1], gap="large")
