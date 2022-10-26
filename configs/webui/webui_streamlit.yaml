@@ -377,7 +377,7 @@ model_manager:
                 trinart:
                     file_name: "trinart.ckpt"
                     download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
-                    
+
         sd_wd_ld_trinart_merged:
             model_name:     "SD1.5-WD1.3-LD-Trinart-Merged"
             save_location:  "./models/custom"
