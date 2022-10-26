@@ -377,6 +377,14 @@ model_manager:
                 trinart:
                     file_name: "trinart.ckpt"
                     download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
+                    
+        sd_wd_ld_trinart_merged:
+            model_name:     "SD1.5-WD1.3-LD-Trinart-Merged"
+            save_location:  "./models/custom"
+            files:
+                sd_wd_ld_trinart_merged:
+                    file_name: "SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+                    download_link:  "https://huggingface.co/ZeroCool94/sd1.5-wd1.3-ld-trinart-merged/resolve/main/SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
 
         stable_diffusion_concept_library:
             model_name:     "Stable Diffusion Concept Library"
