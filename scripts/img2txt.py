@@ -66,6 +66,9 @@ st.session_state["log"] = []
 
 def load_blip_model():
     logger.info("Loading BLIP Model")
+    if "log" not in st.session_state:
+        st.session_state["log"] = []
+
     st.session_state["log"].append("Loading BLIP Model")
     st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
@@ -232,7 +235,7 @@ def interrogate(image, models):
 
             for best in bests:
                 best.sort(key=lambda x: x[1], reverse=True)
-                # prune to 3 
+                # prune to 3
                 best = best[:3]
 
             row = [model_name]
@@ -326,7 +329,7 @@ def img2txt():
 def layout():
     #set_page_title("Image-to-Text - Stable Diffusion WebUI")
     #st.info("Under Construction. :construction_worker:")
-    # 
+    #
     if "clip_models" not in server_state:
         server_state["clip_models"] = {}
     if "preprocesses" not in server_state:
