@@ -434,11 +434,8 @@ def layout():
 
 
 				noise_mode_list = ["Seed", "Find Noise", "Matched Noise", "Find+Matched Noise"]
-				noise_mode = st.selectbox(
-							"Noise Mode", noise_mode_list,
-							help=""
-						)
-				noise_mode = noise_mode_list.index(noise_mode)
+				noise_mode = st.selectbox("Noise Mode", noise_mode_list, index=noise_mode_list.index(st.session_state['defaults'].img2img.noise_mode), help="")
+				#noise_mode = noise_mode_list.index(noise_mode)
 				find_noise_steps = st.number_input("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
 											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value,
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
