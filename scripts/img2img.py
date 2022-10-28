@@ -33,6 +33,7 @@ from ldm.models.diffusion.plms import PLMSSampler
 
 # streamlit components
 from custom_components import sygil_suggestions
+from streamlit_drawable_canvas import st_canvas
 
 # Temp imports
 
@@ -381,7 +382,7 @@ def layout():
 
 
 		# creating the page layout using columns
-		col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([1,2,2], gap="medium")
+		col1_img2img_layout, col2_img2img_layout, col3_img2img_layout = st.columns([2,4,4], gap="medium")
 
 		with col1_img2img_layout:
 			# If we have custom models available on the "models/custom"
@@ -426,7 +427,7 @@ def layout():
 			mask_expander = st.empty()
 			with mask_expander.expander("Mask"):
 				mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
-				mask_mode = st.selectbox("Mask Mode", mask_mode_list,
+				mask_mode = st.selectbox("Mask Mode", mask_mode_list, index=st.session_state["defaults"].img2img.mask_mode,
 							 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
 							 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
 							 )
@@ -439,6 +440,26 @@ def layout():
 				find_noise_steps = st.number_input("Find Noise Steps", value=st.session_state['defaults'].img2img.find_noise_steps.value,
 											 min_value=st.session_state['defaults'].img2img.find_noise_steps.min_value,
 											 step=st.session_state['defaults'].img2img.find_noise_steps.step)
+
+				# Specify canvas parameters in application
+				drawing_mode = st.selectbox(
+					"Drawing tool:",
+					(
+						"freedraw",
+						"transform",
+						#"line",
+						"rect",
+						"circle",
+						#"polygon",
+						),
+				)
+
+				stroke_width = st.slider("Stroke width: ", 1, 100, 50)
+				stroke_color = st.color_picker("Stroke color hex: ", value="#EEEEEE")
+				bg_color = st.color_picker("Background color hex: ", "#7B6E6E")
+
+				display_toolbar = st.checkbox("Display toolbar", True)
+				#realtime_update = st.checkbox("Update in realtime", True)
 
 			with st.expander("Batch Options"):
 				st.session_state["batch_count"] = st.number_input("Batch count.", value=st.session_state['defaults'].img2img.batch_count.value,
@@ -580,55 +601,63 @@ def layout():
 			editor_image = st.empty()
 			st.session_state["editor_image"] = editor_image
 
+			st.form_submit_button("Refresh")
+
+			#if "canvas" not in st.session_state:
+			st.session_state["canvas"] = st.empty()
+
 			masked_image_holder = st.empty()
 			image_holder = st.empty()
-
-			st.form_submit_button("Refresh")
 
 			uploaded_images = st.file_uploader(
 						"Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
 						help="Upload an image which will be used for the image to image generation.",
 					)
 			if uploaded_images:
-				image = Image.open(uploaded_images).convert('RGBA')
+				image = Image.open(uploaded_images).convert('RGB')
 				new_img = image.resize((width, height))
-				image_holder.image(new_img)
+				#image_holder.image(new_img)
 
-			mask_holder = st.empty()
+			#mask_holder = st.empty()
 
-			uploaded_masks = st.file_uploader(
-						"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
-						help="Upload an mask image which will be used for masking the image to image generation.",
-					)
-			if uploaded_masks:
-				mask_expander.expander("Mask", expanded=True)
-				mask = Image.open(uploaded_masks)
-				if mask.mode == "RGBA":
-					mask = mask.convert('RGBA')
-					background = Image.new('RGBA', mask.size, (0, 0, 0))
-					mask = Image.alpha_composite(background, mask)
-				mask = mask.resize((width, height))
-				mask_holder.image(mask)
+			#uploaded_masks = st.file_uploader(
+						#"Upload Mask", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp", 'jfif'],
+						#help="Upload an mask image which will be used for masking the image to image generation.",
+					#)
 
-			if uploaded_images and uploaded_masks:
-				if mask_mode != 2:
-					final_img = new_img.copy()
-					alpha_layer = mask.convert('L')
-					strength = st.session_state["denoising_strength"]
-					if mask_mode == 0:
-						alpha_layer = ImageOps.invert(alpha_layer)
-						alpha_layer = alpha_layer.point(lambda a: a * strength)
-						alpha_layer = ImageOps.invert(alpha_layer)
-					elif mask_mode == 1:
-						alpha_layer = alpha_layer.point(lambda a: a * strength)
-						alpha_layer = ImageOps.invert(alpha_layer)
+			#
+			# Create a canvas component
+			with st.session_state["canvas"]:
+				st.session_state["uploaded_masks"] = st_canvas(
+					fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
+					stroke_width=stroke_width,
+					stroke_color=stroke_color,
+					background_color=bg_color,
+					background_image=image if uploaded_images else None,
+					update_streamlit=True,
+					width=width,
+					height=height,
+					drawing_mode=drawing_mode,
+					initial_drawing=st.session_state["uploaded_masks"].json_data if "uploaded_masks" in st.session_state else None,
+					display_toolbar= display_toolbar,
+					key="full_app",
+				)
 
-					final_img.putalpha(alpha_layer)
+				#try:
+					##print (type(st.session_state["uploaded_masks"]))
+					#if st.session_state["uploaded_masks"] != None:
+						#mask_expander.expander("Mask", expanded=True)
+						#mask = Image.fromarray(st.session_state["uploaded_masks"].image_data)
 
-					with masked_image_holder.container():
-						st.text("Masked Image Preview")
-						st.image(final_img)
+					#st.image(mask)
 
+					#if mask.mode == "RGBA":
+						#mask = mask.convert('RGBA')
+						#background = Image.new('RGBA', mask.size, (0, 0, 0))
+						#mask = Image.alpha_composite(background, mask)
+						#mask = mask.resize((width, height))
+				#except AttributeError:
+					#pass
 
 			with col3_img2img_layout:
 				result_tab = st.tabs(["Result"])
@@ -641,7 +670,6 @@ def layout():
 
 				st.session_state["progress_bar_text"] = st.empty()
 				st.session_state["progress_bar"] = st.empty()
-
 
 				message = st.empty()
 
@@ -663,14 +691,17 @@ def layout():
 								CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
 			if uploaded_images:
-				image = Image.open(uploaded_images).convert('RGBA')
-				new_img = image.resize((width, height))
-				#img_array = np.array(image) # if you want to pass it to OpenCV
+				#image = Image.fromarray(image).convert('RGBA')
+				#new_img = image.resize((width, height))
+				###img_array = np.array(image) # if you want to pass it to OpenCV
+				#image_holder.image(new_img)
 				new_mask = None
-				if uploaded_masks:
-					mask = Image.open(uploaded_masks).convert('RGBA')
+
+				if st.session_state["uploaded_masks"]:
+					mask = Image.fromarray(st.session_state["uploaded_masks"].image_data)
 					new_mask = mask.resize((width, height))
 
+					#masked_image_holder.image(new_mask)
 				try:
 					output_images, seed, info, stats = img2img(prompt=prompt, init_info=new_img, init_info_mask=new_mask, mask_mode=mask_mode,
 										   mask_restore=img2img_mask_restore, ddim_steps=st.session_state["sampling_steps"],
