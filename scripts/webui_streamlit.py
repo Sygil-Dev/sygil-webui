@@ -125,8 +125,11 @@ def layout():
             {'id': 'Stable Diffusion', 'label': 'Stable Diffusion', 'icon': 'bi bi-grid-1x2-fill'},
             {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
             {'id': 'Model Manager', 'label': 'Model Manager', 'icon': 'bi bi-cloud-arrow-down-fill'},
-            #{'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
-            {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+            {'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
+                {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+                #{'id': 'Barfi/BaklavaJS', 'label': 'Barfi/BaklavaJS', 'icon': 'bi bi-diagram-3-fill'},
+                #{'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+                ]},
             {'id': 'Settings', 'label': 'Settings', 'icon': 'bi bi-gear-fill'},
             #{'icon': "fa-solid fa-radar",'label':"Dropdown1", 'submenu':[
             #    {'id':' subid11','icon': "fa fa-paperclip", 'label':"Sub-item 1"},{'id':'subid12','icon': "💀", 'label':"Sub-item 2"},{'id':'subid13','icon': "fa fa-database", 'label':"Sub-item 3"}]},
@@ -171,6 +174,10 @@ def layout():
                                                         #{'label':"Model Manager"},{'label':"Settings"}],
                                                         #horizontal_orientation=False,
                                                         #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
+
+        #
+        #if menu_id == "Home":
+            #st.info("Under Construction. :construction_worker:")
 
         if menu_id == "Stable Diffusion":
             # set the page url and title
@@ -226,6 +233,11 @@ def layout():
             set_page_title("API Server - Stable Diffusion Playground")
             from APIServer import layout
             layout()
+
+        #elif menu_id == 'Barfi/BaklavaJS':
+            #set_page_title("Barfi/BaklavaJS - Stable Diffusion Playground")
+            #from barfi_baklavajs import layout
+            #layout()
 
         elif menu_id == 'Settings':
             set_page_title("Settings - Stable Diffusion Playground")

@@ -410,7 +410,7 @@ def layout():
             sygil_suggestions.suggestion_area(placeholder)
 
         # creating the page layout using columns
-        col1, col2, col3 = st.columns([1,2,1], gap="large")
+        col1, col2, col3 = st.columns([2,5,2], gap="large")
 
         with col1:
             width = st.slider("Width:", min_value=st.session_state['defaults'].txt2img.width.min_value, max_value=st.session_state['defaults'].txt2img.width.max_value,

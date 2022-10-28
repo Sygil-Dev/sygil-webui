@@ -14,15 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-import collections.abc
 #from webui_streamlit import st
 import gfpgan
 import hydralit as st
 
-
 # streamlit imports
 from streamlit import StopException, StreamlitAPIException
-from streamlit.runtime.scriptrunner import script_run_context
+#from streamlit.runtime.scriptrunner import script_run_context
 
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
@@ -35,7 +33,7 @@ import streamlit_nested_layout
 import warnings
 import json
 
-import base64
+import base64, cv2
 import os, sys, re, random, datetime, time, math, glob, toml
 import gc
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
@@ -68,14 +66,30 @@ import piexif.helper
 from tqdm import trange
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
-from abc import ABC, abstractmethod
+#from abc import ABC, abstractmethod
 from typing import Dict, Union
 from io import BytesIO
 from packaging import version
 from uuid import uuid4
+from pathlib import Path
+from huggingface_hub import hf_hub_download
+
 #import librosa
-from logger import logger, set_logger_verbosity, quiesce_logger
+#from logger import logger, set_logger_verbosity, quiesce_logger
 #from loguru import logger
+
+from nataili.inference.compvis.img2img import img2img
+from nataili.model_manager import ModelManager
+from nataili.inference.compvis.txt2img import txt2img
+from nataili.util.cache import torch_gc
+from nataili.util.logger import logger, set_logger_verbosity, quiesce_logger
+
+try:
+    from realesrgan import RealESRGANer
+    from basicsr.archs.rrdbnet_arch import RRDBNet
+except ImportError as e:
+    logger.error("You tried to import realesrgan without having it installed properly. To install Real-ESRGAN, run:\n\n"
+        "pip install realesrgan")
 
 # Temp imports
 #from basicsr.utils.registry import ARCH_REGISTRY
@@ -83,14 +97,6 @@ from logger import logger, set_logger_verbosity, quiesce_logger
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
-
-# we make a log file where we store the logs
-logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
-logger.add(sys.stderr, diagnose=True)
-logger.add(sys.stdout)
-logger.enable("")
-
-#
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -112,6 +118,8 @@ mimetypes.add_type('application/javascript', '.js')
 opt_C = 4
 opt_f = 8
 
+# The model manager loads and unloads the SD models and has features to download them or find their location
+#model_manager = ModelManager()
 
 def load_configs():
     if not "defaults" in st.session_state:
@@ -269,6 +277,33 @@ def make_grid(n_items=5, n_cols=5):
 
     return cols
 
+
+def merge(file1, file2, out, weight):
+    alpha = (weight)/100
+    if not(file1.endswith(".ckpt")):
+        file1 += ".ckpt"
+    if not(file2.endswith(".ckpt")):
+        file2 += ".ckpt"
+    if not(out.endswith(".ckpt")):
+        out += ".ckpt"
+    #Load Models
+    model_0 = torch.load(file1)
+    model_1 = torch.load(file2)
+    theta_0 = model_0['state_dict']
+    theta_1 = model_1['state_dict']
+
+    for key in theta_0.keys():
+        if 'model' in key and key in theta_1:
+            theta_0[key] = (alpha) * theta_0[key] + (1-alpha) * theta_1[key]
+
+    logger.info("RUNNING...\n(STAGE 2)")
+
+    for key in theta_1.keys():
+        if 'model' in key and key not in theta_0:
+            theta_0[key] = theta_1[key]
+    torch.save(model_0, out)
+
+
 def human_readable_size(size, decimal_places=3):
     """Return a human readable size from bytes."""
     for unit in ['B','KB','MB','GB','TB']:
@@ -281,6 +316,8 @@ def human_readable_size(size, decimal_places=3):
 def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_model='GFPGANv1.4', use_RealESRGAN=False, RealESRGAN_model="RealESRGAN_x4plus",
                 CustomModel_available=False, custom_model="Stable Diffusion v1.5"):
     """Load the different models. We also reuse the models that are already in memory to speed things up instead of loading them again. """
+
+    #model_manager.init()
 
     logger.info("Loading models.")
 
@@ -1351,6 +1388,77 @@ def load_RealESRGAN(model_name: str):
     return server_state['RealESRGAN']
 
 #
+class RealESRGANModel(nn.Module):
+    def __init__(self, model_path, tile=0, tile_pad=10, pre_pad=0, fp32=False):
+        super().__init__()
+        try:
+            from basicsr.archs.rrdbnet_arch import RRDBNet
+            from realesrgan import RealESRGANer
+        except ImportError as e:
+            logger.error(
+                "You tried to import realesrgan without having it installed properly. To install Real-ESRGAN, run:\n\n"
+                "pip install realesrgan"
+            )
+
+        model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+        self.upsampler = RealESRGANer(
+            scale=4, model_path=model_path, model=model, tile=tile, tile_pad=tile_pad, pre_pad=pre_pad, half=not fp32
+        )
+
+    def forward(self, image, outscale=4, convert_to_pil=True):
+        """Upsample an image array or path.
+        Args:
+            image (Union[np.ndarray, str]): Either a np array or an image path. np array is assumed to be in RGB format,
+                and we convert it to BGR.
+            outscale (int, optional): Amount to upscale the image. Defaults to 4.
+            convert_to_pil (bool, optional): If True, return PIL image. Otherwise, return numpy array (BGR). Defaults to True.
+        Returns:
+            Union[np.ndarray, PIL.Image.Image]: An upsampled version of the input image.
+        """
+        if isinstance(image, (str, Path)):
+            img = cv2.imread(image, cv2.IMREAD_UNCHANGED)
+        else:
+            img = image
+            img = (img * 255).round().astype("uint8")
+            img = img[:, :, ::-1]
+
+        image, _ = self.upsampler.enhance(img, outscale=outscale)
+
+        if convert_to_pil:
+            image = Image.fromarray(image[:, :, ::-1])
+
+        return image
+
+    @classmethod
+    def from_pretrained(cls, model_name_or_path="nateraw/real-esrgan"):
+        """Initialize a pretrained Real-ESRGAN upsampler.
+        Args:
+            model_name_or_path (str, optional): The Hugging Face repo ID or path to local model. Defaults to 'nateraw/real-esrgan'.
+        Returns:
+            PipelineRealESRGAN: An instance of `PipelineRealESRGAN` instantiated from pretrained model.
+        """
+        # reuploaded form official ones mentioned here:
+        # https://github.com/xinntao/Real-ESRGAN
+        if Path(model_name_or_path).exists():
+            file = model_name_or_path
+        else:
+            file = hf_hub_download(model_name_or_path, "RealESRGAN_x4plus.pth")
+        return cls(file)
+
+    def upsample_imagefolder(self, in_dir, out_dir, suffix="out", outfile_ext=".png"):
+        in_dir, out_dir = Path(in_dir), Path(out_dir)
+        if not in_dir.exists():
+            raise FileNotFoundError(f"Provided input directory {in_dir} does not exist")
+
+        out_dir.mkdir(exist_ok=True, parents=True)
+
+        image_paths = [x for x in in_dir.glob("*") if x.suffix.lower() in [".png", ".jpg", ".jpeg"]]
+        for image in image_paths:
+            im = self(str(image))
+            out_filepath = out_dir / (image.stem + suffix + outfile_ext)
+            im.save(out_filepath)
+
+#
 @retry(tries=5)
 def load_LDSR(model_name="model", config="project", checking=False):
     #model_name = 'model'
@@ -1744,6 +1852,9 @@ def seed_to_int(s):
     if s is None or s == '':
         return random.randint(0, 2**32 - 1)
 
+    if ',' in s:
+        s = s.split(',')
+
     if type(s) is list:
         seed_list = []
         for seed in s:
@@ -1955,41 +2066,42 @@ def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, widt
 
     filename_i = os.path.join(sample_path_i, filename)
 
-    if st.session_state['defaults'].general.save_metadata or write_info_files:
-        # toggles differ for txt2img vs. img2img:
-        offset = 0 if init_img is None else 2
-        toggles = []
-        if prompt_matrix:
-            toggles.append(0)
-        if normalize_prompt_weights:
-            toggles.append(1)
-        if init_img is not None:
-            if uses_loopback:
-                toggles.append(2)
-            if uses_random_seed_loopback:
-                toggles.append(3)
-        if save_individual_images:
-            toggles.append(2 + offset)
-        if save_grid:
-            toggles.append(3 + offset)
-        if sort_samples:
-            toggles.append(4 + offset)
-        if write_info_files:
-            toggles.append(5 + offset)
-        if use_GFPGAN:
-            toggles.append(6 + offset)
-        metadata = \
-                    dict(
-                            target="txt2img" if init_img is None else "img2img",
-                                prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
-                                ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
-                                seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=model_name)
-        # Not yet any use for these, but they bloat up the files:
-        # info_dict["init_img"] = init_img
-        # info_dict["init_mask"] = init_mask
-        if init_img is not None:
-            metadata["denoising_strength"] = str(denoising_strength)
-            metadata["resize_mode"] = resize_mode
+    if "defaults" in st.session_state:
+        if st.session_state['defaults'].general.save_metadata or write_info_files:
+            # toggles differ for txt2img vs. img2img:
+            offset = 0 if init_img is None else 2
+            toggles = []
+            if prompt_matrix:
+                toggles.append(0)
+            if normalize_prompt_weights:
+                toggles.append(1)
+            if init_img is not None:
+                if uses_loopback:
+                    toggles.append(2)
+                if uses_random_seed_loopback:
+                    toggles.append(3)
+            if save_individual_images:
+                toggles.append(2 + offset)
+            if save_grid:
+                toggles.append(3 + offset)
+            if sort_samples:
+                toggles.append(4 + offset)
+            if write_info_files:
+                toggles.append(5 + offset)
+            if use_GFPGAN:
+                toggles.append(6 + offset)
+            metadata = \
+                        dict(
+                                target="txt2img" if init_img is None else "img2img",
+                                    prompt=prompts[i], ddim_steps=steps, toggles=toggles, sampler_name=sampler_name,
+                                    ddim_eta=ddim_eta, n_iter=n_iter, batch_size=batch_size, cfg_scale=cfg_scale,
+                                    seed=seeds[i], width=width, height=height, normalize_prompt_weights=normalize_prompt_weights, model_name=model_name)
+            # Not yet any use for these, but they bloat up the files:
+            # info_dict["init_img"] = init_img
+            # info_dict["init_mask"] = init_mask
+            if init_img is not None:
+                metadata["denoising_strength"] = str(denoising_strength)
+                metadata["resize_mode"] = resize_mode
 
     if write_info_files:
         with open(f"{filename_i}.yaml", "w", encoding="utf8") as f:
@@ -2563,12 +2675,12 @@ def process_images(
                         #output_images.append(image)
                         #if simple_templating:
                             #grid_captions.append( captions[i] )
-
-                if st.session_state['defaults'].general.optimized:
-                    mem = torch.cuda.memory_allocated()/1e6
-                    server_state["modelFS"].to("cpu")
-                    while(torch.cuda.memory_allocated()/1e6 >= mem):
-                        time.sleep(1)
+                if "defaults" in st.session_state:
+                    if st.session_state['defaults'].general.optimized:
+                        mem = torch.cuda.memory_allocated()/1e6
+                        server_state["modelFS"].to("cpu")
+                        while(torch.cuda.memory_allocated()/1e6 >= mem):
+                            time.sleep(1)
 
             if len(run_images) > 1:
                 preview_image = image_grid(run_images, n_iter)
