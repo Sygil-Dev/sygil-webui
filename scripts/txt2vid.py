@@ -1586,7 +1586,7 @@ def layout():
         generate_button = generate_col1.form_submit_button("Generate")
 
         # creating the page layout using columns
-        col1, col2, col3 = st.columns([1,2,1], gap="large")
+        col1, col2, col3 = st.columns([2,5,2], gap="large")
 
         with col1:
             width = st.slider("Width:", min_value=st.session_state['defaults'].txt2vid.width.min_value, max_value=st.session_state['defaults'].txt2vid.width.max_value,
