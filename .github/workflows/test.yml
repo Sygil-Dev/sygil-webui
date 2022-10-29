@@ -22,9 +22,3 @@ jobs:
         with:
           lfs: true
           fetch-depth: 0
-
-      - uses: "./packages/keybase-notifications"
-        if: always()
-        with:
-          job_status: ${{ job.status }}
-          opensentinel_token: ${{ secrets.OSL_TOKEN }}
