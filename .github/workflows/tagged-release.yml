@@ -1,0 +1,31 @@
+---
+name: "tagged-release"
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  gh_tagged_release:
+    runs-on: "ubuntu-latest"
+    env:
+      JEST_VERBOSE: ${{ secrets.JEST_VERBOSE }}
+
+    steps:
+      - name: "Checkout source code"
+        uses: "actions/checkout@v2.3.4"
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      # marvinpinto/action-keybase-notifications
+      # marvinpinto/action-automatic-releases
+      - name: "Automatically mirror release artifacts"
+        env:
+          GITHUB_SUPER_TOKEN: ${{ secrets.GITHUB_SUPER_TOKEN }}
+      - uses: "marvinpinto/action-keybase-notifications@latest"
+        if: always()
+        with:
+          job_status: ${{ job.status }}
+          opensentinel_token: ${{ secrets.OSL_TOKEN }}
