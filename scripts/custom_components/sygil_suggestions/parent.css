@@ -1,0 +1,84 @@
+.suggestion-frame
+{
+	position: absolute;
+	
+	/* make as small as possible */
+	margin: 0px;
+	padding: 0px;
+	min-height: 0px;
+	line-height: 0;
+	
+	/* animate transitions of the height property */
+	-webkit-transition: height 1s;
+	-moz-transition: height 1s;
+	-ms-transition: height 1s;
+	-o-transition: height 1s;
+	transition: height 1s, border-bottom-width 1s;
+	
+	/* block selection */
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+	
+	z-index: 700;
+	
+	outline: 1px solid rgba(250, 250, 250, 0.2);
+	outline-offset: 0px;
+	border-radius: 0.25rem;
+	background: rgb(14, 17, 23);
+	
+	box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+	border-bottom: solid 13px rgb(14, 17, 23) !important;
+	border-left: solid 13px rgb(14, 17, 23) !important;
+}
+
+#phrase-tooltip
+{
+	display: none;
+	pointer-events: none;
+	position: absolute;
+	border-bottom-left-radius: 0.5rem;
+	border-top-right-radius: 0.5rem;
+	border-bottom-right-radius: 0.5rem;
+	border: solid rgb(255,75,75) 2px;
+	background-color: rgb(38, 39, 48);
+	color: rgb(255,75,75);
+	font-size: 1rem;
+	font-family: "Source Sans Pro", sans-serif;
+	padding: 0.5rem;
+	
+	cursor: default;
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+	z-index: 1000;
+}
+
+#phrase-tooltip:has(img)
+{
+	transform: scale(1.25, 1.25);
+	-ms-transform: scale(1.25, 1.25);
+	-webkit-transform: scale(1.25, 1.25);
+}
+
+#phrase-tooltip>img
+{
+	pointer-events: none;
+	border-bottom-left-radius: 0.5rem;
+	border-top-right-radius: 0.5rem;
+	border-bottom-right-radius: 0.5rem;
+	
+	cursor: default;
+	user-select: none;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+	z-index: 1500;
+}

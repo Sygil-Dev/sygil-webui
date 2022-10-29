@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -61,14 +61,14 @@ from ldm.models.blip import blip_decoder
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 blip_image_eval_size = 512
-#blip_model_url = 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth'
-server_state["clip_models"] = {}
-server_state["preprocesses"] = {}
 
 st.session_state["log"] = []
 
 def load_blip_model():
     logger.info("Loading BLIP Model")
+    if "log" not in st.session_state:
+        st.session_state["log"] = []
+
     st.session_state["log"].append("Loading BLIP Model")
     st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
@@ -79,7 +79,6 @@ def load_blip_model():
 
             server_state["blip_model"] = server_state["blip_model"].eval()
 
-            #if not st.session_state["defaults"].general.optimized:
             server_state["blip_model"] = server_state["blip_model"].to(device).half()
 
             logger.info("BLIP Model Loaded")
@@ -90,57 +89,6 @@ def load_blip_model():
         st.session_state["log"].append("BLIP Model already loaded")
         st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
-    #return server_state["blip_model"]
-
-
-#
-def artstation_links():
-    """Find and save every artstation link for the first 500 pages of the explore page."""
-    # collecting links to the list()
-    links = []
-
-    with open('data/img2txt/artstation_links.txt', 'w') as f:
-        for page_num in range(1,500):
-            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
-            # open json response
-            data = json.loads(response)
-
-            # loopinh through json response
-            for result in data['data']:
-                # still looping and grabbing url's
-                url = result['url']
-                links.append(url)
-                # writing each link on the new line (\n)
-                f.write(f'{url}\n')
-    return links
-#
-def artstation_users():
-    """Get all the usernames and full name of the users on the first 500 pages of artstation explore page."""
-    # collect username and full name
-    artists = []
-
-    # opening a .txt file
-    with open('data/img2txt/artstation_artists.txt', 'w') as f:
-        for page_num in range(1,500):
-            response = requests.get(f'https://www.artstation.com/api/v2/community/explore/projects/trending.json?page={page_num}&dimension=all&per_page=100').text
-            # open json response
-            data = json.loads(response)
-
-
-            # loopinh through json response
-            for item in data['data']:
-                #print (item['user'])
-                username = item['user']['username']
-                full_name = item['user']['full_name']
-
-                # still looping and grabbing url's
-                artists.append(username)
-                artists.append(full_name)
-                # writing each link on the new line (\n)
-                f.write(f'{slugify(username)}\n')
-                f.write(f'{slugify(full_name)}\n')
-
-    return artists
 
 def generate_caption(pil_image):
 
@@ -155,7 +103,6 @@ def generate_caption(pil_image):
     with torch.no_grad():
         caption = server_state["blip_model"].generate(gpu_image, sample=False, num_beams=3, max_length=20, min_length=5)
 
-    #print (caption)
     return caption[0]
 
 def load_list(filename):
@@ -194,8 +141,6 @@ def batch_rank(model, image_features, text_array, batch_size=st.session_state["d
     return ranks
 
 def interrogate(image, models):
-
-    #server_state["blip_model"] =
     load_blip_model()
 
     logger.info("Generating Caption")
@@ -216,14 +161,11 @@ def interrogate(image, models):
         return
 
     table = []
-    bests = [[('', 0)]]*5
+    bests = [[('', 0)]]*7
 
     logger.info("Ranking Text")
-
-    #if "clip_model" in server_state:
-        #print (server_state["clip_model"])
-
-    #print (st.session_state["log_message"])
+    st.session_state["log"].append("Ranking Text")
+    st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
     for model_name in models:
         with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16):
@@ -242,15 +184,14 @@ def interrogate(image, models):
                         del server_state["preprocesses"][model]
                         clear_cuda()
                 if model_name == 'ViT-H-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name,
-                                                                                                                                                 pretrained='laion2b_s32b_b79k',
-                                                                                                                                                 cache_dir='models/clip')
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = \
+                    open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s32b_b79k', cache_dir='models/clip')
                 elif model_name == 'ViT-g-14':
-                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = open_clip.create_model_and_transforms(model_name,
-                                                                                                                                                 pretrained='laion2b_s12b_b42k',
-                                                                                                                                                 cache_dir='models/clip')
+                    server_state["clip_models"][model_name], _, server_state["preprocesses"][model_name] = \
+                    open_clip.create_model_and_transforms(model_name, pretrained='laion2b_s12b_b42k', cache_dir='models/clip')
                 else:
-                    server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = clip.load(model_name, device=device, download_root='models/clip')
+                    server_state["clip_models"][model_name], server_state["preprocesses"][model_name] = \
+                    clip.load(model_name, device=device, download_root='models/clip')
                 server_state["clip_models"][model_name] = server_state["clip_models"][model_name].cuda().eval()
 
             images = server_state["preprocesses"][model_name](image).unsqueeze(0).cuda()
@@ -269,9 +210,13 @@ def interrogate(image, models):
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["trending_list"]))
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["movements"]))
             ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["flavors"]))
+            #ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["domains"]))
+            #ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["subreddits"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["techniques"]))
+            ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["tags"]))
+
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["genres"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["styles"]))
-            # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["techniques"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["subjects"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["colors"]))
             # ranks.append(batch_rank(server_state["clip_models"][model_name], image_features, server_state["moods"]))
@@ -288,9 +233,19 @@ def interrogate(image, models):
                 if confidence_sum > sum(bests[i][t][1] for t in range(len(bests[i]))):
                     bests[i] = ranks[i]
 
+            for best in bests:
+                best.sort(key=lambda x: x[1], reverse=True)
+                # prune to 3
+                best = best[:3]
+
             row = [model_name]
+
             for r in ranks:
                 row.append(', '.join([f"{x[0]} ({x[1]:0.1f}%)" for x in r]))
+
+            #for rank in ranks:
+            #    rank.sort(key=lambda x: x[1], reverse=True)
+            #    row.append(f'{rank[0][0]} {rank[0][1]:.2f}%')
 
             table.append(row)
 
@@ -298,49 +253,33 @@ def interrogate(image, models):
                 del server_state["clip_models"][model_name]
                 gc.collect()
 
-    # for i in range(len(st.session_state["uploaded_image"])):
     st.session_state["prediction_table"][st.session_state["processed_image_count"]].dataframe(pd.DataFrame(
-        table, columns=["Model", "Medium", "Artist", "Trending", "Movement", "Flavors"]))
+        table, columns=["Model", "Medium", "Artist", "Trending", "Movement", "Flavors", "Techniques", "Tags"]))
 
-    flaves = ', '.join([f"{x[0]}" for x in bests[4]])
     medium = bests[0][0][0]
+    artist = bests[1][0][0]
+    trending = bests[2][0][0]
+    movement = bests[3][0][0]
+    flavors = bests[4][0][0]
+    #domains = bests[5][0][0]
+    #subreddits = bests[6][0][0]
+    techniques = bests[5][0][0]
+    tags = bests[6][0][0]
+
 
     if caption.startswith(medium):
         st.session_state["text_result"][st.session_state["processed_image_count"]].code(
-            f"\n\n{caption} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
+            f"\n\n{caption} {artist}, {trending}, {movement}, {techniques}, {flavors}, {tags}", language="")
     else:
         st.session_state["text_result"][st.session_state["processed_image_count"]].code(
-            f"\n\n{caption}, {medium} {bests[1][0][0]}, {bests[2][0][0]}, {bests[3][0][0]}, {flaves}", language="")
+            f"\n\n{caption}, {medium} {artist}, {trending}, {movement}, {techniques}, {flavors}, {tags}", language="")
 
-    #
     logger.info("Finished Interrogating.")
     st.session_state["log"].append("Finished Interrogating.")
     st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
-    del st.session_state["log"]
-#
-
 
 def img2txt():
-    data_path = "data/"
-
-    server_state["artists"] = load_list(os.path.join(data_path, 'img2txt', 'artists.txt'))
-    server_state["flavors"] = load_list(os.path.join(data_path, 'img2txt', 'flavors.txt'))
-    server_state["mediums"] = load_list(os.path.join(data_path, 'img2txt', 'mediums.txt'))
-    server_state["movements"] = load_list(os.path.join(data_path, 'img2txt', 'movements.txt'))
-    server_state["sites"] = load_list(os.path.join(data_path, 'img2txt', 'sites.txt'))
-    # server_state["genres"] = load_list(os.path.join(data_path, 'img2txt', 'genres.txt'))
-    # server_state["styles"] = load_list(os.path.join(data_path, 'img2txt', 'styles.txt'))
-    # server_state["techniques"] = load_list(os.path.join(data_path, 'img2txt', 'techniques.txt'))
-    # server_state["subjects"] = load_list(os.path.join(data_path, 'img2txt', 'subjects.txt'))
-
-    server_state["trending_list"] = [site for site in server_state["sites"]]
-    server_state["trending_list"].extend(["trending on "+site for site in server_state["sites"]])
-    server_state["trending_list"].extend(["featured on "+site for site in server_state["sites"]])
-    server_state["trending_list"].extend([site+" contest winner" for site in server_state["sites"]])
-
-    #image_path_or_url = "https://i.redd.it/e2e8gimigjq91.jpg"
-
     models = []
 
     if st.session_state["ViT-L/14"]:
@@ -390,7 +329,36 @@ def img2txt():
 def layout():
     #set_page_title("Image-to-Text - Stable Diffusion WebUI")
     #st.info("Under Construction. :construction_worker:")
-
+    #
+    if "clip_models" not in server_state:
+        server_state["clip_models"] = {}
+    if "preprocesses" not in server_state:
+        server_state["preprocesses"] = {}
+    data_path = "data/"
+    if "artists" not in server_state:
+        server_state["artists"] = load_list(os.path.join(data_path, 'img2txt', 'artists.txt'))
+    if "flavors" not in server_state:
+        server_state["flavors"] = random.choices(load_list(os.path.join(data_path, 'img2txt', 'flavors.txt')), k=2000)
+    if "mediums" not in server_state:
+        server_state["mediums"] = load_list(os.path.join(data_path, 'img2txt', 'mediums.txt'))
+    if "movements" not in server_state:
+        server_state["movements"] = load_list(os.path.join(data_path, 'img2txt', 'movements.txt'))
+    if "sites" not in server_state:
+        server_state["sites"] = load_list(os.path.join(data_path, 'img2txt', 'sites.txt'))
+    #server_state["domains"] = load_list(os.path.join(data_path, 'img2txt', 'domains.txt'))
+    #server_state["subreddits"] = load_list(os.path.join(data_path, 'img2txt', 'subreddits.txt'))
+    if "techniques" not in server_state:
+        server_state["techniques"] = load_list(os.path.join(data_path, 'img2txt', 'techniques.txt'))
+    if "tags" not in server_state:
+        server_state["tags"] = load_list(os.path.join(data_path, 'img2txt', 'tags.txt'))
+    #server_state["genres"] = load_list(os.path.join(data_path, 'img2txt', 'genres.txt'))
+    # server_state["styles"] = load_list(os.path.join(data_path, 'img2txt', 'styles.txt'))
+    # server_state["subjects"] = load_list(os.path.join(data_path, 'img2txt', 'subjects.txt'))
+    if "trending_list" not in server_state:
+        server_state["trending_list"] = [site for site in server_state["sites"]]
+        server_state["trending_list"].extend(["trending on "+site for site in server_state["sites"]])
+        server_state["trending_list"].extend(["featured on "+site for site in server_state["sites"]])
+        server_state["trending_list"].extend([site+" contest winner" for site in server_state["sites"]])
     with st.form("img2txt-inputs"):
         st.session_state["generation_mode"] = "img2txt"
 
@@ -402,7 +370,7 @@ def layout():
             #url = st.text_area("Input Text","")
             #url = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
             #st.subheader("Input Image")
-            st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
+            st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg', 'jfif'], accept_multiple_files=True)
 
             with st.expander("CLIP models", expanded=True):
                 st.session_state["ViT-L/14"] = st.checkbox("ViT-L/14", value=True, help="ViT-L/14 model.")
@@ -432,7 +400,9 @@ def layout():
         with col2:
             st.subheader("Image")
 
-            refresh = st.form_submit_button("Refresh", help='Refresh the image preview to show your uploaded image instead of the default placeholder.')
+            image_col1, image_col2 = st.columns([10,25])
+            with image_col1:
+                refresh = st.form_submit_button("Update Preview Image", help='Refresh the image preview to show your uploaded image instead of the default placeholder.')
 
             if st.session_state["uploaded_image"]:
                 #print (type(st.session_state["uploaded_image"]))
@@ -471,11 +441,12 @@ def layout():
                 #st.session_state["input_image_preview"].code('', language="")
                 st.image("images/streamlit/img2txt_placeholder.png", clamp=True)
 
-        #
-        # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
-        # generate_col1.title("")
-        # generate_col1.title("")
-        generate_button = st.form_submit_button("Generate!")
+        with image_col2:
+            #
+            # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
+            # generate_col1.title("")
+            # generate_col1.title("")
+            generate_button = st.form_submit_button("Generate!", help="Start interrogating the images to generate a prompt from each of the selected images")
 
     if generate_button:
         # if model, pipe, RealESRGAN or GFPGAN is in st.session_state remove the model and pipe form session_state so that they are reloaded.

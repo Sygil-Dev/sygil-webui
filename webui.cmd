@@ -1,17 +1,17 @@
 @echo off
-:: This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
-
-:: Copyright 2022 sd-webui team.
+:: This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
+:: 
+:: Copyright 2022 Sygil-Dev team.
 :: This program is free software: you can redistribute it and/or modify
 :: it under the terms of the GNU Affero General Public License as published by
 :: the Free Software Foundation, either version 3 of the License, or
 :: (at your option) any later version.
-
+:: 
 :: This program is distributed in the hope that it will be useful,
 :: but WITHOUT ANY WARRANTY; without even the implied warranty of
 :: MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 :: GNU Affero General Public License for more details.
-
+:: 
 :: You should have received a copy of the GNU Affero General Public License
 :: along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 :: Run all commands using this script's directory as the working directory
@@ -98,12 +98,11 @@ call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
-IF EXIST "models\ldm\stable-diffusion-v1\model.ckpt" (
-  set "PYTHONPATH=%~dp0"
-  python scripts\relauncher.py %*
+IF EXIST "models\ldm\stable-diffusion-v1\Stable Diffusion v1.5.ckpt" (
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
 ) ELSE (
-  echo Your model file does not exist! Place it in 'models\ldm\stable-diffusion-v1' with the name 'model.ckpt'.
-  pause
+  echo Your model file does not exist! Once the WebUI launches please visit the Model Manager page and download the models by using the Download button for each model.
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
 )
 
 ::cmd /k

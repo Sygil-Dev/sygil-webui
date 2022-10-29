@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -20,13 +20,14 @@
 # We import hydralit like this to replace the previous stuff
 # we had with native streamlit as it lets ur replace things 1:1
 #import hydralit as st
+import collections.abc
 from sd_utils import *
 
 # streamlit imports
 import streamlit_nested_layout
 
 #streamlit components section
-from st_on_hover_tabs import on_hover_tabs
+#from st_on_hover_tabs import on_hover_tabs
 from streamlit_server_state import server_state, server_state_lock
 
 #other imports
@@ -37,6 +38,8 @@ import k_diffusion as K
 from omegaconf import OmegaConf
 import argparse
 
+# import custom components
+from custom_components import draggable_number_input
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
@@ -107,7 +110,7 @@ def load_css(isLocal, nameOrURL):
 def layout():
         """Layout functions to define all the streamlit layout here."""
         if not st.session_state["defaults"].debug.enable_hydralit:
-            st.set_page_config(page_title="Stable Diffusion Playground", layout="wide")
+            st.set_page_config(page_title="Stable Diffusion Playground", layout="wide", initial_sidebar_state="collapsed")
 
         #app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
                                         #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
@@ -115,6 +118,39 @@ def layout():
         with st.empty():
             # load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
             load_css(True, 'frontend/css/streamlit.main.css')
+
+        #
+        # specify the primary menu definition
+        menu_data = [
+            {'id': 'Stable Diffusion', 'label': 'Stable Diffusion', 'icon': 'bi bi-grid-1x2-fill'},
+            {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
+            {'id': 'Model Manager', 'label': 'Model Manager', 'icon': 'bi bi-cloud-arrow-down-fill'},
+            {'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
+                {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+                #{'id': 'Barfi/BaklavaJS', 'label': 'Barfi/BaklavaJS', 'icon': 'bi bi-diagram-3-fill'},
+                #{'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+                ]},
+            {'id': 'Settings', 'label': 'Settings', 'icon': 'bi bi-gear-fill'},
+            #{'icon': "fa-solid fa-radar",'label':"Dropdown1", 'submenu':[
+            #    {'id':' subid11','icon': "fa fa-paperclip", 'label':"Sub-item 1"},{'id':'subid12','icon': "💀", 'label':"Sub-item 2"},{'id':'subid13','icon': "fa fa-database", 'label':"Sub-item 3"}]},
+            #{'icon': "far fa-chart-bar", 'label':"Chart"},#no tooltip message
+            #{'id':' Crazy return value 💀','icon': "💀", 'label':"Calendar"},
+            #{'icon': "fas fa-tachometer-alt", 'label':"Dashboard",'ttip':"I'm the Dashboard tooltip!"}, #can add a tooltip message
+            #{'icon': "far fa-copy", 'label':"Right End"},
+            #{'icon': "fa-solid fa-radar",'label':"Dropdown2", 'submenu':[{'label':"Sub-item 1", 'icon': "fa fa-meh"},{'label':"Sub-item 2"},{'icon':'🙉','label':"Sub-item 3",}]},
+        ]
+
+        over_theme = {'txc_inactive': '#FFFFFF', "menu_background":'#000000'}
+
+        menu_id = hc.nav_bar(
+            menu_definition=menu_data,
+            #home_name='Home',
+            #login_name='Logout',
+            hide_streamlit_markers=False,
+            override_theme=over_theme,
+            sticky_nav=True,
+            sticky_mode='pinned',
+        )
 
         # check if the models exist on their respective folders
         with server_state_lock["GFPGAN_available"]:
@@ -129,19 +165,23 @@ def layout():
             else:
                 server_state["RealESRGAN_available"] = False
 
-        with st.sidebar:
-            tabs = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"],
-                                 iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
+        #with st.sidebar:
+            #page = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"],
+                                 #iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
 
             # need to see how to get the icons to show for the hydralit option_bar
-            #tabs = hc.option_bar([{'icon':'grid-outline','label':'Stable Diffusion'}, {'label':"Textual Inversion"},
+            #page = hc.option_bar([{'icon':'grid-outline','label':'Stable Diffusion'}, {'label':"Textual Inversion"},
                                                         #{'label':"Model Manager"},{'label':"Settings"}],
                                                         #horizontal_orientation=False,
                                                         #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
 
-        if tabs =='Stable Diffusion':
+        #
+        #if menu_id == "Home":
+            #st.info("Under Construction. :construction_worker:")
+
+        if menu_id == "Stable Diffusion":
             # set the page url and title
-            st.experimental_set_query_params(page='stable-diffusion')
+            #st.experimental_set_query_params(page='stable-diffusion')
             try:
                 set_page_title("Stable Diffusion Playground")
             except NameError:
@@ -179,21 +219,34 @@ def layout():
                 layout()
 
         #
-        elif tabs == 'Model Manager':
+        elif menu_id == 'Model Manager':
             set_page_title("Model Manager - Stable Diffusion Playground")
 
             from ModelManager import layout
             layout()
 
-        elif tabs == 'Textual Inversion':
+        elif menu_id == 'Textual Inversion':
             from textual_inversion import layout
             layout()
 
-        elif tabs == 'Settings':
+        elif menu_id == 'API Server':
+            set_page_title("API Server - Stable Diffusion Playground")
+            from APIServer import layout
+            layout()
+
+        #elif menu_id == 'Barfi/BaklavaJS':
+            #set_page_title("Barfi/BaklavaJS - Stable Diffusion Playground")
+            #from barfi_baklavajs import layout
+            #layout()
+
+        elif menu_id == 'Settings':
             set_page_title("Settings - Stable Diffusion Playground")
 
             from Settings import layout
             layout()
+
+        # calling dragable input component module at the end, so it works on all pages
+        draggable_number_input.load()
 
 
 if __name__ == '__main__':
