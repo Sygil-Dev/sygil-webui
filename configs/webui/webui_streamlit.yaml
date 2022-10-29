@@ -65,6 +65,10 @@ general:
     update_preview: True
     update_preview_frequency: 10
 
+admin:
+    hide_server_setting: False
+    hide_browser_setting: False
+
 debug:
     enable_hydralit: False
 
