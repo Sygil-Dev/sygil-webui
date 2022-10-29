@@ -75,14 +75,8 @@ from pathlib import Path
 from huggingface_hub import hf_hub_download
 
 #import librosa
-#from logger import logger, set_logger_verbosity, quiesce_logger
+from logger import logger, set_logger_verbosity, quiesce_logger
 #from loguru import logger
-
-#from nataili.inference.compvis.img2img import img2img
-#from nataili.model_manager import ModelManager
-#from nataili.inference.compvis.txt2img import txt2img
-from nataili.util.cache import torch_gc
-from nataili.util.logger import logger, set_logger_verbosity, quiesce_logger
 
 try:
     from realesrgan import RealESRGANer
