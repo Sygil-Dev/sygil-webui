@@ -15,11 +15,12 @@ echo.
 set MAMBA_ROOT_PREFIX=%cd%\installer_files\mamba
 set INSTALL_ENV_DIR=%cd%\installer_files\env
 set MICROMAMBA_DOWNLOAD_URL=https://github.com/cmdr2/stable-diffusion-ui/releases/download/v1.1/micromamba.exe
-set REPO_URL=https://github.com/cmdr2/hlky-webui.git
+set REPO_URL=https://github.com/Sygil-Dev/sygil-webui.git
 @rem Change the download URL to Sygil repo's release URL
 @rem We need to mirror micromamba.exe, because the official download URL uses tar.bz2 compression
 @rem  which Windows can't unzip natively.
 @rem https://mamba.readthedocs.io/en/latest/installation.html#windows
+set umamba_exists=F
 
 @rem figure out whether git and conda needs to be installed
 if exist "%INSTALL_ENV_DIR%" set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%INSTALL_ENV_DIR%\Library\usr\bin;%PATH%
@@ -32,10 +33,13 @@ if "%ERRORLEVEL%" NEQ "0" set PACKAGES_TO_INSTALL=%PACKAGES_TO_INSTALL% conda
 call git --version >.tmp1 2>.tmp2
 if "%ERRORLEVEL%" NEQ "0" set PACKAGES_TO_INSTALL=%PACKAGES_TO_INSTALL% git
 
+call "%MAMBA_ROOT_PREFIX%\micromamba.exe" --version >.tmp1 2>.tmp2
+if "%ERRORLEVEL%" EQU "0" set umamba_exists=T
+
 @rem (if necessary) install git and conda into a contained environment
 if "%PACKAGES_TO_INSTALL%" NEQ "" (
     @rem download micromamba
-    if not exist "%MAMBA_ROOT_PREFIX%\micromamba.exe" (
+    if "%umamba_exists%" == "F" (
         echo "Downloading micromamba from %MICROMAMBA_DOWNLOAD_URL% to %MAMBA_ROOT_PREFIX%\micromamba.exe"
 
         mkdir "%MAMBA_ROOT_PREFIX%"
