@@ -251,7 +251,7 @@ def layout():
                 if not st.session_state['defaults'].admin.hide_browser_setting:
                     with st.expander("Browser", expanded=True):
                         st.session_state["streamlit_config"]['browser']['serverAddress'] = st.text_input("Server Address",
-                                                                                                       value=st.session_state["streamlit_config"]['browser']['serverAddress'],
+                                                                                                       value=st.session_state["streamlit_config"]['browser']['serverAddress'] if "serverAddress" in st.session_state["streamlit_config"] else "localhost",
                                                                                                        help="Internet address where users should point their browsers in order \
                                                                                                        to connect to the app. Can be IP address or DNS name and path.\
                                                                                                        This is used to: - Set the correct URL for CORS and XSRF protection purposes. \

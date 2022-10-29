@@ -36,7 +36,6 @@ enableWebsocketCompression = false
 [browser]
 gatherUsageStats = false
 serverPort = 8501
-serverAddress = "localhost"
 
 [mapbox]
 token = ""
