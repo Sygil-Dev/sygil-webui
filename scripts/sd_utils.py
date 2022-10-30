@@ -462,7 +462,6 @@ def load_models(use_LDSR = False, LDSR_model='model', use_GFPGAN=False, GFPGAN_m
         try:
             server_state["model"].args.use_multiprocessing_for_evaluation = False
         except AttributeError as e:
-            logger.error(e)
             pass
 
         if st.session_state.defaults.general.enable_attention_slicing:
