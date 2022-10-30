@@ -275,6 +275,15 @@ def layout():
                                                                                        and WILL NOT be share with us or anyone. You can get your access token \
                                                                                        at https://huggingface.co/settings/tokens. Default: None")
 
+                st.title("Stable Horde")
+                st.session_state["defaults"].general.stable_horde_api = st.text_input("Stable Horde Api", value=st.session_state["defaults"].general.stable_horde_api, type="password",
+                                                                                      help="First Register an account at https://stablehorde.net/register which will generate for you \
+                                                                                      an API key. Store that key somewhere safe. \n \
+                                                                                      If you do not want to register, you can use `0000000000` as api_key to connect anonymously.\
+                                                                                      However anonymous accounts have the lowest priority when there's too many concurrent requests! \
+                                                                                      To increase your priority you will need a unique API key and then to increase your Kudos \
+                                                                                      read more about them at https://dbzer0.com/blog/the-kudos-based-economy-for-the-koboldai-horde/.")
+
         with txt2img_tab:
             col1, col2, col3, col4, col5 = st.columns(5, gap='medium')
 
