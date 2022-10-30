@@ -502,7 +502,7 @@ def layout():
             with st.expander("Advanced"):
                 with st.expander("Stable Horde"):
                     use_stable_horde = st.checkbox("Use Stable Horde", value=False, help="Use the Stable Horde to generate images. More info can be found at https://stablehorde.net/")
-                    stable_horde_key = st.text_input("Stable Horde Api Key", value="0000000000", type="password",
+                    stable_horde_key = st.text_input("Stable Horde Api Key", value=st.session_state['defaults'].general.stable_horde_api, type="password",
                                                      help="Optional Api Key used for the Stable Horde Bridge, if no api key is added the horde will be used anonymously.")
 
                 with st.expander("Output Settings"):
