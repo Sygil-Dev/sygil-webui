@@ -475,7 +475,7 @@ def layout():
 
             with gallery_tab:
                 st.session_state["gallery"] = st.empty()
-                st.session_state["gallery"].info("Nothing but crickets here, try generating something first.")
+                #st.session_state["gallery"].info("Nothing but crickets here, try generating something first.")
 
         with col3:
             # If we have custom models available on the "models/custom"
@@ -690,8 +690,8 @@ def layout():
 
             with gallery_tab:
                 logger.info(seeds)
+                st.session_state["gallery"].text = ""
                 sdGallery(output_images)
-                st.session_state["gallery"] = st.empty()
 
 
             #except (StopException, KeyError):
