@@ -691,6 +691,7 @@ def layout():
             with gallery_tab:
                 logger.info(seeds)
                 sdGallery(output_images)
+                st.session_state["gallery"] = st.empty()
 
 
             #except (StopException, KeyError):
