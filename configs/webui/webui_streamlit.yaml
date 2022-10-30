@@ -23,6 +23,7 @@ general:
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''
+    stable_horde_api: '0000000000'
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.5"
