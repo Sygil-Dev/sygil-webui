@@ -654,40 +654,6 @@ def layout():
 
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
-            #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
-
-            #if 'latestImages' in st.session_state:
-                #for i in output_images:
-                    ##push the new image to the list of latest images and remove the oldest one
-                    ##remove the last index from the list\
-                    #st.session_state['latestImages'].pop()
-                    ##add the new image to the start of the list
-                    #st.session_state['latestImages'].insert(0, i)
-                #PlaceHolder.empty()
-                #with PlaceHolder.container():
-                    #col1, col2, col3 = st.columns(3)
-                    #col1_cont = st.container()
-                    #col2_cont = st.container()
-                    #col3_cont = st.container()
-                    #images = st.session_state['latestImages']
-                    #with col1_cont:
-                        #with col1:
-                            #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                    #with col2_cont:
-                        #with col2:
-                            #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                    #with col3_cont:
-                        #with col3:
-                            #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                    #historyGallery = st.empty()
-
-                ## check if output_images length is the same as seeds length
-                #with gallery_tab:
-                    #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
-
-
-                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
-
             with gallery_tab:
                 logger.info(seeds)
                 st.session_state["gallery"].text = ""
