@@ -123,7 +123,10 @@ def layout():
         # specify the primary menu definition
         menu_data = [
             {'id': 'Stable Diffusion', 'label': 'Stable Diffusion', 'icon': 'bi bi-grid-1x2-fill'},
-            {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
+            {'id': 'Train','label':"Train", 'icon': "bi bi-lightbulb-fill", 'submenu':[
+                {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
+                {'id': 'Fine Tunning', 'label': 'Fine Tunning', 'icon': 'bi bi-lightbulb-fill'},
+                ]},
             {'id': 'Model Manager', 'label': 'Model Manager', 'icon': 'bi bi-cloud-arrow-down-fill'},
             {'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
                 {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
@@ -188,8 +191,9 @@ def layout():
                 st.experimental_rerun()
 
             txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
+                                                                                               #"Inpainting",
                                                                                                "Text-to-Video", "Image-To-Text",
-                                                                                                           "Concept Library"])
+                                                                                               "Concept Library"])
             #with home_tab:
                     #from home import layout
                     #layout()
@@ -228,6 +232,11 @@ def layout():
         elif menu_id == 'Textual Inversion':
             from textual_inversion import layout
             layout()
+
+        elif menu_id == 'Fine Tunning':
+            #from textual_inversion import layout
+            #layout()
+            st.info("Under Construction. :construction_worker:")
 
         elif menu_id == 'API Server':
             set_page_title("API Server - Stable Diffusion Playground")
