@@ -377,10 +377,9 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
             if text_input_ids.shape[-1] > self.tokenizer.model_max_length:
                 removed_text = self.tokenizer.batch_decode(text_input_ids[:, self.tokenizer.model_max_length :])
-                print(
-                                    "The following part of your input was truncated because CLIP can only handle sequences up to"
-                                        f" {self.tokenizer.model_max_length} tokens: {removed_text}"
-                                )
+                print("The following part of your input was truncated because CLIP can only handle sequences up to"
+                    f" {self.tokenizer.model_max_length} tokens: {removed_text}"
+                )
                 text_input_ids = text_input_ids[:, : self.tokenizer.model_max_length]
             text_embeddings = self.text_encoder(text_input_ids.to(self.device))[0]
         else:
@@ -613,7 +612,7 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
     def walk(
             self,
-                prompts: Optional[List[str]] = None,
+                prompt: Optional[List[str]] = None,
                 seeds: Optional[List[int]] = None,
                 num_interpolation_steps: Optional[Union[int, List[int]]] = 5,  # int or list of int
                 output_dir: Optional[str] = "./dreams",
@@ -1108,7 +1107,7 @@ def load_diffusers_model(weights_path,torch_device):
                     model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-5")
 
                 if not os.path.exists(model_path + "/model_index.json"):
-                    server_state["pipe"] = StableDiffusionWalkPipeline.from_pretrained(
+                    server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
                                             weights_path,
                                                 use_local_file=True,
                                                 use_auth_token=st.session_state["defaults"].general.huggingface_token,
@@ -1116,11 +1115,12 @@ def load_diffusers_model(weights_path,torch_device):
                                                 revision="fp16" if not st.session_state['defaults'].general.no_half else None,
                                                 safety_checker=None,  # Very important for videos...lots of false positives while interpolating
                                                 #custom_pipeline="interpolate_stable_diffusion",
+
                                         )
 
-                    StableDiffusionWalkPipeline.save_pretrained(server_state["pipe"], model_path)
+                    StableDiffusionPipeline.save_pretrained(server_state["pipe"], model_path)
                 else:
-                    server_state["pipe"] = StableDiffusionWalkPipeline.from_pretrained(
+                    server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
                                             model_path,
                                                 use_local_file=True,
                                                 torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
@@ -1436,29 +1436,30 @@ def txt2vid(
         # works correctly generating all frames but do not show the preview image
         # we also do not have control over the generation and cant stop it until the end of it.
         #with torch.autocast("cuda"):
+            #print (prompts)
             #video_path = server_state["pipe"].walk(
-                            #prompts=prompts,
-                                #seeds=seeds,
-                                #num_interpolation_steps=num_steps,
-                                #height=height,  # use multiples of 64 if > 512. Multiples of 8 if < 512.
-                                #width=width,   # use multiples of 64 if > 512. Multiples of 8 if < 512.
-                                #batch_size=4,
-                                #fps=30,
-                                #image_file_ext = ".png",
-                                #eta = 0.0,
-                                #output_dir=full_path,        # Where images/videos will be saved
-                                ##name='test',        # Subdirectory of output_dir where images/videos will be saved
-                                #guidance_scale=cfg_scale,         # Higher adheres to prompt more, lower lets model take the wheel
-                                #num_inference_steps=num_inference_steps,     # Number of diffusion steps per image generated. 50 is good default
-                                #upsample = False,
-                                ##do_loop=do_loop,           # Change to True if you want last prompt to loop back to first prompt
-                                #resume = False,
-                                #audio_filepath = None,
-                                #audio_start_sec = None,
-                                #margin = 1.0,
-                                #smooth = 0.0,
-                                #callback=txt2vid_generation_callback, # our callback function will be called with the arguments callback(step, timestep, latents)
-                                #callback_steps=1 # our callback function will be called once this many steps are processed in a single frame
+                            #prompt=prompts,
+                            #seeds=seeds,
+                            #num_interpolation_steps=num_steps,
+                            #height=height,  # use multiples of 64 if > 512. Multiples of 8 if < 512.
+                            #width=width,   # use multiples of 64 if > 512. Multiples of 8 if < 512.
+                            #batch_size=4,
+                            #fps=30,
+                            #image_file_ext = ".png",
+                            #eta = 0.0,
+                            #output_dir=full_path,        # Where images/videos will be saved
+                            ##name='test',        # Subdirectory of output_dir where images/videos will be saved
+                            #guidance_scale=cfg_scale,         # Higher adheres to prompt more, lower lets model take the wheel
+                            #num_inference_steps=num_inference_steps,     # Number of diffusion steps per image generated. 50 is good default
+                            #upsample = False,
+                            ##do_loop=do_loop,           # Change to True if you want last prompt to loop back to first prompt
+                            #resume = False,
+                            #audio_filepath = None,
+                            #audio_start_sec = None,
+                            #margin = 1.0,
+                            #smooth = 0.0,
+                            #callback=txt2vid_generation_callback, # our callback function will be called with the arguments callback(step, timestep, latents)
+                            #callback_steps=1 # our callback function will be called once this many steps are processed in a single frame
                         #)
 
         # old code
