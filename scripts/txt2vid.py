@@ -1166,9 +1166,11 @@ def load_diffusers_model(weights_path,torch_device):
         if "huggingface_token" not in st.session_state or st.session_state["defaults"].general.huggingface_token == "None":
             if "progress_bar_text" in st.session_state:
                 st.session_state["progress_bar_text"].error(
-                                    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token."
-                                )
-            raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
+                    "You need a huggingface token in order to use the Text to Video tab. Use the Settings page to add your token under the Huggingface section. "
+                    "Make sure you save your settings after adding it."
+                )
+            raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page to add your token under the Huggingface section. "
+                          "Make sure you save your settings after adding it.")
         else:
             if "progress_bar_text" in st.session_state:
                 st.session_state["progress_bar_text"].error(e)
