@@ -370,7 +370,7 @@ def layout():
             #url = st.text_area("Input Text","")
             #url = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
             #st.subheader("Input Image")
-            st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg', 'jfif'], accept_multiple_files=True)
+            st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg', 'jfif', 'webp'], accept_multiple_files=True)
 
             with st.expander("CLIP models", expanded=True):
                 st.session_state["ViT-L/14"] = st.checkbox("ViT-L/14", value=True, help="ViT-L/14 model.")
