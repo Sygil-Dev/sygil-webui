@@ -367,9 +367,6 @@ def layout():
         col1, col2 = st.columns([1, 4], gap="large")
 
         with col1:
-            #url = st.text_area("Input Text","")
-            #url = st.text_input("Input Text","", placeholder="A corgi wearing a top hat as an oil painting.")
-            #st.subheader("Input Image")
             st.session_state["uploaded_image"] = st.file_uploader('Input Image', type=['png', 'jpg', 'jpeg', 'jfif', 'webp'], accept_multiple_files=True)
 
             with st.expander("CLIP models", expanded=True):

@@ -31,6 +31,8 @@ streamlit-option-menu==0.3.2
 streamlit_nested_layout==0.1.1
 streamlit-server-state==0.14.2
 streamlit-tensorboard==0.0.2
+streamlit-elements==0.1.* # used for the draggable dashboard and new UI design (WIP)
+streamlit-ace==0.1.1 # used to replace the text area on the prompt and also for the code editor tool.
 hydralit==1.0.14
 hydralit_components==1.0.10
 stqdm==0.0.4

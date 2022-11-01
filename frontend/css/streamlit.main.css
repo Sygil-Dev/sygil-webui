@@ -160,7 +160,7 @@ div.gallery:hover {
 /* Remove some empty spaces to make the UI more compact. */
 .css-18e3th9{
 	padding-left: 10px;
-	padding-right: 10px;
+	padding-right: 30px;
 	position: unset !important; /* Fixes the layout/page going up when an expander or another item is expanded and then collapsed */ 
 }
 .css-k1vhr4{
