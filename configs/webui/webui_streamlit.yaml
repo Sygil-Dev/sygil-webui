@@ -321,7 +321,7 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-4"
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
     tokenizer_name: "models/clip-vit-large-patch14"
 
 
