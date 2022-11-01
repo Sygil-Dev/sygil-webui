@@ -570,7 +570,9 @@ def layout():
 
                                 #print (st.session_state["RealESRGAN_available"])
                                 st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
-                                                                                    index=upscaling_method_list.index(str(st.session_state['defaults'].general.upscaling_method)))
+                                                                                    index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method)
+                                                                                        if st.session_state['defaults'].general.upscaling_method in upscaling_method_list
+                                                                                        else 0)
 
                                 if st.session_state["RealESRGAN_available"]:
                                     with st.expander("RealESRGAN"):
