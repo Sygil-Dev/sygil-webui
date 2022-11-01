@@ -2010,6 +2010,8 @@ def GFPGAN_available():
         st.session_state["GFPGAN_available"] = True
     else:
         st.session_state["GFPGAN_available"] = False
+        st.session_state["use_GFPGAN"] = False
+        st.session_state["GFPGAN_model"] = "GFPGANv1.4"
 
 #
 def RealESRGAN_available():
@@ -2028,6 +2030,8 @@ def RealESRGAN_available():
         st.session_state["RealESRGAN_available"] = True
     else:
         st.session_state["RealESRGAN_available"] = False
+        st.session_state["use_RealESRGAN"] = False
+        st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
 #
 def LDSR_available():
     #with server_state_lock["RealESRGAN_models"]:
@@ -2048,6 +2052,8 @@ def LDSR_available():
         st.session_state["LDSR_available"] = True
     else:
         st.session_state["LDSR_available"] = False
+        st.session_state["use_LDSR"] = False
+        st.session_state["LDSR_model"] = "model"
 
 
 
