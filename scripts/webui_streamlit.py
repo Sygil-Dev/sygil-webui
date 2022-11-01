@@ -130,7 +130,7 @@ def layout():
             {'id': 'Model Manager', 'label': 'Model Manager', 'icon': 'bi bi-cloud-arrow-down-fill'},
             {'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
                 {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
-                #{'id': 'Barfi/BaklavaJS', 'label': 'Barfi/BaklavaJS', 'icon': 'bi bi-diagram-3-fill'},
+                {'id': 'Barfi/BaklavaJS', 'label': 'Barfi/BaklavaJS', 'icon': 'bi bi-diagram-3-fill'},
                 #{'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
                 ]},
             {'id': 'Settings', 'label': 'Settings', 'icon': 'bi bi-gear-fill'},
@@ -190,10 +190,10 @@ def layout():
             except NameError:
                 st.experimental_rerun()
 
-            txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
-                                                                                               #"Inpainting",
-                                                                                               "Text-to-Video", "Image-To-Text",
-                                                                                               "Concept Library"])
+            txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, post_processing_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
+                                                                                                                    #"Inpainting",
+                                                                                                                    "Text-to-Video", "Image-To-Text",
+                                                                                                                    "Post-Processing","Concept Library"])
             #with home_tab:
                     #from home import layout
                     #layout()
@@ -216,6 +216,10 @@ def layout():
 
             with img2txt_tab:
                 from img2txt import layout
+                layout()
+
+            with post_processing_tab:
+                from post_processing import layout
                 layout()
 
             with concept_library_tab:
@@ -243,10 +247,10 @@ def layout():
             from APIServer import layout
             layout()
 
-        #elif menu_id == 'Barfi/BaklavaJS':
-            #set_page_title("Barfi/BaklavaJS - Stable Diffusion Playground")
-            #from barfi_baklavajs import layout
-            #layout()
+        elif menu_id == 'Barfi/BaklavaJS':
+            set_page_title("Barfi/BaklavaJS - Stable Diffusion Playground")
+            from barfi_baklavajs import layout
+            layout()
 
         elif menu_id == 'Settings':
             set_page_title("Settings - Stable Diffusion Playground")
