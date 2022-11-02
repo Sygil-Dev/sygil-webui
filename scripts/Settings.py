@@ -50,7 +50,7 @@ def layout():
 
             with col1:
                 st.title("General")
-                st.session_state['defaults'].general.gpu = int(st.selectbox("GPU", device_list,
+                st.session_state['defaults'].general.gpu = int(st.selectbox("GPU", device_list, index=st.session_state['defaults'].general.gpu,
                                                                             help=f"Select which GPU to use. Default: {device_list[0]}").split(":")[0])
 
                 st.session_state['defaults'].general.outdir = str(st.text_input("Output directory", value=st.session_state['defaults'].general.outdir,
