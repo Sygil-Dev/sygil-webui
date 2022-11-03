@@ -24,6 +24,9 @@ ENV_MODIFIED=$(date -r $ENV_FILE "+%s")
 ENV_MODIFED_FILE=".env_updated"
 ENV_UPDATED=0
 
+INSTALL_ENV_DIR="$(pwd)/../installer_files/env" # since linux-sd.sh clones the repo into a subfolder
+if [ -e "$INSTALL_ENV_DIR" ]; then export PATH="$INSTALL_ENV_DIR/bin:$PATH"; fi
+
 # Models used for upscaling
 GFPGAN_MODEL="https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth"
 LATENT_DIFFUSION_REPO="https://github.com/devilismyfriend/latent-diffusion.git"
@@ -48,6 +51,11 @@ conda_env_setup () {
     # Allow setting custom path via file to allow updates of this script without undoing custom path
     if [ -f custom-conda-path.txt ]; then
         CUSTOM_CONDA_PATH=$(cat custom-conda-path.txt)
+    fi
+
+    # If a custom conda isn't specified, and the installer downloaded conda for the user, then use that
+    if [ -f "$INSTALL_ENV_DIR/etc/profile.d/conda.sh" ] && [ "$CUSTOM_CONDA_PATH" == "" ]; then
+        . "$INSTALL_ENV_DIR/etc/profile.d/conda.sh"
     fi
 
     # If custom path is set above, try to setup conda environment
