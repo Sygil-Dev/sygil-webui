@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 from sd_utils import *
 
@@ -28,7 +28,7 @@ from transformers import CLIPTextModel, CLIPTokenizer
 import argparse
 import itertools
 import math
-import os
+import os, sys
 import random
 #import datetime
 #from pathlib import Path
@@ -210,22 +210,22 @@ def freeze_params(params):
 		param.requires_grad = False
 
 
-def save_resume_file(basepath, extra = {}, config=''):	
+def save_resume_file(basepath, extra = {}, config=''):
 	info = {"args": config["args"]}
 	info["args"].update(extra)
-	
+
 	with open(f"{os.path.join(basepath, 'resume.json')}", "w") as f:
 		#print (info)
 		json.dump(info, f, indent=4)
-		
+
 	with open(f"{basepath}/token_identifier.txt", "w") as f:
 		f.write(f"{config['args']['placeholder_token']}")
-		
+
 	with open(f"{basepath}/type_of_concept.txt", "w") as f:
 		f.write(f"{config['args']['learnable_property']}")
-		
+
 	config['args'] = info["args"]
-	
+
 	return config['args']
 
 class Checkpointer:
@@ -277,7 +277,7 @@ class Checkpointer:
 			else:
 				torch.save(learned_embeds_dict, f"{checkpoints_path}/{filename}")
 				torch.save(learned_embeds_dict, f"{checkpoints_path}/last.bin")
-				
+
 			del unwrapped
 			del learned_embeds
 
@@ -286,15 +286,15 @@ class Checkpointer:
 	def save_samples(self, step, text_encoder, height, width, guidance_scale, eta, num_inference_steps):
 		samples_path = f"{self.output_dir}/concept_images"
 		os.makedirs(samples_path, exist_ok=True)
-		
+
 		#if "checker" not in server_state['textual_inversion']:
 		#with server_state_lock['textual_inversion']["checker"]:
 		server_state['textual_inversion']["checker"] = NoCheck()
-				
+
 		#if "unwrapped" not in server_state['textual_inversion']:
 		#	with server_state_lock['textual_inversion']["unwrapped"]:
 		server_state['textual_inversion']["unwrapped"] = self.accelerator.unwrap_model(text_encoder)
-		
+
 		#if "pipeline" not in server_state['textual_inversion']:
 		#	with server_state_lock['textual_inversion']["pipeline"]:
 		# Save a sample image
@@ -309,7 +309,7 @@ class Checkpointer:
 			safety_checker=NoCheck(),
 			feature_extractor=CLIPFeatureExtractor.from_pretrained("openai/clip-vit-base-patch32"),
 			).to("cuda")
-	
+
 		server_state['textual_inversion']["pipeline"].enable_attention_slicing()
 
 		if self.stable_sample_batches > 0:
@@ -333,7 +333,7 @@ class Checkpointer:
 				    num_inference_steps=num_inference_steps,
 				    output_type='pil'
 				    )["sample"]
-				
+
 				for idx, im in enumerate(samples):
 					filename = f"stable_sample_%d_%d_step_%d.png" % (i+1, idx+1, step)
 					im.save(f"{samples_path}/{filename}")
@@ -365,28 +365,28 @@ class Checkpointer:
 #@retry(RuntimeError, tries=5)
 def textual_inversion(config):
 	print ("Running textual inversion.")
-	
+
 	#if "pipeline" in server_state["textual_inversion"]:
 		#del server_state['textual_inversion']["checker"]
 		#del server_state['textual_inversion']["unwrapped"]
 		#del server_state['textual_inversion']["pipeline"]
 		#torch.cuda.empty_cache()
-		
+
 	global_step_offset = 0
-	
+
 	#print(config['args']['resume_from'])
 	if config['args']['resume_from']:
 		try:
 			basepath = f"{config['args']['resume_from']}"
-			
+
 			with open(f"{basepath}/resume.json", 'r') as f:
 				state = json.load(f)
-				
+
 			global_step_offset = state["args"].get("global_step", 0)
-	
+
 			print("Resuming state from %s" % config['args']['resume_from'])
 			print("We've trained %d steps so far" % global_step_offset)
-			
+
 		except json.decoder.JSONDecodeError:
 			pass
 	else:
@@ -398,7 +398,7 @@ def textual_inversion(config):
 	    gradient_accumulation_steps=config['args']['gradient_accumulation_steps'],
 	    mixed_precision=config['args']['mixed_precision']
 	)
-	
+
 	# If passed along, set the training seed.
 	if config['args']['seed']:
 		set_seed(config['args']['seed'])
@@ -442,9 +442,9 @@ def textual_inversion(config):
 	server_state['textual_inversion']["vae"] = AutoencoderKL.from_pretrained(
         config['args']['pretrained_model_name_or_path'] + '/vae',
     )
-	
+
 	#if "unet" not in server_state['textual_inversion']:
-		#with server_state_lock['textual_inversion']["unet"]:	
+		#with server_state_lock['textual_inversion']["unet"]:
 	server_state['textual_inversion']["unet"] = UNet2DConditionModel.from_pretrained(
         config['args']['pretrained_model_name_or_path'] + '/unet',
     )
@@ -640,18 +640,18 @@ def textual_inversion(config):
 					        "global_step": global_step + global_step_offset,
 					        "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
 					    }, config)
-						
+
 						checkpointer.save_samples(
 					        global_step + global_step_offset,
 					        server_state['textual_inversion']["text_encoder"],
 					        config['args']['resolution'], config['args'][
 					            'resolution'], 7.5, 0.0, config['args']['sample_steps'])
-						
+
 						checkpointer.checkpoint(
 					        global_step + global_step_offset,
 					        server_state['textual_inversion']["text_encoder"],
 					        path=f"{basepath}/learned_embeds.bin"
-					    )	
+					    )
 				#except KeyError:
 					#raise StopException
 
@@ -659,7 +659,7 @@ def textual_inversion(config):
 				progress_bar.set_postfix(**logs)
 
 				#accelerator.log(logs, step=global_step)
-				
+
 				#try:
 				if global_step >= config['args']['max_train_steps']:
 					break
@@ -686,166 +686,166 @@ def textual_inversion(config):
 
 	except (KeyboardInterrupt, StopException) as e:
 		print(f"Received Streamlit StopException or KeyboardInterrupt")
-		
+
 		if accelerator.is_main_process:
 			print("Interrupted, saving checkpoint and resume state...")
 			checkpointer.checkpoint(global_step + global_step_offset, server_state['textual_inversion']["text_encoder"])
-			
+
 			config['args'] = save_resume_file(basepath, {
 			    "global_step": global_step + global_step_offset,
 			    "resume_checkpoint": f"{basepath}/checkpoints/last.bin"
 			    }, config)
-			
-			
+
+
 			checkpointer.checkpoint(
 			    global_step + global_step_offset,
 			    server_state['textual_inversion']["text_encoder"],
 			    path=f"{basepath}/learned_embeds.bin"
 			)
-			
+
 		quit()
 
 
 def layout():
-	
+
 	with st.form("textual-inversion"):
 		#st.info("Under Construction. :construction_worker:")
 		#parser = argparse.ArgumentParser(description="Simple example of a training script.")
-		
+
 		set_page_title("Textual Inversion - Stable Diffusion Playground")
-		
+
 		config_tab, output_tab, tensorboard_tab = st.tabs(["Textual Inversion Config", "Ouput", "TensorBoard"])
-		
+
 		with config_tab:
 			col1, col2, col3, col4, col5 = st.columns(5, gap='large')
-			
+
 			if "textual_inversion" not in st.session_state:
 				st.session_state["textual_inversion"] = {}
-				
+
 			if "textual_inversion" not in server_state:
 				server_state["textual_inversion"] = {}
-			
+
 			if "args" not in st.session_state["textual_inversion"]:
 				st.session_state["textual_inversion"]["args"] = {}
-			
-			
+
+
 			with col1:
 				st.session_state["textual_inversion"]["args"]["pretrained_model_name_or_path"] = st.text_input("Pretrained Model Path",
 																									  value=st.session_state["defaults"].textual_inversion.pretrained_model_name_or_path,
 																									  help="Path to pretrained model or model identifier from huggingface.co/models.")
-				
-				st.session_state["textual_inversion"]["args"]["tokenizer_name"] = st.text_input("Tokenizer Name", 
-																					   value=st.session_state["defaults"].textual_inversion.tokenizer_name, 
+
+				st.session_state["textual_inversion"]["args"]["tokenizer_name"] = st.text_input("Tokenizer Name",
+																					   value=st.session_state["defaults"].textual_inversion.tokenizer_name,
 																					   help="Pretrained tokenizer name or path if not the same as model_name")
-				
+
 				st.session_state["textual_inversion"]["args"]["train_data_dir"] = st.text_input("train_data_dir", value="", help="A folder containing the training data.")
-				
+
 				st.session_state["textual_inversion"]["args"]["placeholder_token"] = st.text_input("Placeholder Token", value="", help="A token to use as a placeholder for the concept.")
-				
+
 				st.session_state["textual_inversion"]["args"]["initializer_token"] = st.text_input("Initializer Token", value="", help="A token to use as initializer word.")
-				
+
 				st.session_state["textual_inversion"]["args"]["learnable_property"] = st.selectbox("Learnable Property", ["object", "style"], index=0, help="Choose between 'object' and 'style'")
-				
+
 				st.session_state["textual_inversion"]["args"]["repeats"] = int(st.text_input("Number of times to Repeat", value=100, help="How many times to repeat the training data."))
-				
+
 				with col2:
 					st.session_state["textual_inversion"]["args"]["output_dir"] = st.text_input("Output Directory",
 																		   value=str(os.path.join("outputs", "textual_inversion")),
 																		   help="The output directory where the model predictions and checkpoints will be written.")
-					
+
 					st.session_state["textual_inversion"]["args"]["seed"] = seed_to_int(st.text_input("Seed", value=0,
 					                                                                                help="A seed for reproducible training, if left empty a random one will be generated. Default: 0"))
-					
+
 					st.session_state["textual_inversion"]["args"]["resolution"] = int(st.text_input("Resolution",  value=512,
 																   help="The resolution for input images, all the images in the train/validation dataset will be resized to this resolution"))
-					
+
 					st.session_state["textual_inversion"]["args"]["center_crop"] = st.checkbox("Center Image", value=True, help="Whether to center crop images before resizing to resolution")
-					
+
 					st.session_state["textual_inversion"]["args"]["train_batch_size"] = int(st.text_input("Train Batch Size",  value=1, help="Batch size (per device) for the training dataloader."))
-					
+
 					st.session_state["textual_inversion"]["args"]["num_train_epochs"] = int(st.text_input("Number of Steps to Train",  value=100, help="Number of steps to train."))
-					
+
 					st.session_state["textual_inversion"]["args"]["max_train_steps"] = int(st.text_input("Max Number of Steps to Train", value=5000,
 																	help="Total number of training steps to perform.  If provided, overrides 'Number of Steps to Train'."))
-					
+
 					with col3:
 						st.session_state["textual_inversion"]["args"]["gradient_accumulation_steps"] = int(st.text_input("Gradient Accumulation Steps",  value=1,
 																						help="Number of updates steps to accumulate before performing a backward/update pass."))
-						
+
 						st.session_state["textual_inversion"]["args"]["learning_rate"] = float(st.text_input("Learning Rate", value=5.0e-04,
 																		  help="Initial learning rate (after the potential warmup period) to use."))
-						
+
 						st.session_state["textual_inversion"]["args"]["scale_lr"] = st.checkbox("Scale Learning Rate", value=True,
 																   help="Scale the learning rate by the number of GPUs, gradient accumulation steps, and batch size.")
-						
+
 						st.session_state["textual_inversion"]["args"]["lr_scheduler"] = st.text_input("Learning Rate Scheduler",  value="constant",
 																		 help=("The scheduler type to use. Choose between ['linear', 'cosine', 'cosine_with_restarts', 'polynomial',"
 																			   " 'constant', 'constant_with_warmup']" ))
-						
+
 						st.session_state["textual_inversion"]["args"]["lr_warmup_steps"] = int(st.text_input("Learning Rate Warmup Steps", value=500, help="Number of steps for the warmup in the lr scheduler."))
-						
+
 						st.session_state["textual_inversion"]["args"]["adam_beta1"] = float(st.text_input("Adam Beta 1",  value=0.9, help="The beta1 parameter for the Adam optimizer."))
-						
+
 						st.session_state["textual_inversion"]["args"]["adam_beta2"] = float(st.text_input("Adam Beta 2", value=0.999, help="The beta2 parameter for the Adam optimizer."))
-						
+
 						st.session_state["textual_inversion"]["args"]["adam_weight_decay"] = float(st.text_input("Adam Weight Decay",  value=1e-2, help="Weight decay to use."))
-						
+
 						st.session_state["textual_inversion"]["args"]["adam_epsilon"] = float(st.text_input("Adam Epsilon",  value=1e-08, help="Epsilon value for the Adam optimizer"))
-						
+
 						with col4:
 							st.session_state["textual_inversion"]["args"]["mixed_precision"] = st.selectbox("Mixed Precision", ["no", "fp16", "bf16"], index=1,
 																			   help="Whether to use mixed precision. Choose" "between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >= 1.10."
 																			   "and an Nvidia Ampere GPU.")
-							
+
 							st.session_state["textual_inversion"]["args"]["local_rank"] = int(st.text_input("Local Rank",  value=1, help="For distributed training: local_rank"))
-							
+
 							st.session_state["textual_inversion"]["args"]["checkpoint_frequency"] = int(st.text_input("Checkpoint Frequency",  value=500, help="How often to save a checkpoint and sample image"))
-							
+
 							# stable_sample_batches is crashing when saving the samples so for now I will disable it util its fixed.
 							#st.session_state["textual_inversion"]["args"]["stable_sample_batches"] = int(st.text_input("Stable Sample Batches",  value=0,
 																						  #help="Number of fixed seed sample batches to generate per checkpoint"))
-																						  
-							st.session_state["textual_inversion"]["args"]["stable_sample_batches"] = 0															  
-							
+
+							st.session_state["textual_inversion"]["args"]["stable_sample_batches"] = 0
+
 							st.session_state["textual_inversion"]["args"]["random_sample_batches"] = int(st.text_input("Random Sample Batches",  value=2,
 																						  help="Number of random seed sample batches to generate per checkpoint"))
-							
+
 							st.session_state["textual_inversion"]["args"]["sample_batch_size"] = int(st.text_input("Sample Batch Size",  value=1, help="Number of samples to generate per batch"))
-							
+
 							st.session_state["textual_inversion"]["args"]["sample_steps"] = int(st.text_input("Sample Steps",  value=100,
 																			 help="Number of steps for sample generation. Higher values will result in more detailed samples, but longer runtimes."))
-							
+
 							st.session_state["textual_inversion"]["args"]["custom_templates"] = st.text_input("Custom Templates",  value="",
 																				 help="A semicolon-delimited list of custom template to use for samples, using {} as a placeholder for the concept.")
-							with col5:	
+							with col5:
 								st.session_state["textual_inversion"]["args"]["resume"] = st.checkbox(label="Resume Previous Run?", value=False,
 								                                                                      help="Resume previous run, if a valid resume.json file is on the output dir \
 								                                                                      it will be used, otherwise if the 'Resume From' field bellow contains a valid resume.json file \
 								                                                                      that one will be used.")
-								
+
 								st.session_state["textual_inversion"]["args"]["resume_from"] = st.text_input(label="Resume From", help="Path to a directory to resume training from (ie, logs/token_name)")
-								
+
 								#st.session_state["textual_inversion"]["args"]["resume_checkpoint"] = st.file_uploader("Resume Checkpoint", type=["bin"],
 																					  #help="Path to a specific checkpoint to resume training from (ie, logs/token_name/checkpoints/something.bin).")
-								
+
 								#st.session_state["textual_inversion"]["args"]["st.session_state["textual_inversion"]"] = st.file_uploader("st.session_state["textual_inversion"] File",  type=["json"],
 																		#help="Path to a JSON st.session_state["textual_inversion"]uration file containing arguments for invoking this script."
 																		#"If resume_from is given, its resume.json takes priority over this.")
-			#	
+			#
 			#print (os.path.join(st.session_state["textual_inversion"]["args"]["output_dir"],st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"),"resume.json"))
 			#print (os.path.exists(os.path.join(st.session_state["textual_inversion"]["args"]["output_dir"],st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"),"resume.json")))
 			if os.path.exists(os.path.join(st.session_state["textual_inversion"]["args"]["output_dir"],st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"),"resume.json")):
 				st.session_state["textual_inversion"]["args"]["resume_from"] = os.path.join(
 				    st.session_state["textual_inversion"]["args"]["output_dir"], st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"))
 				#print (st.session_state["textual_inversion"]["args"]["resume_from"])
-				
+
 			if os.path.exists(os.path.join(st.session_state["textual_inversion"]["args"]["output_dir"],st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"), "checkpoints","last.bin")):
 				st.session_state["textual_inversion"]["args"]["resume_checkpoint"] = os.path.join(
-			        st.session_state["textual_inversion"]["args"]["output_dir"], st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"), "checkpoints","last.bin")			
-			
+			        st.session_state["textual_inversion"]["args"]["output_dir"], st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"), "checkpoints","last.bin")
+
 			#if "resume_from" in st.session_state["textual_inversion"]["args"]:
 				#if st.session_state["textual_inversion"]["args"]["resume_from"]:
-					#if os.path.exists(os.path.join(st.session_state["textual_inversion"]['args']['resume_from'], "resume.json")): 
+					#if os.path.exists(os.path.join(st.session_state["textual_inversion"]['args']['resume_from'], "resume.json")):
 						#with open(os.path.join(st.session_state["textual_inversion"]['args']['resume_from'], "resume.json"), 'rt') as f:
 							#try:
 								#resume_json = json.load(f)["args"]
@@ -854,87 +854,86 @@ def layout():
 								    #st.session_state["textual_inversion"]["args"]["output_dir"], st.session_state["textual_inversion"]["args"]["placeholder_token"].strip("<>"))
 							#except json.decoder.JSONDecodeError:
 								#pass
-							
+
 							#print(st.session_state["textual_inversion"]["args"])
 							#print(st.session_state["textual_inversion"]["args"]['resume_from'])
-						
+
 			#elif st.session_state["textual_inversion"]["args"]["st.session_state["textual_inversion"]"] is not None:
 				#with open(st.session_state["textual_inversion"]["args"]["st.session_state["textual_inversion"]"], 'rt') as f:
 					#args = parser.parse_args(namespace=argparse.Namespace(**json.load(f)["args"]))
-		
+
 			env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
 			if env_local_rank != -1 and env_local_rank != st.session_state["textual_inversion"]["args"]["local_rank"]:
 				st.session_state["textual_inversion"]["args"]["local_rank"] = env_local_rank
-		
+
 			if st.session_state["textual_inversion"]["args"]["train_data_dir"] is None:
 				st.error("You must specify --train_data_dir")
-		
+
 			if st.session_state["textual_inversion"]["args"]["pretrained_model_name_or_path"] is None:
 				st.error("You must specify --pretrained_model_name_or_path")
-		
+
 			if st.session_state["textual_inversion"]["args"]["placeholder_token"] is None:
 				st.error("You must specify --placeholder_token")
-		
+
 			if st.session_state["textual_inversion"]["args"]["initializer_token"] is None:
 				st.error("You must specify --initializer_token")
-		
+
 			if st.session_state["textual_inversion"]["args"]["output_dir"] is None:
 				st.error("You must specify --output_dir")
-		
+
 			# add a spacer and the submit button for the form.
-			
+
 			st.session_state["textual_inversion"]["message"] = st.empty()
 			st.session_state["textual_inversion"]["progress_bar"] = st.empty()
-			
+
 			st.write("---")
-		
+
 			submit = st.form_submit_button("Run",help="")
 			if submit:
 				if "pipe" in st.session_state:
 					del st.session_state["pipe"]
 				if "model" in st.session_state:
 					del st.session_state["model"]
-				
+
 				set_page_title("Running Textual Inversion - Stable Diffusion WebUI")
 				#st.session_state["textual_inversion"]["message"].info("Textual Inversion Running. For more info check the progress on your console or the Ouput Tab.")
-				
+
 				try:
 					#try:
 					# run textual inversion.
 					config = st.session_state['textual_inversion']
-					textual_inversion(config)	
+					textual_inversion(config)
 					#except RuntimeError:
 						#if "pipeline" in server_state["textual_inversion"]:
 							#del server_state['textual_inversion']["checker"]
 							#del server_state['textual_inversion']["unwrapped"]
-							#del server_state['textual_inversion']["pipeline"]									
-						
+							#del server_state['textual_inversion']["pipeline"]
+
 						# run textual inversion.
 						#config = st.session_state['textual_inversion']
-						#textual_inversion(config)	
-						
+						#textual_inversion(config)
+
 					set_page_title("Textual Inversion - Stable Diffusion WebUI")
-				
+
 				except StopException:
 					set_page_title("Textual Inversion - Stable Diffusion WebUI")
 					print(f"Received Streamlit StopException")
-				
+
 				st.session_state["textual_inversion"]["message"].empty()
-		
+
 		#
 		with output_tab:
 			st.info("Under Construction. :construction_worker:")
-			
+
 			#st.info("Nothing to show yet. Maybe try running some training first.")
-			
+
 			#st.session_state["textual_inversion"]["preview_image"] = st.empty()
-			#st.session_state["textual_inversion"]["progress_bar"] = st.empty()			
-			
-			
+			#st.session_state["textual_inversion"]["progress_bar"] = st.empty()
+
+
 		with tensorboard_tab:
 			#st.info("Under Construction. :construction_worker:")
-			
+
 			# Start TensorBoard
 			st_tensorboard(logdir=os.path.join("outputs", "textual_inversion"), port=8888)
-			
-		
+
