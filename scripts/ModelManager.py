@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -45,12 +45,12 @@ def download_file(file_name, file_path, file_url):
                 raise OSError("You need a huggingface token in order to use the Text to Video tab. Use the Settings page from the sidebar on the left to add your token.")
 
         try:
-            with requests.get(file_url, auth = HTTPBasicAuth('token', st.session_state.defaults.general.huggingface_token), stream=True) as r:
+            with requests.get(file_url, auth = HTTPBasicAuth('token', st.session_state.defaults.general.huggingface_token) if "huggingface.co" in file_url else None, stream=True) as r:
                 r.raise_for_status()
                 with open(os.path.join(file_path, file_name), 'wb') as f:
                     for chunk in stqdm(r.iter_content(chunk_size=8192), backend=True, unit="kb"):
                         f.write(chunk)
-        except HTTPError:
+        except HTTPError as e:
             if "huggingface.co" in file_url:
                 if "resolve"in file_url:
                     repo_url = file_url.split("resolve")[0]
@@ -59,8 +59,11 @@ def download_file(file_name, file_path, file_url):
                         f"You need to accept the license for the model in order to be able to download it. "
                         f"Please visit {repo_url} and accept the lincense there, then try again to download the model.")
 
+            logger.error(e)
+
     else:
         print(file_name + ' already exists.')
+
 
 def download_model(models, model_name):
     """ Download all files from model_list[model_name] """

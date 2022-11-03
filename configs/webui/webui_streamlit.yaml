@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -23,6 +23,7 @@ general:
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''
+    stable_horde_api: '0000000000'
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.5"
@@ -51,7 +52,7 @@ general:
     save_format: "png"
     skip_grid: False
     skip_save: False
-    grid_format: "jpg:95"
+    grid_quality: 95
     n_rows: -1
     no_verify_input: False
     no_half: False
@@ -64,6 +65,10 @@ general:
     enable_minimal_memory_usage: False
     update_preview: True
     update_preview_frequency: 10
+
+admin:
+    hide_server_setting: False
+    hide_browser_setting: False
 
 debug:
     enable_hydralit: False
@@ -230,7 +235,8 @@ img2img:
         step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
-    mask_mode: 0
+    mask_mode: 1
+    noise_mode: "Matched Noise"
     mask_restore: False
     # 0: Just resize
     # 1: Crop and resize
@@ -304,7 +310,7 @@ img2img:
     write_info_files: True
 
 img2txt:
-    batch_size: 420
+    batch_size: 2000
     blip_image_eval_size: 512
     keep_all_models_loaded: False
 
@@ -315,7 +321,7 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-4"
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
     tokenizer_name: "models/clip-vit-large-patch14"
 
 
@@ -378,13 +384,21 @@ model_manager:
                     file_name: "trinart.ckpt"
                     download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
 
+        sd_wd_ld_trinart_merged:
+            model_name:     "SD1.5-WD1.3-LD-Trinart-Merged"
+            save_location:  "./models/custom"
+            files:
+                sd_wd_ld_trinart_merged:
+                    file_name: "SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+                    download_link:  "https://huggingface.co/ZeroCool94/sd1.5-wd1.3-ld-trinart-merged/resolve/main/SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+
         stable_diffusion_concept_library:
             model_name:     "Stable Diffusion Concept Library"
             save_location:  "./models/custom/sd-concepts-library/"
             files:
                 concept_library:
                     file_name: ""
-                    download_link:  "https://github.com/sd-webui/sd-concepts-library"
+                    download_link:  "https://github.com/Sygil-Dev/sd-concepts-library"
 
         blip_model:
             model_name:     "Blip Model"

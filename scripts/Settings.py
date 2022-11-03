@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -50,7 +50,7 @@ def layout():
 
             with col1:
                 st.title("General")
-                st.session_state['defaults'].general.gpu = int(st.selectbox("GPU", device_list,
+                st.session_state['defaults'].general.gpu = int(st.selectbox("GPU", device_list, index=st.session_state['defaults'].general.gpu,
                                                                             help=f"Select which GPU to use. Default: {device_list[0]}").split(":")[0])
 
                 st.session_state['defaults'].general.outdir = str(st.text_input("Output directory", value=st.session_state['defaults'].general.outdir,
@@ -159,7 +159,7 @@ def layout():
                 # Default: True")
                 st.session_state["defaults"].general.update_preview = True
                 st.session_state["defaults"].general.update_preview_frequency = st.number_input("Update Preview Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].general.update_preview_frequency,
                                                                                                 help="Specify the frequency at which the image is updated in steps, this is helpful to reduce the \
                                                                                                 negative effect updating the preview image has on performance. Default: 10")
@@ -181,15 +181,17 @@ def layout():
 
                 st.session_state["defaults"].general.save_metadata = st.checkbox("Save Metadata", value=st.session_state['defaults'].general.save_metadata,
                                                                                  help="Save metadata on the output image. Default: True")
-                save_format_list = ["png"]
+                save_format_list = ["png","jpg", "jpeg","webp"]
                 st.session_state["defaults"].general.save_format = st.selectbox("Save Format", save_format_list, index=save_format_list.index(st.session_state['defaults'].general.save_format),
                                                                                 help="Format that will be used whens saving the output images. Default: 'png'")
 
                 st.session_state["defaults"].general.skip_grid = st.checkbox("Skip Grid", value=st.session_state['defaults'].general.skip_grid,
                                                                              help="Skip saving the grid output image. Default: False")
                 if not st.session_state["defaults"].general.skip_grid:
-                    st.session_state["defaults"].general.grid_format = st.text_input("Grid Format", value=st.session_state['defaults'].general.grid_format,
-                                                                                     help="Format for saving the grid output image. Default: 'jpg:95'")
+
+
+                    st.session_state["defaults"].general.grid_quality = st.number_input("Grid Quality", value=st.session_state['defaults'].general.grid_quality,
+                                                                                        help="Format for saving the grid output image. Default: 95")
 
                 st.session_state["defaults"].general.skip_save = st.checkbox("Skip Save", value=st.session_state['defaults'].general.skip_save,
                                                                              help="Skip saving the output image. Default: False")
@@ -206,14 +208,64 @@ def layout():
             with col4:
                 st.title("Streamlit Config")
 
-                st.session_state["defaults"].general.streamlit_telemetry = st.checkbox("Enable Telemetry", value=st.session_state['defaults'].general.streamlit_telemetry,
-                                                                                       help="Enables or Disables streamlit telemetry. Default: False")
-                st.session_state["streamlit_config"]["browser"]["gatherUsageStats"] = st.session_state["defaults"].general.streamlit_telemetry
-
                 default_theme_list = ["light", "dark"]
                 st.session_state["defaults"].general.default_theme = st.selectbox("Default Theme", default_theme_list, index=default_theme_list.index(st.session_state['defaults'].general.default_theme),
                                                                                   help="Defaut theme to use as base for streamlit. Default: dark")
                 st.session_state["streamlit_config"]["theme"]["base"] = st.session_state["defaults"].general.default_theme
+
+
+                if not st.session_state['defaults'].admin.hide_server_setting:
+                    with st.expander("Server", True):
+
+                        st.session_state["streamlit_config"]['server']['headless'] = st.checkbox("Run Headless", help="If false, will attempt to open a browser window on start.  \
+                                                                                                 Default: false unless (1) we are on a Linux box where DISPLAY is unset, \
+                                                                                                 or (2) we are running in the Streamlit Atom plugin.")
+
+                        st.session_state["streamlit_config"]['server']['port'] = st.number_input("Port", value=st.session_state["streamlit_config"]['server']['port'],
+                                                                                                 help="The port where the server will listen for browser connections. Default: 8501")
+
+                        st.session_state["streamlit_config"]['server']['baseUrlPath'] = st.text_input("Base Url Path", value=st.session_state["streamlit_config"]['server']['baseUrlPath'],
+                                                                                                 help="The base path for the URL where Streamlit should be served from. Default: '' ")
+
+                        st.session_state["streamlit_config"]['server']['enableCORS'] = st.checkbox("Enable CORS", value=st.session_state['streamlit_config']['server']['enableCORS'],
+                                                                                                   help="Enables support for Cross-Origin Request Sharing (CORS) protection, for added security. \
+                                                                                                   Due to conflicts between CORS and XSRF, if `server.enableXsrfProtection` is on and `server.enableCORS` \
+                                                                                                   is off at the same time, we will prioritize `server.enableXsrfProtection`. Default: true")
+
+                        st.session_state["streamlit_config"]['server']['enableXsrfProtection'] = st.checkbox("Enable Xsrf Protection",
+                                                                                                             value=st.session_state['streamlit_config']['server']['enableXsrfProtection'],
+                                                                                                             help="Enables support for Cross-Site Request Forgery (XSRF) protection, \
+                                                                                                             for added security. Due to conflicts between CORS and XSRF, \
+                                                                                                             if `server.enableXsrfProtection` is on and `server.enableCORS` is off at \
+                                                                                                             the same time, we will prioritize `server.enableXsrfProtection`. Default: true")
+
+                        st.session_state["streamlit_config"]['server']['maxUploadSize'] = st.number_input("Max Upload Size", value=st.session_state["streamlit_config"]['server']['maxUploadSize'],
+                                                                                                 help="Max size, in megabytes, for files uploaded with the file_uploader. Default: 200")
+
+                        st.session_state["streamlit_config"]['server']['maxMessageSize'] = st.number_input("Max Message Size", value=st.session_state["streamlit_config"]['server']['maxUploadSize'],
+                                                                                                 help="Max size, in megabytes, of messages that can be sent via the WebSocket connection. Default: 200")
+
+                        st.session_state["streamlit_config"]['server']['enableWebsocketCompression'] = st.checkbox("Enable Websocket Compression",
+                                                                                                                   value=st.session_state["streamlit_config"]['server']['enableWebsocketCompression'],
+                                                                                                                   help=" Enables support for websocket compression. Default: false")
+                if not st.session_state['defaults'].admin.hide_browser_setting:
+                    with st.expander("Browser", expanded=True):
+                        st.session_state["streamlit_config"]['browser']['serverAddress'] = st.text_input("Server Address",
+                                                                                                       value=st.session_state["streamlit_config"]['browser']['serverAddress'] if "serverAddress" in st.session_state["streamlit_config"] else "localhost",
+                                                                                                       help="Internet address where users should point their browsers in order \
+                                                                                                       to connect to the app. Can be IP address or DNS name and path.\
+                                                                                                       This is used to: - Set the correct URL for CORS and XSRF protection purposes. \
+                                                                                                       - Show the URL on the terminal - Open the browser. Default: 'localhost'")
+
+                        st.session_state["defaults"].general.streamlit_telemetry = st.checkbox("Enable Telemetry", value=st.session_state['defaults'].general.streamlit_telemetry,
+                                                                                               help="Enables or Disables streamlit telemetry. Default: False")
+                        st.session_state["streamlit_config"]["browser"]["gatherUsageStats"] = st.session_state["defaults"].general.streamlit_telemetry
+
+                        st.session_state["streamlit_config"]['browser']['serverPort'] = st.number_input("Server Port", value=st.session_state["streamlit_config"]['browser']['serverPort'],
+                                                                                                 help="Port where users should point their browsers in order to connect to the app. \
+                                                                                                 This is used to: - Set the correct URL for CORS and XSRF protection purposes. \
+                                                                                                 - Show the URL on the terminal - Open the browser \
+                                                                                                 Default: whatever value is set in server.port.")
 
             with col5:
                 st.title("Huggingface")
@@ -222,6 +274,15 @@ def layout():
                                                                                        is used on the Text To Video tab. This token will be saved to your user config file\
                                                                                        and WILL NOT be share with us or anyone. You can get your access token \
                                                                                        at https://huggingface.co/settings/tokens. Default: None")
+
+                st.title("Stable Horde")
+                st.session_state["defaults"].general.stable_horde_api = st.text_input("Stable Horde Api", value=st.session_state["defaults"].general.stable_horde_api, type="password",
+                                                                                      help="First Register an account at https://stablehorde.net/register which will generate for you \
+                                                                                      an API key. Store that key somewhere safe. \n \
+                                                                                      If you do not want to register, you can use `0000000000` as api_key to connect anonymously.\
+                                                                                      However anonymous accounts have the lowest priority when there's too many concurrent requests! \
+                                                                                      To increase your priority you will need a unique API key and then to increase your Kudos \
+                                                                                      read more about them at https://dbzer0.com/blog/the-kudos-based-economy-for-the-koboldai-horde/.")
 
         with txt2img_tab:
             col1, col2, col3, col4, col5 = st.columns(5, gap='medium')
@@ -325,7 +386,7 @@ def layout():
 
                 st.session_state["defaults"].txt2img.update_preview = True
                 st.session_state["defaults"].txt2img.update_preview_frequency = st.number_input("Preview Image Update Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].txt2img.update_preview_frequency,
                                                                                                 help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 
@@ -518,7 +579,7 @@ def layout():
 
                 st.session_state["defaults"].img2img.update_preview = True
                 st.session_state["defaults"].img2img.update_preview_frequency = st.number_input("Img2Img Preview Image Update Frequency",
-                                                                                                min_value=1,
+                                                                                                min_value=0,
                                                                                                 value=st.session_state['defaults'].img2img.update_preview_frequency,
                                                                                                 help="Set the default value for the frrquency of the preview image updates. Default is: 10")
 

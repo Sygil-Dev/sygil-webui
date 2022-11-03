@@ -6,22 +6,22 @@
 
 ## Installation instructions for:
 
-- **[Windows](https://sd-webui.github.io/stable-diffusion-webui/docs/1.windows-installation.html)** 
-- **[Linux](https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.html)**
+- **[Windows](https://sygil-dev.github.io/sygil-webui/docs/1.windows-installation.html)** 
+- **[Linux](https://sygil-dev.github.io/sygil-webui/docs/2.linux-installation.html)**
 
 ### Want to ask a question or request a feature?
 
-Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sygil-dev/stable-diffusion-webui/discussions).
+Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sygil-dev/sygil-webui/discussions).
 
 ## Documentation
 
-[Documentation is located here](https://sd-webui.github.io/stable-diffusion-webui/)
+[Documentation is located here](https://sygil-dev.github.io/sygil-webui/)
 
 ## Want to contribute?
 
 Check the [Contribution Guide](CONTRIBUTING.md)
 
-[sygil-dev](https://github.com/sygil-dev) main devs:
+[Sygil-Dev](https://github.com/Sygil-Dev) main devs:
 
 * ![hlky's avatar](https://avatars.githubusercontent.com/u/106811348?s=40&v=4) [hlky](https://github.com/hlky)
 * ![ZeroCool940711's avatar](https://avatars.githubusercontent.com/u/5977640?s=40&v=4)[ZeroCool940711](https://github.com/ZeroCool940711)
@@ -30,7 +30,9 @@ Check the [Contribution Guide](CONTRIBUTING.md)
 ### Project Features:
 
 * Built-in image enhancers and upscalers, including GFPGAN and realESRGAN
+
 * Generator Preview: See your image as its being made
+
 * Run additional upscaling models on CPU to save VRAM
 
 * Textual inversion: [Reaserch Paper](https://textual-inversion.github.io/) 
@@ -64,7 +66,7 @@ Check the [Contribution Guide](CONTRIBUTING.md)
 
 * Prompt matrix: Separate multiple prompts using the `|` character, and the system will produce an image for every combination of them.
 
-*  [Gradio] Advanced img2img editor with Mask and crop capabilities
+* [Gradio] Advanced img2img editor with Mask and crop capabilities
 
 * [Gradio] Mask painting 🖌️: Powerful tool for re-generating only specific parts of an image you want to change (currently Gradio only)
 
@@ -83,9 +85,11 @@ An easy way to work with Stable Diffusion right from your browser.
 - Easily customizable defaults, right from the WebUI's Settings tab
 - An integrated gallery to show the generations for a prompt
 - *Optimized VRAM* usage for bigger generations or usage on lower end GPUs
-- *Text2Video:* Generate video clips from text prompts right from the WebUI (WIP)
+- *Text to Video:* Generate video clips from text prompts right from the WebUI (WIP)
+- Image to Text: Use [CLIP Interrogator](https://github.com/pharmapsychotic/clip-interrogator) to interrogate an image and get a prompt that you can use to generate a similar image using Stable Diffusion.
 - *Concepts Library:* Run custom embeddings others have made via textual inversion.
-- **Currently in development: [Stable Hord](https://stablehorde.net/) integration; ImgLab, batch inputs, & mask editor from Gradio
+- Textual Inversion training: Train your own embeddings on any photo you want and use it on your prompt.
+- **Currently in development: [Stable Horde](https://stablehorde.net/) integration; ImgLab, batch inputs, & mask editor from Gradio
 
 **Prompt Weights & Negative Prompts:**
 
@@ -128,7 +132,7 @@ Lets you improve faces in pictures using the GFPGAN model. There is a checkbox i
 
 If you want to use GFPGAN to improve generated faces, you need to install it separately.
 Download [GFPGANv1.4.pth](https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth) and put it
-into the `/stable-diffusion-webui/models/gfpgan` directory. 
+into the `/sygil-webui/models/gfpgan` directory. 
 
 ### RealESRGAN
 
@@ -138,19 +142,15 @@ Lets you double the resolution of generated images. There is a checkbox in every
 There is also a separate tab for using RealESRGAN on any picture.
 
 Download [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth) and [RealESRGAN_x4plus_anime_6B.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth).
-Put them into the `stable-diffusion-webui/models/realesrgan` directory. 
-
-
+Put them into the `sygil-webui/models/realesrgan` directory. 
 
 ### LSDR
 
-Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under `stable-diffusion-webui/models/ldsr/`
+Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under `sygil-webui/models/ldsr/`
 
 ### GoBig, and GoLatent *(Currently on the Gradio version Only)*
 
 More powerful upscalers that uses a seperate Latent Diffusion model to more cleanly upscale images.
-
-
 
 Please see the [Image Enhancers Documentation](docs/6.image_enhancers.md) to learn more.
 
@@ -211,5 +211,4 @@ Details on the training procedure and data, as well as the intended use of the m
       archivePrefix={arXiv},
       primaryClass={cs.CV}
 }
-
 ```
