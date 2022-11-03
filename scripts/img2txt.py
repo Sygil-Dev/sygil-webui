@@ -66,6 +66,9 @@ st.session_state["log"] = []
 
 def load_blip_model():
     logger.info("Loading BLIP Model")
+    if "log" not in st.session_state:
+        st.session_state["log"] = []
+
     st.session_state["log"].append("Loading BLIP Model")
     st.session_state["log_message"].code('\n'.join(st.session_state["log"]), language='')
 
@@ -232,7 +235,7 @@ def interrogate(image, models):
 
             for best in bests:
                 best.sort(key=lambda x: x[1], reverse=True)
-                # prune to 3 
+                # prune to 3
                 best = best[:3]
 
             row = [model_name]
@@ -326,7 +329,7 @@ def img2txt():
 def layout():
     #set_page_title("Image-to-Text - Stable Diffusion WebUI")
     #st.info("Under Construction. :construction_worker:")
-    # 
+    #
     if "clip_models" not in server_state:
         server_state["clip_models"] = {}
     if "preprocesses" not in server_state:
@@ -397,7 +400,9 @@ def layout():
         with col2:
             st.subheader("Image")
 
-            refresh = st.form_submit_button("Refresh", help='Refresh the image preview to show your uploaded image instead of the default placeholder.')
+            image_col1, image_col2 = st.columns([10,25])
+            with image_col1:
+                refresh = st.form_submit_button("Update Preview Image", help='Refresh the image preview to show your uploaded image instead of the default placeholder.')
 
             if st.session_state["uploaded_image"]:
                 #print (type(st.session_state["uploaded_image"]))
@@ -436,11 +441,12 @@ def layout():
                 #st.session_state["input_image_preview"].code('', language="")
                 st.image("images/streamlit/img2txt_placeholder.png", clamp=True)
 
-        #
-        # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
-        # generate_col1.title("")
-        # generate_col1.title("")
-        generate_button = st.form_submit_button("Generate!")
+        with image_col2:
+            #
+            # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
+            # generate_col1.title("")
+            # generate_col1.title("")
+            generate_button = st.form_submit_button("Generate!", help="Start interrogating the images to generate a prompt from each of the selected images")
 
     if generate_button:
         # if model, pipe, RealESRGAN or GFPGAN is in st.session_state remove the model and pipe form session_state so that they are reloaded.
