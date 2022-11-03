@@ -23,6 +23,7 @@ general:
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''
+    stable_horde_api: '0000000000'
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.5"
@@ -64,6 +65,10 @@ general:
     enable_minimal_memory_usage: False
     update_preview: True
     update_preview_frequency: 10
+
+admin:
+    hide_server_setting: False
+    hide_browser_setting: False
 
 debug:
     enable_hydralit: False
@@ -230,7 +235,8 @@ img2img:
         step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
-    mask_mode: 0
+    mask_mode: 1
+    noise_mode: "Matched Noise"
     mask_restore: False
     # 0: Just resize
     # 1: Crop and resize
@@ -315,7 +321,7 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-4"
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
     tokenizer_name: "models/clip-vit-large-patch14"
 
 

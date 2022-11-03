@@ -106,7 +106,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
 
     log.append("Generating image with Stable Horde.")
 
-    st.session_state["progress_bar_text"].code('\n'.join(str(log)), language='')
+    st.session_state["progress_bar_text"].code('\n'.join(log), language='')
 
     # start time after garbage collection (or before?)
     start_time = time.time()
@@ -157,7 +157,7 @@ def stable_horde(outpath, prompt, seed, sampler_name, save_grid, batch_size,
         logger.debug(submit_results)
 
         log.append(submit_results)
-        st.session_state["progress_bar_text"].code('\n'.join(str(log)), language='')
+        st.session_state["progress_bar_text"].code(''.join(str(log)), language='')
 
         req_id = submit_results['id']
         is_done = False
@@ -282,7 +282,7 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
             RealESRGAN_model: str = "RealESRGAN_x4plus_anime_6B", use_LDSR: bool = True, LDSR_model: str = "model",
             fp = None, variant_amount: float = 0.0,
             variant_seed: int = None, ddim_eta:float = 0.0, write_info_files:bool = True,
-            use_stable_horde: bool = False, stable_horde_key:str = ''):
+            use_stable_horde: bool = False, stable_horde_key:str = "0000000000"):
 
     outpath = st.session_state['defaults'].general.outdir_txt2img
 
@@ -410,7 +410,7 @@ def layout():
             sygil_suggestions.suggestion_area(placeholder)
 
         # creating the page layout using columns
-        col1, col2, col3 = st.columns([1,2,1], gap="large")
+        col1, col2, col3 = st.columns([2,5,2], gap="large")
 
         with col1:
             width = st.slider("Width:", min_value=st.session_state['defaults'].txt2img.width.min_value, max_value=st.session_state['defaults'].txt2img.width.max_value,
@@ -475,7 +475,7 @@ def layout():
 
             with gallery_tab:
                 st.session_state["gallery"] = st.empty()
-                st.session_state["gallery"].info("Nothing but crickets here, try generating something first.")
+                #st.session_state["gallery"].info("Nothing but crickets here, try generating something first.")
 
         with col3:
             # If we have custom models available on the "models/custom"
@@ -502,7 +502,7 @@ def layout():
             with st.expander("Advanced"):
                 with st.expander("Stable Horde"):
                     use_stable_horde = st.checkbox("Use Stable Horde", value=False, help="Use the Stable Horde to generate images. More info can be found at https://stablehorde.net/")
-                    stable_horde_key = st.text_input("Stable Horde Api Key", value='', type="password",
+                    stable_horde_key = st.text_input("Stable Horde Api Key", value=st.session_state['defaults'].general.stable_horde_api, type="password",
                                                      help="Optional Api Key used for the Stable Horde Bridge, if no api key is added the horde will be used anonymously.")
 
                 with st.expander("Output Settings"):
@@ -570,7 +570,9 @@ def layout():
 
                                 #print (st.session_state["RealESRGAN_available"])
                                 st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
-                                                                                    index=upscaling_method_list.index(str(st.session_state['defaults'].general.upscaling_method)))
+                                                                                    index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method)
+                                                                                        if st.session_state['defaults'].general.upscaling_method in upscaling_method_list
+                                                                                        else 0)
 
                                 if st.session_state["RealESRGAN_available"]:
                                     with st.expander("RealESRGAN"):
@@ -654,42 +656,9 @@ def layout():
 
                 message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
-            #history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont = st.session_state['historyTab']
-
-            #if 'latestImages' in st.session_state:
-                #for i in output_images:
-                    ##push the new image to the list of latest images and remove the oldest one
-                    ##remove the last index from the list\
-                    #st.session_state['latestImages'].pop()
-                    ##add the new image to the start of the list
-                    #st.session_state['latestImages'].insert(0, i)
-                #PlaceHolder.empty()
-                #with PlaceHolder.container():
-                    #col1, col2, col3 = st.columns(3)
-                    #col1_cont = st.container()
-                    #col2_cont = st.container()
-                    #col3_cont = st.container()
-                    #images = st.session_state['latestImages']
-                    #with col1_cont:
-                        #with col1:
-                            #[st.image(images[index]) for index in [0, 3, 6] if index < len(images)]
-                    #with col2_cont:
-                        #with col2:
-                            #[st.image(images[index]) for index in [1, 4, 7] if index < len(images)]
-                    #with col3_cont:
-                        #with col3:
-                            #[st.image(images[index]) for index in [2, 5, 8] if index < len(images)]
-                    #historyGallery = st.empty()
-
-                ## check if output_images length is the same as seeds length
-                #with gallery_tab:
-                    #st.markdown(createHTMLGallery(output_images,seeds), unsafe_allow_html=True)
-
-
-                    #st.session_state['historyTab'] = [history_tab,col1,col2,col3,PlaceHolder,col1_cont,col2_cont,col3_cont]
-
             with gallery_tab:
                 logger.info(seeds)
+                st.session_state["gallery"].text = ""
                 sdGallery(output_images)
 
 

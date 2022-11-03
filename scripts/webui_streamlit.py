@@ -123,10 +123,16 @@ def layout():
         # specify the primary menu definition
         menu_data = [
             {'id': 'Stable Diffusion', 'label': 'Stable Diffusion', 'icon': 'bi bi-grid-1x2-fill'},
-            {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
+            {'id': 'Train','label':"Train", 'icon': "bi bi-lightbulb-fill", 'submenu':[
+                {'id': 'Textual Inversion', 'label': 'Textual Inversion', 'icon': 'bi bi-lightbulb-fill'},
+                {'id': 'Fine Tunning', 'label': 'Fine Tunning', 'icon': 'bi bi-lightbulb-fill'},
+                ]},
             {'id': 'Model Manager', 'label': 'Model Manager', 'icon': 'bi bi-cloud-arrow-down-fill'},
-            #{'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
-            {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+            {'id': 'Tools','label':"Tools", 'icon': "bi bi-tools", 'submenu':[
+                {'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+                {'id': 'Barfi/BaklavaJS', 'label': 'Barfi/BaklavaJS', 'icon': 'bi bi-diagram-3-fill'},
+                #{'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
+                ]},
             {'id': 'Settings', 'label': 'Settings', 'icon': 'bi bi-gear-fill'},
             #{'icon': "fa-solid fa-radar",'label':"Dropdown1", 'submenu':[
             #    {'id':' subid11','icon': "fa fa-paperclip", 'label':"Sub-item 1"},{'id':'subid12','icon': "💀", 'label':"Sub-item 2"},{'id':'subid13','icon': "fa fa-database", 'label':"Sub-item 3"}]},
@@ -172,6 +178,10 @@ def layout():
                                                         #horizontal_orientation=False,
                                                         #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
 
+        #
+        #if menu_id == "Home":
+            #st.info("Under Construction. :construction_worker:")
+
         if menu_id == "Stable Diffusion":
             # set the page url and title
             #st.experimental_set_query_params(page='stable-diffusion')
@@ -180,9 +190,10 @@ def layout():
             except NameError:
                 st.experimental_rerun()
 
-            txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
-                                                                                               "Text-to-Video", "Image-To-Text",
-                                                                                                           "Concept Library"])
+            txt2img_tab, img2img_tab, txt2vid_tab, img2txt_tab, post_processing_tab, concept_library_tab = st.tabs(["Text-to-Image", "Image-to-Image",
+                                                                                                                    #"Inpainting",
+                                                                                                                    "Text-to-Video", "Image-To-Text",
+                                                                                                                    "Post-Processing","Concept Library"])
             #with home_tab:
                     #from home import layout
                     #layout()
@@ -207,6 +218,10 @@ def layout():
                 from img2txt import layout
                 layout()
 
+            with post_processing_tab:
+                from post_processing import layout
+                layout()
+
             with concept_library_tab:
                 from sd_concept_library import layout
                 layout()
@@ -222,9 +237,19 @@ def layout():
             from textual_inversion import layout
             layout()
 
+        elif menu_id == 'Fine Tunning':
+            #from textual_inversion import layout
+            #layout()
+            st.info("Under Construction. :construction_worker:")
+
         elif menu_id == 'API Server':
             set_page_title("API Server - Stable Diffusion Playground")
             from APIServer import layout
+            layout()
+
+        elif menu_id == 'Barfi/BaklavaJS':
+            set_page_title("Barfi/BaklavaJS - Stable Diffusion Playground")
+            from barfi_baklavajs import layout
             layout()
 
         elif menu_id == 'Settings':

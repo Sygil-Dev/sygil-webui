@@ -156,12 +156,12 @@ launch_webui () {
     done
     printf "\n\n########## LAUNCH USING STREAMLIT OR GRADIO? ##########\n\n"
     printf "Do you wish to run the WebUI using the Gradio or StreamLit Interface?\n\n"
-    printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \nMissing Some Gradio Features\n\n"
+    printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \n\n"
     printf "Gradio: \nCurrently Feature Complete \nUses An Older Interface Style \nWill Not Receive Major Updates\n\n"
     printf "Which Version of the WebUI Interface do you wish to use?\n"
     select yn in "Streamlit" "Gradio"; do
         case $yn in
-            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py --theme.base dark --server.address localhost; break;;
+            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
             Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py "$@"; break;;
         esac
     done

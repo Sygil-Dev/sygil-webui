@@ -10,7 +10,6 @@ import time
 import json
 
 import torch
-from diffusers import ModelMixin
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.pipeline_utils import DiffusionPipeline
@@ -22,59 +21,39 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionPipelineOutput
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 from torch import nn
 
-from .upsampling import RealESRGANModel
-
+from sd_utils import RealESRGANModel
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
-def get_spec_norm(wav, sr, n_mels=512, hop_length=704):
-    """Obtain maximum value for each time-frame in Mel Spectrogram,
-    and normalize between 0 and 1
+def get_timesteps_arr(audio_filepath, offset, duration, fps=30, margin=1.0, smooth=0.0):
+    y, sr = librosa.load(audio_filepath, offset=offset, duration=duration)
 
-    Borrowed from lucid sonic dreams repo. In there, they programatically determine hop length
-    but I really didn't understand what was going on so I removed it and hard coded the output.
-    """
+    # librosa.stft hardcoded defaults...
+    # n_fft defaults to 2048
+    # hop length is win_length // 4
+    # win_length defaults to n_fft
+    D = librosa.stft(y, n_fft=2048, hop_length=2048 // 4, win_length=2048)
 
-    # Generate Mel Spectrogram
-    spec_raw = librosa.feature.melspectrogram(y=wav, sr=sr, n_mels=n_mels, hop_length=hop_length)
+    # Extract percussive elements
+    D_harmonic, D_percussive = librosa.decompose.hpss(D, margin=margin)
+    y_percussive = librosa.istft(D_percussive, length=len(y))
 
-    # Obtain maximum value per time-frame
+    # Get normalized melspectrogram
+    spec_raw = librosa.feature.melspectrogram(y=y_percussive, sr=sr)
     spec_max = np.amax(spec_raw, axis=0)
-
-    # Normalize all values between 0 and 1
     spec_norm = (spec_max - np.min(spec_max)) / np.ptp(spec_max)
 
-    return spec_norm
+    # Resize cumsum of spec norm to our desired number of interpolation frames
+    x_norm = np.linspace(0, spec_norm.shape[-1], spec_norm.shape[-1])
+    y_norm = np.cumsum(spec_norm)
+    y_norm /= y_norm[-1]
+    x_resize = np.linspace(0, y_norm.shape[-1], int(duration*fps))
 
+    T = np.interp(x_resize, x_norm, y_norm)
 
-def get_timesteps_arr(audio_filepath, offset, duration, fps=30, margin=(1.0, 5.0)):
-    """Get the array that will be used to determine how much to interpolate between images.
-
-    Normally, this is just a linspace between 0 and 1 for the number of frames to generate. In this case,
-    we want to use the amplitude of the audio to determine how much to interpolate between images.
-
-    So, here we:
-        1. Load the audio file
-        2. Split the audio into harmonic and percussive components
-        3. Get the normalized amplitude of the percussive component, resized to the number of frames
-        4. Get the cumulative sum of the amplitude array
-        5. Normalize the cumulative sum between 0 and 1
-        6. Return the array
-
-    I honestly have no clue what I'm doing here. Suggestions welcome.
-    """
-    y, sr = librosa.load(audio_filepath, offset=offset, duration=duration)
-    wav_harmonic, wav_percussive = librosa.effects.hpss(y, margin=margin)
-
-    # Apparently n_mels is supposed to be input shape but I don't think it matters here?
-    frame_duration = int(sr / fps)
-    wav_norm = get_spec_norm(wav_percussive, sr, n_mels=512, hop_length=frame_duration)
-    amplitude_arr = np.resize(wav_norm, int(duration * fps))
-    T = np.cumsum(amplitude_arr)
-    T /= T[-1]
-    T[0] = 0.0
-    return T
+    # Apply smoothing
+    return T * (1 - smooth) + np.linspace(0.0, 1.0, T.shape[0]) * smooth
 
 
 def slerp(t, v0, v1, DOT_THRESHOLD=0.9995):
@@ -130,7 +109,6 @@ def make_video_pyav(
             frame = pil_to_tensor(Image.open(img)).unsqueeze(0)
             frames = frame if frames is None else torch.cat([frames, frame])
     else:
-
         frames = frames_or_frame_dir
 
     # TCHW -> THWC
@@ -208,6 +186,16 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             new_config["steps_offset"] = 1
             scheduler._internal_dict = FrozenDict(new_config)
 
+        if safety_checker is None:
+            logger.warn(
+                f"You have disabled the safety checker for {self.__class__} by passing `safety_checker=None`. Ensure"
+                " that you abide to the conditions of the Stable Diffusion license and do not expose unfiltered"
+                " results in services or applications open to the public. Both the diffusers team and Hugging Face"
+                " strongly recommend to keep the safety filter enabled in all public facing circumstances, disabling"
+                " it only for use-cases that involve analyzing network behavior or auditing its results. For more"
+                " information, please have a look at https://github.com/huggingface/diffusers/pull/254 ."
+            )
+
         self.register_modules(
             vae=vae,
             text_encoder=text_encoder,
@@ -251,6 +239,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         width: int = 512,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
+        negative_prompt: Optional[Union[str, List[str]]] = None,
+        num_images_per_prompt: Optional[int] = 1,
         eta: float = 0.0,
         generator: Optional[torch.Generator] = None,
         latents: Optional[torch.FloatTensor] = None,
@@ -259,12 +249,13 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
         text_embeddings: Optional[torch.FloatTensor] = None,
+        **kwargs,
     ):
         r"""
         Function invoked when calling the pipeline for generation.
         Args:
-            prompt (`str` or `List[str]`):
-                The prompt or prompts to guide the image generation.
+            prompt (`str` or `List[str]`, *optional*, defaults to `None`):
+                The prompt or prompts to guide the image generation. If not provided, `text_embeddings` is required.
             height (`int`, *optional*, defaults to 512):
                 The height in pixels of the generated image.
             width (`int`, *optional*, defaults to 512):
@@ -278,6 +269,11 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                 Paper](https://arxiv.org/pdf/2205.11487.pdf). Guidance scale is enabled by setting `guidance_scale >
                 1`. Higher guidance scale encourages to generate images that are closely linked to the text `prompt`,
                 usually at the expense of lower image quality.
+            negative_prompt (`str` or `List[str]`, *optional*):
+                The prompt or prompts not to guide the image generation. Ignored when not using guidance (i.e., ignored
+                if `guidance_scale` is less than `1`).
+            num_images_per_prompt (`int`, *optional*, defaults to 1):
+                The number of images to generate per prompt.
             eta (`float`, *optional*, defaults to 0.0):
                 Corresponds to parameter eta (η) in the DDIM paper: https://arxiv.org/abs/2010.02502. Only applies to
                 [`schedulers.DDIMScheduler`], will be ignored for others.
@@ -300,8 +296,10 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             callback_steps (`int`, *optional*, defaults to 1):
                 The frequency at which the `callback` function will be called. If not specified, the callback will be
                 called at every step.
-            text_embeddings(`torch.FloatTensor`, *optional*):
-                Pre-generated text embeddings.
+            text_embeddings (`torch.FloatTensor`, *optional*, defaults to `None`):
+                Pre-generated text embeddings to be used as inputs for image generation. Can be used in place of
+                `prompt` to avoid re-computing the embeddings. If not provided, the embeddings will be generated from
+                the supplied `prompt`.
         Returns:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] or `tuple`:
             [`~pipelines.stable_diffusion.StableDiffusionPipelineOutput`] if `return_dict` is True, otherwise a `tuple.
@@ -340,7 +338,7 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
             if text_input_ids.shape[-1] > self.tokenizer.model_max_length:
                 removed_text = self.tokenizer.batch_decode(text_input_ids[:, self.tokenizer.model_max_length :])
-                logger.warning(
+                print(
                     "The following part of your input was truncated because CLIP can only handle sequences up to"
                     f" {self.tokenizer.model_max_length} tokens: {removed_text}"
                 )
@@ -349,20 +347,50 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         else:
             batch_size = text_embeddings.shape[0]
 
+        # duplicate text embeddings for each generation per prompt, using mps friendly method
+        bs_embed, seq_len, _ = text_embeddings.shape
+        text_embeddings = text_embeddings.repeat(1, num_images_per_prompt, 1)
+        text_embeddings = text_embeddings.view(bs_embed * num_images_per_prompt, seq_len, -1)
+
         # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
         # corresponds to doing no classifier free guidance.
         do_classifier_free_guidance = guidance_scale > 1.0
         # get unconditional embeddings for classifier free guidance
         if do_classifier_free_guidance:
-            # HACK - Not setting text_input_ids here when walking, so hard coding to max length of tokenizer
-            # TODO - Determine if this is OK to do
-            # max_length = text_input_ids.shape[-1]
+            uncond_tokens: List[str]
+            if negative_prompt is None:
+                uncond_tokens = [""]
+            elif type(prompt) is not type(negative_prompt):
+                raise TypeError(
+                    f"`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
+                    f" {type(prompt)}."
+                )
+            elif isinstance(negative_prompt, str):
+                uncond_tokens = [negative_prompt]
+            elif batch_size != len(negative_prompt):
+                raise ValueError(
+                    f"`negative_prompt`: {negative_prompt} has batch size {len(negative_prompt)}, but `prompt`:"
+                    f" {prompt} has batch size {batch_size}. Please make sure that passed `negative_prompt` matches"
+                    " the batch size of `prompt`."
+                )
+            else:
+                uncond_tokens = negative_prompt
+
             max_length = self.tokenizer.model_max_length
             uncond_input = self.tokenizer(
-                [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+                uncond_tokens,
+                padding="max_length",
+                max_length=max_length,
+                truncation=True,
+                return_tensors="pt",
             )
             uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.device))[0]
+
+            # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
+            seq_len = uncond_embeddings.shape[1]
+            uncond_embeddings = uncond_embeddings.repeat(batch_size, num_images_per_prompt, 1)
+            uncond_embeddings = uncond_embeddings.view(batch_size * num_images_per_prompt, seq_len, -1)
 
             # For classifier free guidance, we need to do two forward passes.
             # Here we concatenate the unconditional and text embeddings into a single batch
@@ -374,19 +402,20 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         # Unlike in other pipelines, latents need to be generated in the target device
         # for 1-to-1 results reproducibility with the CompVis implementation.
         # However this currently doesn't work in `mps`.
-        latents_device = "cpu" if self.device.type == "mps" else self.device
-        latents_shape = (batch_size, self.unet.in_channels, height // 8, width // 8)
+        latents_shape = (batch_size * num_images_per_prompt, self.unet.in_channels, height // 8, width // 8)
+        latents_dtype = text_embeddings.dtype
         if latents is None:
-            latents = torch.randn(
-                latents_shape,
-                generator=generator,
-                device=latents_device,
-                dtype=text_embeddings.dtype,
-            )
+            if self.device.type == "mps":
+                # randn does not exist on mps
+                latents = torch.randn(latents_shape, generator=generator, device="cpu", dtype=latents_dtype).to(
+                    self.device
+                )
+            else:
+                latents = torch.randn(latents_shape, generator=generator, device=self.device, dtype=latents_dtype)
         else:
             if latents.shape != latents_shape:
                 raise ValueError(f"Unexpected latents shape, got {latents.shape}, expected {latents_shape}")
-            latents = latents.to(latents_device)
+            latents = latents.to(self.device)
 
         # set timesteps
         self.scheduler.set_timesteps(num_inference_steps)
@@ -431,12 +460,19 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         image = self.vae.decode(latents).sample
 
         image = (image / 2 + 0.5).clamp(0, 1)
-        image = image.cpu().permute(0, 2, 3, 1).numpy()
 
-        safety_checker_input = self.feature_extractor(self.numpy_to_pil(image), return_tensors="pt").to(self.device)
-        image, has_nsfw_concept = self.safety_checker(
-            images=image, clip_input=safety_checker_input.pixel_values.to(text_embeddings.dtype)
-        )
+        # we always cast to float32 as this does not cause significant overhead and is compatible with bfloa16
+        image = image.cpu().permute(0, 2, 3, 1).float().numpy()
+
+        if self.safety_checker is not None:
+            safety_checker_input = self.feature_extractor(self.numpy_to_pil(image), return_tensors="pt").to(
+                self.device
+            )
+            image, has_nsfw_concept = self.safety_checker(
+                images=image, clip_input=safety_checker_input.pixel_values.to(text_embeddings.dtype)
+            )
+        else:
+            has_nsfw_concept = None
 
         if output_type == "pil":
             image = self.numpy_to_pil(image)
@@ -449,16 +485,9 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
     def generate_inputs(self, prompt_a, prompt_b, seed_a, seed_b, noise_shape, T, batch_size):
         embeds_a = self.embed_text(prompt_a)
         embeds_b = self.embed_text(prompt_b)
-        latents_a = torch.randn(
-            noise_shape,
-            device=self.device,
-            generator=torch.Generator(device=self.device).manual_seed(seed_a),
-        )
-        latents_b = torch.randn(
-            noise_shape,
-            device=self.device,
-            generator=torch.Generator(device=self.device).manual_seed(seed_b),
-        )
+
+        latents_a = self.init_noise(seed_a, noise_shape)
+        latents_b = self.init_noise(seed_b, noise_shape)
 
         batch_idx = 0
         embeds_batch, noise_batch = None, None
@@ -477,7 +506,7 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             torch.cuda.empty_cache()
             embeds_batch, noise_batch = None, None
 
-    def generate_interpolation_clip(
+    def make_clip_frames(
         self,
         prompt_a: str,
         prompt_b: str,
@@ -530,7 +559,7 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                     eta=eta,
                     num_inference_steps=num_inference_steps,
                     output_type="pil" if not upsample else "numpy",
-                )["sample"]
+                )["images"]
 
                 for image in outputs:
                     frame_filepath = save_path / (f"frame%06d{image_file_ext}" % frame_index)
@@ -557,6 +586,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         resume: Optional[bool] = False,
         audio_filepath: str = None,
         audio_start_sec: Optional[Union[int, float]] = None,
+        margin: Optional[float] = 1.0,
+        smooth: Optional[float] = 0.0,
     ):
         """Generate a video from a sequence of prompts and seeds. Optionally, add audio to the
         video to interpolate to the intensity of the audio.
@@ -603,13 +634,17 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                 Optional path to an audio file to influence the interpolation rate.
             audio_start_sec (Optional[Union[int, float]], *optional*, defaults to 0):
                 Global start time of the provided audio_filepath.
+            margin (Optional[float], *optional*, defaults to 1.0):
+                Margin from librosa hpss to use for audio interpolation.
+            smooth (Optional[float], *optional*, defaults to 0.0):
+                Smoothness of the audio interpolation. 1.0 means linear interpolation.
 
         This function will create sub directories for each prompt and seed pair.
 
         For example, if you provide the following prompts and seeds:
 
         ```
-        prompts = ['a', 'b', 'c']
+        prompts = ['a dog', 'a cat', 'a bird']
         seeds = [1, 2, 3]
         num_interpolation_steps = 5
         output_dir = 'output_dir'
@@ -722,7 +757,7 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             audio_offset = audio_start_sec + sum(num_interpolation_steps[:i]) / fps
             audio_duration = num_step / fps
 
-            self.generate_interpolation_clip(
+            self.make_clip_frames(
                 prompt_a,
                 prompt_b,
                 seed_a,
@@ -742,7 +777,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                     offset=audio_offset,
                     duration=audio_duration,
                     fps=fps,
-                    margin=(1.0, 5.0),
+                    margin=margin,
+                    smooth=smooth,
                 )
                 if audio_filepath
                 else None,
@@ -783,6 +819,23 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                 embed = self.text_encoder(text_input.input_ids.to(self.device))[0]
         return embed
 
+    def init_noise(self, seed, noise_shape):
+        """Helper to initialize noise"""
+        # randn does not exist on mps, so we create noise on CPU here and move it to the device after initialization
+        if self.device.type == "mps":
+            noise = torch.randn(
+                noise_shape,
+                device='cpu',
+                generator=torch.Generator(device='cpu').manual_seed(seed),
+            ).to(self.device)
+        else:
+            noise = torch.randn(
+                noise_shape,
+                device=self.device,
+                generator=torch.Generator(device=self.device).manual_seed(seed),
+            )
+        return noise
+
     @classmethod
     def from_pretrained(cls, *args, tiled=False, **kwargs):
         """Same as diffusers `from_pretrained` but with tiled option, which makes images tilable"""
@@ -799,15 +852,6 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
             patch_conv(padding_mode="circular")
 
-        return super().from_pretrained(*args, **kwargs)
-
-
-class NoCheck(ModelMixin):
-    """Can be used in place of safety checker. Use responsibly and at your own risk."""
-
-    def __init__(self):
-        super().__init__()
-        self.register_parameter(name="asdf", param=torch.nn.Parameter(torch.randn(3)))
-
-    def forward(self, images=None, **kwargs):
-        return images, [False]
+        pipeline = super().from_pretrained(*args, **kwargs)
+        pipeline.tiled = tiled
+        return pipeline

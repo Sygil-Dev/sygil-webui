@@ -103,10 +103,10 @@ call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\Stable Diffusion v1.5.ckpt" (
-  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
 ) ELSE (
   echo Your model file does not exist! Once the WebUI launches please visit the Model Manager page and download the models by using the Download button for each model.
-  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
 )
 
 ::cmd /k
