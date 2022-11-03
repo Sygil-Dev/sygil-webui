@@ -15,14 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 #from sd_utils import *
-from sd_utils import *
+from sd_utils import st
 # streamlit imports
 
 #streamlit components section
 
 #other imports
-import os, time, requests
-import sys
 #from fastapi import FastAPI
 #import uvicorn
 

@@ -15,15 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 #from sd_utils import *
-from sd_utils import *
+from sd_utils import st
 # streamlit imports
 
 #streamlit components section
 
 #other imports
-import os, time, requests
-import sys
-
 from barfi import st_barfi, barfi_schemas, Block
 
 # Temp imports
@@ -47,9 +44,6 @@ def layout():
     #barfi_result = st_barfi(base_blocks= {'Op 1': [add, sub], 'Op 2': [mul, div]})
 
     col1, col2, col3 = st.columns([1, 8, 1])
-
-    from barfi import st_barfi, barfi_schemas, Block
-
 
     with col2:
         feed = Block(name='Feed')

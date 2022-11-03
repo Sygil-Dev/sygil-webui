@@ -15,11 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
 #from webui_streamlit import st
-import gfpgan
 import hydralit as st
 
 # streamlit imports
-from streamlit import StopException, StreamlitAPIException
+from streamlit.runtime.scriptrunner import StopException
 #from streamlit.runtime.scriptrunner import script_run_context
 
 #streamlit components section
@@ -27,6 +26,9 @@ from streamlit_server_state import server_state, server_state_lock
 import hydralit_components as hc
 from hydralit import HydraHeadApp
 import streamlit_nested_layout
+#from streamlitextras.threader import lock, trigger_rerun, \
+                                     #streamlit_thread, get_thread, \
+                                     #last_trigger_time
 
 #other imports
 
@@ -34,7 +36,7 @@ import warnings
 import json
 
 import base64, cv2
-import os, sys, re, random, datetime, time, math, glob, toml
+import os, sys, re, random, datetime, time, math, toml
 import gc
 from PIL import Image, ImageFont, ImageDraw, ImageFilter
 from PIL.PngImagePlugin import PngInfo
@@ -45,7 +47,6 @@ import k_diffusion as K
 import math, requests
 import mimetypes
 import numpy as np
-from numpy import asarray
 import pynvml
 import threading
 import torch, torchvision
@@ -67,10 +68,8 @@ from tqdm import trange
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
 #from abc import ABC, abstractmethod
-from typing import Dict, Union
 from io import BytesIO
 from packaging import version
-from uuid import uuid4
 from pathlib import Path
 from huggingface_hub import hf_hub_download
 

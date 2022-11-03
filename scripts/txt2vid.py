@@ -21,25 +21,32 @@ https://github.com/nateraw/stable-diffusion-videos
 repo and the original gist script from
 https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
 """
-from sd_utils import *
+from sd_utils import st, MemUsageMonitor, server_state, torch_gc, \
+     custom_models_available, RealESRGAN_available, GFPGAN_available, \
+     LDSR_available, hc, seed_to_int, logger, slerp, optimize_update_preview_frequency, \
+     load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel
+
 
 # streamlit imports
-from streamlit import StopException
-from streamlit.elements import image as STImage
+from streamlit.runtime.scriptrunner import StopException
+#from streamlit.elements import image as STImage
 
 #streamlit components section
 from streamlit_server_state import server_state, server_state_lock
+#from streamlitextras.threader import lock, trigger_rerun, \
+                                     #streamlit_thread, get_thread, \
+                                     #last_trigger_time
 
 #other imports
 
-import os, sys, json
+import os, sys, json, re, random, datetime, time, warnings, mimetypes
 from PIL import Image
 import torch
 import numpy as np
 import time, inspect, timeit
 import torch
 from torch import autocast
-from io import BytesIO
+#from io import BytesIO
 import imageio
 from slugify import slugify
 
@@ -58,9 +65,13 @@ from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 from typing import Callable, List, Optional, Union
 from pathlib import Path
 from torchvision.transforms.functional import pil_to_tensor
+from torchvision import transforms
 import librosa
 from PIL import Image
 from torchvision.io import write_video
+from torchvision import transforms
+import torch.nn as nn
+from uuid import uuid4
 
 
 # streamlit components
@@ -80,6 +91,14 @@ try:
     logging.set_verbosity_error()
 except:
     pass
+
+# remove some annoying deprecation warnings that show every now and then.
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+
+# this is a fix for Windows users. Without it, javascript files will be served with text/html content-type and the bowser will not show any UI
+mimetypes.init()
+mimetypes.add_type('application/javascript', '.js')
 
 class plugin_info():
     plugname = "txt2vid"
@@ -134,7 +153,7 @@ def get_timesteps_arr(audio_filepath, offset, duration, fps=30, margin=1.0, smoo
 #
 def make_video_pyav(
     frames_or_frame_dir: Union[str, Path, torch.Tensor],
-        audio_filepath: Union[str, Path] = None,
+    audio_filepath: Union[str, Path] = None,
         fps: int = 30,
         audio_offset: int = 0,
         audio_duration: int = 2,
@@ -169,14 +188,14 @@ def make_video_pyav(
         audio_tensor = torch.tensor(audio).unsqueeze(0)
 
         write_video(
-                    output_filepath,
-                        frames,
+            output_filepath,
+                    frames,
                         fps=fps,
-                audio_array=audio_tensor,
-            audio_fps=sr,
+                        audio_array=audio_tensor,
+                audio_fps=sr,
             audio_codec="aac",
             options={"crf": "10", "pix_fmt": "yuv420p"},
-                )
+        )
     else:
         write_video(output_filepath, frames, fps=fps, options={"crf": "10", "pix_fmt": "yuv420p"})
 
@@ -210,8 +229,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
     """
 
     def __init__(
-            self,
-                vae: AutoencoderKL,
+        self,
+            vae: AutoencoderKL,
                 text_encoder: CLIPTextModel,
                 tokenizer: CLIPTokenizer,
                 unet: UNet2DConditionModel,
@@ -223,27 +242,27 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
         if hasattr(scheduler.config, "steps_offset") and scheduler.config.steps_offset != 1:
             deprecation_message = (
-                            f"The configuration file of this scheduler: {scheduler} is outdated. `steps_offset`"
-                                f" should be set to 1 instead of {scheduler.config.steps_offset}. Please make sure "
+                f"The configuration file of this scheduler: {scheduler} is outdated. `steps_offset`"
+                            f" should be set to 1 instead of {scheduler.config.steps_offset}. Please make sure "
                                 "to update the config accordingly as leaving `steps_offset` might led to incorrect results"
                                 " in future versions. If you have downloaded this checkpoint from the Hugging Face Hub,"
                                 " it would be very nice if you could open a Pull request for the `scheduler/scheduler_config.json`"
                                 " file"
-                        )
+            )
             deprecate("steps_offset!=1", "1.0.0", deprecation_message, standard_warn=False)
             new_config = dict(scheduler.config)
             new_config["steps_offset"] = 1
             scheduler._internal_dict = FrozenDict(new_config)
 
         self.register_modules(
-                    vae=vae,
-                        text_encoder=text_encoder,
+            vae=vae,
+                    text_encoder=text_encoder,
                         tokenizer=tokenizer,
                         unet=unet,
                         scheduler=scheduler,
                         safety_checker=safety_checker,
                         feature_extractor=feature_extractor,
-                )
+        )
 
     def enable_attention_slicing(self, slice_size: Optional[Union[str, int]] = "auto"):
         r"""
@@ -272,8 +291,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
     @torch.no_grad()
     def __call__(
-            self,
-                prompt: Optional[Union[str, List[str]]] = None,
+        self,
+            prompt: Optional[Union[str, List[str]]] = None,
                 height: int = 512,
                 width: int = 512,
                 num_inference_steps: int = 50,
@@ -351,12 +370,12 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
 
         if (callback_steps is None) or (
-                    callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
-                        ):
+            callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
+                    ):
             raise ValueError(
-                            f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
-                                f" {type(callback_steps)}."
-                        )
+                f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
+                            f" {type(callback_steps)}."
+            )
 
         if text_embeddings is None:
             if isinstance(prompt, str):
@@ -368,18 +387,18 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
             # get prompt text embeddings
             text_inputs = self.tokenizer(
-                            prompt,
-                                padding="max_length",
+                prompt,
+                            padding="max_length",
                                 max_length=self.tokenizer.model_max_length,
                                 return_tensors="pt",
-                        )
+            )
             text_input_ids = text_inputs.input_ids
 
             if text_input_ids.shape[-1] > self.tokenizer.model_max_length:
                 removed_text = self.tokenizer.batch_decode(text_input_ids[:, self.tokenizer.model_max_length :])
                 print("The following part of your input was truncated because CLIP can only handle sequences up to"
-                    f" {self.tokenizer.model_max_length} tokens: {removed_text}"
-                )
+                      f" {self.tokenizer.model_max_length} tokens: {removed_text}"
+                    )
                 text_input_ids = text_input_ids[:, : self.tokenizer.model_max_length]
             text_embeddings = self.text_encoder(text_input_ids.to(self.device))[0]
         else:
@@ -401,28 +420,28 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                 uncond_tokens = [""]
             elif type(prompt) is not type(negative_prompt):
                 raise TypeError(
-                                    f"`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
-                                        f" {type(prompt)}."
-                                )
+                    f"`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
+                                    f" {type(prompt)}."
+                )
             elif isinstance(negative_prompt, str):
                 uncond_tokens = [negative_prompt]
             elif batch_size != len(negative_prompt):
                 raise ValueError(
-                                    f"`negative_prompt`: {negative_prompt} has batch size {len(negative_prompt)}, but `prompt`:"
-                                        f" {prompt} has batch size {batch_size}. Please make sure that passed `negative_prompt` matches"
+                    f"`negative_prompt`: {negative_prompt} has batch size {len(negative_prompt)}, but `prompt`:"
+                                    f" {prompt} has batch size {batch_size}. Please make sure that passed `negative_prompt` matches"
                                         " the batch size of `prompt`."
-                                )
+                )
             else:
                 uncond_tokens = negative_prompt
 
             max_length = self.tokenizer.model_max_length
             uncond_input = self.tokenizer(
-                            uncond_tokens,
-                                padding="max_length",
+                uncond_tokens,
+                            padding="max_length",
                                 max_length=max_length,
                                 truncation=True,
                                 return_tensors="pt",
-                        )
+            )
             uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.device))[0]
 
             # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
@@ -446,8 +465,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             if self.device.type == "mps":
                 # randn does not exist on mps
                 latents = torch.randn(latents_shape, generator=generator, device="cpu", dtype=latents_dtype).to(
-                                    self.device
-                                )
+                    self.device
+                )
             else:
                 latents = torch.randn(latents_shape, generator=generator, device=self.device, dtype=latents_dtype)
         else:
@@ -505,11 +524,11 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 
         if self.safety_checker is not None:
             safety_checker_input = self.feature_extractor(self.numpy_to_pil(image), return_tensors="pt").to(
-                            self.device
-                        )
+                self.device
+            )
             image, has_nsfw_concept = self.safety_checker(
-                            images=image, clip_input=safety_checker_input.pixel_values.to(text_embeddings.dtype)
-                        )
+                images=image, clip_input=safety_checker_input.pixel_values.to(text_embeddings.dtype)
+            )
         else:
             has_nsfw_concept = None
 
@@ -546,8 +565,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             embeds_batch, noise_batch = None, None
 
     def make_clip_frames(
-            self,
-                prompt_a: str,
+        self,
+            prompt_a: str,
                 prompt_b: str,
                 seed_a: int,
                 seed_b: int,
@@ -579,21 +598,21 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             self.upsampler.to(self.device)
 
         batch_generator = self.generate_inputs(
-                    prompt_a,
-                        prompt_b,
+            prompt_a,
+                    prompt_b,
                         seed_a,
                         seed_b,
                         (1, self.unet.in_channels, height // 8, width // 8),
                         T[skip:],
                         batch_size,
-                )
+        )
 
         frame_index = skip
         for _, embeds_batch, noise_batch in batch_generator:
             with torch.autocast("cuda"):
                 outputs = self(
-                                    latents=noise_batch,
-                                        text_embeddings=embeds_batch,
+                    latents=noise_batch,
+                                    text_embeddings=embeds_batch,
                                         height=height,
                                         width=width,
                                         guidance_scale=guidance_scale,
@@ -611,8 +630,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                     frame_index += 1
 
     def walk(
-            self,
-                prompt: Optional[List[str]] = None,
+        self,
+            prompt: Optional[List[str]] = None,
                 seeds: Optional[List[int]] = None,
                 num_interpolation_steps: Optional[Union[int, List[int]]] = 5,  # int or list of int
                 output_dir: Optional[str] = "./dreams",
@@ -721,12 +740,12 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             str: The resulting video filepath. This video includes all sub directories' video clips.
         """
         if (callback_steps is None) or (
-                    callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
-                        ):
+            callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
+                    ):
             raise ValueError(
-                            f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
-                                f" {type(callback_steps)}."
-                        )
+                f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
+                            f" {type(callback_steps)}."
+            )
 
         # init the output dir
         if type(prompts) == str:
@@ -756,10 +775,10 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         prompt_config_path = Path(os.path.join(full_path, "prompt_config.json"))
         if not resume:
             prompt_config_path.write_text(
-                            json.dumps(
-                                    dict(
-                                            prompts=prompts,
-                                                seeds=seeds,
+                json.dumps(
+                                dict(
+                                        prompts=prompts,
+                                            seeds=seeds,
                                                 num_interpolation_steps=num_interpolation_steps,
                                                 fps=fps,
                                                 num_inference_steps=num_inference_steps,
@@ -772,10 +791,10 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                                                 audio_start_sec=audio_start_sec,
                                                 ),
 
-                                        indent=2,
+                                    indent=2,
                                         sort_keys=False,
-                                )
-                        )
+                            )
+            )
         else:
             data = json.load(open(prompt_config_path))
             prompts = data["prompts"]
@@ -792,8 +811,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             audio_start_sec = data["audio_start_sec"]
 
         for i, (prompt_a, prompt_b, seed_a, seed_b, num_step) in enumerate(
-                    zip(prompts, prompts[1:], seeds, seeds[1:], num_interpolation_steps)
-                        ):
+            zip(prompts, prompts[1:], seeds, seeds[1:], num_interpolation_steps)
+                    ):
             # {name}_000000 / {name}_000001 / ...
             save_path = Path(f"{full_path}/{name}_{i:06d}")
 
@@ -819,8 +838,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             audio_duration = num_step / fps
 
             self.make_clip_frames(
-                            prompt_a,
-                                prompt_b,
+                prompt_a,
+                            prompt_b,
                                 seed_a,
                                 seed_b,
                                 num_interpolation_steps=num_step,
@@ -835,8 +854,8 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                                 skip=skip,
                                 T=get_timesteps_arr(
                                     audio_filepath,
-                                        offset=audio_offset,
-                                duration=audio_duration,
+                                    offset=audio_offset,
+                                        duration=audio_duration,
                                 fps=fps,
                                 margin=margin,
                                 smooth=smooth,
@@ -845,39 +864,39 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                                 )
                                 if audio_filepath
                                 else None,
-                        )
+            )
             make_video_pyav(
-                            save_path,
-                                audio_filepath=audio_filepath,
-                        fps=fps,
+                save_path,
+                            audio_filepath=audio_filepath,
+                                fps=fps,
                         output_filepath=step_output_filepath,
                         glob_pattern=f"*{image_file_ext}",
                         audio_offset=audio_offset,
                         audio_duration=audio_duration,
                         sr=44100,
-                        )
+            )
 
         return make_video_pyav(
-                    full_path,
-                        audio_filepath=audio_filepath,
+            full_path,
+                    audio_filepath=audio_filepath,
                         fps=fps,
                         audio_offset=audio_start_sec,
                         audio_duration=sum(num_interpolation_steps) / fps,
                         output_filepath=output_filepath,
                         glob_pattern=f"**/*{image_file_ext}",
                         sr=44100,
-                )
+        )
 
     def embed_text(self, text):
         """Helper to embed some text"""
         with torch.autocast("cuda"):
             text_input = self.tokenizer(
-                            text,
-                                padding="max_length",
+                text,
+                            padding="max_length",
                                 max_length=self.tokenizer.model_max_length,
-                    truncation=True,
-                return_tensors="pt",
-                        )
+                                truncation=True,
+                    return_tensors="pt",
+            )
             with torch.no_grad():
                 embed = self.text_encoder(text_input.input_ids.to(self.device))[0]
         return embed
@@ -887,16 +906,16 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
         # randn does not exist on mps, so we create noise on CPU here and move it to the device after initialization
         if self.device.type == "mps":
             noise = torch.randn(
-                            noise_shape,
-                                device='cpu',
+                noise_shape,
+                            device='cpu',
                                 generator=torch.Generator(device='cpu').manual_seed(seed),
-                    ).to(self.device)
+                                ).to(self.device)
         else:
             noise = torch.randn(
-                            noise_shape,
-                                device=self.device,
+                noise_shape,
+                            device=self.device,
                                 generator=torch.Generator(device=self.device).manual_seed(seed),
-                        )
+            )
         return noise
 
     @classmethod
@@ -922,7 +941,7 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 @torch.no_grad()
 def diffuse(
     pipe,
-        cond_embeddings, # text conditioning, should be (1, 77, 768)
+    cond_embeddings, # text conditioning, should be (1, 77, 768)
         cond_latents,    # image conditioning, should be (1, 4, 64, 64)
         num_inference_steps,
         cfg_scale,
@@ -1010,7 +1029,7 @@ def diffuse(
                         st.session_state["previous_chunk_speed_list"],
                         st.session_state["update_preview_frequency"],
                         st.session_state["avg_update_preview_frequency"] = optimize_update_preview_frequency(st.session_state["current_chunk_speed"],
-                                                                                                                                     st.session_state["previous_chunk_speed_list"],
+                                                                                                             st.session_state["previous_chunk_speed_list"],
                                                                                                                                      st.session_state["update_preview_frequency"],
                                                                                                                                      st.session_state["update_preview_frequency_list"])
 
@@ -1048,18 +1067,18 @@ def diffuse(
                 inference_progress = ""
 
             total_percent = int(100 * float(i+1 if i+1 < (num_inference_steps + st.session_state.sampling_steps)
-                                                        else (num_inference_steps + st.session_state.sampling_steps))/float((num_inference_steps + st.session_state.sampling_steps)))
+                                            else (num_inference_steps + st.session_state.sampling_steps))/float((num_inference_steps + st.session_state.sampling_steps)))
 
             percent = int(100 * float(i+1 if i+1 < num_inference_steps else st.session_state.sampling_steps)/float(st.session_state.sampling_steps))
             frames_percent = int(100 * float(st.session_state.current_frame if st.session_state.current_frame < total_frames else total_frames)/float(total_frames))
 
             if "progress_bar_text" in st.session_state:
                 st.session_state["progress_bar_text"].text(
-                                    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
-                                        f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
+                    f"Running step: {i+1 if i+1 < st.session_state.sampling_steps else st.session_state.sampling_steps}/{st.session_state.sampling_steps} "
+                                    f"{percent if percent < 100 else 100}% {inference_progress}{duration:.2f}{speed} | "
                                         f"Frame: {st.session_state.current_frame + 1 if st.session_state.current_frame < total_frames else total_frames}/{total_frames} "
-                                    f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
-                                )
+                                        f"{frames_percent if frames_percent < 100 else 100}% {st.session_state.frame_duration:.2f}{st.session_state.frame_speed}"
+                )
 
             if "progress_bar" in st.session_state:
                 st.session_state["progress_bar"].progress(total_percent if total_percent < 100 else 100)
@@ -1108,26 +1127,26 @@ def load_diffusers_model(weights_path,torch_device):
 
                 if not os.path.exists(model_path + "/model_index.json"):
                     server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-                                            weights_path,
-                                                use_local_file=True,
+                        weights_path,
+                                            use_local_file=True,
                                                 use_auth_token=st.session_state["defaults"].general.huggingface_token,
                                                 torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
                                                 revision="fp16" if not st.session_state['defaults'].general.no_half else None,
                                                 safety_checker=None,  # Very important for videos...lots of false positives while interpolating
                                                 #custom_pipeline="interpolate_stable_diffusion",
 
-                                        )
+                    )
 
                     StableDiffusionPipeline.save_pretrained(server_state["pipe"], model_path)
                 else:
                     server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
-                                            model_path,
-                                                use_local_file=True,
+                        model_path,
+                                            use_local_file=True,
                                                 torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
                                                 revision="fp16" if not st.session_state['defaults'].general.no_half else None,
                                                 safety_checker=None,  # Very important for videos...lots of false positives while interpolating
                                                 #custom_pipeline="interpolate_stable_diffusion",
-                                        )
+                    )
 
                 server_state["pipe"].unet.to(torch_device)
                 server_state["pipe"].vae.to(torch_device)
@@ -1143,7 +1162,7 @@ def load_diffusers_model(weights_path,torch_device):
             else:
                 # if the float16 or no_half options have changed since the last time the model was loaded then we need to reload the model.
                 if ("float16" in server_state and server_state['float16'] != st.session_state['defaults'].general.use_float16) \
-                                   or ("no_half" in server_state and server_state['no_half'] != st.session_state['defaults'].general.no_half) \
+                   or ("no_half" in server_state and server_state['no_half'] != st.session_state['defaults'].general.no_half) \
                                    or ("optimized" in server_state and server_state['optimized'] != st.session_state['defaults'].general.optimized):
 
                     del server_state['float16']
@@ -1195,7 +1214,7 @@ def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, o
 #
 def txt2vid(
     # --------------------------------------
-        # args you probably want to change
+    # args you probably want to change
         prompts = ["blueberry spaghetti", "strawberry spaghetti"], # prompt to dream about
         gpu:int = st.session_state['defaults'].general.gpu, # id of the gpu to run on
         #name:str = 'test', # name of this project, for the output directory
@@ -1296,10 +1315,10 @@ def txt2vid(
     if st.session_state.write_info_files:
         with open(os.path.join(full_path , f'{slugify(str(seeds))}_config.json' if len(prompts) > 1 else "prompts_config.json"), "w") as outfile:
             outfile.write(json.dumps(
-                            dict(
-                                    prompts = prompts,
-                                        gpu = gpu,
-                                num_steps = num_steps,
+                dict(
+                                prompts = prompts,
+                                    gpu = gpu,
+                                        num_steps = num_steps,
                                 max_duration_in_seconds = max_duration_in_seconds,
                                 num_inference_steps = num_inference_steps,
                                 cfg_scale = cfg_scale,
@@ -1317,27 +1336,27 @@ def txt2vid(
                                 beta_end = beta_end,
                                 beta_schedule = beta_schedule
                                 ),
-                                indent=2,
+                            indent=2,
                                 sort_keys=False,
-                        ))
+            ))
 
     #print(scheduler)
     default_scheduler = PNDMScheduler(
-            beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
-        )
+        beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+    )
     # ------------------------------------------------------------------------------
     #Schedulers
     ddim_scheduler = DDIMScheduler(
-            beta_start=beta_start,
-                beta_end=beta_end,
+        beta_start=beta_start,
+            beta_end=beta_end,
                 beta_schedule=beta_schedule,
                 clip_sample=False,
-                        set_alpha_to_one=False,
-        )
+                set_alpha_to_one=False,
+    )
 
     klms_scheduler = LMSDiscreteScheduler(
-            beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
-        )
+        beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+    )
 
     SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
 
@@ -1417,49 +1436,49 @@ def txt2vid(
         # preview image works but its not the right way to use this, this also do not work properly as it only makes one image and then exits.
         #with torch.autocast("cuda"):
             #StableDiffusionWalkPipeline.__call__(self=server_state["pipe"],
-                                #prompt=prompts, height=height, width=width, num_inference_steps=num_inference_steps, guidance_scale=cfg_scale,
-                                #negative_prompt="", num_images_per_prompt=1, eta=0.0,
-                                #callback=txt2vid_generation_callback, callback_steps=1,
-                                #num_interpolation_steps=num_steps,
-                                #fps=30,
-                                #image_file_ext = ".png",
-                                #output_dir=full_path,        # Where images/videos will be saved
-                                ##name='animals_test',        # Subdirectory of output_dir where images/videos will be saved
-                                #upsample = False,
-                                ##do_loop=do_loop,           # Change to True if you want last prompt to loop back to first prompt
-                                #resume = False,
-                                #audio_filepath = None,
-                                #audio_start_sec = None,
-                                #margin = 1.0,
-                                #smooth = 0.0,                                                             )
-
-        # works correctly generating all frames but do not show the preview image
-        # we also do not have control over the generation and cant stop it until the end of it.
-        #with torch.autocast("cuda"):
-            #print (prompts)
-            #video_path = server_state["pipe"].walk(
-                            #prompt=prompts,
-                            #seeds=seeds,
+                            #prompt=prompts, height=height, width=width, num_inference_steps=num_inference_steps, guidance_scale=cfg_scale,
+                            #negative_prompt="", num_images_per_prompt=1, eta=0.0,
+                            #callback=txt2vid_generation_callback, callback_steps=1,
                             #num_interpolation_steps=num_steps,
-                            #height=height,  # use multiples of 64 if > 512. Multiples of 8 if < 512.
-                            #width=width,   # use multiples of 64 if > 512. Multiples of 8 if < 512.
-                            #batch_size=4,
                             #fps=30,
                             #image_file_ext = ".png",
-                            #eta = 0.0,
                             #output_dir=full_path,        # Where images/videos will be saved
-                            ##name='test',        # Subdirectory of output_dir where images/videos will be saved
-                            #guidance_scale=cfg_scale,         # Higher adheres to prompt more, lower lets model take the wheel
-                            #num_inference_steps=num_inference_steps,     # Number of diffusion steps per image generated. 50 is good default
+                            ##name='animals_test',        # Subdirectory of output_dir where images/videos will be saved
                             #upsample = False,
                             ##do_loop=do_loop,           # Change to True if you want last prompt to loop back to first prompt
                             #resume = False,
                             #audio_filepath = None,
                             #audio_start_sec = None,
                             #margin = 1.0,
-                            #smooth = 0.0,
-                            #callback=txt2vid_generation_callback, # our callback function will be called with the arguments callback(step, timestep, latents)
-                            #callback_steps=1 # our callback function will be called once this many steps are processed in a single frame
+                            #smooth = 0.0,                                                             )
+
+        # works correctly generating all frames but do not show the preview image
+        # we also do not have control over the generation and cant stop it until the end of it.
+        #with torch.autocast("cuda"):
+            #print (prompts)
+            #video_path = server_state["pipe"].walk(
+                        #prompt=prompts,
+                        #seeds=seeds,
+                        #num_interpolation_steps=num_steps,
+                        #height=height,  # use multiples of 64 if > 512. Multiples of 8 if < 512.
+                        #width=width,   # use multiples of 64 if > 512. Multiples of 8 if < 512.
+                        #batch_size=4,
+                        #fps=30,
+                        #image_file_ext = ".png",
+                        #eta = 0.0,
+                        #output_dir=full_path,        # Where images/videos will be saved
+                        ##name='test',        # Subdirectory of output_dir where images/videos will be saved
+                        #guidance_scale=cfg_scale,         # Higher adheres to prompt more, lower lets model take the wheel
+                        #num_inference_steps=num_inference_steps,     # Number of diffusion steps per image generated. 50 is good default
+                        #upsample = False,
+                        ##do_loop=do_loop,           # Change to True if you want last prompt to loop back to first prompt
+                        #resume = False,
+                        #audio_filepath = None,
+                        #audio_start_sec = None,
+                        #margin = 1.0,
+                        #smooth = 0.0,
+                        #callback=txt2vid_generation_callback, # our callback function will be called with the arguments callback(step, timestep, latents)
+                        #callback_steps=1 # our callback function will be called once this many steps are processed in a single frame
                         #)
 
         # old code
@@ -1563,11 +1582,11 @@ def txt2vid(
     time_diff = time.time()- start
 
     info = f"""
-            {prompts}
-            Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Duration In Seconds: {max_duration_in_seconds}""".strip()
+        {prompts}
+        Sampling Steps: {num_steps}, Sampler: {scheduler}, CFG scale: {cfg_scale}, Seed: {seeds}, Max Duration In Seconds: {max_duration_in_seconds}""".strip()
     stats = f'''
-            Took { round(time_diff, 2) }s total ({ round(time_diff/(max_duration_in_seconds),2) }s per image)
-            Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
+        Took { round(time_diff, 2) }s total ({ round(time_diff/(max_duration_in_seconds),2) }s per image)
+        Peak memory usage: { -(mem_max_used // -1_048_576) } MiB / { -(mem_total // -1_048_576) } MiB / { round(mem_max_used/mem_total*100, 3) }%'''
 
     return video_path, seeds, info, stats
 
@@ -1593,16 +1612,16 @@ def layout():
 
         with col1:
             width = st.slider("Width:", min_value=st.session_state['defaults'].txt2vid.width.min_value, max_value=st.session_state['defaults'].txt2vid.width.max_value,
-                                          value=st.session_state['defaults'].txt2vid.width.value, step=st.session_state['defaults'].txt2vid.width.step)
+                              value=st.session_state['defaults'].txt2vid.width.value, step=st.session_state['defaults'].txt2vid.width.step)
             height = st.slider("Height:", min_value=st.session_state['defaults'].txt2vid.height.min_value, max_value=st.session_state['defaults'].txt2vid.height.max_value,
-                                           value=st.session_state['defaults'].txt2vid.height.value, step=st.session_state['defaults'].txt2vid.height.step)
+                               value=st.session_state['defaults'].txt2vid.height.value, step=st.session_state['defaults'].txt2vid.height.step)
             cfg_scale = st.number_input("CFG (Classifier Free Guidance Scale):", min_value=st.session_state['defaults'].txt2vid.cfg_scale.min_value,
-                                                    value=st.session_state['defaults'].txt2vid.cfg_scale.value,
+                                        value=st.session_state['defaults'].txt2vid.cfg_scale.value,
                                                     step=st.session_state['defaults'].txt2vid.cfg_scale.step,
                                                     help="How strongly the image should follow the prompt.")
 
             #uploaded_images = st.file_uploader("Upload Image", accept_multiple_files=False, type=["png", "jpg", "jpeg", "webp"],
-                                                #help="Upload an image which will be used for the image to image generation.")
+                                            #help="Upload an image which will be used for the image to image generation.")
             seed = st.text_input("Seed:", value=st.session_state['defaults'].txt2vid.seed, help=" The seed to use, if left blank a random seed will be generated.")
             #batch_count = st.slider("Batch count.", min_value=1, max_value=100, value=st.session_state['defaults'].txt2vid.batch_count,
             # step=1, help="How many iterations or batches of images to generate in total.")
@@ -1612,23 +1631,23 @@ def layout():
                     #Default: 1")
 
             st.session_state["max_duration_in_seconds"] = st.number_input("Max Duration In Seconds:", value=st.session_state['defaults'].txt2vid.max_duration_in_seconds,
-                                                                                      help="Specify the max duration in seconds you want your video to be.")
+                                                                          help="Specify the max duration in seconds you want your video to be.")
 
             with st.expander("Preview Settings"):
                 #st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
-                                                                    #help="If enabled the image preview will be updated during the generation instead of at the end. \
-                                            #You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
-                                            #By default this is enabled and the frequency is set to 1 step.")
+                                                            #help="If enabled the image preview will be updated during the generation instead of at the end. \
+                                        #You can use the Update Preview \Frequency option bellow to customize how frequent it's updated. \
+                                        #By default this is enabled and the frequency is set to 1 step.")
 
                 st.session_state["update_preview"] = st.session_state["defaults"].general.update_preview
                 st.session_state["update_preview_frequency"] = st.number_input("Update Image Preview Frequency",
-                                                                                               min_value=0,
+                                                                               min_value=0,
                                                                                                value=st.session_state['defaults'].txt2vid.update_preview_frequency,
                                                                                                help="Frequency in steps at which the the preview image is updated. By default the frequency \
 				                                                               is set to 1 step.")
 
                 st.session_state["dynamic_preview_frequency"] = st.checkbox("Dynamic Preview Frequency", value=st.session_state['defaults'].txt2vid.dynamic_preview_frequency,
-                                                                                            help="This option tries to find the best value at which we can update \
+                                                                            help="This option tries to find the best value at which we can update \
 					                                               the preview image during generation while minimizing the impact it has in performance. Default: True")
 
 
@@ -1669,7 +1688,7 @@ def layout():
         custom_models_available()
         if server_state["CustomModel_available"]:
             custom_model = st.selectbox("Custom Model:", st.session_state["defaults"].txt2vid.custom_models_list,
-                                                    index=st.session_state["defaults"].txt2vid.custom_models_list.index(st.session_state["defaults"].txt2vid.default_model),
+                                        index=st.session_state["defaults"].txt2vid.custom_models_list.index(st.session_state["defaults"].txt2vid.default_model),
                                                     help="Select the model you want to use. This option is only available if you have custom models \
 				                            on your 'models/custom' folder. The model name that will be shown here is the same as the name\
 				                            the file for the model has on said folder, it is recommended to give the .ckpt file a name that \
@@ -1683,11 +1702,11 @@ def layout():
             #st.session_state["weights_path"] = f"CompVis/{slugify(custom_model.lower())}"
 
         st.session_state.sampling_steps = st.number_input("Sampling Steps", value=st.session_state['defaults'].txt2vid.sampling_steps.value,
-                                                                  min_value=st.session_state['defaults'].txt2vid.sampling_steps.min_value,
+                                                          min_value=st.session_state['defaults'].txt2vid.sampling_steps.min_value,
                                                                   step=st.session_state['defaults'].txt2vid.sampling_steps.step, help="Number of steps between each pair of sampled points")
 
         st.session_state.num_inference_steps = st.number_input("Inference Steps:", value=st.session_state['defaults'].txt2vid.num_inference_steps.value,
-                                                                       min_value=st.session_state['defaults'].txt2vid.num_inference_steps.min_value,
+                                                               min_value=st.session_state['defaults'].txt2vid.num_inference_steps.min_value,
                                                                        step=st.session_state['defaults'].txt2vid.num_inference_steps.step,
                                                                        help="Higher values (e.g. 100, 200 etc) can create better images.")
 
@@ -1696,11 +1715,11 @@ def layout():
                         #index=sampler_name_list.index(st.session_state['defaults'].txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")
         scheduler_name_list = ["klms", "ddim"]
         scheduler_name = st.selectbox("Scheduler:", scheduler_name_list,
-                                              index=scheduler_name_list.index(st.session_state['defaults'].txt2vid.scheduler_name), help="Scheduler to use. Default: klms")
+                                      index=scheduler_name_list.index(st.session_state['defaults'].txt2vid.scheduler_name), help="Scheduler to use. Default: klms")
 
         beta_scheduler_type_list = ["scaled_linear", "linear"]
         beta_scheduler_type = st.selectbox("Beta Schedule Type:", beta_scheduler_type_list,
-                                                   index=beta_scheduler_type_list.index(st.session_state['defaults'].txt2vid.beta_scheduler_type), help="Schedule Type to use. Default: linear")
+                                           index=beta_scheduler_type_list.index(st.session_state['defaults'].txt2vid.beta_scheduler_type), help="Schedule Type to use. Default: linear")
 
 
         #basic_tab, advanced_tab = st.tabs(["Basic", "Advanced"])
@@ -1712,32 +1731,32 @@ def layout():
         with st.expander("Advanced"):
             with st.expander("Output Settings"):
                 st.session_state["separate_prompts"] = st.checkbox("Create Prompt Matrix.", value=st.session_state['defaults'].txt2vid.separate_prompts,
-                                                                                   help="Separate multiple prompts using the `|` character, and get all combinations of them.")
+                                                                   help="Separate multiple prompts using the `|` character, and get all combinations of them.")
                 st.session_state["normalize_prompt_weights"] = st.checkbox("Normalize Prompt Weights.",
-                                                                                           value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
+                                                                           value=st.session_state['defaults'].txt2vid.normalize_prompt_weights, help="Ensure the sum of all weights add up to 1.0")
 
                 st.session_state["save_individual_images"] = st.checkbox("Save individual images.",
-                                                                                         value=st.session_state['defaults'].txt2vid.save_individual_images,
+                                                                         value=st.session_state['defaults'].txt2vid.save_individual_images,
                                                                                          help="Save each image generated before any filter or enhancement is applied.")
 
                 st.session_state["save_video"] = st.checkbox("Save video",value=st.session_state['defaults'].txt2vid.save_video,
-                                                                             help="Save a video with all the images generated as frames at the end of the generation.")
+                                                             help="Save a video with all the images generated as frames at the end of the generation.")
 
                 save_video_on_stop = st.checkbox("Save video on Stop",value=st.session_state['defaults'].txt2vid.save_video_on_stop,
-                                                                 help="Save a video with all the images generated as frames when we hit the stop button during a generation.")
+                                                 help="Save a video with all the images generated as frames when we hit the stop button during a generation.")
 
                 st.session_state["group_by_prompt"] = st.checkbox("Group results by prompt", value=st.session_state['defaults'].txt2vid.group_by_prompt,
-                                                                                  help="Saves all the images with the same prompt into the same folder. When using a prompt \
+                                                                  help="Saves all the images with the same prompt into the same folder. When using a prompt \
 				                                                  matrix each prompt combination will have its own folder.")
 
                 st.session_state["write_info_files"] = st.checkbox("Write Info file", value=st.session_state['defaults'].txt2vid.write_info_files,
-                                                                                   help="Save a file next to the image with informartion about the generation.")
+                                                                   help="Save a file next to the image with informartion about the generation.")
 
                 st.session_state["do_loop"] = st.checkbox("Do Loop", value=st.session_state['defaults'].txt2vid.do_loop,
-                                                                          help="Loop the prompt making two prompts from a single one.")
+                                                          help="Loop the prompt making two prompts from a single one.")
 
                 st.session_state["use_lerp_for_text"] = st.checkbox("Use Lerp Instead of Slerp", value=st.session_state['defaults'].txt2vid.use_lerp_for_text,
-                                                                                    help="Uses torch.lerp() instead of slerp. When interpolating between related prompts. \
+                                                                    help="Uses torch.lerp() instead of slerp. When interpolating between related prompts. \
 				                                                    e.g. 'a lion in a grassy meadow' -> 'a bear in a grassy meadow' tends to keep the meadow \
 				                                                    the whole way through when lerped, but slerping will often find a path where the meadow \
 				                                                    disappears in the middle")
@@ -1764,12 +1783,12 @@ def layout():
                             #if st.session_state["GFPGAN_available"]:
                             #with st.expander("GFPGAN"):
                             st.session_state["use_GFPGAN"] = st.checkbox("Use GFPGAN", value=st.session_state['defaults'].txt2vid.use_GFPGAN,
-                                                                                                     help="Uses the GFPGAN model to improve faces after the generation.\
+                                                                         help="Uses the GFPGAN model to improve faces after the generation.\
 						                                                                 This greatly improve the quality and consistency of faces but uses\
 						                                                                 extra VRAM. Disable if you need the extra VRAM.")
 
                             st.session_state["GFPGAN_model"] = st.selectbox("GFPGAN model", st.session_state["GFPGAN_models"],
-                                                                                                        index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))
+                                                                            index=st.session_state["GFPGAN_models"].index(st.session_state['defaults'].general.GFPGAN_model))
 
                             #st.session_state["GFPGAN_strenght"] = st.slider("Effect Strenght", min_value=1, max_value=100, value=1, step=1, help='')
 
@@ -1788,8 +1807,8 @@ def layout():
                                 upscaling_method_list.append("LDSR")
 
                             st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
-                                                                                                            index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method)
-                                                                                                                if st.session_state['defaults'].general.upscaling_method in upscaling_method_list
+                                                                                index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method)
+                                                                                                            if st.session_state['defaults'].general.upscaling_method in upscaling_method_list
                                                                                                                 else 0)
 
                             if st.session_state["RealESRGAN_available"]:
@@ -1800,7 +1819,7 @@ def layout():
                                         st.session_state["use_RealESRGAN"] = False
 
                                     st.session_state["RealESRGAN_model"] = st.selectbox("RealESRGAN model", st.session_state["RealESRGAN_models"],
-                                                                                                                            index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))
+                                                                                        index=st.session_state["RealESRGAN_models"].index(st.session_state['defaults'].general.RealESRGAN_model))
                             else:
                                 st.session_state["use_RealESRGAN"] = False
                                 st.session_state["RealESRGAN_model"] = "RealESRGAN_x4plus"
@@ -1815,20 +1834,20 @@ def layout():
                                         st.session_state["use_LDSR"] = False
 
                                     st.session_state["LDSR_model"] = st.selectbox("LDSR model", st.session_state["LDSR_models"],
-                                                                                                                      index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))
+                                                                                  index=st.session_state["LDSR_models"].index(st.session_state['defaults'].general.LDSR_model))
 
                                     st.session_state["ldsr_sampling_steps"] = st.number_input("Sampling Steps", value=st.session_state['defaults'].txt2vid.LDSR_config.sampling_steps,
-                                                                                                                                  help="")
+                                                                                              help="")
 
                                     st.session_state["preDownScale"] = st.number_input("PreDownScale", value=st.session_state['defaults'].txt2vid.LDSR_config.preDownScale,
-                                                                                                                           help="")
+                                                                                       help="")
 
                                     st.session_state["postDownScale"] = st.number_input("postDownScale", value=st.session_state['defaults'].txt2vid.LDSR_config.postDownScale,
-                                                                                                                            help="")
+                                                                                        help="")
 
                                     downsample_method_list = ['Nearest', 'Lanczos']
                                     st.session_state["downsample_method"] = st.selectbox("Downsample Method", downsample_method_list,
-                                                                                                                             index=downsample_method_list.index(st.session_state['defaults'].txt2vid.LDSR_config.downsample_method))
+                                                                                         index=downsample_method_list.index(st.session_state['defaults'].txt2vid.LDSR_config.downsample_method))
 
                             else:
                                 st.session_state["use_LDSR"] = False
@@ -1836,20 +1855,20 @@ def layout():
 
             with st.expander("Variant"):
                 st.session_state["variant_amount"] = st.number_input("Variant Amount:", value=st.session_state['defaults'].txt2vid.variant_amount.value,
-                                                                                     min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
+                                                                     min_value=st.session_state['defaults'].txt2vid.variant_amount.min_value,
                                                                                      max_value=st.session_state['defaults'].txt2vid.variant_amount.max_value,
                                                                                      step=st.session_state['defaults'].txt2vid.variant_amount.step)
 
                 st.session_state["variant_seed"] = st.text_input("Variant Seed:", value=st.session_state['defaults'].txt2vid.seed,
-                                                                                 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
+                                                                 help="The seed to use when generating a variant, if left blank a random seed will be generated.")
 
             #st.session_state["beta_start"] = st.slider("Beta Start:", value=st.session_state['defaults'].txt2vid.beta_start.value,
-                                                        #min_value=st.session_state['defaults'].txt2vid.beta_start.min_value,
-                                                        #max_value=st.session_state['defaults'].txt2vid.beta_start.max_value,
-                                                        #step=st.session_state['defaults'].txt2vid.beta_start.step, format=st.session_state['defaults'].txt2vid.beta_start.format)
+                                                #min_value=st.session_state['defaults'].txt2vid.beta_start.min_value,
+                                                #max_value=st.session_state['defaults'].txt2vid.beta_start.max_value,
+                                                #step=st.session_state['defaults'].txt2vid.beta_start.step, format=st.session_state['defaults'].txt2vid.beta_start.format)
             #st.session_state["beta_end"] = st.slider("Beta End:", value=st.session_state['defaults'].txt2vid.beta_end.value,
-                                                        #min_value=st.session_state['defaults'].txt2vid.beta_end.min_value, max_value=st.session_state['defaults'].txt2vid.beta_end.max_value,
-                                                        #step=st.session_state['defaults'].txt2vid.beta_end.step, format=st.session_state['defaults'].txt2vid.beta_end.format)
+                                                #min_value=st.session_state['defaults'].txt2vid.beta_end.min_value, max_value=st.session_state['defaults'].txt2vid.beta_end.max_value,
+                                                #step=st.session_state['defaults'].txt2vid.beta_end.step, format=st.session_state['defaults'].txt2vid.beta_end.format)
 
     if generate_button:
         #print("Loading models")
@@ -1878,7 +1897,7 @@ def layout():
         #try:
         # run video generation
         video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
-                                                   num_steps=st.session_state.sampling_steps, max_duration_in_seconds=st.session_state.max_duration_in_seconds,
+                                           num_steps=st.session_state.sampling_steps, max_duration_in_seconds=st.session_state.max_duration_in_seconds,
                                                    num_inference_steps=st.session_state.num_inference_steps,
                                                    cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
                                                    outdir=st.session_state["defaults"].general.outdir,
