@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -12,21 +12,23 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_streamlit.yaml.
 # Any changes made here will be available automatically on the web app without having to stop it.
 # You may add overrides in a file named "userconfig_streamlit.yaml" in this folder, which can contain any subset
 # of the properties below.
 general:
+    version: 1.24.6
     streamlit_telemetry: False
     default_theme: dark
-    huggingface_token: ""
+    huggingface_token: ''
+    stable_horde_api: '0000000000'
     gpu: 0
     outdir: outputs
-    default_model: "Stable Diffusion v1.4" 
+    default_model: "Stable Diffusion v1.5"
     default_model_config: "configs/stable-diffusion/v1-inference.yaml"
-    default_model_path: "models/ldm/stable-diffusion-v1/model.ckpt"
+    default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
     use_sd_concepts_library: True
     sd_concepts_library_folder: "models/custom/sd-concepts-library"
     GFPGAN_dir: "./models/gfpgan"
@@ -38,17 +40,19 @@ general:
     upscaling_method: "RealESRGAN"
     outdir_txt2img: outputs/txt2img
     outdir_img2img: outputs/img2img
+    outdir_img2txt: outputs/img2txt
     gfpgan_cpu: False
     esrgan_cpu: False
     extra_models_cpu: False
     extra_models_gpu: False
     gfpgan_gpu: 0
     esrgan_gpu: 0
+    keep_all_models_loaded: False
     save_metadata: True
     save_format: "png"
     skip_grid: False
     skip_save: False
-    grid_format: "jpg:95"
+    grid_quality: 95
     n_rows: -1
     no_verify_input: False
     no_half: False
@@ -62,6 +66,13 @@ general:
     update_preview: True
     update_preview_frequency: 10
 
+admin:
+    hide_server_setting: False
+    hide_browser_setting: False
+
+debug:
+    enable_hydralit: False
+
 txt2img:
     prompt:
     width:
@@ -69,32 +80,31 @@ txt2img:
         min_value:  64
         max_value:  2048
         step:       64
-        
+
     height:
         value:      512
         min_value:  64
         max_value:  2048
         step:       64
-        
+
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
 
     seed: ""
     batch_count:
         value:      1
-        
+
     batch_size:
         value:      1
-        
+
     sampling_steps:
         value:      30
         min_value:  10
         max_value:  250
         step:       10
-    
+
     LDSR_config:
         sampling_steps: 50
         preDownScale: 1
@@ -115,56 +125,55 @@ txt2img:
     use_LDSR: False
     RealESRGAN_model: "RealESRGAN_x4plus"
     use_upscaling: False
-    
+
     variant_amount:
         value:      0.0
         min_value:  0.0
         max_value:  1.0
         step:       0.01
-        
+
     variant_seed: ""
     write_info_files: True
-    
+
 txt2vid:
-    default_model: "CompVis/stable-diffusion-v1-4"
-    custom_models_list: ["CompVis/stable-diffusion-v1-4"]
+    default_model: "runwayml/stable-diffusion-v1-5"
+    custom_models_list: ["runwayml/stable-diffusion-v1-5", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
     prompt:
     width:
         value:      512
         min_value:  64
         max_value:  2048
         step:       64
-        
+
     height:
         value:      512
         min_value:  64
         max_value:  2048
         step:       64
-        
+
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
-        
+
     batch_count:
         value:      1
-        
+
     batch_size:
         value:      1
-        
+
     sampling_steps:
         value:      30
         min_value:  10
         max_value:  250
         step:       10
-        
+
     num_inference_steps:
         value:      200
         min_value:  10
         max_value:  500
         step:       10
-        
+
     seed: ""
     default_sampler: "k_euler"
     scheduler_name: "klms"
@@ -175,9 +184,11 @@ txt2vid:
     normalize_prompt_weights: True
     save_individual_images: True
     save_video: True
+    save_video_on_stop: False
     group_by_prompt: True
     write_info_files: True
     do_loop: False
+    use_lerp_for_text: False
     save_as_jpg: False
     use_GFPGAN: False
     use_RealESRGAN: False
@@ -188,43 +199,44 @@ txt2vid:
         min_value:  0.0
         max_value:  1.0
         step:       0.01
-        
+
     variant_seed: ""
-    
+
     beta_start:
         value:      0.00085
-        min_value:  0.0001
-        max_value:  0.0300
-        step:       0.0001
+        min_value:  0.00010
+        max_value:  0.03000
+        step:       0.00010
         format:     "%.5f"
-        
+
     beta_end:
-        value:      0.012
-        min_value:  0.0001
-        max_value:  0.0300
-        step:       0.0001
+        value:      0.01200
+        min_value:  0.00010
+        max_value:  0.03000
+        step:       0.00010
         format:     "%.5f"
-        
+
     beta_scheduler_type: "scaled_linear"
-    max_frames: 100
-    
+    max_duration_in_seconds: 30
+
     LDSR_config:
         sampling_steps: 50
         preDownScale: 1
         postDownScale: 1
         downsample_method: "Lanczos"
-    
+
 img2img:
-    prompt: 
+    prompt:
     sampler_name: "k_euler"
-    denoising_strength: 
+    denoising_strength:
         value:      0.75
         min_value:  0.0
         max_value:  1.0
         step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
-    mask_mode: 0
+    mask_mode: 1
+    noise_mode: "Matched Noise"
     mask_restore: False
     # 0: Just resize
     # 1: Crop and resize
@@ -238,49 +250,47 @@ img2img:
         min_value:  64
         max_value:  2048
         step:       64
-        
+
     height:
         value:      512
         min_value:  64
         max_value:  2048
         step:       64
-        
+
     cfg_scale:
         value:      7.5
         min_value:  1.0
-        max_value:  30.0
         step:       0.5
-        
+
     batch_count:
         value:      1
-        
+
     batch_size:
         value:      1
-        
+
     sampling_steps:
         value:      30
         min_value:  10
         max_value:  250
         step:       10
-        
+
     num_inference_steps:
         value:      200
         min_value:  10
         max_value:  500
         step:       10
-        
+
     find_noise_steps:
         value:      100
-        min_value:  0
-        max_value:  500
-        step:       10
-        
+        min_value:  100
+        step:       100
+
     LDSR_config:
         sampling_steps: 50
         preDownScale: 1
         postDownScale: 1
         downsample_method: "Lanczos"
-        
+
     loopback: True
     random_seed_loopback: True
     separate_prompts: False
@@ -298,36 +308,36 @@ img2img:
     variant_amount: 0.0
     variant_seed: ""
     write_info_files: True
-    
+
 img2txt:
-    batch_size: 420
+    batch_size: 2000
     blip_image_eval_size: 512
     keep_all_models_loaded: False
-    
+
 concepts_library:
     concepts_per_page: 12
-    
+
 gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-4"
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
     tokenizer_name: "models/clip-vit-large-patch14"
-    
-    
+
+
 daisi_app:
     running_on_daisi_io: False
-  
-model_manager:  
+
+model_manager:
     models:
-        stable_diffusion: 
-            model_name:     "Stable Diffusion v1.4"
+        stable_diffusion:
+            model_name:     "Stable Diffusion v1.5"
             save_location:  "./models/ldm/stable-diffusion-v1"
             files:
                 model_ckpt:
-                    file_name:  "model.ckpt"
-                    download_link:  "https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media"
-        
+                    file_name:  "Stable Diffusion v1.5.ckpt"
+                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
+
         gfpgan:
             model_name:     "GFPGAN"
             save_location:  "./models/gfpgan"
@@ -343,8 +353,8 @@ model_manager:
                     file_name: "parsing_parsenet.pth"
                     save_location:  "./gfpgan/weights"
                     download_link: "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
-                
-            
+
+
         realesrgan:
             model_name:     "RealESRGAN"
             save_location:  "./models/realesrgan"
@@ -355,17 +365,17 @@ model_manager:
                 x4plus_anime_6b:
                     file_name: "RealESRGAN_x4plus_anime_6B.pth"
                     download_link:  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
-            
-            
+
+
         waifu_diffusion:
-            model_name:     "Waifu Diffusion v1.2"
+            model_name:     "Waifu Diffusion v1.3"
             save_location:  "./models/custom"
             files:
                 waifu_diffusion:
-                    file_name: "waifu-diffusion.ckpt"
-                    download_link:  "https://huggingface.co/crumb/pruned-waifu-diffusion/resolve/main/model-pruned.ckpt"
+                    file_name: "Waifu-Diffusion-v1-3 Full ema.ckpt"
+                    download_link:  "https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt"
 
-        
+
         trinart_stable_diffusion:
             model_name:     "TrinArt Stable Diffusion v2"
             save_location:  "./models/custom"
@@ -373,15 +383,23 @@ model_manager:
                 trinart:
                     file_name: "trinart.ckpt"
                     download_link:  "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
-            
+
+        sd_wd_ld_trinart_merged:
+            model_name:     "SD1.5-WD1.3-LD-Trinart-Merged"
+            save_location:  "./models/custom"
+            files:
+                sd_wd_ld_trinart_merged:
+                    file_name: "SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+                    download_link:  "https://huggingface.co/ZeroCool94/sd1.5-wd1.3-ld-trinart-merged/resolve/main/SD1.5-WD1.3-LD-Trinart-Merged.ckpt"
+
         stable_diffusion_concept_library:
             model_name:     "Stable Diffusion Concept Library"
             save_location:  "./models/custom/sd-concepts-library/"
             files:
                 concept_library:
                     file_name: ""
-                    download_link:  "https://github.com/sd-webui/sd-concepts-library"
-        
+                    download_link:  "https://github.com/Sygil-Dev/sd-concepts-library"
+
         blip_model:
             model_name:     "Blip Model"
             save_location:  "./models/blip"
@@ -389,7 +407,7 @@ model_manager:
                 blip:
                     file_name: "model__base_caption.pth"
                     download_link:  "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth"
-        
+
         ldsr:
             model_name: "Latent Diffusion Super Resolution (LDSR)"
             save_location:  "./models/ldsr"
@@ -397,8 +415,7 @@ model_manager:
                 project_yaml:
                     file_name:     "project.yaml"
                     download_link:  "https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
-                    
+
                 ldsr_model:
                     file_name:     "model.ckpt"
                     download_link:  "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
-    

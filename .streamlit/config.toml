@@ -34,7 +34,6 @@ maxMessageSize = 200
 enableWebsocketCompression = false
 
 [browser]
-serverAddress = "localhost"
 gatherUsageStats = false
 serverPort = 8501
 
