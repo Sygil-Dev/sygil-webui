@@ -1,0 +1,467 @@
+{
+  "stable_diffusion": {
+    "name": "stable_diffusion",
+    "type": "ckpt",
+    "description": "Generalist AI image generating model. The baseline for all finetuned models.",
+    "version": "1.5",
+    "style": "generalist",
+    "nsfw": false,
+    "download_all": true,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/ldm/stable-diffusion-v1/model_1_5.ckpt"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "model_1_5.ckpt",
+          "file_path": "models/ldm/stable-diffusion-v1",
+          "file_url": "https://{username}:{password}@huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt",
+          "hf_auth": true
+        }
+      ]
+    },
+    "available": false
+  },  
+  "stable_diffusion_1.4": {
+    "name": "stable_diffusion",
+    "type": "ckpt",
+    "description": "Generalist AI image generating model. The baseline for all finetuned models.",
+    "version": "1.4",
+    "style": "generalist",
+    "nsfw": false,
+    "download_all": true,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/ldm/stable-diffusion-v1/model.ckpt",
+          "md5sum": "c01059060130b8242849d86e97212c84"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "model.ckpt",
+          "file_path": "models/ldm/stable-diffusion-v1",
+          "file_url": "https://www.googleapis.com/storage/v1/b/aai-blog-files/o/sd-v1-4.ckpt?alt=media"
+        }
+      ],
+      "alt_download": [
+        {
+          "file_name": "model.ckpt",
+          "file_path": "models/ldm/stable-diffusion-v1",
+          "file_url": "https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4.ckpt",
+          "hf_auth": true
+        }
+      ]
+    },
+    "available": false
+  },
+  "waifu_diffusion": {
+    "name": "waifu_diffusion",
+    "type": "ckpt",
+    "description": "Anime styled generations.",
+    "version": "1.3",
+    "style": "anime",
+    "nsfw": false,
+    "download_all": true,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/custom/waifu-diffusion.ckpt",
+          "md5sum": "a2aa170e3f513b32a3fd8841656e0123"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "waifu-diffusion.ckpt",
+          "file_path": "models/custom",
+          "file_url": "https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt"
+        }
+      ]
+    },
+    "available": false
+  },
+  "Furry Epoch": {
+    "name": "Furry Epoch",
+    "type": "ckpt",
+    "description": "Furry styled generations.",
+    "version": "4",
+    "style": "furry",
+    "nsfw": false,
+    "download_all": false,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/custom/furry-diffusion.ckpt",
+          "md5sum": "f8ef45a295ef4966682f6e8fc2c6830d"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "furry-diffusion.ckpt",
+          "file_path": "models/custom",
+          "file_url": "https://sexy.canine.wf/file/furry-ckpt/furry_epoch4.ckpt"
+        }
+      ]
+    },
+    "available": false
+  },
+  "Yiffy": {
+    "name": "Yiffy",
+    "type": "ckpt",
+    "description": "Furry styled generations.",
+    "version": "18",
+    "style": "furry",
+    "nsfw": false,
+    "download_all": true,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/custom/yiffy.ckpt",
+          "md5sum": "dbe25794e24af183565dc45e9ec99713"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "yiffy.ckpt",
+          "file_path": "models/custom",
+          "file_url": "https://sexy.canine.wf/file/yiffy-ckpt/yiffy-e18.ckpt"
+        }
+      ]
+    },
+    "available": false
+  },
+  "Zack3D": {
+    "name": "Zack3D",
+    "type": "ckpt",
+    "description": "Kink/NSFW oriented furry styled generations.",
+    "version": "1",
+    "style": "furry",
+    "nsfw": true,
+    "download_all": true,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/custom/Zack3D.ckpt",
+          "md5sum": "aa944b1ecdaac60113027a0fdcda4f1b"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "Zack3D.ckpt",
+          "file_path": "models/custom",
+          "file_url": "https://sexy.canine.wf/file/furry-ckpt/Zack3D_Kinky-v1.ckpt"
+        }
+      ]
+    },
+    "available": false
+  },
+  "trinart": {
+    "name": "trinart",
+    "type": "ckpt",
+    "description": "Manga styled generations.",
+    "version": "1",
+    "style": "anime",
+    "nsfw": false,
+    "download_all": true,
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/custom/trinart.ckpt"
+        },
+        {
+          "path": "configs/stable-diffusion/v1-inference.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "trinart.ckpt",
+          "file_path": "models/custom",
+          "file_url": "https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt"
+        }
+      ]
+    },
+    "available": false
+  },
+  "RealESRGAN_x4plus": {
+    "name": "RealESRGAN_x4plus",
+    "type": "realesrgan",
+    "description": "Upscaler.",
+    "version": "0.1.0",
+    "style": "generalist",
+    "config": {
+      "files": [
+        {
+          "path": "models/realesrgan/RealESRGAN_x4plus.pth"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "RealESRGAN_x4plus.pth",
+          "file_path": "models/realesrgan",
+          "file_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+        }
+      ]
+    },
+    "available": false
+  },
+  "RealESRGAN_x4plus_anime_6B": {
+    "name": "RealESRGAN_x4plus_anime_6B",
+    "type": "realesrgan",
+    "description": "Anime focused upscaler.",
+    "version": "0.2.2.4",
+    "style": "anime",
+    "config": {
+      "files": [
+        {
+          "path": "models/realesrgan/RealESRGAN_x4plus_anime_6B.pth"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "RealESRGAN_x4plus_anime_6B.pth",
+          "file_path": "models/realesrgan",
+          "file_url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth"
+        }
+      ]
+    },
+    "available": false
+  },
+  "GFPGAN": {
+    "name": "GFPGAN",
+    "type": "gfpgan",
+    "description": "Face correction.",
+    "version": "1.4",
+    "style": "generalist",
+    "config": {
+      "files": [
+        {
+          "path": "models/gfpgan/GFPGANv1.4.pth"
+        },
+        {
+          "path": "gfpgan/weights/detection_Resnet50_Final.pth"
+        },
+        {
+          "path": "gfpgan/weights/parsing_parsenet.pth"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "GFPGANv1.4.pth",
+          "file_path": "models/gfpgan",
+          "file_url": "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth"
+        },
+        {
+          "file_name": "detection_Resnet50_Final.pth",
+          "file_path": "./gfpgan/weights",
+          "file_url": "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
+        },
+        {
+          "file_name": "parsing_parsenet.pth",
+          "file_path": "./gfpgan/weights",
+          "file_url": "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
+        }
+      ]
+    },
+    "available": false
+  },
+  "LDSR": {
+    "name": "LDSR",
+    "type": "ckpt",
+    "description": "Upscaler.",
+    "version": "1",
+    "style": "generalist",
+    "nsfw": false,
+    "download_all": true,
+    "config": {
+      "files": [
+        {
+          "path": "models/ldsr/model.ckpt"
+        },
+        {
+          "path": "models/ldsr/project.yaml"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "model.ckpt",
+          "file_path": "models/ldsr",
+          "file_url": "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
+        },
+        {
+          "file_name": "project.yaml",
+          "file_path": "models/ldsr",
+          "file_url": "https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1"
+        }
+      ]
+    },
+    "available": false
+  },
+  "BLIP": {
+    "name": "BLIP",
+    "type": "blip",
+    "config": {
+      "files": [
+        {
+          "path": "models/blip/model__base_caption.pth"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "model__base_caption.pth",
+          "file_path": "models/blip",
+          "file_url": "https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth"
+        }
+      ]
+    },
+    "available": false
+  },
+  "ViT-L/14": {
+    "name": "ViT-L/14",
+    "type": "clip",
+    "config": {
+      "files": [
+        {
+          "path": "models/clip/ViT-L-14.pt"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "ViT-L-14.pt",
+          "file_path": "./models/clip",
+          "file_url": "https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt"
+        }
+      ]
+    },
+    "available": false
+  },
+  "ViT-g-14": {
+    "name": "ViT-g-14",
+    "pretrained_name":  "laion2b_s12b_b42k",
+    "type": "open_clip",
+    "config": {
+      "files": [
+        {
+          "path": "models/clip/models--laion--CLIP-ViT-g-14-laion2B-s12B-b42K/"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "main",
+          "file_path": "./models/clip/models--laion--CLIP-ViT-g-14-laion2B-s12B-b42K/refs",
+          "file_content": "b36bdd32483debcf4ed2f918bdae1d4a46ee44b8"
+        },
+        {
+          "file_name": "6aac683f899159946bc4ca15228bb7016f3cbb1a2c51f365cba0b23923f344da",
+          "file_path": "./models/clip/models--laion--CLIP-ViT-g-14-laion2B-s12B-b42K/blobs",
+          "file_url": "https://huggingface.co/laion/CLIP-ViT-g-14-laion2B-s12B-b42K/resolve/main/open_clip_pytorch_model.bin"
+        },
+        {
+          "file_name": "open_clip_pytorch_model.bin",
+          "file_path": "./models/clip/models--laion--CLIP-ViT-g-14-laion2B-s12B-b42K/snapshots/b36bdd32483debcf4ed2f918bdae1d4a46ee44b8",
+          "symlink": "./models/clip/models--laion--CLIP-ViT-g-14-laion2B-s12B-b42K/blobs/6aac683f899159946bc4ca15228bb7016f3cbb1a2c51f365cba0b23923f344da"
+        }
+      ]
+    },
+    "available": false
+  },
+  "ViT-H-14": {
+    "name": "ViT-H-14",
+    "pretrained_name":  "laion2b_s32b_b79k",
+    "type": "open_clip",
+    "config": {
+      "files": [
+        {
+          "path": "models/clip/models--laion--CLIP-ViT-H-14-laion2B-s32B-b79K/"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "main",
+          "file_path": "./models/clip/models--laion--CLIP-ViT-H-14-laion2B-s32B-b79K/refs",
+          "file_content": "58a1e03a7acfacbe6b95ebc24ae0394eda6a14fc"
+        },
+        {
+          "file_name": "9a78ef8e8c73fd0df621682e7a8e8eb36c6916cb3c16b291a082ecd52ab79cc4",
+          "file_path": "./models/clip/models--laion--CLIP-ViT-H-14-laion2B-s32B-b79K/blobs",
+          "file_url": "https://huggingface.co/laion/CLIP-ViT-H-14-laion2B-s32B-b79K/resolve/main/open_clip_pytorch_model.bin"
+        },
+        {
+          "file_name": "open_clip_pytorch_model.bin",
+          "file_path": "./models/clip/models--laion--CLIP-ViT-H-14-laion2B-s32B-b79K/snapshots/58a1e03a7acfacbe6b95ebc24ae0394eda6a14fc",
+          "symlink": "./models/clip/models--laion--CLIP-ViT-H-14-laion2B-s32B-b79K/blobs/9a78ef8e8c73fd0df621682e7a8e8eb36c6916cb3c16b291a082ecd52ab79cc4"
+        }
+      ]
+    },
+    "available": false
+  },
+  "diffusers_stable_diffusion": {
+    "name": "diffusers_stable_diffusion",
+    "type": "diffusers",
+    "requires": [
+      "clip-vit-large-patch14"
+    ],
+    "config": {
+      "files": [
+        {
+          "path": "models/diffusers/"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "diffusers_stable_diffusion",
+          "file_url": "https://{username}:{password}@huggingface.co/CompVis/stable-diffusion-v1-4.git",
+          "git": true,
+          "hf_auth": true,
+          "post_process": [
+            {
+              "delete": "models/diffusers/stable-diffusion-v1-4/.git"
+            }
+          ]
+        }
+      ]
+      
+    },
+    "available": false
+  }
+}

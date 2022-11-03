@@ -1,0 +1,98 @@
+{
+  "sd-concepts-library": {
+    "type": "dependency",
+    "optional": true,
+    "config": {
+      "files": [
+        {
+          "path": "models/custom/sd-concepts-library/"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "sd-concepts-library",
+          "file_path": "./models/custom/sd-concepts-library/",
+          "file_url": "https://github.com/sd-webui/sd-concepts-library/archive/refs/heads/main.zip",
+          "unzip": true,
+          "move_subfolder": "sd-concepts-library"
+        }
+      ]
+    },
+    "available": false
+  },
+  "clip-vit-large-patch14": {
+    "type": "dependency",
+    "optional": false,
+    "config": {
+      "files": [
+        {
+          "path": "models/clip-vit-large-patch14/config.json"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/merges.txt"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/preprocessor_config.json"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/pytorch_model.bin"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/special_tokens_map.json"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/tokenizer.json"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/tokenizer_config.json"
+        },
+        {
+          "path": "models/clip-vit-large-patch14/vocab.json"
+        }
+      ],
+      "download": [
+        {
+          "file_name": "config.json",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/config.json"
+        },
+        {
+          "file_name": "merges.txt",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/merges.txt"
+        },
+        {
+          "file_name": "preprocessor_config.json",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/preprocessor_config.json"
+        },
+        {
+          "file_name": "pytorch_model.bin",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/pytorch_model.bin"
+        },
+        {
+          "file_name": "special_tokens_map.json",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/special_tokens_map.json"
+        },
+        {
+          "file_name": "tokenizer.json",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/tokenizer.json"
+        },
+        {
+          "file_name": "tokenizer_config.json",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/tokenizer_config.json"
+        },
+        {
+          "file_name": "vocab.json",
+          "file_path": "models/clip-vit-large-patch14",
+          "file_url": "https://huggingface.co/openai/clip-vit-large-patch14/resolve/main/vocab.json"
+        }
+      ]
+    },
+    "available": false
+  }
+}

@@ -70,15 +70,19 @@ genfmt = "<level>{level: <10}</level> @ <green>{time:YYYY-MM-DD HH:mm:ss}</green
 initfmt = "<magenta>INIT      </magenta> | <level>{extra[status]: <10}</level> | <magenta>{message}</magenta>"
 msgfmt = "<level>{level: <10}</level> | <level>{message}</level>"
 
-logger.level("GENERATION", no=24, color="<cyan>")
-logger.level("PROMPT", no=23, color="<yellow>")
-logger.level("INIT", no=31, color="<white>")
-logger.level("INIT_OK", no=31, color="<green>")
-logger.level("INIT_WARN", no=31, color="<yellow>")
-logger.level("INIT_ERR", no=31, color="<red>")
-# Messages contain important information without which this application might not be able to be used
-# As such, they have the highest priority
-logger.level("MESSAGE", no=61, color="<green>")
+try:
+    logger.level("GENERATION", no=24, color="<cyan>")
+    logger.level("PROMPT", no=23, color="<yellow>")
+    logger.level("INIT", no=31, color="<white>")
+    logger.level("INIT_OK", no=31, color="<green>")
+    logger.level("INIT_WARN", no=31, color="<yellow>")
+    logger.level("INIT_ERR", no=31, color="<red>")
+    # Messages contain important information without which this application might not be able to be used
+    # As such, they have the highest priority
+    logger.level("MESSAGE", no=61, color="<green>")
+except TypeError:
+    pass
+
 
 logger.__class__.generation = partialmethod(logger.__class__.log, "GENERATION")
 logger.__class__.prompt = partialmethod(logger.__class__.log, "PROMPT")
@@ -97,3 +101,5 @@ config = {
     ],
 }
 logger.configure(**config)
+
+logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated

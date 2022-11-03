@@ -1,0 +1,26 @@
+{
+	"tagFile": "danbooru.csv",
+	"maxResults": 5,
+	"replaceUnderscores": true,
+	"escapeParentheses": true,
+	"colors": {
+		"danbooru": {
+			"0": ["lightblue", "dodgerblue"],
+			"1": ["indianred", "firebrick"],
+			"3": ["violet", "darkorchid"],
+			"4": ["lightgreen", "darkgreen"],
+			"5": ["orange", "darkorange"]
+		},
+		"e621": {
+			"-1": ["red", "maroon"],
+			"0": ["lightblue", "dodgerblue"],
+			"1": ["gold", "goldenrod"],
+			"3": ["violet", "darkorchid"],
+			"4": ["lightgreen", "darkgreen"],
+			"5": ["tomato", "darksalmon"],
+			"6": ["red", "maroon"],
+			"7": ["whitesmoke", "black"],
+			"8": ["seagreen", "darkseagreen"]
+		}
+	}
+}
