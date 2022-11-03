@@ -1,6 +1,6 @@
-# This file is part of stable-diffusion-webui (https://github.com/sd-webui/stable-diffusion-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
-# Copyright 2022 sd-webui team.
+# Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -499,11 +499,11 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             if GFPGAN is None:
                                 gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-        <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+        <p><b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/Sygil-Dev/sygil-webui'>Github</a></p>
     </div>
     """)
                                 # gr.Markdown("")
-                                # gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a>")
+                                # gr.Markdown("<b> Please download GFPGAN to activate face fixing features</b>, instructions are available at the <a href='https://github.com/Sygil-Dev/sygil-webui'>Github</a>")
                             with gr.Column():
                                 gr.Markdown("<b>GFPGAN Settings</b>")
                                 imgproc_gfpgan_strength = gr.Slider(minimum=0.0, maximum=1.0, step=0.001,
@@ -517,7 +517,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                             else:
                                 gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-        <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+        <p><b> Please download LDSR to activate more upscale features</b>, instructions are available at the <a href='https://github.com/Sygil-Dev/sygil-webui'>Github</a></p>
     </div>
     """)
                                 upscaleModes = ['RealESRGAN', 'GoBig']
@@ -627,7 +627,7 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
                                             # seperator
                                             gr.HTML("""
         <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-            <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/hlky/stable-diffusion-webui'>Github</a></p>
+            <p><b> Please download RealESRGAN to activate upscale features</b>, instructions are available at the <a href='https://github.com/Sygil-Dev/sygil-webui'>Github</a></p>
         </div>
         """)
             imgproc_toggles.change(fn=uifn.toggle_options_gfpgan, inputs=[imgproc_toggles], outputs=[gfpgan_group])
@@ -860,9 +860,9 @@ def draw_gradio_ui(opt, img2img=lambda x: x, txt2img=lambda x: x, imgproc=lambda
         """
         gr.HTML("""
     <div id="90" style="max-width: 100%; font-size: 14px; text-align: center;" class="output-markdown gr-prose border-solid border border-gray-200 rounded gr-panel">
-        <p>For help and advanced usage guides, visit the <a href="https://github.com/hlky/stable-diffusion-webui/wiki" target="_blank">Project Wiki</a></p>
-        <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/hlky/stable-diffusion" target="_blank">main repository</a>.
-        If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/hlky/stable-diffusion-webui" target="_blank">developement repository</a>.</p>
+        <p>For help and advanced usage guides, visit the <a href="https://github.com/Sygil-Dev/sygil-webui/wiki" target="_blank">Project Wiki</a></p>
+        <p>Stable Diffusion WebUI is an open-source project. You can find the latest stable builds on the <a href="https://github.com/Sygil-Dev/stable-diffusion" target="_blank">main repository</a>.
+        If you would like to contribute to development or test bleeding edge builds, you can visit the <a href="https://github.com/Sygil-Dev/sygil-webui" target="_blank">developement repository</a>.</p>
         <p>Device ID {current_device_index}: {current_device_name}<br/>{total_device_count} total devices</p>
     </div>
     """.format(current_device_name=torch.cuda.get_device_name(), current_device_index=torch.cuda.current_device(), total_device_count=torch.cuda.device_count()))
