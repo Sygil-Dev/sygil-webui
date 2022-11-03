@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# For developers only! Not for users!
 # This script will install git and conda (if not found on the PATH variable)
 #  using micromamba (an 8mb static-linked single-file binary, conda replacement).
 # For users who already have git and conda, this step will be skipped.

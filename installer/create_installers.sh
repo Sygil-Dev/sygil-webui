@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# For developers only! Not for users!
 # This creates the installer zip files that will be distributed to users
 # It packs install.{sh,bat} along with a readme, and ensures that the user
 # has the install script inside a new empty folder (after unzipping),
