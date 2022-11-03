@@ -314,6 +314,10 @@ img2txt:
     blip_image_eval_size: 512
     keep_all_models_loaded: False
 
+post_processing:
+        save_original_images: True
+        outdir_post_processing: outputs/post_processing
+
 concepts_library:
     concepts_per_page: 12
 
@@ -336,7 +340,7 @@ model_manager:
             files:
                 model_ckpt:
                     file_name:  "Stable Diffusion v1.5.ckpt"
-                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
+                    download_link:  "https://huggingface.co/ZeroCool94/stable-diffusion-v1-5/resolve/main/Stable%20Diffusion%20v1-5-Pruned-ema%20only.ckpt"
 
         gfpgan:
             model_name:     "GFPGAN"

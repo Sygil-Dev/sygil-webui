@@ -14,21 +14,23 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-from sd_utils import *
+from sd_utils import st, set_page_title, seed_to_int
 
 # streamlit imports
-from streamlit import StopException
+from streamlit.runtime.scriptrunner import StopException
 from streamlit_tensorboard import st_tensorboard
+
+#streamlit components section
+from streamlit_server_state import server_state
 
 #other imports
 from transformers import CLIPTextModel, CLIPTokenizer
 
 # Temp imports
 
-import argparse
 import itertools
 import math
-import os, sys
+import os
 import random
 #import datetime
 #from pathlib import Path
@@ -41,14 +43,13 @@ import torch.utils.checkpoint
 from torch.utils.data import Dataset
 
 import PIL
-from accelerate import Accelerator, tracking
+from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from diffusers import AutoencoderKL, DDPMScheduler, LMSDiscreteScheduler, StableDiffusionPipeline, UNet2DConditionModel#, PNDMScheduler
 from diffusers.optimization import get_scheduler
 #from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from pipelines.stable_diffusion.no_check import NoCheck
-from huggingface_hub import HfFolder, whoami#, Repository
 from PIL import Image
 from torchvision import transforms
 from tqdm.auto import tqdm
@@ -57,8 +58,6 @@ from slugify import slugify
 import json
 import os#, subprocess
 #from io import StringIO
-#import sys
-from torch.utils.tensorboard import SummaryWriter
 
 
 # end of imports

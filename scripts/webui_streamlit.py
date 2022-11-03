@@ -19,9 +19,8 @@
 
 # We import hydralit like this to replace the previous stuff
 # we had with native streamlit as it lets ur replace things 1:1
-#import hydralit as st
-import collections.abc
-from sd_utils import *
+from sd_utils import st, hc, load_configs, load_css, set_logger_verbosity,\
+     logger, quiesce_logger, set_page_title, threading, random
 
 # streamlit imports
 import streamlit_nested_layout
@@ -31,12 +30,8 @@ import streamlit_nested_layout
 from streamlit_server_state import server_state, server_state_lock
 
 #other imports
-
-import warnings
-import os, toml
-import k_diffusion as K
-from omegaconf import OmegaConf
 import argparse
+from sd_utils.bridge import run_bridge
 
 # import custom components
 from custom_components import draggable_number_input
@@ -74,38 +69,6 @@ opt = parser.parse_args()
 with server_state_lock["bridge"]:
     server_state["bridge"] = opt.bridge
 
-try:
-    # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
-    from transformers import logging
-
-    logging.set_verbosity_error()
-except:
-    pass
-
-# remove some annoying deprecation warnings that show every now and then.
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
-
-# this should force GFPGAN and RealESRGAN onto the selected gpu as well
-#os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = str(st.session_state["defaults"].general.gpu)
-
-
-# functions to load css locally OR remotely starts here. Options exist for future flexibility. Called as st.markdown with unsafe_allow_html as css injection
-# TODO, maybe look into async loading the file especially for remote fetching
-def local_css(file_name):
-    with open(file_name) as f:
-        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-
-def remote_css(url):
-    st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
-
-def load_css(isLocal, nameOrURL):
-    if(isLocal):
-        local_css(nameOrURL)
-    else:
-        remote_css(nameOrURL)
-
 @logger.catch(reraise=True)
 def layout():
         """Layout functions to define all the streamlit layout here."""
@@ -115,9 +78,9 @@ def layout():
         #app = st.HydraApp(title='Stable Diffusion WebUI', favicon="", sidebar_state="expanded", layout="wide",
                                         #hide_streamlit_markers=False, allow_url_nav=True , clear_cross_app_sessions=False)
 
-        with st.empty():
-            # load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
-            load_css(True, 'frontend/css/streamlit.main.css')
+
+        # load css as an external file, function has an option to local or remote url. Potential use when running from cloud infra that might not have access to local path.
+        load_css(True, 'frontend/css/streamlit.main.css')
 
         #
         # specify the primary menu definition
@@ -134,13 +97,6 @@ def layout():
                 #{'id': 'API Server', 'label': 'API Server', 'icon': 'bi bi-server'},
                 ]},
             {'id': 'Settings', 'label': 'Settings', 'icon': 'bi bi-gear-fill'},
-            #{'icon': "fa-solid fa-radar",'label':"Dropdown1", 'submenu':[
-            #    {'id':' subid11','icon': "fa fa-paperclip", 'label':"Sub-item 1"},{'id':'subid12','icon': "💀", 'label':"Sub-item 2"},{'id':'subid13','icon': "fa fa-database", 'label':"Sub-item 3"}]},
-            #{'icon': "far fa-chart-bar", 'label':"Chart"},#no tooltip message
-            #{'id':' Crazy return value 💀','icon': "💀", 'label':"Calendar"},
-            #{'icon': "fas fa-tachometer-alt", 'label':"Dashboard",'ttip':"I'm the Dashboard tooltip!"}, #can add a tooltip message
-            #{'icon': "far fa-copy", 'label':"Right End"},
-            #{'icon': "fa-solid fa-radar",'label':"Dropdown2", 'submenu':[{'label':"Sub-item 1", 'icon': "fa fa-meh"},{'label':"Sub-item 2"},{'icon':'🙉','label':"Sub-item 3",}]},
         ]
 
         over_theme = {'txc_inactive': '#FFFFFF', "menu_background":'#000000'}
@@ -154,29 +110,6 @@ def layout():
             sticky_nav=True,
             sticky_mode='pinned',
         )
-
-        # check if the models exist on their respective folders
-        with server_state_lock["GFPGAN_available"]:
-            if os.path.exists(os.path.join(st.session_state["defaults"].general.GFPGAN_dir, f"{st.session_state['defaults'].general.GFPGAN_model}.pth")):
-                server_state["GFPGAN_available"] = True
-            else:
-                server_state["GFPGAN_available"] = False
-
-        with server_state_lock["RealESRGAN_available"]:
-            if os.path.exists(os.path.join(st.session_state["defaults"].general.RealESRGAN_dir, f"{st.session_state['defaults'].general.RealESRGAN_model}.pth")):
-                server_state["RealESRGAN_available"] = True
-            else:
-                server_state["RealESRGAN_available"] = False
-
-        #with st.sidebar:
-            #page = on_hover_tabs(tabName=['Stable Diffusion', "Textual Inversion","Model Manager","Settings"],
-                                 #iconName=['dashboard','model_training' ,'cloud_download', 'settings'], default_choice=0)
-
-            # need to see how to get the icons to show for the hydralit option_bar
-            #page = hc.option_bar([{'icon':'grid-outline','label':'Stable Diffusion'}, {'label':"Textual Inversion"},
-                                                        #{'label':"Model Manager"},{'label':"Settings"}],
-                                                        #horizontal_orientation=False,
-                                                        #override_theme={'txc_inactive': 'white','menu_background':'#111', 'stVerticalBlock': '#111','txc_active':'yellow','option_active':'blue'})
 
         #
         #if menu_id == "Home":

@@ -25,7 +25,7 @@ Jinja2==3.1.2  # Jinja2 is required by Gradio
 gradio==3.4.1
 
 # Environment Dependencies for WebUI (streamlit)
-streamlit==1.13.0
+streamlit==1.14.0
 streamlit-on-Hover-tabs==1.0.1
 streamlit-option-menu==0.3.2
 streamlit_nested_layout==0.1.1
@@ -33,6 +33,7 @@ streamlit-server-state==0.14.2
 streamlit-tensorboard==0.0.2
 streamlit-elements==0.1.* # used for the draggable dashboard and new UI design (WIP)
 streamlit-ace==0.1.1 # used to replace the text area on the prompt and also for the code editor tool.
+streamlit-extras==0.1.5 --ignore-requires-python # used for logging, thread spawning, thread locking and page routing.
 hydralit==1.0.14
 hydralit_components==1.0.10
 stqdm==0.0.4
