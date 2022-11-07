@@ -20,6 +20,9 @@ channels:
 # Psst. If you change a dependency, make sure it's mirrored in the docker requirement
 # files as well.
 dependencies:
+  - nodejs=18.11.0
+  - yarn=1.22.19
+  - create-docusaurus=2.2.0
   - cudatoolkit=11.3
   - git
   - numpy=1.22.3
@@ -30,4 +33,3 @@ dependencies:
   - torchvision=0.12.0
   - pip:
     - -r requirements.txt
-
