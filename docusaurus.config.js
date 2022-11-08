@@ -12,7 +12,7 @@ const config = {
   baseUrl: '/sygil-webui',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'images/logo.svg',
+  //favicon: 'images/logo.svg',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -29,13 +29,9 @@ const config = {
   },
   
   // ...
-  plugins: [require.resolve("@cmfcmf/docusaurus-search-local")],
-
-  // or, if you want to specify options:
-
-  // ...
   plugins: [
     [
+	  // enable search using docusaurus-search-local
       require.resolve("@cmfcmf/docusaurus-search-local"),
       {
 	  // whether to index docs pages
@@ -112,21 +108,23 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarPath: require.resolve('./sidebars.js'),
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-        },
+			
+			sidebarCollapsed: false,
+			sidebarPath: require.resolve('./sidebars.js'),
+			// Please change this to your repo.
+			// Remove this to remove the "edit this page" links.
+			editUrl:
+				'https://github.com/Sygil-Dev/sygil-webui/tree/main/',
+		},
         blog: {
-          showReadingTime: true,
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-        },
+			showReadingTime: true,
+			// Please change this to your repo.
+			// Remove this to remove the "edit this page" links.
+			editUrl:
+				'https://github.com/Sygil-Dev/sygil-webui/tree/main/',
+		},
         theme: {
-          customCss: require.resolve('./frontend/css/docs_custom.css'),
+			customCss: require.resolve('./frontend/css/docs_custom.css'),
         },
       }),
     ],
@@ -137,14 +135,14 @@ const config = {
     ({
       navbar: {
         title: 'Sygil WebUI',
-        logo: {
-          alt: 'Sygil Logo',
-          src: 'images/logo.svg',
-        },
+        //logo: {
+        //  alt: 'Sygil Logo',
+        //  src: 'images/logo.svg',
+        //},
         items: [
           {
             type: 'doc',
-            docId: 'windows-installation',
+            docId: 'Installation/one-click-installer',
             position: 'left',
             label: 'Getting Started',
           },
