@@ -235,7 +235,7 @@ img2img:
         step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
-    mask_mode: 1
+    mask_mode: 0
     noise_mode: "Matched Noise"
     mask_restore: False
     # 0: Just resize
