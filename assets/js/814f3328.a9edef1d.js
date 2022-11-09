@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[535],{5641:e=>{e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Textual inversion usage competition","permalink":"/sygil-webui/blog/2022/10/20/1.Textual inversion usage competitio"}]}')}}]);
