@@ -1,4 +1,4 @@
-name: ldm
+name: ldm2
 # This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
 
 # Copyright 2022 Sygil-Dev team.
@@ -17,12 +17,12 @@ name: ldm
 channels:
   - pytorch
   - defaults
+  - nvidia
 # Psst. If you change a dependency, make sure it's mirrored in the docker requirement
 # files as well.
 dependencies:
   - nodejs=18.11.0
   - yarn=1.22.19
-  - create-docusaurus=2.2.0
   - cudatoolkit=11.3
   - git
   - numpy=1.22.3
