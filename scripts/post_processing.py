@@ -1,5 +1,4 @@
-name: ldm
-# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sandbox-webui/).
 
 # Copyright 2022 Sygil-Dev team.
 # This program is free software: you can redistribute it and/or modify
@@ -13,23 +12,23 @@ name: ldm
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
-channels:
-  - pytorch
-  - defaults
-  - nvidia
-# Psst. If you change a dependency, make sure it's mirrored in the docker requirement
-# files as well.
-dependencies:
-  - nodejs=18.11.0
-  - yarn=1.22.19
-  - cudatoolkit=11.3
-  - git
-  - numpy=1.22.3
-  - pip=20.3
-  - python=3.8.5
-  - pytorch=1.11.0
-  - scikit-image=0.19.2
-  - torchvision=0.12.0
-  - pip:
-    - -r requirements.txt
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# base webui import and utils.
+#from sd_utils import *
+from sd_utils import *
+# streamlit imports
+
+#streamlit components section
+
+#other imports
+import os, time, requests
+import sys
+
+# Temp imports
+
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
+
+
+def layout():
+    st.info("Under Construction. :construction_worker:")

@@ -14,10 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-from sd_utils import *
+from sd_utils import st, server_state, \
+     generation_callback, process_images, KDiffusionSampler, \
+     custom_models_available, RealESRGAN_available, GFPGAN_available, \
+     LDSR_available, load_models, hc, seed_to_int, logger, \
+	 resize_image, get_matched_noise, CFGMaskedDenoiser, ImageFilter
 
 # streamlit imports
-from streamlit import StopException
+from streamlit.runtime.scriptrunner import StopException
 
 #other imports
 import cv2
@@ -425,10 +429,10 @@ def layout():
 
 
 			mask_expander = st.empty()
-			with mask_expander.expander("Mask"):
-				mask_mode_list = ["Mask", "Inverted mask", "Image alpha"]
-				mask_mode = st.selectbox("Mask Mode", mask_mode_list, index=st.session_state["defaults"].img2img.mask_mode,
-							 help="Select how you want your image to be masked.\"Mask\" modifies the image where the mask is white.\n\
+			with mask_expander.expander("Inpainting/Outpainting"):
+				mask_mode_list = ["Outpainting", "Inpainting", "Image alpha"]
+				mask_mode = st.selectbox("Painting Mode", mask_mode_list, index=st.session_state["defaults"].img2img.mask_mode,
+							 help="Select how you want your image to be masked/painted.\"Inpainting\" modifies the image where the mask is white.\n\
 							 \"Inverted mask\" modifies the image where the mask is black. \"Image alpha\" modifies the image where the image is transparent."
 							 )
 				mask_mode = mask_mode_list.index(mask_mode)
@@ -545,7 +549,9 @@ def layout():
 									upscaling_method_list.append("LDSR")
 
 								st.session_state["upscaling_method"] = st.selectbox("Upscaling Method", upscaling_method_list,
-																								index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method))
+                                                                                               index=upscaling_method_list.index(st.session_state['defaults'].general.upscaling_method)
+                                                                                                    if st.session_state['defaults'].general.upscaling_method in upscaling_method_list
+                                                                                                    else 0)
 
 								if st.session_state["RealESRGAN_available"]:
 									with st.expander("RealESRGAN"):

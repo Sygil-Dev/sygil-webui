@@ -23,6 +23,7 @@ general:
     streamlit_telemetry: False
     default_theme: dark
     huggingface_token: ''
+    stable_horde_api: '0000000000'
     gpu: 0
     outdir: outputs
     default_model: "Stable Diffusion v1.5"
@@ -64,6 +65,10 @@ general:
     enable_minimal_memory_usage: False
     update_preview: True
     update_preview_frequency: 10
+
+admin:
+    hide_server_setting: False
+    hide_browser_setting: False
 
 debug:
     enable_hydralit: False
@@ -230,7 +235,7 @@ img2img:
         step:       0.01
     # 0: Keep masked area
     # 1: Regenerate only masked area
-    mask_mode: 1
+    mask_mode: 0
     noise_mode: "Matched Noise"
     mask_restore: False
     # 0: Just resize
@@ -309,6 +314,10 @@ img2txt:
     blip_image_eval_size: 512
     keep_all_models_loaded: False
 
+post_processing:
+        save_original_images: True
+        outdir_post_processing: outputs/post_processing
+
 concepts_library:
     concepts_per_page: 12
 
@@ -316,7 +325,7 @@ gfpgan:
   strength: 100
 
 textual_inversion:
-    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-4"
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
     tokenizer_name: "models/clip-vit-large-patch14"
 
 
@@ -331,7 +340,7 @@ model_manager:
             files:
                 model_ckpt:
                     file_name:  "Stable Diffusion v1.5.ckpt"
-                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
+                    download_link:  "https://huggingface.co/ZeroCool94/stable-diffusion-v1-5/resolve/main/Stable%20Diffusion%20v1-5-Pruned-ema%20only.ckpt"
 
         gfpgan:
             model_name:     "GFPGAN"

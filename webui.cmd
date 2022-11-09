@@ -31,7 +31,11 @@ IF EXIST custom-conda-path.txt (
   FOR /F %%i IN (custom-conda-path.txt) DO set v_custom_path=%%i
 )
 
-set v_paths=%ProgramData%\miniconda3
+set INSTALL_ENV_DIR=%cd%\installer_files\env
+set PATH=%INSTALL_ENV_DIR%;%INSTALL_ENV_DIR%\Library\bin;%INSTALL_ENV_DIR%\Scripts;%INSTALL_ENV_DIR%\Library\usr\bin;%PATH%
+
+set v_paths=%INSTALL_ENV_DIR%
+set v_paths=%v_paths%;%ProgramData%\miniconda3
 set v_paths=%v_paths%;%USERPROFILE%\miniconda3
 set v_paths=%v_paths%;%ProgramData%\anaconda3
 set v_paths=%v_paths%;%USERPROFILE%\anaconda3
@@ -99,10 +103,10 @@ call "%v_conda_path%\Scripts\activate.bat" "%v_conda_env_name%"
 :PROMPT
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 IF EXIST "models\ldm\stable-diffusion-v1\Stable Diffusion v1.5.ckpt" (
-  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
 ) ELSE (
   echo Your model file does not exist! Once the WebUI launches please visit the Model Manager page and download the models by using the Download button for each model.
-  python -m streamlit run scripts\webui_streamlit.py --theme.base dark --server.address localhost
+  python -m streamlit run scripts\webui_streamlit.py --theme.base dark
 )
 
 ::cmd /k

@@ -14,17 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-from sd_utils import *
+from sd_utils import st
 
 # streamlit imports
 import streamlit.components.v1 as components
+#other imports
+
+import os, math
+from PIL import Image
+
+# Temp imports
+#from basicsr.utils.registry import ARCH_REGISTRY
 
 
-class plugin_info():
-	plugname = "concept_library"
-	description = "Concept Library"
-	displayPriority = 4
-
+# end of imports
+#---------------------------------------------------------------------------------------------------------------
 
 # Init Vuejs component
 _component_func = components.declare_component(

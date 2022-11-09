@@ -24,6 +24,9 @@ ENV_MODIFIED=$(date -r $ENV_FILE "+%s")
 ENV_MODIFED_FILE=".env_updated"
 ENV_UPDATED=0
 
+INSTALL_ENV_DIR="$(pwd)/../installer_files/env" # since linux-sd.sh clones the repo into a subfolder
+if [ -e "$INSTALL_ENV_DIR" ]; then export PATH="$INSTALL_ENV_DIR/bin:$PATH"; fi
+
 # Models used for upscaling
 GFPGAN_MODEL="https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth"
 LATENT_DIFFUSION_REPO="https://github.com/devilismyfriend/latent-diffusion.git"
@@ -48,6 +51,11 @@ conda_env_setup () {
     # Allow setting custom path via file to allow updates of this script without undoing custom path
     if [ -f custom-conda-path.txt ]; then
         CUSTOM_CONDA_PATH=$(cat custom-conda-path.txt)
+    fi
+
+    # If a custom conda isn't specified, and the installer downloaded conda for the user, then use that
+    if [ -f "$INSTALL_ENV_DIR/etc/profile.d/conda.sh" ] && [ "$CUSTOM_CONDA_PATH" == "" ]; then
+        . "$INSTALL_ENV_DIR/etc/profile.d/conda.sh"
     fi
 
     # If custom path is set above, try to setup conda environment
@@ -148,12 +156,12 @@ launch_webui () {
     done
     printf "\n\n########## LAUNCH USING STREAMLIT OR GRADIO? ##########\n\n"
     printf "Do you wish to run the WebUI using the Gradio or StreamLit Interface?\n\n"
-    printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \nMissing Some Gradio Features\n\n"
+    printf "Streamlit: \nHas A More Modern UI \nMore Features Planned \nWill Be The Main UI Going Forward \nCurrently In Active Development \n\n"
     printf "Gradio: \nCurrently Feature Complete \nUses An Older Interface Style \nWill Not Receive Major Updates\n\n"
     printf "Which Version of the WebUI Interface do you wish to use?\n"
     select yn in "Streamlit" "Gradio"; do
         case $yn in
-            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py --theme.base dark --server.address localhost; break;;
+            Streamlit ) printf "\nStarting Stable Diffusion WebUI: Streamlit Interface. Please Wait...\n"; python -m streamlit run scripts/webui_streamlit.py; break;;
             Gradio ) printf "\nStarting Stable Diffusion WebUI: Gradio Interface. Please Wait...\n"; python scripts/relauncher.py "$@"; break;;
         esac
     done
