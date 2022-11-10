@@ -1502,7 +1502,7 @@ def load_sd_model(model_name: str):
     """Loads Stable Diffusion model by name"""
     ckpt_path = st.session_state.defaults.general.default_model_path
 
-    if model_name != st.session_state.defaults.general.default_model:
+    if model_name != st.session_state.defaults.general.base_model:
         ckpt_path = os.path.join("models", "custom", f"{model_name}.ckpt")
 
     if st.session_state.defaults.general.optimized:
