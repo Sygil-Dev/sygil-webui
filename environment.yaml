@@ -15,14 +15,13 @@ name: ldm
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 channels:
-  - conda-forge
   - pytorch
   - defaults
   - nvidia
 # Psst. If you change a dependency, make sure it's mirrored in the docker requirement
 # files as well.
 dependencies:
-  - nodejs=18.11.0
+  - conda-forge::nodejs=18.11.0
   - yarn=1.22.19
   - cudatoolkit=11.3
   - git
