@@ -150,7 +150,7 @@ Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27
 
 ### GoBig, and GoLatent *(Currently on the Gradio version Only)*
 
-More powerful upscalers that uses a seperate Latent Diffusion model to more cleanly upscale images.
+More powerful upscalers that uses a separate Latent Diffusion model to more cleanly upscale images.
 
 Please see the [Image Enhancers Documentation](docs/6.image_enhancers.md) to learn more.
 
