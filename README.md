@@ -6,8 +6,8 @@
 
 ## Installation instructions for:
 
-- **[Windows](https://sygil-dev.github.io/sygil-webui/docs/1.windows-installation.html)** 
-- **[Linux](https://sygil-dev.github.io/sygil-webui/docs/2.linux-installation.html)**
+- **[Windows](https://sygil-dev.github.io/sygil-webui/docs/Installation/windows-installation)** 
+- **[Linux](https://sygil-dev.github.io/sygil-webui/docs/Installation/linux-installation)**
 
 ### Want to ask a question or request a feature?
 
@@ -118,7 +118,7 @@ Please see the [Streamlit Documentation](docs/4.streamlit-interface.md) to learn
 
 **Note: the Gradio interface is no longer being actively developed by Sygil.Dev and is only receiving bug fixes.**
 
-Please see the [Gradio Documentation](docs/5.gradio-interface.md) to learn more.
+Please see the [Gradio Documentation](https://sygil-dev.github.io/sygil-webui/docs/Gradio/gradio-interface/) to learn more.
 
 ## Image Upscalers
 
@@ -146,13 +146,13 @@ Put them into the `sygil-webui/models/realesrgan` directory.
 
 ### LSDR
 
-Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename last.ckpt to model.ckpt and place both under `sygil-webui/models/ldsr/`
+Download **LDSR** [project.yaml](https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1) and [model last.cpkt](https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1). Rename `last.ckpt` to `model.ckpt` and place both under `sygil-webui/models/ldsr/`
 
 ### GoBig, and GoLatent *(Currently on the Gradio version Only)*
 
-More powerful upscalers that uses a seperate Latent Diffusion model to more cleanly upscale images.
+More powerful upscalers that uses a separate Latent Diffusion model to more cleanly upscale images.
 
-Please see the [Image Enhancers Documentation](docs/6.image_enhancers.md) to learn more.
+Please see the [Post-Processing Documentation](https://sygil-dev.github.io/sygil-webui/docs/post-processing) to learn more.
 
 -----
 
@@ -162,12 +162,12 @@ Please see the [Image Enhancers Documentation](docs/6.image_enhancers.md) to lea
 
 *Stable Diffusion was made possible thanks to a collaboration with [Stability AI](https://stability.ai/) and [Runway](https://runwayml.com/) and builds upon our previous work:*
 
-[**High-Resolution Image Synthesis with Latent Diffusion Models**](https://ommer-lab.com/research/latent-diffusion-models/)<br/>
+[**High-Resolution Image Synthesis with Latent Diffusion Models**](https://ommer-lab.com/research/latent-diffusion-models/)
 [Robin Rombach](https://github.com/rromb)\*,
 [Andreas Blattmann](https://github.com/ablattmann)\*,
 [Dominik Lorenz](https://github.com/qp-qp)\,
 [Patrick Esser](https://github.com/pesser),
-[Björn Ommer](https://hci.iwr.uni-heidelberg.de/Staff/bommer)<br/>
+[Björn Ommer](https://hci.iwr.uni-heidelberg.de/Staff/bommer)
 
 **CVPR '22 Oral**
 
@@ -194,7 +194,7 @@ Details on the training procedure and data, as well as the intended use of the m
 
 ## Comments
 
-- Our codebase for the diffusion models builds heavily on [OpenAI's ADM codebase](https://github.com/openai/guided-diffusion)
+- Our code base for the diffusion models builds heavily on [OpenAI's ADM codebase](https://github.com/openai/guided-diffusion)
   and [https://github.com/lucidrains/denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch). 
   Thanks for open-sourcing!
 
