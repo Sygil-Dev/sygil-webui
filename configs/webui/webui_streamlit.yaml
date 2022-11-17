@@ -70,6 +70,7 @@ general:
 admin:
     hide_server_setting: False
     hide_browser_setting: False
+    global_negative_prompt: ""
 
 debug:
     enable_hydralit: False
