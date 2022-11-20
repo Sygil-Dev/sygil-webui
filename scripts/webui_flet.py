@@ -7,7 +7,7 @@ from math import pi
 from typing import Optional
 from loguru import logger
 # utils imports
-import webui_utils
+import webui_flet_utils
 
 # for debugging
 from pprint import pprint
@@ -15,6 +15,12 @@ from pprint import pprint
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 	## main function defines
+	default_control_height = 50
+	default_text_size_a = 15
+	default_text_size_b = 20
+	default_text_size_c = 25
+	toolbar_width = 25
+
 	def get_settings_from_config():
 		pass
 
@@ -30,7 +36,7 @@ def main(page: ft.Page):
 		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
 		page.update()
 
-###### layouts ###################################################################
+###### layouts #########################################################
 	def change_layout(e):
 		current_layout.value = e.control.data
 		set_current_layout_options(e.control.data)
@@ -59,33 +65,18 @@ def main(page: ft.Page):
 			current_layout_tools.controls.append(node_editor_layout_tools)
 
 	def set_property_panel_options(layout):
-		for control in property_panel.controls:
-			 property_panel.controls.pop()
+		controls = property_panel.content.controls
+		for control in controls:
+			 controls.pop()
 		if layout == 'Latent Space':
-			property_panel.controls.append(latent_space_layout_properties)
+			controls.append(latent_space_layout_properties)
 		elif layout == 'Textual Inversion':
-			property_panel.controls.append(textual_inversion_layout_properties)
+			controls.append(textual_inversion_layout_properties)
 		elif layout == 'Node Editor':
-			property_panel.controls.append(node_editor_layout_properties)
+			controls.append(node_editor_layout_properties)
 
 
-###### orphans (for now) #######################################################
-	prompt = ft.TextField(
-			#label="Prompt",
-			value="",
-			min_lines=1,
-			max_lines=1,
-			shift_enter=True,
-			#width=1000,
-			tooltip="Prompt to use for generation.",
-			#autofocus=True,
-			hint_text="A corgi wearing a top hat as an oil paiting.",
-	)
-
-	generate_button = ft.ElevatedButton("Generate", on_click=None)
-
-
-###### settings window #####################################################################
+###### settings window #################################################
 	def close_settings_window(e):
 		settings.open = False
 		page.update()
@@ -97,6 +88,7 @@ def main(page: ft.Page):
 
 	general_settings = ft.Column(
 			alignment = 'start',
+			scroll = 'auto',
 			controls = [
 					ft.Divider(height=10, color="gray"),
 					ft.Row(
@@ -207,6 +199,7 @@ def main(page: ft.Page):
 
 	performance_settings = ft.Column(
 			alignment = 'start',
+			scroll = 'auto',
 			controls = [
 					ft.Divider(height=10, color="gray"),
 			],
@@ -214,6 +207,7 @@ def main(page: ft.Page):
 
 	server_settings = ft.Column(
 			alignment = 'start',
+			scroll = True,
 			controls = [
 					ft.Divider(height=10, color="gray"),
 			],
@@ -221,6 +215,7 @@ def main(page: ft.Page):
 
 	interface_settings = ft.Column(
 			alignment = 'start',
+			scroll = True,
 			controls = [
 					ft.Divider(height=10, color="gray"),
 			],
@@ -264,7 +259,7 @@ def main(page: ft.Page):
 			#on_dismiss=lambda e: print("Modal dialog dismissed!"),
 	)
 
-###### gallery window ###################################################################
+###### gallery window ##################################################
 	def close_gallery_window(e):
 		gallery.open = False
 		page.update()
@@ -294,8 +289,30 @@ def main(page: ft.Page):
 			actions_alignment="end",
 	)
 
-###### app bar ###################################################################
-	app_bar_title = ft.Text("Sygil", size = 25, text_align = 'center')
+###### app bar #########################################################
+	app_bar_title = ft.Text(
+			value = "Sygil",
+			size = default_text_size_c,
+			text_align = 'center',
+	)
+
+	prompt = ft.TextField(
+			value = "",
+			min_lines = 1,
+			max_lines = 1,
+			shift_enter = True,
+			tooltip = "Prompt to use for generation.",
+			autofocus = True,
+			hint_text = "A corgi wearing a top hat as an oil painting.",
+			height = default_control_height,
+			text_size = default_text_size_b,
+	)
+
+	generate_button = ft.ElevatedButton(
+			text = "Generate",
+			on_click=None,
+			height = default_control_height,
+	)
 
 	layouts = ft.PopupMenuButton(
 			items = [
@@ -304,16 +321,22 @@ def main(page: ft.Page):
 				ft.PopupMenuItem(text="Node Editor", on_click=change_layout, data="Node Editor"),
 			],
 			tooltip = "Switch between different workspaces",
+			height = default_control_height,
 	)
 
-	current_layout = ft.Text('Latent Space', size = 20, tooltip="Current Workspace")
+	current_layout = ft.Text(
+			value = 'Latent Space',
+			size = default_text_size_a,
+			tooltip = "Current Workspace",
+	)
 
 	layout_menu = ft.Row(
 			alignment = 'start',
 			controls = [
 				ft.Container(content = layouts),
 				ft.Container(content = current_layout),
-			]
+			],
+			height = default_control_height,
 	)
 
 	latent_space_layout_options = ft.Row(
@@ -323,7 +346,8 @@ def main(page: ft.Page):
 				ft.Container(ft.IconButton(content = ft.Text(value = 'Layers'), tooltip ='Layer Options', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
-			]
+			],
+			height = default_control_height,
 	)
 
 	textual_inversion_layout_options = ft.Row(
@@ -332,7 +356,8 @@ def main(page: ft.Page):
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='textual_inversion options 1', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
-			]
+			],
+			height = default_control_height,
 	)
 
 	node_editor_layout_options = ft.Row(
@@ -341,61 +366,69 @@ def main(page: ft.Page):
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='node_editor options 1', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
-			]
+			],
+			height = default_control_height,
 	)
 
 	current_layout_options = ft.Row(
 			alignment = 'start',
 			controls = [
 				ft.Container(content = latent_space_layout_options),
-			]
+			],
+			height = default_control_height,
 	)
 
 	theme_switcher = ft.IconButton(
 			ft.icons.WB_SUNNY_OUTLINED,
 			on_click = change_theme,
 			expand = 1,
-			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}"
+			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
+			height = default_control_height,
 			)
 
-	settings_button = ft.IconButton(icon=ft.icons.SETTINGS, on_click=open_settings_window)
+	settings_button = ft.IconButton(
+			icon = ft.icons.SETTINGS,
+			on_click = open_settings_window,
+			height = default_control_height,
+	)
 
 	menu_button = ft.PopupMenuButton(
 			items = [
 					#ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
 					ft.PopupMenuItem(),  # divider
 					#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
-			]
+			],
+			height = default_control_height,
 	)
 
 	option_bar = ft.Row(
 			controls = [
-				#ft.Container(expand = 1, content = dropdown),
+#                ft.Container(expand=True, content = current_layout_options),
+				ft.Container(expand = 2, content = layout_menu),
 				ft.Container(expand = 1, content = theme_switcher),
 				ft.Container(expand = 1, content = settings_button),
 				ft.Container(expand = 1, content = menu_button),
-			]
+			],
+			height = default_control_height,
 	)
 
 	appbar = ft.Row(
 			width = page.width,
 			controls = [
-					ft.Container(width = 60, content = app_bar_title),
-					ft.VerticalDivider(width = 10, color = "gray"),
-					ft.Container(content = layout_menu),
+					ft.Container(content = app_bar_title),
 					ft.VerticalDivider(width = 20, opacity = 0),
-					ft.Container(expand=True, content = current_layout_options),
-#					ft.Container(expand = 4, content = prompt),
+					ft.Container(expand = 6, content = prompt),
 #					ft.Container(expand = 1, content = generate_button),
-					ft.VerticalDivider(width = 10, color = "gray"),
-					ft.Container(width = 410, content = option_bar),
+					ft.Container(expand = 4, content = option_bar),
 			],
+			height = default_control_height,
 	)
 
 
-###### toolbar ########################################################
-	open_gallery_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
-	import_image_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import Image', on_click = None)
+###### toolbar #########################################################
+	open_gallery_button = ft.IconButton(width = 20, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
+	import_image_button = ft.IconButton(width = 20, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import image as new layer', on_click = None)
+
 	universal_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
@@ -406,38 +439,19 @@ def main(page: ft.Page):
 	)
 
 	## canvas layout tools
-	def show_hide_layer(e):
-		if e.control.data['hidden']:
-			e.control.data['hidden'] = False
-			e.control.opacity = 1.0
-		else:
-			e.control.data['hidden'] = True
-			e.control.opacity = 0.5
-		page.update()
-
-	def get_layers():
-		layers = []
-		count = 0
-		for i in range(10):
-			count += 1
-			label = "layer_" + str(count)
-			layer_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.HIGHLIGHT_ALT_OUTLINED), tooltip = label, on_click = show_hide_layer, data = {'hidden':False})
-			layers.append(layer_button)
-		return layers
-
-	layer_list = get_layers()
-
 	latent_space_layout_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
-			controls = layer_list,
+			controls = [
+			],
 	)
 
 	## textual inversion tools
 	textual_inversion_layout_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
-			controls = layer_list,
+			controls = [
+			],
 	)
 
 	## node editor tools
@@ -449,55 +463,170 @@ def main(page: ft.Page):
 	)
 
 	current_layout_tools = ft.Column(
-			width = 50,
+			width = toolbar_width,
 			controls = [
 				latent_space_layout_tools,
 			],
 	)
 
 	toolbar = ft.Column(
-			width = 50,
+			width = toolbar_width,
 			controls = [
-				ft.Container(width = 50, content = universal_tools),
-				ft.Divider(height = 10, color = "gray"),
-				ft.Container(width = 50, content = current_layout_tools),
+				ft.Container(content = universal_tools),
+				ft.Container(content = current_layout_tools),
 			],
 	)
 
 
-###### canvas #######################################################################
+###### layers panel ####################################################
+	def show_hide_layer(e):
+		parent = e.control.data['parent']
+		if parent.data['hidden']:
+			parent.data['hidden'] = False
+			parent.opacity = 1.0
+		else:
+			parent.data['hidden'] = True
+			parent.opacity = 0.5
+		page.update()
+
+	def get_layers():
+		layers = [ft.Divider(height=10, opacity = 0)]
+		count = 0
+		for i in range(10):
+			count += 1
+			layer_icon = ft.IconButton(
+					icon = ft.icons.HIGHLIGHT_ALT_OUTLINED,
+					tooltip = 'show/hide',
+					on_click = show_hide_layer,
+					data = {'parent':None},
+			)
+			layer_label = ft.Text(value = ("layer_" + str(count)))
+			layer_button = ft.Row(
+					controls = [
+							layer_icon,
+							layer_label,
+					],
+					data = {'hidden':False},
+			)
+			layer_icon.data.update({'parent':layer_button})  ## <--see what i did there? :)
+			layers.append(layer_button)
+		return layers
+
+	layer_list = get_layers()
+	
+	layer_manager = ft.Container(
+			content = ft.Column(
+					controls = layer_list,
+			),
+			bgcolor = ft.colors.WHITE10,
+	)
+
+	asset_manager = ft.Container(
+			content = ft.Column(
+					controls = [
+							ft.Divider(height=10, opacity = 0),
+					],
+			),
+			bgcolor = ft.colors.WHITE10,
+	)
+
+	layers = ft.Container(
+			width = 200,
+			content = ft.Tabs(
+					selected_index = 0,
+					animation_duration = 300,
+					tabs = [
+						ft.Tab(
+								text = "Layers",
+								content = layer_manager,
+						),
+						ft.Tab(
+								text = "Assets",
+								content = asset_manager,
+						),
+					],
+			),
+	)
+
+###### canvas ##########################################################
 	canvas = ft.Container(
 			content = ft.Stack(
 					[
-						#ft.Row([
-						#ft.Image(
-						#src=f"https://static.wixstatic.com/media/ac4dba_13be94c39c804e8aa2131a51036a0244~mv2.png",
-						#width=300,
-						#height=30,
-						#fit="contain",
-						#expand=True,
-						#),
-						#]),
-						ft.Stack(
-							[
-								ft.Image(
+						ft.Image(
 								src=f"https://i.redd.it/qdxksbar05o31.jpg",
 								#width=300,
 								#height=300,
 								#fit="contain",
 								gapless_playback=True,
 								expand=True,
-								),
-							],
 						),
 					],
-					#width=40,
-					#height=40,
-					clip_behavior=None,
+					clip_behavior = None,
 			),
-			alignment=ft.alignment.center, #type: ignore
-			bgcolor=ft.colors.WHITE10,
-			expand=True
+			alignment = ft.alignment.center,
+			expand = True,
+	)
+
+
+###### text editor #####################################################
+	text_editor = ft.Container(
+			content = ft.Text('WIP'),
+			expand = True,
+	)
+
+###### top panel #######################################################
+	top_panel = ft.Container(
+			content = ft.Tabs(
+					selected_index = 0,
+					animation_duration = 300,
+					tabs = [
+							ft.Tab(
+									text = 'Canvas',
+									content = canvas,
+							),
+							ft.Tab(
+									text = 'Text Editor',
+									content = text_editor,
+							),
+					],
+			),
+			expand = True,
+	)
+
+###### bottom_panel ####################################################
+	video_editor_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+	console_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+
+	bottom_panel = ft.Row(
+			height = 150,
+			controls = [
+				ft.Tabs(
+						selected_index = 0,
+						animation_duration = 300,
+						tabs = [
+								ft.Tab(
+										text = "Video Editor",
+										content = video_editor_window,
+								),
+								ft.Tab(
+										text = "Console",
+										content = console_window,
+								),
+						],
+				),
+			],
+	)
+
+###### center panel ####################################################
+
+	center_panel = ft.Container(
+			content = ft.Column(
+					controls = [
+							top_panel,
+							bottom_panel,
+					],
+			),
+			expand = True,
 	)
 
 
@@ -624,12 +753,12 @@ def main(page: ft.Page):
 	def get_textual_inversion_grid_row(row_name):
 		row_items = []
 		row_items.append(ft.Text(value = row_name))
-		row_items.append(ft.Text(value = webui_utils.get_textual_inversion_row_value(row_name)))
+		row_items.append(ft.Text(value = webui_flet_utils.get_textual_inversion_row_value(row_name)))
 		return row_items
 
 	def get_textual_inversion_results_grid():
 		grid_rows = []
-		for item in webui_utils.textual_inversion_grid_row_list:
+		for item in webui_flet_utils.textual_inversion_grid_row_list:
 			grid_rows.append(
 				ft.Row(
 					controls = get_textual_inversion_grid_row(item),
@@ -640,7 +769,7 @@ def main(page: ft.Page):
 
 	def get_textual_inversion_results(e):
 		e.control.data = get_textual_inversion_settings()
-		webui_utils.run_textual_inversion(e.control.data)
+		webui_flet_utils.run_textual_inversion(e.control.data)
 		textual_inversion_results.content = get_textual_inversion_results_grid()
 		page.update()
 
@@ -690,70 +819,66 @@ def main(page: ft.Page):
 	node_editor_layout_properties = ft.Container(
 			content = ft.Column(
 					controls = [
-							ft.Draggable(content=ft.Divider(height=10, color="gray")),
 					]
 			),
 			expand = True
 	)
 
 	## property panel
-	property_panel = ft.Column(
-			width = 400,
-			controls = [
-				latent_space_layout_properties,
-			]
+	property_panel = ft.Container(
+			bgcolor = ft.colors.WHITE10,
+			content = ft.Column(
+					controls = [
+							ft.Divider(height=10, opacity = 0),
+							latent_space_layout_properties,
+					],
+			),
+	)
+	
+	## advanced panel
+	advanced_panel = ft.Container(
+			bgcolor = ft.colors.WHITE10,
+			content = ft.Column(
+					controls = [
+							ft.Divider(height=10, opacity = 0),
+					],
+			),
 	)
 
+	right_panel = ft.Container(	
+			content = ft.Tabs(
+					selected_index = 0,
+					animation_duration = 300,
+					tabs = [
+							ft.Tab(
+									text = 'Properties',
+									content = property_panel,
+							),
+							ft.Tab(
+									text = 'Advanced',
+									content = advanced_panel,
+							),
+					],
+			),
+			width = 400,
+	)
 
-###### main panel #################################################################
-	main_panel = ft.Row(
+###### workspace #######################################################
+	workspace = ft.Row(
 			controls = [
 				toolbar,
-				ft.VerticalDivider(width=10, color="gray"),
-				canvas,
-				ft.VerticalDivider(width=10, color="gray"),
-				property_panel,
+				ft.VerticalDivider(width=2, color="gray", opacity = 0),
+				layers,
+				ft.VerticalDivider(width=2, color="gray", opacity = 0),
+				center_panel,
+				ft.VerticalDivider(width=2, color="gray", opacity = 0),
+				right_panel,
 			],
 			expand=True,
 	)
 
 
-###### bottom_panel ###############################################################
-	status_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-	message_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-	timeline_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-	python_console_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-
-	bottom_panel = ft.Row(
-			height = 150,
-			controls = [
-				ft.Tabs(
-						selected_index = 0,
-						animation_duration = 300,
-						tabs = [
-							ft.Tab(
-									text = "Status",
-									content = status_window,
-							),
-							ft.Tab(
-									text = "Messages",
-									content = message_window,
-							),
-							ft.Tab(
-									text = "Timeline",
-									content = timeline_window,
-							),
-							ft.Tab(
-									text = "Python Console",
-									content = python_console_window,
-							),
-						],
-				),
-			],
-	)
-
-
-###### make page #########################################################
+###### make page #######################################################
 	page.title = "Stable Diffusion Playground"
 	page.theme_mode = "dark"
 	page.appbar = ft.AppBar(
@@ -764,10 +889,7 @@ def main(page: ft.Page):
 			bgcolor=ft.colors.BLACK26,
 			actions=[appbar]
 	)
-	page.add(main_panel)
-	page.add(ft.Draggable(content=ft.Divider(height=10, color="gray")))
-	page.add(bottom_panel)
-	#page.add(ft.Container(ft.Text("test", selectable=True),height=500))
+	page.add(workspace)
 
 
 
