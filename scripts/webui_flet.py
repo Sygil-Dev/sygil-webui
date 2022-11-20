@@ -9,106 +9,14 @@ from loguru import logger
 # utils imports
 import webui_utils
 
-
 # for debugging
 from pprint import pprint
-
-## class defines
-class MenuButton(ft.Container):
-	def __init__(
-			self, title: str, icon: Optional[ft.Control] = None, selected: bool = False
-			):
-		super().__init__()
-		self.icon = icon
-		self.title = title
-		self._selected = selected
-		self.padding = ft.padding.only(left=43)
-		self.height = 38
-		self.border_radius = 4
-		self.ink = True
-		self.on_click = self.item_click
-
-	def item_click(self, _):
-		pass
-
-	def _build(self):
-		row = ft.Row()
-		if self.icon != None:
-			row.controls.append(self.icon)
-		row.controls.append(ft.Text(self.title))
-		self.content = row
-
-	def _before_build_command(self):
-		self.bgcolor = "surfacevariant" if self._selected else None
-		super()._before_build_command()
-
-class Collapsible(ft.Column):
-	def __init__(
-			self,
-			title: str,
-			content: ft.Control,
-			icon: Optional[ft.Control] = None,
-			spacing: float = 3,
-			):
-		super().__init__()
-		self.icon = icon
-		self.title = title
-		self.shevron = ft.Icon(
-				ft.icons.KEYBOARD_ARROW_DOWN_ROUNDED,
-				animate_rotation=100,
-				rotate=0,
-		)
-		self.content = ft.Column(
-				[Container(height=spacing), content],
-				height=0,
-				spacing=0,
-				animate_size=100,
-				opacity=0,
-				animate_opacity=100,
-		)
-		self.spacing = 0
-
-	def header_click(self, e):
-		self.content.height = None if self.content.height == 0 else 0
-		self.content.opacity = 0 if self.content.height == 0 else 1
-		self.shevron.rotate = pi if self.shevron.rotate == 0 else 0
-		self.update()
-
-	def _build(self):
-		title_row = ft.Row()
-		if self.icon != None:
-			title_row.controls.append(self.icon)
-		title_row.controls.append(ft.Text(self.title))
-		self.controls.extend(
-				[
-				Container(
-						ft.Row([title_row, self.shevron], alignment="spaceBetween"),
-						padding=ft.padding.only(left=8, right=8),
-						height=38,
-						border_radius=4,
-						ink=True,
-						on_click=self.header_click,
-				),
-				self.content,
-				]
-		)
-
-## functions defines
-def counter():   ##for testing
-	try:
-		counter.count += 1
-	except:
-		counter.count = 1
-	return counter.count
-
 
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 	## main function defines
-
-	#def check_item_clicked(e):
-		#e.control.checked = not e.control.checked
-		#page.update()
+	def get_settings_from_config():
+		pass
 
 	def change_theme(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
@@ -187,22 +95,168 @@ def main(page: ft.Page):
 		settings.open = True
 		page.update()
 
+	general_settings = ft.Column(
+			alignment = 'start',
+			controls = [
+					ft.Divider(height=10, color="gray"),
+					ft.Row(
+						controls = [
+								ft.Dropdown(
+										label = "GPU",
+										options = [
+											ft.dropdown.Option("0:NVIDEA-BLAHBLAH9000"),
+										],
+										value = "0:NVIDEA-BLAHBLAH9000",
+										tooltip = "Select which GPU to use.",
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.TextField(
+										label = "Output Directory",
+										value = 'outputs',
+										text_align = 'start',
+										tooltip = "Choose output directory.",
+										keyboard_type = 'text',
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.Dropdown(
+										label = "Default Model",
+										options = [
+											ft.dropdown.Option("Stable Diffusion v1.5"),
+										],
+										value = "",
+										tooltip = "Select default model to use.",
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.TextField(
+										label = "Default Model Config",
+										value = 'configs/stable-diffusion/v1-inference.yaml',
+										text_align = 'start',
+										tooltip = "Choose default model config.",
+										keyboard_type = 'text',
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.TextField(
+										label = "Default Model Path",
+										value = 'models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt',
+										text_align = 'start',
+										tooltip = "Choose default model path.",
+										keyboard_type = 'text',
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.TextField(
+										label = "Default GFPGAN Directory",
+										value = 'models/gfpgan',
+										text_align = 'start',
+										tooltip = "Choose default gfpgan directory.",
+										keyboard_type = 'text',
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.TextField(
+										label = "Default RealESRGAN Directory",
+										value = 'models/gfpgan',
+										text_align = 'start',
+										tooltip = "Choose default realESRGAN directory.",
+										keyboard_type = 'text',
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.Dropdown(
+										label = "Default RealESRGAN Model",
+										options = [
+											ft.dropdown.Option(""),
+										],
+										value = "",
+										tooltip = "Select which realESRGAN model to use.",
+								),
+						],
+					),
+					ft.Row(
+						controls = [
+								ft.Dropdown(
+										label = "Default Upscaler",
+										options = [
+											ft.dropdown.Option(""),
+										],
+										value = "",
+										tooltip = "Select which upscaler to use.",
+								),
+						],
+					),
+			],
+	)
+
+	performance_settings = ft.Column(
+			alignment = 'start',
+			controls = [
+					ft.Divider(height=10, color="gray"),
+			],
+	)
+
+	server_settings = ft.Column(
+			alignment = 'start',
+			controls = [
+					ft.Divider(height=10, color="gray"),
+			],
+	)
+
+	interface_settings = ft.Column(
+			alignment = 'start',
+			controls = [
+					ft.Divider(height=10, color="gray"),
+			],
+	)
+
 	settings = ft.AlertDialog(
 			#modal = True,
 			title = ft.Text("Settings"),
-			content = ft.Row(
-					controls = [
-							ft.Text("Nothing here yet."),
-							ft.Container(
-									width=500,
-									height=500,
-							),
-					],
+			content = ft.Container(
+					width = page.width * 0.50,
+					content = ft.Tabs(
+							selected_index = 0,
+							animation_duration = 300,
+							tabs = [
+								ft.Tab(
+										text = "General",
+										content = general_settings,
+								),
+								ft.Tab(
+										text = "Performance",
+										content = performance_settings,
+								),
+								ft.Tab(
+										text = "Server",
+										content = server_settings,
+								),
+								ft.Tab(
+										text = "Interface",
+										content = interface_settings,
+								),
+							],
+					),
 			),
 			actions = [
 					# should save options when clicked
 					ft.ElevatedButton("Save", icon=ft.icons.SAVE, on_click=close_settings_window),
-
 					# Should allow you to discard changed made to the settings.
 					ft.ElevatedButton("Discard", icon=ft.icons.RESTORE_FROM_TRASH_ROUNDED, on_click=close_settings_window),
 			],
@@ -665,6 +719,11 @@ def main(page: ft.Page):
 
 
 ###### bottom_panel ###############################################################
+	status_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+	message_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+	timeline_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+	python_console_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+
 	bottom_panel = ft.Row(
 			height = 150,
 			controls = [
@@ -674,23 +733,23 @@ def main(page: ft.Page):
 						tabs = [
 							ft.Tab(
 									text = "Status",
-									content = ft.Container(bgcolor=ft.colors.BLACK12, height=150)
+									content = status_window,
 							),
 							ft.Tab(
 									text = "Messages",
-									content = ft.Container(bgcolor=ft.colors.BLACK12, height=150)
+									content = message_window,
 							),
 							ft.Tab(
 									text = "Timeline",
-									content = ft.Container(bgcolor=ft.colors.BLACK12, height=150)
+									content = timeline_window,
 							),
 							ft.Tab(
 									text = "Python Console",
-									content = ft.Container(bgcolor=ft.colors.BLACK12, height=150)
+									content = python_console_window,
 							),
 						],
 				),
-			]
+			],
 	)
 
 
