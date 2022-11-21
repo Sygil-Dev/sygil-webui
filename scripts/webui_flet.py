@@ -15,14 +15,22 @@ from pprint import pprint
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 	## main function defines
-	default_control_height = 50
-	default_text_size_a = 15
-	default_text_size_b = 20
-	default_text_size_c = 25
-	toolbar_width = 25
 
-	def get_settings_from_config():
-		pass
+	def load_settings():
+		settings = webui_flet_utils.get_user_settings_from_config()
+		page.session.set('settings',settings)
+		page.update()
+
+	def save_settings_to_config():
+		settings = page.session.get('settings')
+		webui_flet_utils.save_user_settings_to_config(settings)
+
+	def reset_settings_from_config():
+		settings = webui_flet_utils.get_default_settings_from_config()
+		page.session.remove('settings')
+		page.session.set('settings',settings)
+		save_settings_to_config()
+
 
 	def change_theme(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
@@ -36,6 +44,11 @@ def main(page: ft.Page):
 		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
 		page.update()
 
+
+###### init ############################################################
+	if not page.session.contains_key('settings'):
+		load_settings()
+
 ###### layouts #########################################################
 	def change_layout(e):
 		current_layout.value = e.control.data
@@ -47,8 +60,8 @@ def main(page: ft.Page):
 	def set_current_layout_options(layout):
 		for control in current_layout_options.controls:
 			 current_layout_options.controls.pop()
-		if layout == 'Latent Space':
-			current_layout_options.controls.append(latent_space_layout_options)
+		if layout == 'Default':
+			current_layout_options.controls.append(default_layout_options)
 		elif layout == 'Textual Inversion':
 			current_layout_options.controls.append(textual_inversion_layout_options)
 		elif layout == 'Node Editor':
@@ -57,8 +70,8 @@ def main(page: ft.Page):
 	def set_current_layout_tools(layout):
 		for control in current_layout_tools.controls:
 			 current_layout_tools.controls.pop()
-		if layout == 'Latent Space':
-			current_layout_tools.controls.append(latent_space_layout_tools)
+		if layout == 'Default':
+			current_layout_tools.controls.append(default_layout_tools)
 		elif layout == 'Textual Inversion':
 			current_layout_tools.controls.append(textual_inversion_layout_tools)
 		elif layout == 'Node Editor':
@@ -68,8 +81,8 @@ def main(page: ft.Page):
 		controls = property_panel.content.controls
 		for control in controls:
 			 controls.pop()
-		if layout == 'Latent Space':
-			controls.append(latent_space_layout_properties)
+		if layout == 'Default':
+			controls.append(default_layout_properties)
 		elif layout == 'Textual Inversion':
 			controls.append(textual_inversion_layout_properties)
 		elif layout == 'Node Editor':
@@ -78,126 +91,50 @@ def main(page: ft.Page):
 
 ###### settings window #################################################
 	def close_settings_window(e):
-		settings.open = False
+		settings_window.open = False
 		page.update()
 
 	def open_settings_window(e):
-		page.dialog = settings
-		settings.open = True
+		page.dialog = settings_window
+		settings_window.open = True
 		page.update()
 
-	general_settings = ft.Column(
-			alignment = 'start',
-			scroll = 'auto',
-			controls = [
-					ft.Divider(height=10, color="gray"),
-					ft.Row(
-						controls = [
-								ft.Dropdown(
-										label = "GPU",
-										options = [
-											ft.dropdown.Option("0:NVIDEA-BLAHBLAH9000"),
-										],
-										value = "0:NVIDEA-BLAHBLAH9000",
-										tooltip = "Select which GPU to use.",
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.TextField(
-										label = "Output Directory",
-										value = 'outputs',
-										text_align = 'start',
-										tooltip = "Choose output directory.",
-										keyboard_type = 'text',
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.Dropdown(
-										label = "Default Model",
-										options = [
-											ft.dropdown.Option("Stable Diffusion v1.5"),
-										],
-										value = "",
-										tooltip = "Select default model to use.",
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.TextField(
-										label = "Default Model Config",
-										value = 'configs/stable-diffusion/v1-inference.yaml',
-										text_align = 'start',
-										tooltip = "Choose default model config.",
-										keyboard_type = 'text',
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.TextField(
-										label = "Default Model Path",
-										value = 'models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt',
-										text_align = 'start',
-										tooltip = "Choose default model path.",
-										keyboard_type = 'text',
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.TextField(
-										label = "Default GFPGAN Directory",
-										value = 'models/gfpgan',
-										text_align = 'start',
-										tooltip = "Choose default gfpgan directory.",
-										keyboard_type = 'text',
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.TextField(
-										label = "Default RealESRGAN Directory",
-										value = 'models/gfpgan',
-										text_align = 'start',
-										tooltip = "Choose default realESRGAN directory.",
-										keyboard_type = 'text',
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.Dropdown(
-										label = "Default RealESRGAN Model",
-										options = [
-											ft.dropdown.Option(""),
-										],
-										value = "",
-										tooltip = "Select which realESRGAN model to use.",
-								),
-						],
-					),
-					ft.Row(
-						controls = [
-								ft.Dropdown(
-										label = "Default Upscaler",
-										options = [
-											ft.dropdown.Option(""),
-										],
-										value = "",
-										tooltip = "Select which upscaler to use.",
-								),
-						],
-					),
-			],
-	)
+	def update_settings():
+		ui_settings = get_ui_settings()
+		ui_settings_page.content = ui_settings
+		page.update()
 
-	performance_settings = ft.Column(
+	def save_settings(e):
+		save_settings_to_config()
+		update_settings()
+
+	def reset_settings(e):
+		reset_settings_from_config()
+		update_settings()
+
+	def ui_setting_changed(e):
+		settings = page.session.get('settings')
+		settings['webui'][e.control.label] = e.control.value
+		update_settings()
+
+	def get_ui_settings():
+		settings = page.session.get('settings')
+		ui_settings = [ft.Divider(height=10, color="gray")]
+		for setting in settings['webui']:
+			value = ft.TextField(
+					label = setting,
+					value = settings['webui'][setting],
+					on_change = ui_setting_changed,
+			)
+			new_row = ft.Row(
+					controls = [
+							value,
+					]
+			)
+			ui_settings.append(new_row)
+		return ui_settings
+
+	general_settings_page = ft.Column(
 			alignment = 'start',
 			scroll = 'auto',
 			controls = [
@@ -205,7 +142,15 @@ def main(page: ft.Page):
 			],
 	)
 
-	server_settings = ft.Column(
+	performance_settings_page = ft.Column(
+			alignment = 'start',
+			scroll = 'auto',
+			controls = [
+					ft.Divider(height=10, color="gray"),
+			],
+	)
+
+	server_settings_page = ft.Column(
 			alignment = 'start',
 			scroll = True,
 			controls = [
@@ -213,15 +158,15 @@ def main(page: ft.Page):
 			],
 	)
 
-	interface_settings = ft.Column(
+	
+	ui_settings = get_ui_settings()
+	ui_settings_page = ft.Column(
 			alignment = 'start',
 			scroll = True,
-			controls = [
-					ft.Divider(height=10, color="gray"),
-			],
+			controls = ui_settings,
 	)
 
-	settings = ft.AlertDialog(
+	settings_window = ft.AlertDialog(
 			#modal = True,
 			title = ft.Text("Settings"),
 			content = ft.Container(
@@ -232,28 +177,34 @@ def main(page: ft.Page):
 							tabs = [
 								ft.Tab(
 										text = "General",
-										content = general_settings,
+										content = general_settings_page,
 								),
 								ft.Tab(
 										text = "Performance",
-										content = performance_settings,
+										content = performance_settings_page,
 								),
 								ft.Tab(
 										text = "Server",
-										content = server_settings,
+										content = server_settings_page,
 								),
 								ft.Tab(
 										text = "Interface",
-										content = interface_settings,
+										content = ui_settings_page,
 								),
 							],
 					),
 			),
 			actions = [
-					# should save options when clicked
-					ft.ElevatedButton("Save", icon=ft.icons.SAVE, on_click=close_settings_window),
-					# Should allow you to discard changed made to the settings.
-					ft.ElevatedButton("Discard", icon=ft.icons.RESTORE_FROM_TRASH_ROUNDED, on_click=close_settings_window),
+					ft.ElevatedButton(
+							text = "Save",
+							icon = ft.icons.SAVE,
+							on_click = save_settings,
+					),
+					ft.ElevatedButton(
+							text = "Restore Defaults",
+							icon = ft.icons.RESTORE_FROM_TRASH_ROUNDED,
+							on_click = reset_settings,
+					),
 			],
 			actions_alignment="end",
 			#on_dismiss=lambda e: print("Modal dialog dismissed!"),
@@ -261,15 +212,15 @@ def main(page: ft.Page):
 
 ###### gallery window ##################################################
 	def close_gallery_window(e):
-		gallery.open = False
+		gallery_window.open = False
 		page.update()
 
 	def open_gallery_window(e):
-		page.dialog = gallery
-		gallery.open = True
+		page.dialog = gallery_window
+		gallery_window.open = True
 		page.update()
 
-	gallery = ft.AlertDialog(
+	gallery_window = ft.AlertDialog(
 			title = ft.Text('Gallery'),
 			content = ft.Row(
 					controls = [
@@ -281,10 +232,16 @@ def main(page: ft.Page):
 					],
 			),
 			actions = [
-					# should save image to disk
-					ft.ElevatedButton("Save", icon=ft.icons.SAVE, on_click=close_settings_window),
-					# remove image from gallery
-					ft.ElevatedButton("Discard", icon=ft.icons.RESTORE_FROM_TRASH_ROUNDED, on_click=close_settings_window),
+					ft.ElevatedButton(
+							text = "Save",
+							icon = ft.icons.SAVE,
+							on_click = None,
+					),
+					ft.ElevatedButton(
+							text = "Discard",
+							icon = ft.icons.RESTORE_FROM_TRASH_ROUNDED,
+							on_click = None,
+					),
 			],
 			actions_alignment="end",
 	)
@@ -292,7 +249,7 @@ def main(page: ft.Page):
 ###### app bar #########################################################
 	app_bar_title = ft.Text(
 			value = "Sygil",
-			size = default_text_size_c,
+			size = 20,
 			text_align = 'center',
 	)
 
@@ -304,29 +261,29 @@ def main(page: ft.Page):
 			tooltip = "Prompt to use for generation.",
 			autofocus = True,
 			hint_text = "A corgi wearing a top hat as an oil painting.",
-			height = default_control_height,
-			text_size = default_text_size_b,
+			height = 50,
+			text_size = 20,
 	)
 
 	generate_button = ft.ElevatedButton(
 			text = "Generate",
 			on_click=None,
-			height = default_control_height,
+			height = 50,
 	)
 
 	layouts = ft.PopupMenuButton(
 			items = [
-				ft.PopupMenuItem(text="Latent Space", on_click=change_layout, data="Latent Space"),
+				ft.PopupMenuItem(text="Default", on_click=change_layout, data="Default"),
 				ft.PopupMenuItem(text="Textual Inversion", on_click=change_layout, data="Textual Inversion"),
 				ft.PopupMenuItem(text="Node Editor", on_click=change_layout, data="Node Editor"),
 			],
 			tooltip = "Switch between different workspaces",
-			height = default_control_height,
+			height = 50,
 	)
 
 	current_layout = ft.Text(
-			value = 'Latent Space',
-			size = default_text_size_a,
+			value = 'Default',
+			size = 20,
 			tooltip = "Current Workspace",
 	)
 
@@ -336,10 +293,10 @@ def main(page: ft.Page):
 				ft.Container(content = layouts),
 				ft.Container(content = current_layout),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
-	latent_space_layout_options = ft.Row(
+	default_layout_options = ft.Row(
 			alignment = 'start',
 			controls = [
 				ft.Container(ft.IconButton(content = ft.Text(value = 'Canvas'), tooltip ='Canvas Options', on_click = None, disabled=True)),
@@ -347,7 +304,7 @@ def main(page: ft.Page):
 				ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 	textual_inversion_layout_options = ft.Row(
@@ -357,7 +314,7 @@ def main(page: ft.Page):
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 	node_editor_layout_options = ft.Row(
@@ -367,15 +324,15 @@ def main(page: ft.Page):
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
 				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 	current_layout_options = ft.Row(
 			alignment = 'start',
 			controls = [
-				ft.Container(content = latent_space_layout_options),
+				ft.Container(content = default_layout_options),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 	theme_switcher = ft.IconButton(
@@ -383,13 +340,13 @@ def main(page: ft.Page):
 			on_click = change_theme,
 			expand = 1,
 			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
-			height = default_control_height,
+			height = 50,
 			)
 
 	settings_button = ft.IconButton(
 			icon = ft.icons.SETTINGS,
 			on_click = open_settings_window,
-			height = default_control_height,
+			height = 50,
 	)
 
 	menu_button = ft.PopupMenuButton(
@@ -398,7 +355,7 @@ def main(page: ft.Page):
 					ft.PopupMenuItem(),  # divider
 					#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 	option_bar = ft.Row(
@@ -409,7 +366,7 @@ def main(page: ft.Page):
 				ft.Container(expand = 1, content = settings_button),
 				ft.Container(expand = 1, content = menu_button),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 	appbar = ft.Row(
@@ -421,16 +378,17 @@ def main(page: ft.Page):
 #					ft.Container(expand = 1, content = generate_button),
 					ft.Container(expand = 4, content = option_bar),
 			],
-			height = default_control_height,
+			height = 50,
 	)
 
 
 ###### toolbar #########################################################
-	open_gallery_button = ft.IconButton(width = 20, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
-	import_image_button = ft.IconButton(width = 20, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import image as new layer', on_click = None)
+	open_gallery_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
+	import_image_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import image as new layer', on_click = None)
 
 	universal_tools = ft.Row(
 			alignment = 'start',
+			width = 50,
 			wrap = True,
 			controls = [
 				open_gallery_button,
@@ -438,8 +396,8 @@ def main(page: ft.Page):
 			]
 	)
 
-	## canvas layout tools
-	latent_space_layout_tools = ft.Row(
+	## default layout tools
+	default_layout_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
 			controls = [
@@ -463,14 +421,12 @@ def main(page: ft.Page):
 	)
 
 	current_layout_tools = ft.Column(
-			width = toolbar_width,
 			controls = [
-				latent_space_layout_tools,
+				default_layout_tools,
 			],
 	)
 
 	toolbar = ft.Column(
-			width = toolbar_width,
 			controls = [
 				ft.Container(content = universal_tools),
 				ft.Container(content = current_layout_tools),
@@ -595,7 +551,7 @@ def main(page: ft.Page):
 
 ###### bottom_panel ####################################################
 	video_editor_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-	console_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
+	messages_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
 
 	bottom_panel = ft.Row(
 			height = 150,
@@ -605,12 +561,12 @@ def main(page: ft.Page):
 						animation_duration = 300,
 						tabs = [
 								ft.Tab(
-										text = "Video Editor",
-										content = video_editor_window,
+										text = "Messages",
+										content = messages_window,
 								),
 								ft.Tab(
-										text = "Console",
-										content = console_window,
+										text = "Video Editor",
+										content = video_editor_window,
 								),
 						],
 				),
@@ -665,7 +621,7 @@ def main(page: ft.Page):
 					"Try to find the best one for your needs and hardware.",
 	)
 
-	latent_space_layout_properties = ft.Container(
+	default_layout_properties = ft.Container(
 			content = ft.Column(
 					controls = [
 							ft.Row(
@@ -686,19 +642,31 @@ def main(page: ft.Page):
 								controls = [
 									ft.TextField(label="Width", value=512, height=50, expand=1, suffix_text="W", text_align='center', tooltip="Widgth in pixels.", keyboard_type="number"),
 									ft.TextField(label="Height", value=512, height=50, expand=1, suffix_text="H", text_align='center', tooltip="Height in pixels.",keyboard_type="number"),
-									ft.TextField(label="CFG", value=7.5, height=50, expand=1, text_align='center', #suffix_text="CFG",
-										tooltip="Classifier Free Guidance Scale.", keyboard_type="number"),
 								],
 								spacing = 4,
 								alignment = 'spaceAround',
 							),
 							ft.Row(
 								controls = [
-									ft.TextField(label="Seed", hint_text="blank=random seed", height=60, expand=2, text_align='start', #suffix_text="seed",
-										tooltip="Seed used for the generation, leave empty or use -1 for a random seed. You can also use word as seeds.",
-										keyboard_type="number"
+									ft.TextField(label="CFG", value=7.5, height=50, expand=1, text_align='center', #suffix_text="CFG",
+										tooltip="Classifier Free Guidance Scale.", keyboard_type="number"),
+									ft.TextField(label="Sampling Steps", value=30, height=50, expand=1, text_align='center', tooltip="Sampling steps.", keyboard_type="number"),
+								],
+								spacing = 4,
+								alignment = 'spaceAround',
+							),
+							ft.Row(
+								controls = [
+									ft.TextField(
+											label = "Seed",
+											hint_text = "blank=random seed",
+											height = 60,
+											expand = 1,
+											text_align = 'start',
+											#suffix_text = "seed",
+											tooltip = "Seed used for the generation, leave empty or use -1 for a random seed. You can also use word as seeds.",
+											keyboard_type = "number"
 									),
-									ft.TextField(label="Sampling Steps", value=30, height=60, expand=1, text_align='center', tooltip="Sampling steps.", keyboard_type="number"),
 								],
 								spacing = 4,
 								alignment = 'spaceAround',
@@ -830,7 +798,7 @@ def main(page: ft.Page):
 			content = ft.Column(
 					controls = [
 							ft.Divider(height=10, opacity = 0),
-							latent_space_layout_properties,
+							default_layout_properties,
 					],
 			),
 	)
@@ -860,7 +828,7 @@ def main(page: ft.Page):
 							),
 					],
 			),
-			width = 400,
+			width = 250,
 	)
 
 ###### workspace #######################################################

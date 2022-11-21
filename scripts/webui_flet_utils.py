@@ -1,44 +1,34 @@
 ## webui_utils.py
 
+## imports
+import os, yaml
+from pprint import pprint
 
-###### Textual Inversion #####################################################
+ 
+###### Settings ########################################################
+path_to_default_config = 'configs/webui/webui_flet.yaml'
+path_to_user_config = 'configs/webui/userconfig_flet.yaml'
+
+def get_default_settings_from_config():
+    with open(path_to_default_config) as f:
+        default_settings = yaml.safe_load(f)
+    return default_settings
+
+def get_user_settings_from_config():
+    settings = get_default_settings_from_config()
+    if os.path.exists(path_to_user_config):
+        with open(path_to_user_config) as f:
+            user_settings = yaml.safe_load(f)
+        settings.update(user_settings)
+    return settings
+
+def save_user_settings_to_config(settings):
+    with open(path_to_user_config, 'w+') as f:
+        yaml.dump(settings, f, default_flow_style=False)
+
+
+###### Textual Inversion ###############################################
 textual_inversion_grid_row_list = [
 	'model', 'medium', 'artist', 'trending', 'movement', 'flavors', 'techniques', 'tags',
 	]
 
-def get_textual_inversion_row_value(row_name):
-	## lookup value
-	pass
-
-## wrapper functions
-def load_blip_model():
-	pass
-
-def generate_caption():
-	pass
-
-def interrogate(image, models):
-	result = {}
-	load_blip_model()
-	generate_caption()
-	### magic ?????
-	return result
-
-def img2txt(data):
-	## iterate through images
-	for i in range(len(data['selected_images'])):
-		result = interrogate(data['selected_images'][i], models = data['selected_models'])
-		data['results'][i] = result
-
-def run_textual_inversion(data):
-	## reload model, pipe, upscalers
-
-	## run clip interrogator
-	img2txt(data)
-
-## so far data(object) needs---> 	list of selected models
-##									list of selected images
-##		guessing functions also need some way of accessing settings...?
-##		thinking only way to do that is to store everything in the generate button
-##		and update on press. i'll stress test later and see if it slows things down
-##		...adding data['results'] to pass data back
