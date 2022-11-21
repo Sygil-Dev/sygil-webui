@@ -1,0 +1,87 @@
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
+
+# Copyright 2022 Sygil-Dev team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_flet.yaml.
+# Any changes made here will be available automatically on the web app without having to stop it.
+# You may add overrides in a file named "userconfig_flet.yaml" in this folder, which can contain any subset
+# of the properties below.
+
+webui:
+    default_border: 1
+    default_border_radius: 0
+    default_container_height: 200
+    default_container_width: 200
+    default_margin: 0
+    default_opacity: 1
+    default_padding: 0
+    default_scale: 1
+    default_text_size: 20
+
+general:
+    default_theme: dark
+    huggingface_token: ''
+    stable_horde_api: '0000000000'
+    gpu: 0
+    outdir: outputs
+    default_model: "Stable Diffusion v1.5"
+    base_model: "Stable Diffusion v1.5"
+    default_model_config: "configs/stable-diffusion/v1-inference.yaml"
+    default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
+    use_sd_concepts_library: True
+    sd_concepts_library_folder: "models/custom/sd-concepts-library"
+    GFPGAN_dir: "./models/gfpgan"
+    GFPGAN_model: "GFPGANv1.4"
+    LDSR_dir: "./models/ldsr"
+    LDSR_model: "model"
+    RealESRGAN_dir: "./models/realesrgan"
+    RealESRGAN_model: "RealESRGAN_x4plus"
+    upscaling_method: "RealESRGAN"
+    outdir_txt2img: outputs/txt2img
+    outdir_img2img: outputs/img2img
+    outdir_img2txt: outputs/img2txt
+    gfpgan_cpu: False
+    esrgan_cpu: False
+    extra_models_cpu: False
+    extra_models_gpu: False
+    gfpgan_gpu: 0
+    esrgan_gpu: 0
+    keep_all_models_loaded: False
+    save_metadata: True
+    save_format: "png"
+    skip_grid: False
+    skip_save: False
+    grid_quality: 95
+    n_rows: -1
+    no_verify_input: False
+    no_half: False
+    use_float16: False
+    precision: "autocast"
+    optimized: False
+    optimized_turbo: False
+    optimized_config: "optimizedSD/v1-inference.yaml"
+    enable_attention_slicing: False
+    enable_minimal_memory_usage: False
+    update_preview: True
+    update_preview_frequency: 10
+
+admin:
+    hide_server_setting: False
+    hide_browser_setting: False
+    global_negative_prompt: ""
+
+textual_inversion:
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
+    tokenizer_name: "models/clip-vit-large-patch14"
