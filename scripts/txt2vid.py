@@ -946,6 +946,7 @@ def diffuse(
         num_inference_steps,
         cfg_scale,
         eta,
+        fps=30
         ):
 
     torch_device = cond_latents.get_device()
@@ -1055,8 +1056,8 @@ def diffuse(
                 speed = "it/s"
                 duration = 1 / duration
 
-            #
-            total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
+            # perhaps add an option to set fps within the ui eventually
+            total_frames = st.session_state.max_duration_in_seconds * fps
             total_steps = st.session_state.sampling_steps + st.session_state.num_inference_steps
 
             if i > st.session_state.sampling_steps:
@@ -1482,7 +1483,7 @@ def txt2vid(
                         #)
 
         # old code
-        total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
+        total_frames = st.session_state.max_duration_in_seconds * fps
 
         while frame_index+1 < total_frames:
             st.session_state["frame_duration"] = 0
@@ -1506,7 +1507,7 @@ def txt2vid(
                 #init = slerp(gpu, float(t), init1, init2)
 
                 with autocast("cuda"):
-                    image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
+                    image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta, fps=fps)
 
                 if st.session_state["save_individual_images"] and not st.session_state["use_GFPGAN"] and not st.session_state["use_RealESRGAN"]:
                     #im = Image.fromarray(image)
