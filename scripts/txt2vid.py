@@ -1485,7 +1485,7 @@ def txt2vid(
         # old code
         total_frames = st.session_state.max_duration_in_seconds * fps
 
-        while frame_index+1 < total_frames:
+        while frame_index+1 <= total_frames:
             st.session_state["frame_duration"] = 0
             st.session_state["frame_speed"] = 0
             st.session_state["current_frame"] = frame_index
@@ -1601,8 +1601,8 @@ def layout():
             #prompt = st.text_area("Input Text","")
             placeholder = "A corgi wearing a top hat as an oil painting."
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
-            sygil_suggestions.suggestion_area(placeholder)            
-            
+            sygil_suggestions.suggestion_area(placeholder)
+
             if "defaults" in st.session_state:
                 if st.session_state['defaults'].admin.global_negative_prompt:
                     prompt += f"### {st.session_state['defaults'].admin.global_negative_prompt}"
