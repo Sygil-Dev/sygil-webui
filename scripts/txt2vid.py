@@ -1195,13 +1195,13 @@ def load_diffusers_model(weights_path,torch_device):
                 st.session_state["progress_bar_text"].error(e)
 
 #
-def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, outdir='outputs'):
+def save_video_to_disk(frames, seeds, sanitized_prompt, fps=30,save_video=True, outdir='outputs'):
     if save_video:
         # write video to memory
         #output = io.BytesIO()
         #writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid"), im, extension=".mp4", fps=30)
         #try:
-        video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}{datetime.now().strftime('%Y%m-%d%H-%M%S-') + str(uuid4())[:8]}.mp4")
+        video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}{datetime.datetime.now().strftime('%Y%m-%d%H-%M%S-') + str(uuid4())[:8]}.mp4")
         writer = imageio.get_writer(video_path, fps=fps)
         for frame in frames:
             writer.append_data(frame)
@@ -1484,7 +1484,7 @@ def txt2vid(
         # old code
         total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
 
-        while second_count < max_duration_in_seconds:
+        while frame_index+1 < total_frames:
             st.session_state["frame_duration"] = 0
             st.session_state["frame_speed"] = 0
             st.session_state["current_frame"] = frame_index
@@ -1601,10 +1601,6 @@ def layout():
             placeholder = "A corgi wearing a top hat as an oil painting."
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
             sygil_suggestions.suggestion_area(placeholder)
-            
-            if "defaults" in st.session_state:
-                if st.session_state['defaults'].admin.global_negative_prompt:
-                    prompt += f"### {st.session_state['defaults'].admin.global_negative_prompt}"
 
         # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
         generate_col1.write("")
@@ -1914,9 +1910,10 @@ def layout():
                                                    beta_schedule=beta_scheduler_type, starting_image=None)
 
         if video and save_video_on_stop:
+            if os.path.exists(video): # temporary solution to bypass exception
             # show video preview on the UI after we hit the stop button
             # currently not working as session_state is cleared on StopException
-            preview_video.video(open(video, 'rb').read())
+                preview_video.video(open(video, 'rb').read())
 
         #message.success('Done!', icon="✅")
         message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
