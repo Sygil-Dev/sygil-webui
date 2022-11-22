@@ -6,8 +6,8 @@
 
 ## Installation instructions for:
 
-- **[Windows](https://sygil-dev.github.io/sygil-webui/docs/1.windows-installation.html)** 
-- **[Linux](https://sygil-dev.github.io/sygil-webui/docs/2.linux-installation.html)**
+- **[Windows](https://sygil-dev.github.io/sygil-webui/docs/Installation/one-click-installer)** 
+- **[Linux](https://sygil-dev.github.io/sygil-webui/docs/Installation/linux-installation)**
 
 ### Want to ask a question or request a feature?
 
