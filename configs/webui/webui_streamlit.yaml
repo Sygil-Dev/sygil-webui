@@ -220,6 +220,7 @@ txt2vid:
 
     beta_scheduler_type: "scaled_linear"
     max_duration_in_seconds: 30
+    fps: 30
 
     LDSR_config:
         sampling_steps: 50

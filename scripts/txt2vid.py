@@ -189,10 +189,10 @@ def make_video_pyav(
 
         write_video(
             output_filepath,
-                    frames,
-                        fps=fps,
-                        audio_array=audio_tensor,
-                audio_fps=sr,
+            frames,
+            fps=fps,
+            audio_array=audio_tensor,
+            audio_fps=sr,
             audio_codec="aac",
             options={"crf": "10", "pix_fmt": "yuv420p"},
         )
@@ -777,22 +777,22 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             prompt_config_path.write_text(
                 json.dumps(
                                 dict(
-                                        prompts=prompts,
-                                            seeds=seeds,
-                                                num_interpolation_steps=num_interpolation_steps,
-                                                fps=fps,
-                                                num_inference_steps=num_inference_steps,
-                                                guidance_scale=guidance_scale,
-                                                eta=eta,
-                                                upsample=upsample,
-                                                height=height,
-                                                width=width,
-                                                audio_filepath=audio_filepath,
-                                                audio_start_sec=audio_start_sec,
-                                                ),
-
-                                    indent=2,
-                                        sort_keys=False,
+                                    prompts=prompts,
+                                    seeds=seeds,
+                                    num_interpolation_steps=num_interpolation_steps,
+                                    fps=fps,
+                                    num_inference_steps=num_inference_steps,
+                                    guidance_scale=guidance_scale,
+                                    eta=eta,
+                                    upsample=upsample,
+                                    height=height,
+                                    width=width,
+                                    audio_filepath=audio_filepath,
+                                    audio_start_sec=audio_start_sec,
+                                    ),
+                                
+                                indent=2,
+                                sort_keys=False,
                             )
             )
         else:
@@ -1637,6 +1637,9 @@ def layout():
 
             st.session_state["max_duration_in_seconds"] = st.number_input("Max Duration In Seconds:", value=st.session_state['defaults'].txt2vid.max_duration_in_seconds,
                                                                           help="Specify the max duration in seconds you want your video to be.")
+            
+            st.session_state["fps"] = st.number_input("Frames per Second (FPS):", value=st.session_state['defaults'].txt2vid.fps,
+                                                                          help="Specify the frame rate of the video.")
 
             with st.expander("Preview Settings"):
                 #st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
@@ -1903,16 +1906,16 @@ def layout():
         # run video generation
         video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
                                            num_steps=st.session_state.sampling_steps, max_duration_in_seconds=st.session_state.max_duration_in_seconds,
-                                                   num_inference_steps=st.session_state.num_inference_steps,
-                                                   cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
-                                                   outdir=st.session_state["defaults"].general.outdir,
-                                                   do_loop=st.session_state["do_loop"],
-                                                   use_lerp_for_text=st.session_state["use_lerp_for_text"],
-                                                   seeds=seed, quality=100, eta=0.0, width=width,
-                                                   height=height, weights_path=custom_model, scheduler=scheduler_name,
-                                                   disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
-                                                   beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
-                                                   beta_schedule=beta_scheduler_type, starting_image=None)
+                                           num_inference_steps=st.session_state.num_inference_steps,
+                                           cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
+                                           outdir=st.session_state["defaults"].general.outdir,
+                                           do_loop=st.session_state["do_loop"],
+                                           use_lerp_for_text=st.session_state["use_lerp_for_text"],
+                                           seeds=seed, quality=100, eta=0.0, width=width,
+                                           height=height, weights_path=custom_model, scheduler=scheduler_name,
+                                           disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
+                                           beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
+                                           beta_schedule=beta_scheduler_type, starting_image=None, fps=st.session_state.fps)
 
         if video and save_video_on_stop:
             if os.path.exists(video): # temporary solution to bypass exception
