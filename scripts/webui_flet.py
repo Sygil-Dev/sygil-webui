@@ -15,7 +15,6 @@ from pprint import pprint
 
 @logger.catch(reraise=True)
 def main(page: ft.Page):
-	# main function defines
 
 	def load_settings():
 		settings = webui_flet_utils.get_user_settings_from_config()
@@ -32,23 +31,14 @@ def main(page: ft.Page):
 		page.session.set('settings',settings)
 		save_settings_to_config()
 
-
-	def change_theme(e):
-		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
-
-		if "(Light theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
-
-		if "(Dark theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
-
-		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
-		page.update()
-
-
 #	init ###############################################################
 	if not page.session.contains_key('settings'):
 		load_settings()
+		settings = page.session.get('settings')
+		if 'webui_page' in settings:
+			if 'default_theme' in settings['webui_page']:
+				page.theme_mode = settings['webui_page']['default_theme']['value']
+
 
 #	layouts ############################################################
 	def change_layout(e):
@@ -100,14 +90,17 @@ def main(page: ft.Page):
 		page.update()
 
 	def update_settings_window():
-		settings_window.content.content.tabs = get_settings_window_tabs()
+#		settings_window.content.content.tabs = get_settings_window_tabs()
 		page.update()
 
 	def update_settings_window_tab(section):
 		try:
-			for tab in settings_window.content.content.tabs:
+			pprint(section)
+			for i, tab in enumerate(settings_window.content.content.tabs):
+				pprint(tab.text)
+				pprint(settings_window.content.content.tabs[i].text)
 				if section.startswith(tab.text):
-					settings_window.contnet.content.tabs[i] = get_settings_window_tab_page(section)
+					settings_window.content.content.tabs[i] = get_settings_window_tab_page(section)
 					return
 		except:
 			print(f'"{section}" not found in tabs.')
@@ -123,8 +116,15 @@ def main(page: ft.Page):
 	def settings_window_tab_setting_changed(e):
 		settings = page.session.get('settings')
 		settings[e.control.data][e.control.label] = e.control.value
-		update_settings_window_tab(e.control.data)
+		update_settings_window() #_tab(e.control.data)
 		page.update()
+
+	def settings_window_tab_slider_changed(e):
+		settings = page.session.get('settings')
+		settings[e.control.data[0]][e.control.data[1]] = e.control.value
+		update_settings_window() #_tab(e.control.data[0])
+		page.update()
+		
 
 	def get_settings_window_tab_settings(section):
 		settings = page.session.get('settings')
@@ -148,19 +148,40 @@ def main(page: ft.Page):
 						options = option_list,
 						on_change = settings_window_tab_setting_changed,
 						data = section,
-						content_padding = 0,
+						content_padding = 10,
+						width = page.width * 0.25,
 				)
 			elif display_type == 'slider':
-				display = ft.Slider(
-						label = setting,
-						value = settings[setting]['value'],
-						min = settings[setting]['min'],
-						max = settings[setting]['max'],
-						#divisions = settings[setting]['increment'],
-						# ft.Slider doesn't accept float for increments.
-						# ---at least that's what i'm assuming divisions are.
-						on_change = settings_window_tab_setting_changed,
-						data = section,
+				display = ft.Column(
+						controls = [
+								ft.Text(
+										value = setting,
+										text_align = 'center',
+								),
+								ft.Row(
+										width = page.width * 0.25,
+										controls = [
+												ft.Slider(
+														value = settings[setting]['value'],
+														label = "{value}",
+														min = settings[setting]['min'],
+														max = settings[setting]['max'],
+														#divisions = settings[setting]['increment'],
+														# ft.Slider doesn't accept float for increments.
+														on_change = settings_window_tab_slider_changed,
+														data = [section, setting],
+														expand = 4,
+												),
+												ft.TextField(
+														value = settings[setting]['value'],
+														on_submit = settings_window_tab_slider_changed,
+														data = [section, setting],
+														content_padding = 10,
+														expand = 1,
+												),
+										],
+								),
+						],
 				)
 			elif display_type == 'textinput':
 				display = ft.TextField(
@@ -168,7 +189,8 @@ def main(page: ft.Page):
 						value = settings[setting]['value'],
 						on_submit = settings_window_tab_setting_changed,
 						data = section,
-						content_padding = 0,
+						content_padding = 10,
+						width = page.width * 0.25,
 				)
 			else:
 				continue
@@ -354,6 +376,18 @@ def main(page: ft.Page):
 			],
 			height = 50,
 	)
+
+	def change_theme(e):
+		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
+
+		if "(Light theme)" in theme_switcher.tooltip:
+			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
+
+		if "(Dark theme)" in theme_switcher.tooltip:
+			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
+
+		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
+		page.update()
 
 	theme_switcher = ft.IconButton(
 			ft.icons.WB_SUNNY_OUTLINED,
