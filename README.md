@@ -6,9 +6,11 @@
 
 ## Installation instructions for:
 
-- **[Windows](https://sygil-dev.github.io/sygil-webui/docs/1.windows-installation.html)** 
-- **[Linux](https://sygil-dev.github.io/sygil-webui/docs/2.linux-installation.html)**
-
+- **[one-click-installer](https://github.com/rheros/stable-diffusion-webui/blob/master/docs/1.Installation/1.one-click-installer.md)**
+- **[Windows](https://github.com/rheros/stable-diffusion-webui/blob/master/docs/1.Installation/2.windows-installation.md)** 
+- **[Linux](https://github.com/rheros/stable-diffusion-webui/blob/master/docs/1.Installation/3.linux-installation.md)**
+- **[docker guider](https://github.com/rheros/stable-diffusion-webui/blob/master/docs/1.Installation/4.docker-guide.md)**
+- **[Ubuntu-AMD-RX6800XT](https://github.com/rheros/stable-diffusion-webui/blob/master/docs/1.Installation/5.Ubuntu-AMD-RX6800XT)**
 ### Want to ask a question or request a feature?
 
 Come to our [Discord Server](https://discord.gg/gyXNe4NySY) or use [Discussions](https://github.com/sygil-dev/sygil-webui/discussions).
