@@ -19,6 +19,23 @@
 # You may add overrides in a file named "userconfig_flet.yaml" in this folder, which can contain any subset
 # of the properties below.
 
+# list of display types
+#   dropdown
+#       -value
+#       -option_list
+#   slider
+#       -value
+#       -min
+#       -max
+#       -increment
+#   textinput
+#       -value
+
+# list of value types
+#   float
+#   integer
+#   string
+
 webui:
     default_border: 1
     default_border_radius: 0
@@ -31,51 +48,67 @@ webui:
     default_text_size: 20
 
 general:
-    default_theme: dark
-    huggingface_token: ''
-    stable_horde_api: '0000000000'
-    gpu: 0
-    outdir: outputs
-    default_model: "Stable Diffusion v1.5"
-    base_model: "Stable Diffusion v1.5"
-    default_model_config: "configs/stable-diffusion/v1-inference.yaml"
-    default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
-    use_sd_concepts_library: True
-    sd_concepts_library_folder: "models/custom/sd-concepts-library"
-    GFPGAN_dir: "./models/gfpgan"
-    GFPGAN_model: "GFPGANv1.4"
-    LDSR_dir: "./models/ldsr"
-    LDSR_model: "model"
-    RealESRGAN_dir: "./models/realesrgan"
-    RealESRGAN_model: "RealESRGAN_x4plus"
-    upscaling_method: "RealESRGAN"
-    outdir_txt2img: outputs/txt2img
-    outdir_img2img: outputs/img2img
-    outdir_img2txt: outputs/img2txt
-    gfpgan_cpu: False
-    esrgan_cpu: False
-    extra_models_cpu: False
-    extra_models_gpu: False
-    gfpgan_gpu: 0
-    esrgan_gpu: 0
-    keep_all_models_loaded: False
-    save_metadata: True
-    save_format: "png"
-    skip_grid: False
-    skip_save: False
-    grid_quality: 95
-    n_rows: -1
-    no_verify_input: False
-    no_half: False
-    use_float16: False
-    precision: "autocast"
-    optimized: False
-    optimized_turbo: False
-    optimized_config: "optimizedSD/v1-inference.yaml"
-    enable_attention_slicing: False
-    enable_minimal_memory_usage: False
-    update_preview: True
-    update_preview_frequency: 10
+    default_theme:
+        display: dropdown
+        value: 'dark'
+        option_list:
+            - !!str 'dark'
+            - !!str 'light'
+    huggingface_token:
+        display: textinput
+        value: !!str ''
+    stable_horde_api:
+        display: textinput
+        value: !!str '0000000000'
+    gpu:
+        display: dropdown
+        value: !!str '0:Nvidia9000'
+        option_list:
+            - !!str '0:Nvidia9000'
+    outdir:
+        display: textinput
+        value: !!str 'outputs'
+
+    #default_model: "Stable Diffusion v1.5"
+    #base_model: "Stable Diffusion v1.5"
+    #default_model_config: "configs/stable-diffusion/v1-inference.yaml"
+    #default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
+    #use_sd_concepts_library: True
+    #sd_concepts_library_folder: "models/custom/sd-concepts-library"
+    #GFPGAN_dir: "./models/gfpgan"
+    #GFPGAN_model: "GFPGANv1.4"
+    #LDSR_dir: "./models/ldsr"
+    #LDSR_model: "model"
+    #RealESRGAN_dir: "./models/realesrgan"
+    #RealESRGAN_model: "RealESRGAN_x4plus"
+    #upscaling_method: "RealESRGAN"
+    #outdir_txt2img: outputs/txt2img
+    #outdir_img2img: outputs/img2img
+    #outdir_img2txt: outputs/img2txt
+    #gfpgan_cpu: False
+    #esrgan_cpu: False
+    #extra_models_cpu: False
+    #extra_models_gpu: False
+    #gfpgan_gpu: 0
+    #esrgan_gpu: 0
+    #keep_all_models_loaded: False
+    #save_metadata: True
+    #save_format: "png"
+    #skip_grid: False
+    #skip_save: False
+    #grid_quality: 95
+    #n_rows: -1
+    #no_verify_input: False
+    #no_half: False
+    #use_float16: False
+    #precision: "autocast"
+    #optimized: False
+    #optimized_turbo: False
+    #optimized_config: "optimizedSD/v1-inference.yaml"
+    #enable_attention_slicing: False
+    #enable_minimal_memory_usage: False
+    #update_preview: True
+    #update_preview_frequency: 10
 
 admin:
     hide_server_setting: False

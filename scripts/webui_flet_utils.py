@@ -1,11 +1,11 @@
-## webui_utils.py
+# webui_utils.py
 
-## imports
+# imports
 import os, yaml
 from pprint import pprint
 
  
-###### Settings ########################################################
+# Settings
 path_to_default_config = 'configs/webui/webui_flet.yaml'
 path_to_user_config = 'configs/webui/userconfig_flet.yaml'
 
@@ -27,7 +27,7 @@ def save_user_settings_to_config(settings):
         yaml.dump(settings, f, default_flow_style=False)
 
 
-###### Textual Inversion ###############################################
+# Textual Inversion
 textual_inversion_grid_row_list = [
 	'model', 'medium', 'artist', 'trending', 'movement', 'flavors', 'techniques', 'tags',
 	]
