@@ -1,0 +1,44 @@
+# ubuntu20.4 RX6800XT 
+## System prepare:
+1. Install Ubuntu 20.04    https://ubuntu.com/download/alternative-downloads
+2. lower kernel    https://blog.csdn.net/weixin_46123670/article/details/125777787
+3. reboot
+## Graphic prepare:
+1. make sure system setting can see Graphics AMD® Radeon rx 6800 xt
+    * if can't see  install graphics driver  https://www.amd.com/zh-hans/support/graphics/amd-radeon-6000-series/amd-radeon-6800-series/amd-radeon-rx-6800-xt   this is a installer ,make driven install easy
+    * other version can search from here https://www.amd.com/zh-hans/support
+## Install rocm    
+(doc here)  https://docs.amd.com/bundle/ROCm-Installation-Guide-v5.2.3/page/How_to_Install_ROCm.html
+    *  sudo apt-get update
+    *  wget https://repo.radeon.com/amdgpu-install/22.20.3/ubuntu/focal/amdgpu-install_22.20.50203-1_all.deb 
+    *  sudo apt-get install ./amdgpu-install_22.20.50203-1_all.deb
+    * sudo amdgpu-install --usecase=rocm
+    * sudo amdgpu-install --usecase=dkms
+## Check rocm install success? use shell cmd one of blow
+  * rocm-smi
+  * /opt/rocm/bin/rocminfo
+  * if display graphics info ,congratulations you success
+  
+## Install conda
+site https://docs.conda.io/en/latest/miniconda.html#linux-installers
+
+## Install stable diffusion follow this 
+ * https://sd-webui.github.io/stable-diffusion-webui/docs/2.linux-installation.html  this is the recommend way
+ * I git clone the repo, and run the webui.sh under the stable-diffusion-webui folder
+ * remember download the sd-v1-4.ckpt mode and mv it in the stable-diffusion-webui ,webui.sh need it
+
+## install pythorch in ldm env，otherwise the webui.sh will tell you ,you don't have cuda ,
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/rocm5.2/   
+
+## Downlond  sd-v1-4.ckpt  mode 
+https://huggingface.co/CompVis/stable-diffusion-v-1-4-original
+## No module named cv2
+1. enter the conda env ldm and install opencv use shell
+     * conda  activate ldm
+     * pip install opencv-contrib-python
+
+## Modle Download doc
+    https://sd-webui.github.io/stable-diffusion-webui/docs/1.windows-installation.html
+---
+# Web based UI for Stable Diffusion by [sd-webui](https://github.com/sd-webui)
+
