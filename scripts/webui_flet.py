@@ -156,9 +156,9 @@ def main(page: ft.Page):
 						value = settings[setting]['value'],
 						min = settings[setting]['min'],
 						max = settings[setting]['max'],
-#						divisions = settings[setting]['increment'],
-# ft.Slider doesn't accept float for increments.
-# ---at least that's what i'm assuming divisions are.
+						#divisions = settings[setting]['increment'],
+						# ft.Slider doesn't accept float for increments.
+						# ---at least that's what i'm assuming divisions are.
 						on_change = settings_window_tab_setting_changed,
 						data = section,
 				)
@@ -243,7 +243,7 @@ def main(page: ft.Page):
 			title = ft.Text('Gallery'),
 			content = ft.Row(
 					controls = [
-							ft.Text('Working on it I swear...'),
+							ft.Text('Under Construction.'),
 							ft.Container(
 									width = page.width * 0.75,
 									height = page.height * 0.75,
@@ -276,12 +276,12 @@ def main(page: ft.Page):
 			value = "",
 			min_lines = 1,
 			max_lines = 1,
+			content_padding = 10,
 			shift_enter = True,
 			tooltip = "Prompt to use for generation.",
 			autofocus = True,
 			hint_text = "A corgi wearing a top hat as an oil painting.",
 			height = 50,
-			text_size = 20,
 	)
 
 	generate_button = ft.ElevatedButton(
@@ -290,12 +290,16 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-	layouts = ft.PopupMenuButton(
-			items = [
-				ft.PopupMenuItem(text="Default", on_click=change_layout, data="Default"),
-				ft.PopupMenuItem(text="Textual Inversion", on_click=change_layout, data="Textual Inversion"),
-				ft.PopupMenuItem(text="Node Editor", on_click=change_layout, data="Node Editor"),
+	layouts = ft.Dropdown(
+			options = [
+				ft.dropdown.Option(text="Default"),
+				ft.dropdown.Option(text="Textual Inversion"),
+				ft.dropdown.Option(text="Node Editor"),
 			],
+			value = 'Default',
+			content_padding = 10,
+			width = 200,
+			on_change = change_layout,
 			tooltip = "Switch between different workspaces",
 			height = 50,
 	)
@@ -310,7 +314,7 @@ def main(page: ft.Page):
 			alignment = 'start',
 			controls = [
 				ft.Container(content = layouts),
-				ft.Container(content = current_layout),
+				#ft.Container(content = current_layout),
 			],
 			height = 50,
 	)
@@ -368,22 +372,22 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-	menu_button = ft.PopupMenuButton(
-			items = [
-					#ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
-					ft.PopupMenuItem(),  # divider
-					#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
-			],
-			height = 50,
-	)
+#	menu_button = ft.PopupMenuButton(
+			#items = [
+			#		#ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
+			#		ft.PopupMenuItem(),  # divider
+			#		#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
+			#],
+			#height = 50,
+#	)
 
 	option_bar = ft.Row(
 			controls = [
-#                ft.Container(expand=True, content = current_layout_options),
+				#ft.Container(expand=True, content = current_layout_options),
 				ft.Container(expand = 2, content = layout_menu),
 				ft.Container(expand = 1, content = theme_switcher),
 				ft.Container(expand = 1, content = settings_button),
-				ft.Container(expand = 1, content = menu_button),
+				#ft.Container(expand = 1, content = menu_button),
 			],
 			height = 50,
 	)
@@ -394,7 +398,7 @@ def main(page: ft.Page):
 					ft.Container(content = app_bar_title),
 					ft.VerticalDivider(width = 20, opacity = 0),
 					ft.Container(expand = 6, content = prompt),
-#					ft.Container(expand = 1, content = generate_button),
+					#ft.Container(expand = 1, content = generate_button),
 					ft.Container(expand = 4, content = option_bar),
 			],
 			height = 50,
@@ -415,7 +419,7 @@ def main(page: ft.Page):
 			]
 	)
 
-	## default layout tools
+	# default layout tools
 	default_layout_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
@@ -423,7 +427,7 @@ def main(page: ft.Page):
 			],
 	)
 
-	## textual inversion tools
+	# textual inversion tools
 	textual_inversion_layout_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
@@ -431,7 +435,7 @@ def main(page: ft.Page):
 			],
 	)
 
-	## node editor tools
+	# node editor tools
 	node_editor_layout_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
@@ -483,7 +487,7 @@ def main(page: ft.Page):
 					],
 					data = {'hidden':False},
 			)
-			layer_icon.data.update({'parent':layer_button})  ## <--see what i did there? :)
+			layer_icon.data.update({'parent':layer_button})  # <--see what i did there? :)
 			layers.append(layer_button)
 		return layers
 
@@ -500,6 +504,7 @@ def main(page: ft.Page):
 			content = ft.Column(
 					controls = [
 							ft.Divider(height=10, opacity = 0),
+							ft.Text("Under Construction"),
 					],
 			),
 			bgcolor = ft.colors.WHITE10,
@@ -545,7 +550,7 @@ def main(page: ft.Page):
 
 #	text editor ########################################################
 	text_editor = ft.Container(
-			content = ft.Text('WIP'),
+			content = ft.Text('Under Construction.'),
 			expand = True,
 	)
 
@@ -616,6 +621,7 @@ def main(page: ft.Page):
 			],
 			height = 70,
 			expand = 1,
+			content_padding = 10,
 			value = "Stable Diffusion 1.5",
 			tooltip = "Custom models located in your `models/custom` folder including the default stable diffusion model.",
 	)
@@ -634,6 +640,7 @@ def main(page: ft.Page):
 			],
 			height = 70,
 			expand = 1,
+			content_padding = 10,
 			value = "k_lms",
 			tooltip = "Sampling method or scheduler to use, different sampling method"
 					" or schedulers behave differently giving better or worst performance in more or less steps."
@@ -659,17 +666,17 @@ def main(page: ft.Page):
 							),
 							ft.Row(
 								controls = [
-									ft.TextField(label="Width", value=512, height=50, expand=1, suffix_text="W", text_align='center', tooltip="Widgth in pixels.", keyboard_type="number"),
-									ft.TextField(label="Height", value=512, height=50, expand=1, suffix_text="H", text_align='center', tooltip="Height in pixels.",keyboard_type="number"),
+									ft.TextField(label="Width", value=512, height=50, expand=1, content_padding=10, suffix_text="W", text_align='center', tooltip="Widgth in pixels.", keyboard_type="number"),
+									ft.TextField(label="Height", value=512, height=50, expand=1, content_padding=10, suffix_text="H", text_align='center', tooltip="Height in pixels.",keyboard_type="number"),
 								],
 								spacing = 4,
 								alignment = 'spaceAround',
 							),
 							ft.Row(
 								controls = [
-									ft.TextField(label="CFG", value=7.5, height=50, expand=1, text_align='center', #suffix_text="CFG",
+									ft.TextField(label="CFG", value=7.5, height=50, expand=1, content_padding=10, text_align='center', #suffix_text="CFG",
 										tooltip="Classifier Free Guidance Scale.", keyboard_type="number"),
-									ft.TextField(label="Sampling Steps", value=30, height=50, expand=1, text_align='center', tooltip="Sampling steps.", keyboard_type="number"),
+									ft.TextField(label="Sampling Steps", value=30, height=50, expand=1, content_padding=10, text_align='center', tooltip="Sampling steps.", keyboard_type="number"),
 								],
 								spacing = 4,
 								alignment = 'spaceAround',
@@ -679,9 +686,10 @@ def main(page: ft.Page):
 									ft.TextField(
 											label = "Seed",
 											hint_text = "blank=random seed",
-											height = 60,
+											height = 50,
 											expand = 1,
 											text_align = 'start',
+											content_padding = 10, 
 											#suffix_text = "seed",
 											tooltip = "Seed used for the generation, leave empty or use -1 for a random seed. You can also use word as seeds.",
 											keyboard_type = "number"
@@ -691,14 +699,14 @@ def main(page: ft.Page):
 								alignment = 'spaceAround',
 							),
 							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Stable Horde", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Batch Options", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Upscaling", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Preview Image Settings", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Stable Horde", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Batch Options", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Upscaling", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Preview Image Settings", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
 					]
 			),
 			expand = True
@@ -828,6 +836,7 @@ def main(page: ft.Page):
 			content = ft.Column(
 					controls = [
 							ft.Divider(height=10, opacity = 0),
+							ft.Text("Under Construction."),
 					],
 			),
 	)
