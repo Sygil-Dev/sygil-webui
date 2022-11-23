@@ -12,6 +12,7 @@ import webui_flet_utils
 # for debugging
 from pprint import pprint
 
+
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 	# main function defines
@@ -51,21 +52,20 @@ def main(page: ft.Page):
 
 #	layouts ############################################################
 	def change_layout(e):
-		current_layout.value = e.control.data
-		set_current_layout_options(e.control.data)
-		set_current_layout_tools(e.control.data)
-		set_property_panel_options(e.control.data)
+		#set_current_layout_options(e.control.value)
+		set_current_layout_tools(e.control.value)
+		set_property_panel_options(e.control.value)
 		page.update()
 
-	def set_current_layout_options(layout):
-		for control in current_layout_options.controls:
-			 current_layout_options.controls.pop()
-		if layout == 'Default':
-			current_layout_options.controls.append(default_layout_options)
-		elif layout == 'Textual Inversion':
-			current_layout_options.controls.append(textual_inversion_layout_options)
-		elif layout == 'Node Editor':
-			current_layout_options.controls.append(node_editor_layout_options)
+#	def set_current_layout_options(layout):
+		#for control in current_layout_options.controls:
+		#	 current_layout_options.controls.pop()
+		#if layout == 'Default':
+		#	current_layout_options.controls.append(default_layout_options)
+		#elif layout == 'Textual Inversion':
+		#	current_layout_options.controls.append(textual_inversion_layout_options)
+		#elif layout == 'Node Editor':
+		#	current_layout_options.controls.append(node_editor_layout_options)
 
 	def set_current_layout_tools(layout):
 		for control in current_layout_tools.controls:
@@ -290,70 +290,67 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-	layouts = ft.Dropdown(
-			options = [
-				ft.dropdown.Option(text="Default"),
-				ft.dropdown.Option(text="Textual Inversion"),
-				ft.dropdown.Option(text="Node Editor"),
-			],
-			value = 'Default',
-			content_padding = 10,
-			width = 200,
-			on_change = change_layout,
-			tooltip = "Switch between different workspaces",
-			height = 50,
-	)
+#	current_layout = ft.Text(
+			#value = 'Default',
+			#size = 20,
+			#tooltip = "Current Workspace",
+#	)
 
-	current_layout = ft.Text(
-			value = 'Default',
-			size = 20,
-			tooltip = "Current Workspace",
-	)
+#	default_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Canvas'), tooltip ='Canvas Options', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Layers'), tooltip ='Layer Options', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
+			#],
+			#height = 50,
+#	)
+
+#	textual_inversion_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='textual_inversion options 1', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
+			#],
+			#height = 50,
+#	)
+
+#	node_editor_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='node_editor options 1', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
+			#],
+			#height = 50,
+#	)
+
+#	current_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(content = default_layout_options),
+			#],
+			#height = 50,
+#	)
 
 	layout_menu = ft.Row(
 			alignment = 'start',
 			controls = [
-				ft.Container(content = layouts),
-				#ft.Container(content = current_layout),
-			],
-			height = 50,
-	)
-
-	default_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Canvas'), tooltip ='Canvas Options', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Layers'), tooltip ='Layer Options', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
-			],
-			height = 50,
-	)
-
-	textual_inversion_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='textual_inversion options 1', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
-			],
-			height = 50,
-	)
-
-	node_editor_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='node_editor options 1', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
-			],
-			height = 50,
-	)
-
-	current_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(content = default_layout_options),
+					ft.Dropdown(
+							options = [
+								ft.dropdown.Option(text="Default"),
+								ft.dropdown.Option(text="Textual Inversion"),
+								ft.dropdown.Option(text="Node Editor"),
+							],
+							value = 'Default',
+							content_padding = 10,
+							width = 200,
+							on_change = change_layout,
+							tooltip = "Switch between different workspaces",
+							height = 50,
+					)
 			],
 			height = 50,
 	)
