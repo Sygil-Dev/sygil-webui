@@ -54,8 +54,7 @@ from diffusers import StableDiffusionPipeline, DiffusionPipeline
 #from stable_diffusion_videos import StableDiffusionWalkPipeline
 
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
-     PNDMScheduler, DDPMScheduler, FlaxPNDMScheduler, FlaxDDIMScheduler, \
-     FlaxDDPMScheduler, FlaxKarrasVeScheduler, IPNDMScheduler, KarrasVeScheduler
+     PNDMScheduler, DDPMScheduler
 
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
