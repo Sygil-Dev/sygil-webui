@@ -90,20 +90,20 @@ def main(page: ft.Page):
 		page.update()
 
 	def update_settings_window():
-#		settings_window.content.content.tabs = get_settings_window_tabs()
+		settings_window.content.content.tabs = get_settings_window_tabs()
 		page.update()
 
 	def update_settings_window_tab(section):
 		try:
-			pprint(section)
 			for i, tab in enumerate(settings_window.content.content.tabs):
-				pprint(tab.text)
-				pprint(settings_window.content.content.tabs[i].text)
 				if section.startswith(tab.text):
-					settings_window.content.content.tabs[i] = get_settings_window_tab_page(section)
+					settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
 					return
 		except:
 			print(f'"{section}" not found in tabs.')
+
+	def apply_settings(e):
+		update_settings_window()
 
 	def save_settings(e):
 		save_settings_to_config()
@@ -115,24 +115,62 @@ def main(page: ft.Page):
 
 	def settings_window_tab_setting_changed(e):
 		settings = page.session.get('settings')
-		settings[e.control.data][e.control.label] = e.control.value
-		update_settings_window() #_tab(e.control.data)
+		settings[e.control.data][e.control.label]['value'] = e.control.value
+		update_settings_window_tab(e.control.data)
 		page.update()
 
 	def settings_window_tab_slider_changed(e):
 		settings = page.session.get('settings')
-		settings[e.control.data[0]][e.control.data[1]] = e.control.value
-		update_settings_window() #_tab(e.control.data[0])
+		parent = e.control.data
+		settings[parent.data[0]][parent.data[1]]['value'] = e.control.value
+		parent.controls[0].value = e.control.value
+		parent.controls[1].value = e.control.value
+		update_settings_window_tab(parent.data[0])
 		page.update()
-		
+
+	def get_settings_window_tab_page_setting_slider(settings,section,setting):
+		setting_slider = []
+		label = ft.Text(
+				value = setting,
+				text_align = 'center',
+		)
+		row = ft.Row(
+			width = page.width * 0.25,
+			data = [section, setting],
+			controls = [],
+		)
+		slider = ft.Slider(
+				value = settings[setting]['value'],
+				label = "{value}",
+				min = settings[setting]['min'],
+				max = settings[setting]['max'],
+				divisions = int((settings[setting]['max'] - settings[setting]['min']) / settings[setting]['step']),
+				on_change = settings_window_tab_slider_changed,
+				data = row,
+				expand = 4,
+		)
+		value = ft.TextField(
+				value = settings[setting]['value'],
+				on_submit = settings_window_tab_slider_changed,
+				data = row,
+				content_padding = 10,
+				expand = 1,
+		)
+		row.controls.extend([slider,value])
+		setting_slider.extend([label,row])
+		return setting_slider
 
 	def get_settings_window_tab_settings(section):
 		settings = page.session.get('settings')
 		settings = settings[section]
 		section_settings = [ft.Divider(height=10, color='gray')]
 		for setting in settings:
-			if 'value' not in settings[setting]:
-				continue
+			try:
+				if 'value' not in settings[setting]:
+					continue
+			except:
+				pprint(setting)
+				pprint(settings)
 			display = None
 			display_type = settings[setting]['display']
 			if display_type == 'dropdown':
@@ -151,38 +189,6 @@ def main(page: ft.Page):
 						content_padding = 10,
 						width = page.width * 0.25,
 				)
-			elif display_type == 'slider':
-				display = ft.Column(
-						controls = [
-								ft.Text(
-										value = setting,
-										text_align = 'center',
-								),
-								ft.Row(
-										width = page.width * 0.25,
-										controls = [
-												ft.Slider(
-														value = settings[setting]['value'],
-														label = "{value}",
-														min = settings[setting]['min'],
-														max = settings[setting]['max'],
-														#divisions = settings[setting]['increment'],
-														# ft.Slider doesn't accept float for increments.
-														on_change = settings_window_tab_slider_changed,
-														data = [section, setting],
-														expand = 4,
-												),
-												ft.TextField(
-														value = settings[setting]['value'],
-														on_submit = settings_window_tab_slider_changed,
-														data = [section, setting],
-														content_padding = 10,
-														expand = 1,
-												),
-										],
-								),
-						],
-				)
 			elif display_type == 'textinput':
 				display = ft.TextField(
 						label = setting,
@@ -191,6 +197,18 @@ def main(page: ft.Page):
 						data = section,
 						content_padding = 10,
 						width = page.width * 0.25,
+				)
+			elif display_type == 'bool':
+				display = ft.Switch(
+						label = setting,
+						value = settings[setting]['value'],
+						on_change = settings_window_tab_setting_changed,
+						data = section,
+						width = page.width * 0.25,
+				)
+			elif display_type == 'slider':
+				display = ft.Column(
+						controls = get_settings_window_tab_page_setting_slider(settings,section,setting),
 				)
 			else:
 				continue
@@ -523,7 +541,7 @@ def main(page: ft.Page):
 		return layers
 
 	layer_list = get_layers()
-	
+
 	layer_manager = ft.Container(
 			content = ft.Column(
 					controls = layer_list,
@@ -720,7 +738,7 @@ def main(page: ft.Page):
 											height = 50,
 											expand = 1,
 											text_align = 'start',
-											content_padding = 10, 
+											content_padding = 10,
 											#suffix_text = "seed",
 											tooltip = "Seed used for the generation, leave empty or use -1 for a random seed. You can also use word as seeds.",
 											keyboard_type = "number"
@@ -860,7 +878,7 @@ def main(page: ft.Page):
 					],
 			),
 	)
-	
+
 	# advanced panel
 	advanced_panel = ft.Container(
 			bgcolor = ft.colors.WHITE10,
@@ -872,7 +890,7 @@ def main(page: ft.Page):
 			),
 	)
 
-	right_panel = ft.Container(	
+	right_panel = ft.Container(
 			content = ft.Tabs(
 					selected_index = 0,
 					animation_duration = 300,

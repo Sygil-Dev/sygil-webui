@@ -35,7 +35,7 @@
 #       -value
 #       -min
 #       -max
-#       -increment
+#       -step
 #   textinput
 #       -value
 #
@@ -58,55 +58,55 @@ webui_page:
         value: !!int '1'
         min: !!int '0'
         max: !!int '10'
-        increment: !!int '1'
-    default_border_radius: 
+        step: !!float '1.0'
+    default_border_radius:
         display: slider
         value: !!int '0'
         min: !!int '1'
         max: !!int '10'
-        increment: !!int '1'
-    default_container_height: 
+        step: !!float '1.0'
+    default_container_height:
         display: slider
         value: !!int '200'
         min: !!int '20'
         max: !!int '600'
-        increment: !!int '20'
-    default_container_width: 
+        step: !!float '20.0'
+    default_container_width:
         display: slider
         value: !!int '200'
         min: !!int '20'
         max: !!int '600'
-        increment: !!int '20'
-    default_margin: 
+        step: !!float '20.0'
+    default_margin:
         display: slider
         value: !!int '1'
         min: !!int '1'
         max: !!int '10'
-        increment: !!int '1'
-    default_opacity: 
+        step: !!float '1.0'
+    default_opacity:
         display: slider
         value: !!float '1.0'
-        min: !!float '0.1'
+        min: !!float '0.0'
         max: !!float '1.0'
-        increment: !!float '0.05'
-    default_padding: 
+        step: !!float '0.1'
+    default_padding:
         display: slider
         value: !!int '0'
         min: !!int '0'
         max: !!int '10'
-        increment: !!int '1'
-    default_scale: 
+        step: !!float '1.0'
+    default_scale:
         display: slider
         value: !!float '1'
         min: !!float '0.5'
         max: !!float '2.0'
-        increment: !!float '0.1'
-    default_text_size: 
+        step: !!float '0.1'
+    default_text_size:
         display: slider
         value: !!int '20'
         min: !!int '10'
         max: !!int '32'
-        increment: !!int '2'
+        step: !!float '2.0'
 
 general_page:
     huggingface_token:
@@ -165,10 +165,10 @@ output_page:
     outdir_txt2img:
         display: textinput
         value: !!str "outputs/txt2img"
-    outdir_img2img: 
+    outdir_img2img:
         display: textinput
         value: !!str "outputs/img2img"
-    outdir_img2txt: 
+    outdir_img2txt:
         display: textinput
         value: !!str "outputs/img2txt"
     save_metadata:
@@ -197,13 +197,13 @@ performance_page:
         value: !!str '0:Nvidia9000'
         option_list:
             - !!str '0:Nvidia9000'
-    gfpgan_cpu: 
+    gfpgan_cpu:
         display: bool
         value: !!bool 'false'
-    esrgan_cpu: 
+    esrgan_cpu:
         display: bool
         value: !!bool 'false'
-    extra_models_cpu: 
+    extra_models_cpu:
         display: bool
         value: !!bool 'false'
     extra_models_gpu:

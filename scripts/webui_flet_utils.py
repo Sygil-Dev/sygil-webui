@@ -4,8 +4,8 @@
 import os, yaml
 from pprint import pprint
 
- 
-# Settings 
+
+# Settings
 path_to_default_config = 'configs/webui/webui_flet.yaml'
 path_to_user_config = 'configs/webui/userconfig_flet.yaml'
 
