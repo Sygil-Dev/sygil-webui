@@ -94,13 +94,10 @@ def main(page: ft.Page):
 		page.update()
 
 	def update_settings_window_tab(section):
-		try:
-			for i, tab in enumerate(settings_window.content.content.tabs):
-				if section.startswith(tab.text):
-					settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
-					return
-		except:
-			print(f'"{section}" not found in tabs.')
+		for i, tab in enumerate(settings_window.content.content.tabs):
+			if section.startswith(tab.text):
+				settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
+				return
 
 	def apply_settings(e):
 		update_settings_window()
@@ -165,12 +162,8 @@ def main(page: ft.Page):
 		settings = settings[section]
 		section_settings = [ft.Divider(height=10, color='gray')]
 		for setting in settings:
-			try:
-				if 'value' not in settings[setting]:
-					continue
-			except:
-				pprint(setting)
-				pprint(settings)
+			if 'value' not in settings[setting]:
+				continue
 			display = None
 			display_type = settings[setting]['display']
 			if display_type == 'dropdown':
