@@ -19,7 +19,15 @@
 # You may add overrides in a file named "userconfig_flet.yaml" in this folder, which can contain any subset
 # of the properties below.
 
-# list of display types
+# any section labeled '_page' will get it's own tab in settings
+# any section without that suffix will still be read by parser and stored in session
+#
+# display types
+#           -- every display type must have 'value: '
+#           -- to do: add 'tooltip : ' to every display type
+#                   --(make optional, not everything needs one.)
+#   bool
+#       -value
 #   dropdown
 #       -value
 #       -option_list
@@ -27,77 +35,189 @@
 #       -value
 #       -min
 #       -max
-#       -increment
+#       -step
 #   textinput
 #       -value
-
+#
 # list of value types
-#   float
-#   integer
-#   string
+#   !!bool      boolean     'true' 'false'
+#   !!float     float       '0.01'
+#   !!int       integer     '23'
+#   !!str       string      'foo' 'bar'
+#   !!null      None
 
-webui:
-    default_border: 1
-    default_border_radius: 0
-    default_container_height: 200
-    default_container_width: 200
-    default_margin: 0
-    default_opacity: 1
-    default_padding: 0
-    default_scale: 1
-    default_text_size: 20
-
-general:
+webui_page:
     default_theme:
         display: dropdown
         value: 'dark'
         option_list:
             - !!str 'dark'
             - !!str 'light'
+    default_border:
+        display: slider
+        value: !!int '1'
+        min: !!int '0'
+        max: !!int '10'
+        step: !!float '1.0'
+    default_border_radius:
+        display: slider
+        value: !!int '0'
+        min: !!int '1'
+        max: !!int '10'
+        step: !!float '1.0'
+    default_container_height:
+        display: slider
+        value: !!int '200'
+        min: !!int '20'
+        max: !!int '600'
+        step: !!float '20.0'
+    default_container_width:
+        display: slider
+        value: !!int '200'
+        min: !!int '20'
+        max: !!int '600'
+        step: !!float '20.0'
+    default_margin:
+        display: slider
+        value: !!int '1'
+        min: !!int '1'
+        max: !!int '10'
+        step: !!float '1.0'
+    default_opacity:
+        display: slider
+        value: !!float '1.0'
+        min: !!float '0.0'
+        max: !!float '1.0'
+        step: !!float '0.1'
+    default_padding:
+        display: slider
+        value: !!int '0'
+        min: !!int '0'
+        max: !!int '10'
+        step: !!float '1.0'
+    default_scale:
+        display: slider
+        value: !!float '1'
+        min: !!float '0.5'
+        max: !!float '2.0'
+        step: !!float '0.1'
+    default_text_size:
+        display: slider
+        value: !!int '20'
+        min: !!int '10'
+        max: !!int '32'
+        step: !!float '2.0'
+
+general_page:
     huggingface_token:
         display: textinput
         value: !!str ''
     stable_horde_api:
         display: textinput
         value: !!str '0000000000'
+    global_negative_prompt:
+        display: textinput
+        value: !!str " "
+    default_model:
+        display: textinput
+        value: !!str "Stable Diffusion v1.5"
+    base_model:
+        display: textinput
+        value: !!str "Stable Diffusion v1.5"
+    default_model_config:
+        display: textinput
+        value: !!str "configs/stable-diffusion/v1-inference.yaml"
+    default_model_path:
+        display: textinput
+        value: !!str "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
+    use_sd_concepts_library:
+        display: bool
+        value: !!bool 'true'
+    sd_concepts_library_folder:
+        display: textinput
+        value: !!str "models/custom/sd-concepts-library"
+    GFPGAN_dir:
+        display: textinput
+        value: !!str "./models/gfpgan"
+    GFPGAN_model:
+        display: textinput
+        value: !!str "GFPGANv1.4"
+    LDSR_dir:
+        display: textinput
+        value: !!str "./models/ldsr"
+    LDSR_model:
+        display: textinput
+        value: !!str "model"
+    RealESRGAN_dir:
+        display: textinput
+        value: !!str "./models/realesrgan"
+    RealESRGAN_model:
+        display: textinput
+        value: !!str "RealESRGAN_x4plus"
+    upscaling_method:
+        display: textinput
+        value: !!str "RealESRGAN"
+
+output_page:
+    outdir:
+        display: textinput
+        value: !!str 'outputs'
+    outdir_txt2img:
+        display: textinput
+        value: !!str "outputs/txt2img"
+    outdir_img2img:
+        display: textinput
+        value: !!str "outputs/img2img"
+    outdir_img2txt:
+        display: textinput
+        value: !!str "outputs/img2txt"
+    save_metadata:
+        display: bool
+        value: !!bool true
+    save_format:
+        display: dropdown
+        value: !!str "png"
+        option_list:
+            - !!str 'png'
+            - !!str 'jpeg'
+    skip_grid:
+        display: bool
+        value: !!bool 'false'
+    skip_save:
+        display: bool
+        value: !!bool 'false'
+    #grid_quality: 95
+    #n_rows: -1
+    #update_preview: True
+    #update_preview_frequency: 10
+
+performance_page:
     gpu:
         display: dropdown
         value: !!str '0:Nvidia9000'
         option_list:
             - !!str '0:Nvidia9000'
-    outdir:
+    gfpgan_cpu:
+        display: bool
+        value: !!bool 'false'
+    esrgan_cpu:
+        display: bool
+        value: !!bool 'false'
+    extra_models_cpu:
+        display: bool
+        value: !!bool 'false'
+    extra_models_gpu:
+        display: bool
+        value: !!bool 'false'
+    gfpgan_gpu:
         display: textinput
-        value: !!str 'outputs'
-
-    #default_model: "Stable Diffusion v1.5"
-    #base_model: "Stable Diffusion v1.5"
-    #default_model_config: "configs/stable-diffusion/v1-inference.yaml"
-    #default_model_path: "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
-    #use_sd_concepts_library: True
-    #sd_concepts_library_folder: "models/custom/sd-concepts-library"
-    #GFPGAN_dir: "./models/gfpgan"
-    #GFPGAN_model: "GFPGANv1.4"
-    #LDSR_dir: "./models/ldsr"
-    #LDSR_model: "model"
-    #RealESRGAN_dir: "./models/realesrgan"
-    #RealESRGAN_model: "RealESRGAN_x4plus"
-    #upscaling_method: "RealESRGAN"
-    #outdir_txt2img: outputs/txt2img
-    #outdir_img2img: outputs/img2img
-    #outdir_img2txt: outputs/img2txt
-    #gfpgan_cpu: False
-    #esrgan_cpu: False
-    #extra_models_cpu: False
-    #extra_models_gpu: False
-    #gfpgan_gpu: 0
-    #esrgan_gpu: 0
-    #keep_all_models_loaded: False
-    #save_metadata: True
-    #save_format: "png"
-    #skip_grid: False
-    #skip_save: False
-    #grid_quality: 95
-    #n_rows: -1
+        value: !!int 0
+    esrgan_gpu:
+        display: textinput
+        value: !!int 0
+    keep_all_models_loaded:
+        display: bool
+        value: !!bool 'false'
     #no_verify_input: False
     #no_half: False
     #use_float16: False
@@ -107,13 +227,14 @@ general:
     #optimized_config: "optimizedSD/v1-inference.yaml"
     #enable_attention_slicing: False
     #enable_minimal_memory_usage: False
-    #update_preview: True
-    #update_preview_frequency: 10
 
-admin:
-    hide_server_setting: False
-    hide_browser_setting: False
-    global_negative_prompt: ""
+server_page:
+    hide_server_setting:
+        display: bool
+        value: !!bool 'false'
+    hide_browser_setting:
+        display: bool
+        value: !!bool 'false'
 
 textual_inversion:
     pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"

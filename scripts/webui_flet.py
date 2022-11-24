@@ -12,9 +12,9 @@ import webui_flet_utils
 # for debugging
 from pprint import pprint
 
+
 @logger.catch(reraise=True)
 def main(page: ft.Page):
-	# main function defines
 
 	def load_settings():
 		settings = webui_flet_utils.get_user_settings_from_config()
@@ -31,41 +31,31 @@ def main(page: ft.Page):
 		page.session.set('settings',settings)
 		save_settings_to_config()
 
-
-	def change_theme(e):
-		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
-
-		if "(Light theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
-
-		if "(Dark theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
-
-		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
-		page.update()
-
-
 #	init ###############################################################
 	if not page.session.contains_key('settings'):
 		load_settings()
+		settings = page.session.get('settings')
+		if 'webui_page' in settings:
+			if 'default_theme' in settings['webui_page']:
+				page.theme_mode = settings['webui_page']['default_theme']['value']
+
 
 #	layouts ############################################################
 	def change_layout(e):
-		current_layout.value = e.control.data
-		set_current_layout_options(e.control.data)
-		set_current_layout_tools(e.control.data)
-		set_property_panel_options(e.control.data)
+		#set_current_layout_options(e.control.value)
+		set_current_layout_tools(e.control.value)
+		set_property_panel_options(e.control.value)
 		page.update()
 
-	def set_current_layout_options(layout):
-		for control in current_layout_options.controls:
-			 current_layout_options.controls.pop()
-		if layout == 'Default':
-			current_layout_options.controls.append(default_layout_options)
-		elif layout == 'Textual Inversion':
-			current_layout_options.controls.append(textual_inversion_layout_options)
-		elif layout == 'Node Editor':
-			current_layout_options.controls.append(node_editor_layout_options)
+#	def set_current_layout_options(layout):
+		#for control in current_layout_options.controls:
+		#	 current_layout_options.controls.pop()
+		#if layout == 'Default':
+		#	current_layout_options.controls.append(default_layout_options)
+		#elif layout == 'Textual Inversion':
+		#	current_layout_options.controls.append(textual_inversion_layout_options)
+		#elif layout == 'Node Editor':
+		#	current_layout_options.controls.append(node_editor_layout_options)
 
 	def set_current_layout_tools(layout):
 		for control in current_layout_tools.controls:
@@ -99,73 +89,126 @@ def main(page: ft.Page):
 		settings_window.open = True
 		page.update()
 
-	def update_general_settings():
-		general_settings = get_general_settings()
-		general_settings_page.controls = general_settings
-
-	def update_ui_settings():
-		ui_settings = get_ui_settings()
-		ui_settings_page.controls = ui_settings
-
-	def update_settings():
-		update_general_settings()
-		update_ui_settings()
+	def update_settings_window():
+		settings_window.content.content.tabs = get_settings_window_tabs()
 		page.update()
+
+	def update_settings_window_tab(section):
+		try:
+			for i, tab in enumerate(settings_window.content.content.tabs):
+				if section.startswith(tab.text):
+					settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
+					return
+		except:
+			print(f'"{section}" not found in tabs.')
+
+	def apply_settings(e):
+		update_settings_window()
 
 	def save_settings(e):
 		save_settings_to_config()
-		update_settings()
+		update_settings_window()
 
 	def reset_settings(e):
 		reset_settings_from_config()
-		update_settings()
+		update_settings_window()
 
-	def general_setting_changed(e):
+	def settings_window_tab_setting_changed(e):
 		settings = page.session.get('settings')
-		settings['general'][e.control.label]['value'] = e.control.value
-		update_general_settings()
+		settings[e.control.data][e.control.label]['value'] = e.control.value
+		update_settings_window_tab(e.control.data)
 		page.update()
 
-	def ui_setting_changed(e):
+	def settings_window_tab_slider_changed(e):
 		settings = page.session.get('settings')
-		settings['webui'][e.control.label] = e.control.value
-		update_ui_settings()
+		parent = e.control.data
+		settings[parent.data[0]][parent.data[1]]['value'] = e.control.value
+		parent.controls[0].value = e.control.value
+		parent.controls[1].value = e.control.value
+		update_settings_window_tab(parent.data[0])
 		page.update()
 
-	def get_general_settings():
+	def get_settings_window_tab_page_setting_slider(settings,section,setting):
+		setting_slider = []
+		label = ft.Text(
+				value = setting,
+				text_align = 'center',
+		)
+		row = ft.Row(
+			width = page.width * 0.25,
+			data = [section, setting],
+			controls = [],
+		)
+		slider = ft.Slider(
+				value = settings[setting]['value'],
+				label = "{value}",
+				min = settings[setting]['min'],
+				max = settings[setting]['max'],
+				divisions = int((settings[setting]['max'] - settings[setting]['min']) / settings[setting]['step']),
+				on_change = settings_window_tab_slider_changed,
+				data = row,
+				expand = 4,
+		)
+		value = ft.TextField(
+				value = settings[setting]['value'],
+				on_submit = settings_window_tab_slider_changed,
+				data = row,
+				content_padding = 10,
+				expand = 1,
+		)
+		row.controls.extend([slider,value])
+		setting_slider.extend([label,row])
+		return setting_slider
+
+	def get_settings_window_tab_settings(section):
 		settings = page.session.get('settings')
-		general_settings = [ft.Divider(height=10, color='gray')]
-		for setting in settings['general']:
-			if 'value' not in settings['general'][setting]:
-				continue
+		settings = settings[section]
+		section_settings = [ft.Divider(height=10, color='gray')]
+		for setting in settings:
+			try:
+				if 'value' not in settings[setting]:
+					continue
+			except:
+				pprint(setting)
+				pprint(settings)
 			display = None
-			display_type = settings['general'][setting]['display']
+			display_type = settings[setting]['display']
 			if display_type == 'dropdown':
 				option_list = []
-				for i in range(len(settings['general'][setting]['option_list'])):
+				for i in range(len(settings[setting]['option_list'])):
 					item = ft.dropdown.Option(
-							text = settings['general'][setting]['option_list'][i]
+							text = settings[setting]['option_list'][i]
 					)
 					option_list.append(item)
 				display = ft.Dropdown(
 						label = setting,
-						value = settings['general'][setting]['value'],
+						value = settings[setting]['value'],
 						options = option_list,
-						on_change = general_setting_changed,
-				)
-			elif display_type == 'slider':
-				display = ft.Slider(
-						label = setting,
-						value = settings['general'][setting]['value'],
-						min = settings['general'][setting]['min'],
-						max = settings['general'][setting]['max'],
-						on_change = general_setting_changed,
+						on_change = settings_window_tab_setting_changed,
+						data = section,
+						content_padding = 10,
+						width = page.width * 0.25,
 				)
 			elif display_type == 'textinput':
 				display = ft.TextField(
 						label = setting,
-						value = settings['general'][setting]['value'],
-						on_change = general_setting_changed,
+						value = settings[setting]['value'],
+						on_submit = settings_window_tab_setting_changed,
+						data = section,
+						content_padding = 10,
+						width = page.width * 0.25,
+				)
+			elif display_type == 'bool':
+				display = ft.Switch(
+						label = setting,
+						value = settings[setting]['value'],
+						on_change = settings_window_tab_setting_changed,
+						data = section,
+						width = page.width * 0.25,
+				)
+			elif display_type == 'slider':
+				display = ft.Column(
+						controls = get_settings_window_tab_page_setting_slider(settings,section,setting),
 				)
 			else:
 				continue
@@ -174,57 +217,30 @@ def main(page: ft.Page):
 							display,
 					]
 			)
-			general_settings.append(new_row)
-		return general_settings
-		
+			section_settings.append(new_row)
+		return section_settings
 
-	def get_ui_settings():
+	def get_settings_window_tab_page(section):
+		settings_window_tab_page = ft.Column(
+				alignment = 'start',
+				scroll = 'auto',
+				controls = get_settings_window_tab_settings(section),
+		)
+		return settings_window_tab_page
+
+	def get_settings_window_tabs():
 		settings = page.session.get('settings')
-		ui_settings = [ft.Divider(height=10, color="gray")]
-		for setting in settings['webui']:
-			value = ft.TextField(
-					label = setting,
-					value = settings['webui'][setting],
-					on_change = ui_setting_changed,
-			)
-			new_row = ft.Row(
-					controls = [
-							value,
-					]
-			)
-			ui_settings.append(new_row)
-		return ui_settings
+		tabs = []
+		for section in settings:
+			if section.endswith('_page'):
+				tab = ft.Tab(
+					text = section.split('_')[0],
+					content = get_settings_window_tab_page(section),
+				)
+				tabs.append(tab)
+		return tabs
 
-	general_settings = get_general_settings()
-	general_settings_page = ft.Column(
-			alignment = 'start',
-			scroll = 'auto',
-			controls = general_settings,
-	)
-
-	performance_settings_page = ft.Column(
-			alignment = 'start',
-			scroll = 'auto',
-			controls = [
-					ft.Divider(height=10, color="gray"),
-			],
-	)
-
-	server_settings_page = ft.Column(
-			alignment = 'start',
-			scroll = True,
-			controls = [
-					ft.Divider(height=10, color="gray"),
-			],
-	)
-
-	
-	ui_settings = get_ui_settings()
-	ui_settings_page = ft.Column(
-			alignment = 'start',
-			scroll = True,
-			controls = ui_settings,
-	)
+	settings_window_tabs = get_settings_window_tabs()
 
 	settings_window = ft.AlertDialog(
 			#modal = True,
@@ -234,24 +250,7 @@ def main(page: ft.Page):
 					content = ft.Tabs(
 							selected_index = 0,
 							animation_duration = 300,
-							tabs = [
-								ft.Tab(
-										text = "General",
-										content = general_settings_page,
-								),
-								ft.Tab(
-										text = "Performance",
-										content = performance_settings_page,
-								),
-								ft.Tab(
-										text = "Server",
-										content = server_settings_page,
-								),
-								ft.Tab(
-										text = "Interface",
-										content = ui_settings_page,
-								),
-							],
+							tabs = settings_window_tabs,
 					),
 			),
 			actions = [
@@ -284,7 +283,7 @@ def main(page: ft.Page):
 			title = ft.Text('Gallery'),
 			content = ft.Row(
 					controls = [
-							ft.Text('Working on it I swear...'),
+							ft.Text('Under Construction.'),
 							ft.Container(
 									width = page.width * 0.75,
 									height = page.height * 0.75,
@@ -317,14 +316,12 @@ def main(page: ft.Page):
 			value = "",
 			min_lines = 1,
 			max_lines = 1,
-	        content_padding=10,
-	        #text_align="center",
+			content_padding = 10,
 			shift_enter = True,
 			tooltip = "Prompt to use for generation.",
 			autofocus = True,
 			hint_text = "A corgi wearing a top hat as an oil painting.",
 			height = 50,
-			text_size = 20,
 	)
 
 	generate_button = ft.ElevatedButton(
@@ -333,73 +330,82 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-	layouts = ft.Dropdown(
-			options = [
-				ft.dropdown.Option(text="Default"),
-				ft.dropdown.Option(text="Textual Inversion"),
-				ft.dropdown.Option(text="Node Editor"),
-			],
-	        value="Default",
-	        content_padding=10,
-	        width=200,
-	        on_change=change_layout,
-			tooltip = "Switch between different workspaces",
-			height = 50,
-	)
-
-	#current_layout = ft.Text(
+#	current_layout = ft.Text(
 			#value = 'Default',
 			#size = 20,
 			#tooltip = "Current Workspace",
-	#)
+#	)
+
+#	default_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Canvas'), tooltip ='Canvas Options', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Layers'), tooltip ='Layer Options', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
+			#],
+			#height = 50,
+#	)
+
+#	textual_inversion_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='textual_inversion options 1', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
+			#],
+			#height = 50,
+#	)
+
+#	node_editor_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='node_editor options 1', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
+			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
+			#],
+			#height = 50,
+#	)
+
+#	current_layout_options = ft.Row(
+			#alignment = 'start',
+			#controls = [
+			#	ft.Container(content = default_layout_options),
+			#],
+			#height = 50,
+#	)
 
 	layout_menu = ft.Row(
 			alignment = 'start',
 			controls = [
-				ft.Container(content = layouts),
-				#ft.Container(content = current_layout),
+					ft.Dropdown(
+							options = [
+								ft.dropdown.Option(text="Default"),
+								ft.dropdown.Option(text="Textual Inversion"),
+								ft.dropdown.Option(text="Node Editor"),
+							],
+							value = 'Default',
+							content_padding = 10,
+							width = 200,
+							on_change = change_layout,
+							tooltip = "Switch between different workspaces",
+							height = 50,
+					)
 			],
 			height = 50,
 	)
 
-	default_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Canvas'), tooltip ='Canvas Options', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Layers'), tooltip ='Layer Options', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
-			],
-			height = 50,
-	)
+	def change_theme(e):
+		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
 
-	textual_inversion_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='textual_inversion options 1', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
-			],
-			height = 50,
-	)
+		if "(Light theme)" in theme_switcher.tooltip:
+			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
 
-	node_editor_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='node_editor options 1', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
-				ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
-			],
-			height = 50,
-	)
+		if "(Dark theme)" in theme_switcher.tooltip:
+			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
 
-	current_layout_options = ft.Row(
-			alignment = 'start',
-			controls = [
-				ft.Container(content = default_layout_options),
-			],
-			height = 50,
-	)
+		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
+		page.update()
 
 	theme_switcher = ft.IconButton(
 			ft.icons.WB_SUNNY_OUTLINED,
@@ -415,18 +421,18 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-	#menu_button = ft.PopupMenuButton(
+#	menu_button = ft.PopupMenuButton(
 			#items = [
-					##ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
-					#ft.PopupMenuItem(),  # divider
-					##ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
+			#		#ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
+			#		ft.PopupMenuItem(),  # divider
+			#		#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
 			#],
 			#height = 50,
-	#)
+#	)
 
 	option_bar = ft.Row(
 			controls = [
-                #ft.Container(expand=True, content = current_layout_options),
+				#ft.Container(expand=True, content = current_layout_options),
 				ft.Container(expand = 2, content = layout_menu),
 				ft.Container(expand = 1, content = theme_switcher),
 				ft.Container(expand = 1, content = settings_button),
@@ -448,7 +454,7 @@ def main(page: ft.Page):
 	)
 
 
-	# toolbar ############################################################
+#	toolbar ############################################################
 	open_gallery_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
 	import_image_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import image as new layer', on_click = None)
 
@@ -500,7 +506,7 @@ def main(page: ft.Page):
 	)
 
 
-	# layers panel #######################################################
+#	layers panel #######################################################
 	def show_hide_layer(e):
 		parent = e.control.data['parent']
 		if parent.data['hidden']:
@@ -535,7 +541,7 @@ def main(page: ft.Page):
 		return layers
 
 	layer_list = get_layers()
-	
+
 	layer_manager = ft.Container(
 			content = ft.Column(
 					controls = layer_list,
@@ -547,7 +553,7 @@ def main(page: ft.Page):
 			content = ft.Column(
 					controls = [
 							ft.Divider(height=10, opacity = 0),
-	                        ft.Text("Under Construction.")
+							ft.Text("Under Construction"),
 					],
 			),
 			bgcolor = ft.colors.WHITE10,
@@ -593,7 +599,7 @@ def main(page: ft.Page):
 
 #	text editor ########################################################
 	text_editor = ft.Container(
-			content = ft.Text("Under Construction."),
+			content = ft.Text('Under Construction.'),
 			expand = True,
 	)
 
@@ -664,7 +670,7 @@ def main(page: ft.Page):
 			],
 			height = 70,
 			expand = 1,
-	        content_padding=10,
+			content_padding = 10,
 			value = "Stable Diffusion 1.5",
 			tooltip = "Custom models located in your `models/custom` folder including the default stable diffusion model.",
 	)
@@ -683,7 +689,7 @@ def main(page: ft.Page):
 			],
 			height = 70,
 			expand = 1,
-	        content_padding=10,
+			content_padding = 10,
 			value = "k_lms",
 			tooltip = "Sampling method or scheduler to use, different sampling method"
 					" or schedulers behave differently giving better or worst performance in more or less steps."
@@ -731,8 +737,8 @@ def main(page: ft.Page):
 											hint_text = "blank=random seed",
 											height = 50,
 											expand = 1,
-	                                        content_padding=10,
 											text_align = 'start',
+											content_padding = 10,
 											#suffix_text = "seed",
 											tooltip = "Seed used for the generation, leave empty or use -1 for a random seed. You can also use word as seeds.",
 											keyboard_type = "number"
@@ -742,14 +748,14 @@ def main(page: ft.Page):
 								alignment = 'spaceAround',
 							),
 							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Stable Horde", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Batch Options", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Upscaling", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-#							ft.Switch(label="Preview Image Settings", value=False, disabled=True, tooltip="Option disabled for now."),
-#							ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Stable Horde", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Batch Options", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Upscaling", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							#ft.Switch(label="Preview Image Settings", value=False, disabled=True, tooltip="Option disabled for now."),
+							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
 					]
 			),
 			expand = True
@@ -872,19 +878,19 @@ def main(page: ft.Page):
 					],
 			),
 	)
-	
+
 	# advanced panel
 	advanced_panel = ft.Container(
 			bgcolor = ft.colors.WHITE10,
 			content = ft.Column(
 					controls = [
 							ft.Divider(height=10, opacity = 0),
-	                        ft.Text("Under Construction."),
+							ft.Text("Under Construction."),
 					],
 			),
 	)
 
-	right_panel = ft.Container(	
+	right_panel = ft.Container(
 			content = ft.Tabs(
 					selected_index = 0,
 					animation_duration = 300,
