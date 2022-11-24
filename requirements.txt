@@ -48,7 +48,7 @@ barfi==0.7.0
 # Environment Dependencies for WebUI (flet)
 
 # txt2vid
-diffusers==0.6.0
+diffusers==0.7.2
 librosa==0.9.2
 
 # img2img inpainting
