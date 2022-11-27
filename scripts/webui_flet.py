@@ -600,22 +600,27 @@ def main(page: ft.Page):
 	## tab layer controls
 	def layer_will_accept(e):
 		layer_list = layer_manager.data['layer_list']
-		if layer_list[-1].data['type'] != 'spacer':
+		if layer_list:
+			if layer_list[-1].data['type'] != 'spacer':
+				layer_list.append(make_layer_spacer())
+		else:
 			layer_list.append(make_layer_spacer())
 		update_layer_manager()
 
 	def layer_accept(e):
 		layer_list = layer_manager.data['layer_list']
-		if layer_list[-1].data['type'] == 'spacer':
-			layer_list.pop(-1)
+		if layer_list:
+			if layer_list[-1].data['type'] == 'spacer':
+				layer_list.pop(-1)
 		layer_list.append(layer_manager.data['layer_being_moved'])
 		layer_manager.data['layer_being_moved'] = None
 		update_layer_manager()
 
 	def layer_leave(e):
 		layer_list = layer_manager.data['layer_list']
-		if layer_list[-1].data['type'] == 'spacer':
-			layer_list.pop(-1)
+		if layer_list:
+			if layer_list[-1].data['type'] == 'spacer':
+				layer_list.pop(-1)
 		update_layer_manager()
 
 	def make_layer_spacer():
@@ -629,6 +634,13 @@ def main(page: ft.Page):
 				},
 		)
 		return layer_spacer
+
+	def start_layer_bounds(e: ft.TapEvent):
+		pass
+
+	def check_layer_bounds(e: ft.TapEvent):
+		print(f'x: {e.local_x}, y: {e.local_y}')
+	
 
 	# layer displays
 	def make_layer_display():
@@ -696,17 +708,17 @@ def main(page: ft.Page):
 
 	layer_manager = ft.Container(
 			content = ft.DragTarget(
-				group = 'layer',
-				content = ft.Column(
-						spacing = 0,
-						scroll = 'hidden',
-						controls = [],
-				),
-				on_will_accept = layer_will_accept,
-				on_accept = layer_accept,
-				on_leave = layer_leave,
+					group = 'layer',
+					content = ft.Column(
+							spacing = 0,
+							scroll = 'hidden',
+							controls = [],
+					),
+					on_will_accept = layer_will_accept,
+					on_accept = layer_accept,
+					on_leave = layer_leave,
 			),
-			padding = ft.padding.only(top = 2),
+			padding = ft.padding.only(top = 4),
 			bgcolor = ft.colors.WHITE10,
 			data = {
 				'layer_list': [],
