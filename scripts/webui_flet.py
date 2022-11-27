@@ -40,45 +40,6 @@ def main(page: ft.Page):
 				page.theme_mode = settings['webui_page']['default_theme']['value']
 
 
-#	layouts ############################################################
-	def change_layout(e):
-		#set_current_layout_options(e.control.value)
-		set_current_layout_tools(e.control.value)
-		set_property_panel_options(e.control.value)
-		page.update()
-
-#	def set_current_layout_options(layout):
-		#for control in current_layout_options.controls:
-		#	 current_layout_options.controls.pop()
-		#if layout == 'Default':
-		#	current_layout_options.controls.append(default_layout_options)
-		#elif layout == 'Textual Inversion':
-		#	current_layout_options.controls.append(textual_inversion_layout_options)
-		#elif layout == 'Node Editor':
-		#	current_layout_options.controls.append(node_editor_layout_options)
-
-	def set_current_layout_tools(layout):
-		for control in current_layout_tools.controls:
-			 current_layout_tools.controls.pop()
-		if layout == 'Default':
-			current_layout_tools.controls.append(default_layout_tools)
-		elif layout == 'Textual Inversion':
-			current_layout_tools.controls.append(textual_inversion_layout_tools)
-		elif layout == 'Node Editor':
-			current_layout_tools.controls.append(node_editor_layout_tools)
-
-	def set_property_panel_options(layout):
-		controls = property_panel.content.controls
-		for control in controls:
-			 controls.pop()
-		if layout == 'Default':
-			controls.append(default_layout_properties)
-		elif layout == 'Textual Inversion':
-			controls.append(textual_inversion_layout_properties)
-		elif layout == 'Node Editor':
-			controls.append(node_editor_layout_properties)
-
-
 #	settings window ####################################################
 	def close_settings_window(e):
 		settings_window.open = False
@@ -125,14 +86,14 @@ def main(page: ft.Page):
 		update_settings_window_tab(parent.data[0])
 		page.update()
 
-	def get_settings_window_tab_page_setting_slider(settings,section,setting):
+	def get_settings_window_tab_page_setting_slider(settings,section,setting,display_width):
 		setting_slider = []
 		label = ft.Text(
 				value = setting,
 				text_align = 'center',
 		)
 		row = ft.Row(
-			width = page.width * 0.25,
+			width = display_width,
 			data = [section, setting],
 			controls = [],
 		)
@@ -161,6 +122,7 @@ def main(page: ft.Page):
 		settings = page.session.get('settings')
 		settings = settings[section]
 		section_settings = [ft.Divider(height=10, color='gray')]
+		display_width = (page.width * 0.25) - 5
 		for setting in settings:
 			if 'value' not in settings[setting]:
 				continue
@@ -180,7 +142,7 @@ def main(page: ft.Page):
 						on_change = settings_window_tab_setting_changed,
 						data = section,
 						content_padding = 10,
-						width = page.width * 0.25,
+						width = display_width,
 				)
 			elif display_type == 'textinput':
 				display = ft.TextField(
@@ -189,7 +151,7 @@ def main(page: ft.Page):
 						on_submit = settings_window_tab_setting_changed,
 						data = section,
 						content_padding = 10,
-						width = page.width * 0.25,
+						width = display_width,
 				)
 			elif display_type == 'bool':
 				display = ft.Switch(
@@ -197,11 +159,11 @@ def main(page: ft.Page):
 						value = settings[setting]['value'],
 						on_change = settings_window_tab_setting_changed,
 						data = section,
-						width = page.width * 0.25,
+						width = display_width,
 				)
 			elif display_type == 'slider':
 				display = ft.Column(
-						controls = get_settings_window_tab_page_setting_slider(settings,section,setting),
+						controls = get_settings_window_tab_page_setting_slider(settings,section,setting,display_width),
 				)
 			else:
 				continue
@@ -247,6 +209,11 @@ def main(page: ft.Page):
 					),
 			),
 			actions = [
+					ft.ElevatedButton(
+							text = "Apply",
+							icon = ft.icons.CHECK_CIRCLE,
+							on_click = apply_settings,
+					),
 					ft.ElevatedButton(
 							text = "Save",
 							icon = ft.icons.SAVE,
@@ -297,6 +264,46 @@ def main(page: ft.Page):
 			],
 			actions_alignment="end",
 	)
+
+
+#	layouts ############################################################
+	def change_layout(e):
+		#set_current_layout_options(e.control.value)
+		set_current_layout_tools(e.control.value)
+		set_property_panel_options(e.control.value)
+		page.update()
+
+#	def set_current_layout_options(layout):
+		#for control in current_layout_options.controls:
+		#	 current_layout_options.controls.pop()
+		#if layout == 'Default':
+		#	current_layout_options.controls.append(default_layout_options)
+		#elif layout == 'Textual Inversion':
+		#	current_layout_options.controls.append(textual_inversion_layout_options)
+		#elif layout == 'Node Editor':
+		#	current_layout_options.controls.append(node_editor_layout_options)
+
+	def set_current_layout_tools(layout):
+		for control in current_layout_tools.controls:
+			 current_layout_tools.controls.pop()
+		if layout == 'Default':
+			current_layout_tools.controls.append(default_layout_tools)
+		elif layout == 'Textual Inversion':
+			current_layout_tools.controls.append(textual_inversion_layout_tools)
+		elif layout == 'Node Editor':
+			current_layout_tools.controls.append(node_editor_layout_tools)
+
+	def set_property_panel_options(layout):
+		controls = property_panel.content.controls
+		for control in controls:
+			 controls.pop()
+		if layout == 'Default':
+			controls.append(default_layout_properties)
+		elif layout == 'Textual Inversion':
+			controls.append(textual_inversion_layout_properties)
+		elif layout == 'Node Editor':
+			controls.append(node_editor_layout_properties)
+
 
 #	app bar ############################################################
 	app_bar_title = ft.Text(
@@ -448,8 +455,11 @@ def main(page: ft.Page):
 
 
 #	toolbar ############################################################
+	def add_layer(e):
+		add_layer_slot()
+
 	open_gallery_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
-	import_image_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import image as new layer', on_click = None)
+	add_blank_layer_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'add new blank layer', on_click = add_layer)
 
 	universal_tools = ft.Row(
 			alignment = 'start',
@@ -457,7 +467,7 @@ def main(page: ft.Page):
 			wrap = True,
 			controls = [
 				open_gallery_button,
-				import_image_button,
+				add_blank_layer_button,
 			]
 	)
 
@@ -502,45 +512,131 @@ def main(page: ft.Page):
 #	layers panel #######################################################
 	def show_hide_layer(e):
 		parent = e.control.data['parent']
-		if parent.data['hidden']:
-			parent.data['hidden'] = False
-			parent.opacity = 1.0
-		else:
-			parent.data['hidden'] = True
+		if parent.data['visible']:
+			parent.data['visible'] = False
 			parent.opacity = 0.5
+			e.control.icon = ft.icons.VISIBILITY_OFF
+		else:
+			parent.data['visible'] = True
+			parent.opacity = 1.0
+			e.control.icon = ft.icons.VISIBILITY
 		page.update()
+
+	def get_layer_display():
+		try:
+			get_layer_display.count += 1
+		except:
+			get_layer_display.count = 1
+
+		layer_display = ft.Row(
+				controls = [],
+				data = {'visible':True},
+		)
+		layer_icon = ft.IconButton(
+				icon = ft.icons.VISIBILITY,
+				tooltip = 'show/hide',
+				on_click = show_hide_layer,
+				data = {'parent':layer_display},
+		)
+		layer_label = ft.TextField(
+				value = ("layer_" + str(get_layer_display.count)),
+				data = {'parent':layer_display},
+				content_padding = 10,
+				expand = True,
+		)
+		layer_handle = 	ft.Draggable(
+				group = 'layer',
+				content = ft.Icon(
+						name = ft.icons.DRAG_HANDLE,
+						data = {'parent':layer_display},
+						tooltip = 'drag to move',
+				),
+		)
+		layer_display.controls.extend([layer_icon,layer_label,layer_handle])
+		return layer_display
 
 	def get_layers():
 		layers = [ft.Divider(height=10, opacity = 0)]
-		count = 0
 		for i in range(10):
-			count += 1
-			layer_icon = ft.IconButton(
-					icon = ft.icons.HIGHLIGHT_ALT_OUTLINED,
-					tooltip = 'show/hide',
-					on_click = show_hide_layer,
-					data = {'parent':None},
-			)
-			layer_label = ft.Text(value = ("layer_" + str(count)))
-			layer_button = ft.Row(
-					controls = [
-							layer_icon,
-							layer_label,
-					],
-					data = {'hidden':False},
-			)
-			layer_icon.data.update({'parent':layer_button})  # <--see what i did there? :)
-			layers.append(layer_button)
+			layer_display = get_layer_display()
+			layers.append(layer_display)
 		return layers
 
-	layer_list = get_layers()
+	def update_layer_indexes():
+		layer_list = layer_manager.data['layer_list']
+		for i in range(len(layer_list)):
+			layer_list[i].data['index'] = i
+
+	def add_layer_slot():
+		layer_slot_list = layer_manager.content.content.controls
+		index = len(layer_slot_list)
+		layer_slot = get_layer_slot(index)
+		layer_slot_list.append(layer_slot)
+		layer_manager.update()
+
+	def move_layer_slot(index):
+		layer_list = layer_manager.data['layer_list']
+		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
+		update_layer_indexes()
+		layer_manager.update()
+
+	def layer_slot_will_accept(e):
+		pass
+
+	def layer_slot_accept(e):
+		pass
+
+	def layer_slot_leave(e):
+		move_layer_slot(e.control.data['index'])
+
+	def layer_will_accept(e):
+		pass
+
+	def layer_accept(e):
+		layer_list = layer_manager.data['layer_list']
+		layer_list.append(layer_manager.data['layer_being_moved'])
+		layer_manager.data['layer_being_moved'] = None
+		update_layer_indexes()
+		layer_manager.update()
+
+	def layer_leave(e):
+		layer_accept(e)
+
+	def get_layer_slot(index):
+		layer_slot = ft.DragTarget(
+				group = 'layer',
+				content = ft.Container(
+						bgcolor = ft.colors.WHITE30,
+						padding = 4,
+						content = get_layer_display(),
+				),
+				on_will_accept = layer_slot_will_accept,
+				on_accept = layer_slot_accept,
+				on_leave = layer_slot_leave,
+				data = {'index':index,'type':'slot'}
+		)
+		return layer_slot
 
 	layer_manager = ft.Container(
-			content = ft.Column(
-					controls = layer_list,
+			content = ft.DragTarget(
+				group = 'layer',
+				content = ft.Column(
+						spacing = 0,
+						scroll = 'hidden',
+						controls = [],
+				),
+				on_will_accept = layer_will_accept,
+				on_accept = layer_accept,
+				on_leave = layer_leave,
 			),
+			padding = ft.padding.only(top = 2),
 			bgcolor = ft.colors.WHITE10,
+			data = {
+				'layer_list': None,
+				'layer_being_moved': None,
+			}
 	)
+	layer_manager.data['layer_list'] = layer_manager.content.content.controls
 
 	asset_manager = ft.Container(
 			content = ft.Column(
