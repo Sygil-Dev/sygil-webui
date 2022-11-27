@@ -1056,7 +1056,6 @@ def diffuse(
                 speed = "it/s"
                 duration = 1 / duration
 
-            # perhaps add an option to set fps within the ui eventually
             total_frames = st.session_state.max_duration_in_seconds * fps
             total_steps = st.session_state.sampling_steps + st.session_state.num_inference_steps
 
@@ -1585,6 +1584,8 @@ def txt2vid(
 
                 st.session_state["frame_duration"] = duration
                 st.session_state["frame_speed"] = speed
+                if frame_index+1 > total_frames:
+                    break
 
             init1 = init2
 
