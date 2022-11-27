@@ -1585,6 +1585,8 @@ def txt2vid(
 
                 st.session_state["frame_duration"] = duration
                 st.session_state["frame_speed"] = speed
+                if frame_index+1 > total_frames:
+                    break
 
             init1 = init2
 
