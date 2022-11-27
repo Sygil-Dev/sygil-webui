@@ -509,7 +509,46 @@ def main(page: ft.Page):
 	)
 
 
-#	layers panel #######################################################
+#	layer manager ######################################################
+	def update_layer_manager():
+		update_layer_indexes()
+		update_active_layer_list()
+		layer_manager.update()
+				
+	def update_active_layer_list():
+		layer_manager.data['active_layer_list'] = []
+		layer_list = layer_manager.data['layer_list']
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				if layer.content.content.controls[1].data['visible']:
+					layer_manager.data['active_layer_list'].append(layer)
+
+	def update_layer_indexes():
+		layer_list = layer_manager.data['layer_list']
+		index = 0
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				layer.data['index'] = index
+				index += 1
+
+	def add_layer_slot():
+		layer_list = layer_manager.data['layer_list']
+		layer_slot = make_layer_slot()
+		layer_list.append(layer_slot)
+		update_layer_manager()
+
+	def move_layer_slot(index):
+		layer_list = layer_manager.data['layer_list']
+		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
+		layer_manager.data['layer_last_index'] = index
+		update_layer_manager()
+
+	def insert_layer_slot(index):
+		layer_list = layer_manager.data['layer_list']
+		layer_list.insert(index,layer_manager.data['layer_being_moved'])
+		layer_manager.data['layer_being_moved'] = None
+		update_layer_manager()
+
 	def show_hide_layer(e):
 		parent = e.control.data['parent']
 		if parent.data['visible']:
@@ -520,27 +559,108 @@ def main(page: ft.Page):
 			parent.data['visible'] = True
 			parent.opacity = 1.0
 			e.control.icon = ft.icons.VISIBILITY
+		update_active_layer_list()
 		page.update()
 
-	def get_layer_display():
-		try:
-			get_layer_display.count += 1
-		except:
-			get_layer_display.count = 1
+	def show_layer_spacer(e):
+		if not e.control.data['has_spacer']:
+			e.control.data['has_spacer'] = True
+			e.control.content.content.controls[0].visible = True
+			e.control.update()
 
-		layer_display = ft.Row(
-				controls = [],
-				data = {'visible':True},
+	def hide_layer_spacer(e):
+		if e.control.data['has_spacer']:
+			e.control.data['has_spacer'] = False
+			e.control.content.content.controls[0].visible = False
+			e.control.update()
+
+
+	# layer slot controls
+	def layer_slot_will_accept(e):
+		layer_list = layer_manager.data['layer_list']
+		index = e.control.data['index']
+		show_layer_spacer(e)
+		update_layer_manager()
+
+	def layer_slot_accept(e):
+		layer_list = layer_manager.data['layer_list']
+		index = e.control.data['index']
+		hide_layer_spacer(e)
+		insert_layer_slot(index)
+
+	def layer_slot_leave(e):
+		layer_list = layer_manager.data['layer_list']
+		index = e.control.data['index']
+		hide_layer_spacer(e)
+		if layer_manager.data['layer_being_moved']:
+			return
+		move_layer_slot(index)
+
+
+	## tab layer controls
+	def layer_will_accept(e):
+		layer_list = layer_manager.data['layer_list']
+		if layer_list[-1].data['type'] != 'spacer':
+			layer_list.append(make_layer_spacer())
+		update_layer_manager()
+
+	def layer_accept(e):
+		layer_list = layer_manager.data['layer_list']
+		if layer_list[-1].data['type'] == 'spacer':
+			layer_list.pop(-1)
+		layer_list.append(layer_manager.data['layer_being_moved'])
+		layer_manager.data['layer_being_moved'] = None
+		update_layer_manager()
+
+	def layer_leave(e):
+		layer_list = layer_manager.data['layer_list']
+		if layer_list[-1].data['type'] == 'spacer':
+			layer_list.pop(-1)
+		update_layer_manager()
+
+	def make_layer_spacer():
+		layer_spacer = ft.Container(
+				content = ft.Divider(
+						height = 10,
+						color = ft.colors.BLACK
+				),
+				data = {
+						'type':'spacer',
+				},
+		)
+		return layer_spacer
+
+	# layer displays
+	def make_layer_display():
+		try:
+			make_layer_display.count += 1
+		except:
+			make_layer_display.count = 1
+
+		layer_display = ft.Column(
+				controls = [
+						ft.Divider(
+								height = 10,
+								color = ft.colors.BLACK,
+								visible = False,
+						),
+						ft.Row(
+								controls = [],
+								data = {
+										'visible':True,
+								},
+						)
+				],
 		)
 		layer_icon = ft.IconButton(
 				icon = ft.icons.VISIBILITY,
 				tooltip = 'show/hide',
 				on_click = show_hide_layer,
-				data = {'parent':layer_display},
+				data = {'parent':layer_display.controls[1]},
 		)
 		layer_label = ft.TextField(
-				value = ("layer_" + str(get_layer_display.count)),
-				data = {'parent':layer_display},
+				value = ("layer_" + str(make_layer_display.count)),
+				data = {'parent':layer_display.controls[1]},
 				content_padding = 10,
 				expand = True,
 		)
@@ -548,72 +668,29 @@ def main(page: ft.Page):
 				group = 'layer',
 				content = ft.Icon(
 						name = ft.icons.DRAG_HANDLE,
-						data = {'parent':layer_display},
+						data = {'parent':layer_display.controls[1]},
 						tooltip = 'drag to move',
 				),
 		)
-		layer_display.controls.extend([layer_icon,layer_label,layer_handle])
+		layer_display.controls[1].controls.extend([layer_icon,layer_label,layer_handle])
 		return layer_display
 
-	def get_layers():
-		layers = [ft.Divider(height=10, opacity = 0)]
-		for i in range(10):
-			layer_display = get_layer_display()
-			layers.append(layer_display)
-		return layers
-
-	def update_layer_indexes():
-		layer_list = layer_manager.data['layer_list']
-		for i in range(len(layer_list)):
-			layer_list[i].data['index'] = i
-
-	def add_layer_slot():
-		layer_slot_list = layer_manager.content.content.controls
-		index = len(layer_slot_list)
-		layer_slot = get_layer_slot(index)
-		layer_slot_list.append(layer_slot)
-		layer_manager.update()
-
-	def move_layer_slot(index):
-		layer_list = layer_manager.data['layer_list']
-		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
-		update_layer_indexes()
-		layer_manager.update()
-
-	def layer_slot_will_accept(e):
-		pass
-
-	def layer_slot_accept(e):
-		pass
-
-	def layer_slot_leave(e):
-		move_layer_slot(e.control.data['index'])
-
-	def layer_will_accept(e):
-		pass
-
-	def layer_accept(e):
-		layer_list = layer_manager.data['layer_list']
-		layer_list.append(layer_manager.data['layer_being_moved'])
-		layer_manager.data['layer_being_moved'] = None
-		update_layer_indexes()
-		layer_manager.update()
-
-	def layer_leave(e):
-		layer_accept(e)
-
-	def get_layer_slot(index):
+	def make_layer_slot():
 		layer_slot = ft.DragTarget(
 				group = 'layer',
 				content = ft.Container(
 						bgcolor = ft.colors.WHITE30,
 						padding = 4,
-						content = get_layer_display(),
+						content = make_layer_display(),
 				),
 				on_will_accept = layer_slot_will_accept,
 				on_accept = layer_slot_accept,
 				on_leave = layer_slot_leave,
-				data = {'index':index,'type':'slot'}
+				data = {
+						'index':-1,
+						'type':'slot',
+						'has_spacer':False,
+				}
 		)
 		return layer_slot
 
@@ -632,12 +709,16 @@ def main(page: ft.Page):
 			padding = ft.padding.only(top = 2),
 			bgcolor = ft.colors.WHITE10,
 			data = {
-				'layer_list': None,
+				'layer_list': [],
+				'active_layer_list': [],
 				'layer_being_moved': None,
-			}
+				'layer_last_index': -1,
+			},
 	)
 	layer_manager.data['layer_list'] = layer_manager.content.content.controls
 
+
+#	asset manager ######################################################
 	asset_manager = ft.Container(
 			content = ft.Column(
 					controls = [
@@ -648,6 +729,8 @@ def main(page: ft.Page):
 			bgcolor = ft.colors.WHITE10,
 	)
 
+
+#	layers/asset tab ###################################################
 	layers = ft.Container(
 			width = 200,
 			content = ft.Tabs(
