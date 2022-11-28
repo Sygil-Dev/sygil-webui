@@ -16,6 +16,10 @@ from pprint import pprint
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 
+	def message(message):
+		add_message_to_messages(message)
+		webui_flet_utils.log_message(message)
+
 	def load_settings():
 		settings = webui_flet_utils.get_user_settings_from_config()
 		page.session.set('settings',settings)
@@ -455,11 +459,63 @@ def main(page: ft.Page):
 
 
 #	toolbar ############################################################
-	def add_layer(e):
-		add_layer_slot()
+	def add_blank_layer(e):
+		img = webui_flet_utils.create_blank_image()
+		layer_list = layer_manager.data['layer_list']
+		layer_slot = make_layer_slot()
+		layer_slot.data['image'] = img
+		layer_list.append(layer_slot)
+		update_layer_manager()
 
-	open_gallery_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
-	add_blank_layer_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'add new blank layer', on_click = add_layer)
+	def add_images_as_layers(images):
+		layer_list = layer_manager.data['layer_list']
+		image_list = {}
+		for img in images:
+			slot = make_layer_slot()
+			slot.content.content.controls[1].content.controls[1].value = img.name
+			slot.data['image'] = img.data
+			layer_list.append(slot)
+			layer_manager
+		update_layer_manager()
+
+	def pick_images(e: ft.FilePickerResultEvent):
+		images = {}
+		for f in e.files:
+			images.update({f.name:vars(f)})
+		images_loaded, images_not_loaded = webui_flet_utils.load_images(images)
+		add_images_as_layers(images_loaded)
+		if images_not_loaded:
+			message(f'Error: images not loaded: {images_not_loaded}')
+
+	def load_images(e):
+		add_images_dialog.pick_files(file_type = 'image', allow_multiple = True)
+
+	add_images_dialog = ft.FilePicker(
+			on_result = pick_images,
+	)
+
+	page.overlay.append(add_images_dialog)
+
+	open_gallery_button = ft.IconButton(
+			width = 50,
+			content = ft.Icon(ft.icons.DASHBOARD_OUTLINED),
+			tooltip = 'Gallery',
+			on_click = open_gallery_window,
+	)
+
+	add_blank_layer_button = ft.IconButton(
+			width = 50,
+			content = ft.Icon(ft.icons.ADD_OUTLINED),
+			tooltip = 'add new blank layer',
+			on_click = add_blank_layer,
+	)
+
+	add_image_as_layer_button = ft.IconButton(
+			width = 50,
+			content = ft.Icon(ft.icons.IMAGE_OUTLINED),
+			tooltip = 'load image(s) as new layer(s)',
+			on_click = load_images,
+	)
 
 	universal_tools = ft.Row(
 			alignment = 'start',
@@ -468,6 +524,7 @@ def main(page: ft.Page):
 			controls = [
 				open_gallery_button,
 				add_blank_layer_button,
+				add_image_as_layer_button,
 			]
 	)
 
@@ -531,12 +588,6 @@ def main(page: ft.Page):
 				layer.data['index'] = index
 				index += 1
 
-	def add_layer_slot():
-		layer_list = layer_manager.data['layer_list']
-		layer_slot = make_layer_slot()
-		layer_list.append(layer_slot)
-		update_layer_manager()
-
 	def move_layer_slot(index):
 		layer_list = layer_manager.data['layer_list']
 		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
@@ -547,6 +598,7 @@ def main(page: ft.Page):
 		layer_list = layer_manager.data['layer_list']
 		layer_list.insert(index,layer_manager.data['layer_being_moved'])
 		layer_manager.data['layer_being_moved'] = None
+		layer_manager.data['layer_last_index'] = -1
 		update_layer_manager()
 
 	def show_hide_layer(e):
@@ -560,7 +612,7 @@ def main(page: ft.Page):
 			parent.opacity = 1.0
 			e.control.icon = ft.icons.VISIBILITY
 		update_active_layer_list()
-		page.update()
+		parent.update()
 
 	def show_layer_spacer(e):
 		if not e.control.data['has_spacer']:
@@ -635,12 +687,6 @@ def main(page: ft.Page):
 		)
 		return layer_spacer
 
-	def start_layer_bounds(e: ft.TapEvent):
-		pass
-
-	def check_layer_bounds(e: ft.TapEvent):
-		print(f'x: {e.local_x}, y: {e.local_y}')
-	
 
 	# layer displays
 	def make_layer_display():
@@ -651,18 +697,27 @@ def main(page: ft.Page):
 
 		layer_display = ft.Column(
 				controls = [
-						ft.Divider(
-								height = 10,
-								color = ft.colors.BLACK,
+						ft.Container(
+								content = ft.Divider(
+										height = 10,
+										color = ft.colors.BLACK,
+								),
+#								bgcolor = ft.colors.WHITE10,
 								visible = False,
 						),
-						ft.Row(
-								controls = [],
+						ft.Container(
+								content = ft.Row(
+										controls = [],
+										
+								),
 								data = {
 										'visible':True,
 								},
-						)
+								bgcolor = ft.colors.WHITE30,
+								padding = 4,
+						),
 				],
+				spacing = 0,
 		)
 		layer_icon = ft.IconButton(
 				icon = ft.icons.VISIBILITY,
@@ -676,32 +731,31 @@ def main(page: ft.Page):
 				content_padding = 10,
 				expand = True,
 		)
-		layer_handle = 	ft.Draggable(
+		layer_handle = ft.Draggable(
 				group = 'layer',
-				content = ft.Icon(
+				content =  ft.Icon(
 						name = ft.icons.DRAG_HANDLE,
 						data = {'parent':layer_display.controls[1]},
 						tooltip = 'drag to move',
 				),
 		)
-		layer_display.controls[1].controls.extend([layer_icon,layer_label,layer_handle])
+		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
 		return layer_display
 
 	def make_layer_slot():
 		layer_slot = ft.DragTarget(
 				group = 'layer',
 				content = ft.Container(
-						bgcolor = ft.colors.WHITE30,
-						padding = 4,
 						content = make_layer_display(),
 				),
 				on_will_accept = layer_slot_will_accept,
 				on_accept = layer_slot_accept,
 				on_leave = layer_slot_leave,
 				data = {
-						'index':-1,
-						'type':'slot',
-						'has_spacer':False,
+						'index': -1,
+						'type': 'slot',
+						'has_spacer': False,
+						'image': None,
 				}
 		)
 		return layer_slot
@@ -807,8 +861,30 @@ def main(page: ft.Page):
 	)
 
 #	bottom_panel #######################################################
+
+	def prune_messages():
+		while len(messages.controls) > 20:
+			messages.controls.pop(0)
+		messages.update()
+
+	def add_message_to_messages(message):
+		msg = ft.Text(
+				value = message,
+		)
+		messages.controls.append(msg)
+		prune_messages()
+
+	messages = ft.Column(
+			spacing = 0,
+			scroll = 'auto',
+			controls = [],			
+	)
+	messages_window = ft.Container(
+			bgcolor = ft.colors.BLACK12,
+			height = 250,
+			content = messages,
+	)
 	video_editor_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-	messages_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
 
 	bottom_panel = ft.Row(
 			height = 150,
@@ -1122,4 +1198,4 @@ def main(page: ft.Page):
 
 
 
-ft.app(target=main, port=8505, view=ft.WEB_BROWSER)
+ft.app(target=main, port=8505)
