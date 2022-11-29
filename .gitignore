@@ -59,6 +59,7 @@ condaenv.*.requirements.txt
 !/src/components/*
 !/src/pages/*
 /src/*
+/inputs
 /outputs
 /model_cache
 /log/**/*.png
