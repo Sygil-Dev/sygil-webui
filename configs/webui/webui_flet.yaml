@@ -53,60 +53,18 @@ webui_page:
         option_list:
             - !!str 'dark'
             - !!str 'light'
-    default_border:
-        display: slider
-        value: !!int '1'
-        min: !!int '0'
-        max: !!int '10'
-        step: !!float '1.0'
-    default_border_radius:
-        display: slider
-        value: !!int '0'
-        min: !!int '1'
-        max: !!int '10'
-        step: !!float '1.0'
-    default_container_height:
-        display: slider
-        value: !!int '200'
-        min: !!int '20'
-        max: !!int '600'
-        step: !!float '20.0'
-    default_container_width:
-        display: slider
-        value: !!int '200'
-        min: !!int '20'
-        max: !!int '600'
-        step: !!float '20.0'
-    default_margin:
-        display: slider
-        value: !!int '1'
-        min: !!int '1'
-        max: !!int '10'
-        step: !!float '1.0'
-    default_opacity:
-        display: slider
-        value: !!float '1.0'
-        min: !!float '0.0'
-        max: !!float '1.0'
-        step: !!float '0.1'
-    default_padding:
-        display: slider
-        value: !!int '0'
-        min: !!int '0'
-        max: !!int '10'
-        step: !!float '1.0'
-    default_scale:
-        display: slider
-        value: !!float '1'
-        min: !!float '0.5'
-        max: !!float '2.0'
-        step: !!float '0.1'
     default_text_size:
         display: slider
         value: !!int '20'
         min: !!int '10'
         max: !!int '32'
         step: !!float '2.0'
+    max_message_history:
+        display: slider
+        value: !!int '20'
+        min: !!int '1'
+        max: !!int '100'
+        step: !!int '1'
 
 general_page:
     huggingface_token:
@@ -194,9 +152,9 @@ output_page:
 performance_page:
     gpu:
         display: dropdown
-        value: !!str '0:Nvidia9000'
+        value: !!str ''
         option_list:
-            - !!str '0:Nvidia9000'
+            - !!str '0:'
     gfpgan_cpu:
         display: bool
         value: !!bool 'false'

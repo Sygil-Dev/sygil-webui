@@ -16,6 +16,12 @@ from pprint import pprint
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 
+	def message(text, err = 0):
+		if err:
+			text = "ERROR:  " + text
+		add_message_to_messages(err,text)
+		webui_flet_utils.log_message(text)
+
 	def load_settings():
 		settings = webui_flet_utils.get_user_settings_from_config()
 		page.session.set('settings',settings)
@@ -38,46 +44,9 @@ def main(page: ft.Page):
 		if 'webui_page' in settings:
 			if 'default_theme' in settings['webui_page']:
 				page.theme_mode = settings['webui_page']['default_theme']['value']
+		MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
 
-
-#	layouts ############################################################
-	def change_layout(e):
-		#set_current_layout_options(e.control.value)
-		set_current_layout_tools(e.control.value)
-		set_property_panel_options(e.control.value)
-		page.update()
-
-#	def set_current_layout_options(layout):
-		#for control in current_layout_options.controls:
-		#	 current_layout_options.controls.pop()
-		#if layout == 'Default':
-		#	current_layout_options.controls.append(default_layout_options)
-		#elif layout == 'Textual Inversion':
-		#	current_layout_options.controls.append(textual_inversion_layout_options)
-		#elif layout == 'Node Editor':
-		#	current_layout_options.controls.append(node_editor_layout_options)
-
-	def set_current_layout_tools(layout):
-		for control in current_layout_tools.controls:
-			 current_layout_tools.controls.pop()
-		if layout == 'Default':
-			current_layout_tools.controls.append(default_layout_tools)
-		elif layout == 'Textual Inversion':
-			current_layout_tools.controls.append(textual_inversion_layout_tools)
-		elif layout == 'Node Editor':
-			current_layout_tools.controls.append(node_editor_layout_tools)
-
-	def set_property_panel_options(layout):
-		controls = property_panel.content.controls
-		for control in controls:
-			 controls.pop()
-		if layout == 'Default':
-			controls.append(default_layout_properties)
-		elif layout == 'Textual Inversion':
-			controls.append(textual_inversion_layout_properties)
-		elif layout == 'Node Editor':
-			controls.append(node_editor_layout_properties)
-
+		page.session.set('layout','default')
 
 #	settings window ####################################################
 	def close_settings_window(e):
@@ -94,13 +63,10 @@ def main(page: ft.Page):
 		page.update()
 
 	def update_settings_window_tab(section):
-		try:
-			for i, tab in enumerate(settings_window.content.content.tabs):
-				if section.startswith(tab.text):
-					settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
-					return
-		except:
-			print(f'"{section}" not found in tabs.')
+		for i, tab in enumerate(settings_window.content.content.tabs):
+			if section.startswith(tab.text):
+				settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
+				return
 
 	def apply_settings(e):
 		update_settings_window()
@@ -128,14 +94,14 @@ def main(page: ft.Page):
 		update_settings_window_tab(parent.data[0])
 		page.update()
 
-	def get_settings_window_tab_page_setting_slider(settings,section,setting):
+	def get_settings_window_tab_page_setting_slider(settings,section,setting,display_width):
 		setting_slider = []
 		label = ft.Text(
 				value = setting,
 				text_align = 'center',
 		)
 		row = ft.Row(
-			width = page.width * 0.25,
+			width = display_width,
 			data = [section, setting],
 			controls = [],
 		)
@@ -164,13 +130,10 @@ def main(page: ft.Page):
 		settings = page.session.get('settings')
 		settings = settings[section]
 		section_settings = [ft.Divider(height=10, color='gray')]
+		display_width = (page.width * 0.25) - 5
 		for setting in settings:
-			try:
-				if 'value' not in settings[setting]:
-					continue
-			except:
-				pprint(setting)
-				pprint(settings)
+			if 'value' not in settings[setting]:
+				continue
 			display = None
 			display_type = settings[setting]['display']
 			if display_type == 'dropdown':
@@ -187,7 +150,7 @@ def main(page: ft.Page):
 						on_change = settings_window_tab_setting_changed,
 						data = section,
 						content_padding = 10,
-						width = page.width * 0.25,
+						width = display_width,
 				)
 			elif display_type == 'textinput':
 				display = ft.TextField(
@@ -196,7 +159,7 @@ def main(page: ft.Page):
 						on_submit = settings_window_tab_setting_changed,
 						data = section,
 						content_padding = 10,
-						width = page.width * 0.25,
+						width = display_width,
 				)
 			elif display_type == 'bool':
 				display = ft.Switch(
@@ -204,11 +167,11 @@ def main(page: ft.Page):
 						value = settings[setting]['value'],
 						on_change = settings_window_tab_setting_changed,
 						data = section,
-						width = page.width * 0.25,
+						width = display_width,
 				)
 			elif display_type == 'slider':
 				display = ft.Column(
-						controls = get_settings_window_tab_page_setting_slider(settings,section,setting),
+						controls = get_settings_window_tab_page_setting_slider(settings,section,setting,display_width),
 				)
 			else:
 				continue
@@ -254,6 +217,11 @@ def main(page: ft.Page):
 					),
 			),
 			actions = [
+					ft.ElevatedButton(
+							text = "Apply",
+							icon = ft.icons.CHECK_CIRCLE,
+							on_click = apply_settings,
+					),
 					ft.ElevatedButton(
 							text = "Save",
 							icon = ft.icons.SAVE,
@@ -305,6 +273,44 @@ def main(page: ft.Page):
 			actions_alignment="end",
 	)
 
+
+#	layouts ############################################################
+	def change_layout(e):
+		page.session.set('layout',e.control.value)
+		#set_current_options()
+		set_current_tools()
+		set_property_panel_options()
+		page.update()
+
+#	def set_current_layout_options():
+		#layout = page.session.get('layout')
+		#if layout == 'Default':
+		#	current_layout_options.controls.append(default_layout_options)
+		#elif layout == 'Textual Inversion':
+		#	current_layout_options.controls.append(textual_inversion_layout_options)
+		#elif layout == 'Node Editor':
+		#	current_layout_options.controls.append(node_editor_layout_options)
+
+	def set_current_tools():
+		layout = page.session.get('layout')
+		if layout == 'Default':
+			set_tools(default_tools)
+		elif layout == 'Textual Inversion':
+			set_tools(textual_inversion_tools)
+		elif layout == 'Node Editor':
+			set_tools(node_editor_tools)
+		toolbar.update()
+
+	def set_property_panel_options():
+		layout = page.session.get('layout')
+		if layout == 'Default':
+			set_properties(default_properties)
+		elif layout == 'Textual Inversion':
+			set_properties(textual_inversion_properties)
+		elif layout == 'Node Editor':
+			set_properties(node_editor_properties)
+
+
 #	app bar ############################################################
 	app_bar_title = ft.Text(
 			value = "Sygil",
@@ -330,11 +336,6 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-#	current_layout = ft.Text(
-			#value = 'Default',
-			#size = 20,
-			#tooltip = "Current Workspace",
-#	)
 
 #	default_layout_options = ft.Row(
 			#alignment = 'start',
@@ -430,7 +431,7 @@ def main(page: ft.Page):
 			#height = 50,
 #	)
 
-	option_bar = ft.Row(
+	option_list = ft.Row(
 			controls = [
 				#ft.Container(expand=True, content = current_layout_options),
 				ft.Container(expand = 2, content = layout_menu),
@@ -448,15 +449,70 @@ def main(page: ft.Page):
 					ft.VerticalDivider(width = 20, opacity = 0),
 					ft.Container(expand = 6, content = prompt),
 					#ft.Container(expand = 1, content = generate_button),
-					ft.Container(expand = 4, content = option_bar),
+					ft.Container(expand = 4, content = option_list),
 			],
 			height = 50,
 	)
 
 
 #	toolbar ############################################################
-	open_gallery_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.DASHBOARD_OUTLINED), tooltip = 'Gallery', on_click = open_gallery_window)
-	import_image_button = ft.IconButton(width = 50, content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'Import image as new layer', on_click = None)
+	def add_blank_layer(e):
+		layer_list = layer_manager.data['layer_list']
+		layer_slot = make_layer_slot()
+		layer_slot.data['image'] = webui_flet_utils.create_blank_image()
+		layer_list.append(layer_slot)
+		message("added blank layer to canvas")
+		update_layer_manager()
+
+	def add_images_as_layers(images):
+		layer_list = layer_manager.data['layer_list']
+		for img in images:
+			layer_slot = make_layer_slot()
+			set_layer_slot_name(layer_slot, img.name)
+			layer_slot.data['image'] = img.data
+			layer_list.append(layer_slot)
+			message(f'added "{img.name}" as layer')
+		update_layer_manager()
+
+	def pick_images(e: ft.FilePickerResultEvent):
+		images = {}
+		for f in e.files:
+			images.update({f.name:vars(f)})
+		images_loaded, images_not_loaded = webui_flet_utils.load_images(images)
+		add_images_as_layers(images_loaded)
+		if images_not_loaded:
+			for img in images_not_loaded:
+				message(f'image not loaded: {img}',1)
+
+	def load_images(e):
+		add_images_dialog.pick_files(file_type = 'image', allow_multiple = True)
+
+	add_images_dialog = ft.FilePicker(
+			on_result = pick_images,
+	)
+
+	page.overlay.append(add_images_dialog)
+
+	open_gallery_button = ft.IconButton(
+			width = 50,
+			content = ft.Icon(ft.icons.DASHBOARD_OUTLINED),
+			tooltip = 'Gallery',
+			on_click = open_gallery_window,
+	)
+
+	add_blank_layer_button = ft.IconButton(
+			width = 50,
+			content = ft.Icon(ft.icons.ADD_OUTLINED),
+			tooltip = 'add new blank layer',
+			on_click = add_blank_layer,
+	)
+
+	add_image_as_layer_button = ft.IconButton(
+			width = 50,
+			content = ft.Icon(ft.icons.IMAGE_OUTLINED),
+			tooltip = 'load image(s) as new layer(s)',
+			on_click = load_images,
+	)
 
 	universal_tools = ft.Row(
 			alignment = 'start',
@@ -464,12 +520,13 @@ def main(page: ft.Page):
 			wrap = True,
 			controls = [
 				open_gallery_button,
-				import_image_button,
+				add_blank_layer_button,
+				add_image_as_layer_button,
 			]
 	)
 
-	# default layout tools
-	default_layout_tools = ft.Row(
+	# default tools
+	default_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
 			controls = [
@@ -477,7 +534,7 @@ def main(page: ft.Page):
 	)
 
 	# textual inversion tools
-	textual_inversion_layout_tools = ft.Row(
+	textual_inversion_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
 			controls = [
@@ -485,70 +542,264 @@ def main(page: ft.Page):
 	)
 
 	# node editor tools
-	node_editor_layout_tools = ft.Row(
+	node_editor_tools = ft.Row(
 			alignment = 'start',
 			wrap = True,
 			controls = [
 			],
 	)
 
-	current_layout_tools = ft.Column(
-			controls = [
-				default_layout_tools,
-			],
+	def set_tools(control):
+		toolbar.content.controls[1] = control
+		toolbar.update()
+
+	current_tools = default_tools
+
+	toolbar = ft.Container(
+			content = ft.Column(
+					controls = [
+						universal_tools,
+						current_tools,
+					],
+			),
 	)
 
-	toolbar = ft.Column(
-			controls = [
-				ft.Container(content = universal_tools),
-				ft.Container(content = current_layout_tools),
-			],
-	)
+#	layer manager ######################################################
+	def update_layer_manager():
+		update_layer_indexes()
+		update_active_layer_list()
+		layer_manager.update()
+				
+	def update_active_layer_list():
+		layer_manager.data['active_layer_list'] = []
+		layer_list = layer_manager.data['layer_list']
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				if layer.content.content.controls[1].data['visible']:
+					layer_manager.data['active_layer_list'].append(layer)
 
+	def update_layer_indexes():
+		layer_list = layer_manager.data['layer_list']
+		index = 0
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				layer.data['index'] = index
+				index += 1
 
-#	layers panel #######################################################
+	def move_layer_slot(index):
+		layer_list = layer_manager.data['layer_list']
+		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
+		layer_manager.data['layer_last_index'] = index
+		update_layer_manager()
+
+	def insert_layer_slot(index):
+		layer_list = layer_manager.data['layer_list']
+		layer_list.insert(index,layer_manager.data['layer_being_moved'])
+		layer_manager.data['layer_being_moved'] = None
+		layer_manager.data['layer_last_index'] = -1
+		update_layer_manager()
+
+	# layer slot controls
+	def set_layer_slot_name(slot, name):
+		slot.content.content.controls[1].content.controls[1].value = name
+
 	def show_hide_layer(e):
 		parent = e.control.data['parent']
-		if parent.data['hidden']:
-			parent.data['hidden'] = False
-			parent.opacity = 1.0
-		else:
-			parent.data['hidden'] = True
+		if parent.data['visible']:
+			parent.data['visible'] = False
 			parent.opacity = 0.5
-		page.update()
+			e.control.icon = ft.icons.VISIBILITY_OFF
+		else:
+			parent.data['visible'] = True
+			parent.opacity = 1.0
+			e.control.icon = ft.icons.VISIBILITY
+		update_active_layer_list()
+		parent.update()
 
-	def get_layers():
-		layers = [ft.Divider(height=10, opacity = 0)]
-		count = 0
-		for i in range(10):
-			count += 1
-			layer_icon = ft.IconButton(
-					icon = ft.icons.HIGHLIGHT_ALT_OUTLINED,
-					tooltip = 'show/hide',
-					on_click = show_hide_layer,
-					data = {'parent':None},
-			)
-			layer_label = ft.Text(value = ("layer_" + str(count)))
-			layer_button = ft.Row(
-					controls = [
-							layer_icon,
-							layer_label,
-					],
-					data = {'hidden':False},
-			)
-			layer_icon.data.update({'parent':layer_button})  # <--see what i did there? :)
-			layers.append(layer_button)
-		return layers
+	def show_layer_spacer(e):
+		if not e.control.data['has_spacer']:
+			e.control.data['has_spacer'] = True
+			e.control.content.content.controls[0].visible = True
+			e.control.update()
 
-	layer_list = get_layers()
+	def hide_layer_spacer(e):
+		if e.control.data['has_spacer']:
+			e.control.data['has_spacer'] = False
+			e.control.content.content.controls[0].visible = False
+			e.control.update()
+
+	def layer_right_click(e):
+		pass
+
+	def layer_slot_will_accept(e):
+		if not layer_manager.data['layer_being_moved']:
+			return
+		layer_list = layer_manager.data['layer_list']
+		index = e.control.data['index']
+		show_layer_spacer(e)
+		update_layer_manager()
+
+	def layer_slot_accept(e):
+		if not layer_manager.data['layer_being_moved']:
+			return
+		layer_list = layer_manager.data['layer_list']
+		index = e.control.data['index']
+		hide_layer_spacer(e)
+		insert_layer_slot(index)
+
+	def layer_slot_leave(e):
+		layer_list = layer_manager.data['layer_list']
+		index = e.control.data['index']
+		hide_layer_spacer(e)
+		if layer_manager.data['layer_being_moved']:
+			return
+		move_layer_slot(index)
+
+
+	## tab layer controls
+	def layer_will_accept(e):
+		if not layer_manager.data['layer_being_moved']:
+			return
+		layer_list = layer_manager.data['layer_list']
+		if layer_list:
+			if layer_list[-1].data['type'] != 'spacer':
+				layer_list.append(make_layer_spacer())
+		else:
+			layer_list.append(make_layer_spacer())
+		update_layer_manager()
+
+	def layer_accept(e):
+		if not layer_manager.data['layer_being_moved']:
+			return
+		layer_list = layer_manager.data['layer_list']
+		if layer_list:
+			if layer_list[-1].data['type'] == 'spacer':
+				layer_list.pop(-1)
+		layer_list.append(layer_manager.data['layer_being_moved'])
+		layer_manager.data['layer_being_moved'] = None
+		update_layer_manager()
+
+	def layer_leave(e):
+		if not layer_manager.data['layer_being_moved']:
+			return
+		layer_list = layer_manager.data['layer_list']
+		if layer_list:
+			if layer_list[-1].data['type'] == 'spacer':
+				layer_list.pop(-1)
+		update_layer_manager()
+
+	def make_layer_spacer():
+		layer_spacer = ft.Container(
+				content = ft.Divider(
+						height = 10,
+						color = ft.colors.BLACK
+				),
+				data = {
+						'type':'spacer',
+				},
+		)
+		return layer_spacer
+
+
+	# layer displays
+	def make_layer_display():
+		try:
+			make_layer_display.count += 1
+		except Exception:
+			make_layer_display.count = 1
+
+		layer_display = ft.Column(
+				controls = [
+						ft.Container(
+								content = ft.Divider(
+										height = 10,
+										color = ft.colors.BLACK,
+								),
+								visible = False,
+						),
+						ft.Container(
+								content = ft.Row(
+										controls = [],
+										
+								),
+								data = {
+										'visible':True,
+								},
+								bgcolor = ft.colors.WHITE30,
+								padding = 4,
+						),
+				],
+				spacing = 0,
+		)
+		layer_icon = ft.IconButton(
+				icon = ft.icons.VISIBILITY,
+				tooltip = 'show/hide',
+				on_click = show_hide_layer,
+				data = {'parent':layer_display.controls[1]},
+		)
+		layer_label = ft.TextField(
+				value = ("layer_" + str(make_layer_display.count)),
+				data = {'parent':layer_display.controls[1]},
+				content_padding = 10,
+				expand = True,
+		)
+		layer_handle = ft.GestureDetector(
+				content = ft.Draggable(
+						group = 'layer',
+						content = ft.Icon(
+								name = ft.icons.DRAG_HANDLE,
+								data = {'parent':layer_display.controls[1]},
+								tooltip = 'drag to move',
+						),
+				),
+				on_secondary_tap = layer_right_click,
+		)
+		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
+		return layer_display
+
+	def make_layer_slot():
+		layer_slot = ft.DragTarget(
+				group = 'layer',
+				content = ft.Container(
+						content = make_layer_display(),
+				),
+				on_will_accept = layer_slot_will_accept,
+				on_accept = layer_slot_accept,
+				on_leave = layer_slot_leave,
+				data = {
+						'index': -1,
+						'type': 'slot',
+						'has_spacer': False,
+						'image': None,
+				}
+		)
+		return layer_slot
 
 	layer_manager = ft.Container(
-			content = ft.Column(
-					controls = layer_list,
+			content = ft.DragTarget(
+					group = 'layer',
+					content = ft.Column(
+							spacing = 0,
+							scroll = 'hidden',
+							controls = [],
+					),
+					on_will_accept = layer_will_accept,
+					on_accept = layer_accept,
+					on_leave = layer_leave,
 			),
+			padding = ft.padding.only(top = 4),
 			bgcolor = ft.colors.WHITE10,
+			data = {
+				'layer_list': [],
+				'active_layer_list': [],
+				'layer_being_moved': None,
+				'layer_last_index': -1,
+			},
 	)
+	layer_manager.data['layer_list'] = layer_manager.content.content.controls
 
+
+#	asset manager ######################################################
 	asset_manager = ft.Container(
 			content = ft.Column(
 					controls = [
@@ -559,6 +810,8 @@ def main(page: ft.Page):
 			bgcolor = ft.colors.WHITE10,
 	)
 
+
+#	layers/asset tab ###################################################
 	layers = ft.Container(
 			width = 200,
 			content = ft.Tabs(
@@ -623,29 +876,53 @@ def main(page: ft.Page):
 	)
 
 #	bottom_panel #######################################################
-	video_editor_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-	messages_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
 
-	bottom_panel = ft.Row(
-			height = 150,
-			controls = [
-				ft.Tabs(
-						selected_index = 0,
-						animation_duration = 300,
-						tabs = [
-								ft.Tab(
-										text = "Messages",
-										content = messages_window,
-								),
-								ft.Tab(
-										text = "Video Editor",
-										content = video_editor_window,
-								),
-						],
-				),
-			],
+	def prune_messages():
+		if len(messages.controls) > MAX_MESSAGE_HISTORY:
+			messages.controls.pop(0)
+		page.update()
+
+	def add_message_to_messages(err,text):
+		if err:
+			msg = ft.Text(value = text, color = ft.colors.RED)
+		else:
+			msg = ft.Text(value = text)
+		messages.controls.append(msg)
+		prune_messages()
+
+	messages = ft.Column(
+			spacing = 0,
+			scroll = 'auto',
+			auto_scroll = True,
+			controls = [],			
+	)
+	messages_window = ft.Container(
+			bgcolor = ft.colors.BLACK12,
+			content = messages,
+	)
+	video_editor_window = ft.Column(
+			expand = True,
+			controls = [ft.Text("Under Construction")]
 	)
 
+	bottom_panel = ft.Container(
+			height = page.height * .2,
+			padding = ft.padding.only(bottom = 12),
+			content = ft.Tabs(
+					selected_index = 0,
+					animation_duration = 300,
+					tabs = [
+							ft.Tab(
+									text = "Messages",
+									content = messages_window,
+							),
+							ft.Tab(
+									text = "Video Editor",
+									content = video_editor_window,
+							),
+					],
+			)
+	)
 #	center panel #######################################################
 
 	center_panel = ft.Container(
@@ -670,7 +947,7 @@ def main(page: ft.Page):
 			],
 			height = 70,
 			expand = 1,
-			content_padding = 10,
+			content_padding = 0,
 			value = "Stable Diffusion 1.5",
 			tooltip = "Custom models located in your `models/custom` folder including the default stable diffusion model.",
 	)
@@ -696,30 +973,25 @@ def main(page: ft.Page):
 					"Try to find the best one for your needs and hardware.",
 	)
 
-	default_layout_properties = ft.Container(
+	default_properties = ft.Container(
 			content = ft.Column(
+					spacing = 12,
 					controls = [
 							ft.Row(
 								controls = [
 									model_menu,
 								],
-								spacing = 4,
-								alignment = 'spaceAround',
 							),
 							ft.Row(
 								controls = [
 									sampling_menu,
 								],
-								spacing = 4,
-								alignment = 'spaceAround',
 							),
 							ft.Row(
 								controls = [
 									ft.TextField(label="Width", value=512, height=50, expand=1, content_padding=10, suffix_text="W", text_align='center', tooltip="Widgth in pixels.", keyboard_type="number"),
 									ft.TextField(label="Height", value=512, height=50, expand=1, content_padding=10, suffix_text="H", text_align='center', tooltip="Height in pixels.",keyboard_type="number"),
 								],
-								spacing = 4,
-								alignment = 'spaceAround',
 							),
 							ft.Row(
 								controls = [
@@ -727,8 +999,6 @@ def main(page: ft.Page):
 										tooltip="Classifier Free Guidance Scale.", keyboard_type="number"),
 									ft.TextField(label="Sampling Steps", value=30, height=50, expand=1, content_padding=10, text_align='center', tooltip="Sampling steps.", keyboard_type="number"),
 								],
-								spacing = 4,
-								alignment = 'spaceAround',
 							),
 							ft.Row(
 								controls = [
@@ -744,18 +1014,8 @@ def main(page: ft.Page):
 											keyboard_type = "number"
 									),
 								],
-								spacing = 4,
-								alignment = 'spaceAround',
 							),
 							ft.Draggable(content=ft.Divider(height=10, color="gray")),
-							#ft.Switch(label="Stable Horde", value=False, disabled=True, tooltip="Option disabled for now."),
-							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
-							#ft.Switch(label="Batch Options", value=False, disabled=True, tooltip="Option disabled for now."),
-							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
-							#ft.Switch(label="Upscaling", value=False, disabled=True, tooltip="Option disabled for now."),
-							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
-							#ft.Switch(label="Preview Image Settings", value=False, disabled=True, tooltip="Option disabled for now."),
-							#ft.Draggable(content=ft.Divider(height=10, color="gray")),
 					]
 			),
 			expand = True
@@ -763,13 +1023,19 @@ def main(page: ft.Page):
 
 
 	# textual inversion layout properties
-	clip_model_menu_label = ft.Text(value='Clip Models', tooltip = "Select Clip model(s) to use.")
-	clip_model_menu = ft.PopupMenuButton(
-			items = [
-				ft.PopupMenuItem(text="Vit-L/14", checked=False, data='Vit-L/14', on_click=None),
-				ft.PopupMenuItem(text="Vit-H-14", checked=False, data='Vit-H-14', on_click=None),
-				ft.PopupMenuItem(text="Vit-g-14", checked=False, data='Vit-g-14', on_click=None),
+	def set_clip_model(e):
+		pass
+	
+	clip_model_menu = ft.Dropdown(
+			label = "Clip Model",
+			value = 0,
+			options = [
+				ft.dropdown.Option(key = 0, text="Vit-L/14"),
+				ft.dropdown.Option(key = 1, text="Vit-H-14"),
+				ft.dropdown.Option(key = 2, text="Vit-g-14"),
 			],
+			tooltip = "Select Clip model to use.",
+			on_change = set_clip_model,
 	)
 
 	other_model_menu_label = ft.Text(value='Other Models', tooltip = "For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images.")
@@ -821,12 +1087,11 @@ def main(page: ft.Page):
 
 	textual_inversion_results = ft.Container(content = None)
 
-	textual_inversion_layout_properties = ft.Container(
+	textual_inversion_properties = ft.Container(
 			content = ft.Column(
 					controls = [
 							ft.Row(
 								controls = [
-									clip_model_menu_label,
 									clip_model_menu,
 								],
 								spacing = 4,
@@ -860,31 +1125,38 @@ def main(page: ft.Page):
 
 
 	# node editor layout properties
-	node_editor_layout_properties = ft.Container(
+	node_editor_properties = ft.Container(
 			content = ft.Column(
 					controls = [
+							ft.Text("Under Construction")
 					]
 			),
 			expand = True
 	)
 
+	current_properties = default_properties
+
+	def set_properties(control):
+		property_panel.content.controls[0] = control
+		property_panel.update()
+
 	# property panel
 	property_panel = ft.Container(
+			padding = ft.padding.only(top = 12, left = 4, right = 4),
 			bgcolor = ft.colors.WHITE10,
 			content = ft.Column(
+					spacing = 0,
 					controls = [
-							ft.Divider(height=10, opacity = 0),
-							default_layout_properties,
+							current_properties,
 					],
 			),
 	)
 
-	# advanced panel
+# 	advanced panel #####################################################
 	advanced_panel = ft.Container(
 			bgcolor = ft.colors.WHITE10,
 			content = ft.Column(
 					controls = [
-							ft.Divider(height=10, opacity = 0),
 							ft.Text("Under Construction."),
 					],
 			),
@@ -908,8 +1180,10 @@ def main(page: ft.Page):
 			width = 250,
 	)
 
-#	workspace ##########################################################
-	workspace = ft.Row(
+
+#	layouts ############################################################
+
+	default_layout = ft.Row(
 			controls = [
 				toolbar,
 				ft.VerticalDivider(width=2, color="gray", opacity = 0),
@@ -922,20 +1196,44 @@ def main(page: ft.Page):
 			expand=True,
 	)
 
+	current_layout = default_layout
+
+#	workspace ##########################################################
+	def draggable_out_of_bounds(e):
+		if e.data == 'false':
+			layer_accept(e)
+
+	catchall = ft.DragTarget(
+			group = 'catchall',
+			on_will_accept = draggable_out_of_bounds,
+			content = ft.Container(
+				width = page.width,
+				height = page.height,
+			),
+	)
+
+	workspace = ft.Column(
+			controls = [
+					appbar,
+					current_layout,
+			],
+	)
+	
 
 #	make page ##########################################################
+	full_page = ft.Stack(
+			[
+					catchall,
+					workspace,
+			],
+			height = page.height,
+			width = page.width,
+	)
+
 	page.title = "Stable Diffusion Playground"
 	page.theme_mode = "dark"
-	page.appbar = ft.AppBar(
-			#leading=leading,
-			#leading_width=leading_width,
-			automatically_imply_leading=True,
-			#elevation=5,
-			bgcolor=ft.colors.BLACK26,
-			actions=[appbar]
-	)
-	page.add(workspace)
+	page.add(full_page)
 
 
 
-ft.app(target=main, port=8505, view=ft.WEB_BROWSER)
+ft.app(target=main, port=8505)
