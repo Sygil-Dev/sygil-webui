@@ -61,3 +61,5 @@ textual_inversion_grid_row_list = [
 	'model', 'medium', 'artist', 'trending', 'movement', 'flavors', 'techniques', 'tags',
 	]
 
+def run_textual_inversion(args):
+    pass

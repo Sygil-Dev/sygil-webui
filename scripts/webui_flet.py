@@ -16,8 +16,10 @@ from pprint import pprint
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 
-	def message(text):
-		add_message_to_messages(text)
+	def message(text, err = 0):
+		if err:
+			text = "ERROR:  " + text
+		add_message_to_messages(err,text)
 		webui_flet_utils.log_message(text)
 
 	def load_settings():
@@ -42,6 +44,8 @@ def main(page: ft.Page):
 		if 'webui_page' in settings:
 			if 'default_theme' in settings['webui_page']:
 				page.theme_mode = settings['webui_page']['default_theme']['value']
+		MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
+
 		page.session.set('layout','default')
 
 #	settings window ####################################################
@@ -453,22 +457,21 @@ def main(page: ft.Page):
 
 #	toolbar ############################################################
 	def add_blank_layer(e):
-		img = webui_flet_utils.create_blank_image()
 		layer_list = layer_manager.data['layer_list']
 		layer_slot = make_layer_slot()
-		layer_slot.data['image'] = img
+		layer_slot.data['image'] = webui_flet_utils.create_blank_image()
 		layer_list.append(layer_slot)
+		message("added blank layer to canvas")
 		update_layer_manager()
 
 	def add_images_as_layers(images):
 		layer_list = layer_manager.data['layer_list']
-		image_list = {}
 		for img in images:
-			slot = make_layer_slot()
-			slot.content.content.controls[1].content.controls[1].value = img.name
-			slot.data['image'] = img.data
-			layer_list.append(slot)
-			layer_manager
+			layer_slot = make_layer_slot()
+			set_layer_slot_name(layer_slot, img.name)
+			layer_slot.data['image'] = img.data
+			layer_list.append(layer_slot)
+			message(f'added "{img.name}" as layer')
 		update_layer_manager()
 
 	def pick_images(e: ft.FilePickerResultEvent):
@@ -478,7 +481,8 @@ def main(page: ft.Page):
 		images_loaded, images_not_loaded = webui_flet_utils.load_images(images)
 		add_images_as_layers(images_loaded)
 		if images_not_loaded:
-			message(f'Error: images not loaded: {images_not_loaded}')
+			for img in images_not_loaded:
+				message(f'image not loaded: {img}',1)
 
 	def load_images(e):
 		add_images_dialog.pick_files(file_type = 'image', allow_multiple = True)
@@ -595,6 +599,10 @@ def main(page: ft.Page):
 		layer_manager.data['layer_last_index'] = -1
 		update_layer_manager()
 
+	# layer slot controls
+	def set_layer_slot_name(slot, name):
+		slot.content.content.controls[1].content.controls[1].value = name
+
 	def show_hide_layer(e):
 		parent = e.control.data['parent']
 		if parent.data['visible']:
@@ -623,7 +631,6 @@ def main(page: ft.Page):
 	def layer_right_click(e):
 		pass
 
-	# layer slot controls
 	def layer_slot_will_accept(e):
 		if not layer_manager.data['layer_being_moved']:
 			return
@@ -871,50 +878,51 @@ def main(page: ft.Page):
 #	bottom_panel #######################################################
 
 	def prune_messages():
-		while len(messages.controls) > 20:
+		if len(messages.controls) > MAX_MESSAGE_HISTORY:
 			messages.controls.pop(0)
 		page.update()
-		print(f'message added')
 
-	def add_message_to_messages(text):
-		msg = ft.Text(
-				value = text,
-		)
+	def add_message_to_messages(err,text):
+		if err:
+			msg = ft.Text(value = text, color = ft.colors.RED)
+		else:
+			msg = ft.Text(value = text)
 		messages.controls.append(msg)
 		prune_messages()
 
 	messages = ft.Column(
 			spacing = 0,
 			scroll = 'auto',
+			auto_scroll = True,
 			controls = [],			
 	)
 	messages_window = ft.Container(
 			bgcolor = ft.colors.BLACK12,
-			height = 250,
 			content = messages,
 	)
-	video_editor_window = ft.Container(bgcolor=ft.colors.BLACK12, height=250)
-
-	bottom_panel = ft.Row(
-			height = 150,
-			controls = [
-				ft.Tabs(
-						selected_index = 0,
-						animation_duration = 300,
-						tabs = [
-								ft.Tab(
-										text = "Messages",
-										content = messages_window,
-								),
-								ft.Tab(
-										text = "Video Editor",
-										content = video_editor_window,
-								),
-						],
-				),
-			],
+	video_editor_window = ft.Column(
+			expand = True,
+			controls = [ft.Text("Under Construction")]
 	)
 
+	bottom_panel = ft.Container(
+			height = page.height * .2,
+			padding = ft.padding.only(bottom = 12),
+			content = ft.Tabs(
+					selected_index = 0,
+					animation_duration = 300,
+					tabs = [
+							ft.Tab(
+									text = "Messages",
+									content = messages_window,
+							),
+							ft.Tab(
+									text = "Video Editor",
+									content = video_editor_window,
+							),
+					],
+			)
+	)
 #	center panel #######################################################
 
 	center_panel = ft.Container(
@@ -1015,13 +1023,19 @@ def main(page: ft.Page):
 
 
 	# textual inversion layout properties
-	clip_model_menu_label = ft.Text(value='Clip Models', tooltip = "Select Clip model(s) to use.")
-	clip_model_menu = ft.PopupMenuButton(
-			items = [
-				ft.PopupMenuItem(text="Vit-L/14", checked=False, data='Vit-L/14', on_click=None),
-				ft.PopupMenuItem(text="Vit-H-14", checked=False, data='Vit-H-14', on_click=None),
-				ft.PopupMenuItem(text="Vit-g-14", checked=False, data='Vit-g-14', on_click=None),
+	def set_clip_model(e):
+		pass
+	
+	clip_model_menu = ft.Dropdown(
+			label = "Clip Model",
+			value = 0,
+			options = [
+				ft.dropdown.Option(key = 0, text="Vit-L/14"),
+				ft.dropdown.Option(key = 1, text="Vit-H-14"),
+				ft.dropdown.Option(key = 2, text="Vit-g-14"),
 			],
+			tooltip = "Select Clip model to use.",
+			on_change = set_clip_model,
 	)
 
 	other_model_menu_label = ft.Text(value='Other Models', tooltip = "For DiscoDiffusion and JAX enable all the same models here as you intend to use when generating your images.")
@@ -1078,7 +1092,6 @@ def main(page: ft.Page):
 					controls = [
 							ft.Row(
 								controls = [
-									clip_model_menu_label,
 									clip_model_menu,
 								],
 								spacing = 4,
@@ -1129,7 +1142,7 @@ def main(page: ft.Page):
 
 	# property panel
 	property_panel = ft.Container(
-			padding = ft.padding.only(top = 12),
+			padding = ft.padding.only(top = 12, left = 4, right = 4),
 			bgcolor = ft.colors.WHITE10,
 			content = ft.Column(
 					spacing = 0,
