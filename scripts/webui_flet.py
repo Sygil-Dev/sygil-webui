@@ -705,7 +705,7 @@ def main(page: ft.Page):
 	def make_layer_display():
 		try:
 			make_layer_display.count += 1
-		except:
+		except Exception:
 			make_layer_display.count = 1
 
 		layer_display = ft.Column(
@@ -746,7 +746,7 @@ def main(page: ft.Page):
 		layer_handle = ft.GestureDetector(
 				content = ft.Draggable(
 						group = 'layer',
-						content =  ft.Icon(
+						content = ft.Icon(
 								name = ft.icons.DRAG_HANDLE,
 								data = {'parent':layer_display.controls[1]},
 								tooltip = 'drag to move',
