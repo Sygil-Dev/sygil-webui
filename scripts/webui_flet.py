@@ -12,7 +12,138 @@ import webui_flet_utils
 # for debugging
 from pprint import pprint
 
+# custom classes
+class LayerManager(ft.Container):
+	def update_layer_indexes(self):
+		layer_list = self.data['layer_list']
+		index = 0
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				layer.data['index'] = index
+				index += 1
+				
+	def update_active_layer_list(self):
+		self.data['active_layer_list'] = []
+		layer_list = self.data['layer_list']
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				if layer.content.content.controls[1].data['visible']:
+					self.data['active_layer_list'].append(layer)
 
+	def move_layer_slot(self, index):
+		layer_list = self.data['layer_list']
+		self.data['layer_being_moved'] = layer_list.pop(index)
+		self.data['layer_last_index'] = index
+		self.update_layers()
+
+	def insert_layer_slot(self, index):
+		layer_list = self.data['layer_list']
+		layer_list.insert(index,self.data['layer_being_moved'])
+		self.data['layer_being_moved'] = None
+		self.data['layer_last_index'] = -1
+		self.update_layers()
+
+	def update_layers(self):
+		self.data['layer_list'] = self.content.content.controls
+		self.update_layer_indexes()
+		self.update_active_layer_list()
+		self.update()
+
+	def show_hide_layer(self, e):
+		parent = e.control.data['parent']
+		if parent.data['visible']:
+			parent.data['visible'] = False
+			parent.opacity = 0.5
+			e.control.icon = ft.icons.VISIBILITY_OFF
+		else:
+			parent.data['visible'] = True
+			parent.opacity = 1.0
+			e.control.icon = ft.icons.VISIBILITY
+		self.update_active_layer_list()
+		parent.update()
+
+	def layer_slot_will_accept(self, e):
+		if not self.data['layer_being_moved']:
+			return
+		layer_list = self.data['layer_list']
+		index = e.control.data['index']
+		e.control.show_layer_spacer()
+		self.update_layers()
+
+	def layer_slot_accept(self, e):
+		if not self.data['layer_being_moved']:
+			return
+		layer_list = self.data['layer_list']
+		index = e.control.data['index']
+		e.control.hide_layer_spacer()
+		self.insert_layer_slot(index)
+
+	def layer_slot_leave(self, e):
+		layer_list = self.data['layer_list']
+		index = e.control.data['index']
+		e.control.hide_layer_spacer()
+		if self.data['layer_being_moved']:
+			return
+		self.move_layer_slot(index)
+
+	## tab controls
+	def layer_will_accept(self, e):
+		if not self.data['layer_being_moved']:
+			return
+		layer_list = self.data['layer_list']
+		if layer_list:
+			if layer_list[-1].data['type'] != 'spacer':
+				layer_list.append(ft.Container(
+				content = ft.Divider(height = 10,color = ft.colors.BLACK),
+				data = {'type':'spacer'}
+				))
+		else:
+			layer_list.append(ft.Container(
+				content = ft.Divider(height = 10,color = ft.colors.BLACK),
+				data = {'type':'spacer'}
+			))
+		self.update_layers()
+
+	def layer_accept(self, e):
+		if not self.data['layer_being_moved']:
+			return
+		layer_list = self.data['layer_list']
+		if layer_list:
+			if layer_list[-1].data['type'] == 'spacer':
+				layer_list.pop(-1)
+		layer_list.append(self.data['layer_being_moved'])
+		self.data['layer_being_moved'] = None
+		self.update_layers()
+
+	def layer_leave(self, e):
+		if not self.data['layer_being_moved']:
+			return
+		layer_list = self.data['layer_list']
+		if layer_list:
+			if layer_list[-1].data['type'] == 'spacer':
+				layer_list.pop(-1)
+		self.update_layers()
+
+
+class LayerSlot(ft.DragTarget):
+	def set_layer_slot_name(self, name):
+		self.content.content.controls[1].content.controls[1].value = name
+
+	def show_layer_spacer(self):
+		if not self.data['has_spacer']:
+			self.data['has_spacer'] = True
+			self.content.content.controls[0].visible = True
+			self.update()
+
+	def hide_layer_spacer(self):
+		if self.data['has_spacer']:
+			self.data['has_spacer'] = False
+			self.content.content.controls[0].visible = False
+			self.update()
+
+
+
+#	main ###############################################################
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 
@@ -44,7 +175,8 @@ def main(page: ft.Page):
 		if 'webui_page' in settings:
 			if 'default_theme' in settings['webui_page']:
 				page.theme_mode = settings['webui_page']['default_theme']['value']
-		MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
+			if 'max_message_history' in settings['webui_page']:
+				MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
 
 		page.session.set('layout','default')
 
@@ -237,6 +369,7 @@ def main(page: ft.Page):
 			#on_dismiss=lambda e: print("Modal dialog dismissed!"),
 	)
 
+
 #	gallery window #####################################################
 	def close_gallery_window(e):
 		gallery_window.open = False
@@ -271,6 +404,79 @@ def main(page: ft.Page):
 					),
 			],
 			actions_alignment="end",
+	)
+
+
+#	upload window ######################################################
+	def close_upload_window(e):
+		upload_window.open = False
+		page.update()
+
+	def open_upload_window(e):
+		page.dialog = upload_window
+		upload_window.open = True
+		page.update()
+
+	def upload_file(e):
+		if page.file_picker.result and page.file_picker.result.files:
+			file_list = []
+			for f in page.file_picker.result.files:
+				upload_url = page.get_upload_url(f.name, 600)
+				img = ft.FilePickerUploadFile(f.name,upload_url)
+				file_list.append(img)
+			page.file_picker.upload(file_list)				
+			close_upload_window(e)
+
+	upload_window = ft.AlertDialog(
+		title = ft.Text("Confirm file upload"),
+		content = None,
+		#modal = True,
+		actions_alignment = "center",
+		actions = [
+			ft.ElevatedButton("UPLOAD", on_click = upload_file),
+			ft.TextButton("CANCEL", on_click = close_upload_window),
+		],
+	)
+
+
+#	import window ######################################################
+	def close_import_window(e):
+		import_window.open = False
+		page.update()
+
+	def open_import_window(e):
+		page.dialog = import_window
+		gallery_window.open = True
+		page.update()
+
+	def import_file(e):
+		close_import_window(e)
+		pass
+
+	import_window = ft.AlertDialog(
+		title=ft.Text("Confirm file import"),
+		content=ft.Text("import this file?"),
+		modal=True,
+		actions_alignment="center",
+		actions=[
+			ft.ElevatedButton("IMPORT", on_click = import_file),
+			ft.TextButton("CANCEL", on_click = close_import_window),
+		],
+	)
+
+
+#	progress bar #######################################################
+	def close_progress_bar(e):
+		page.splash.visible = False
+		page.update()
+
+	def open_progress_bar(e):
+		page.splash.visible = True
+		page.update()
+
+	page.splash = ft.ProgressBar(
+			visible = False,
+			color = 'blue',
 	)
 
 
@@ -422,15 +628,6 @@ def main(page: ft.Page):
 			height = 50,
 	)
 
-#	menu_button = ft.PopupMenuButton(
-			#items = [
-			#		#ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
-			#		ft.PopupMenuItem(),  # divider
-			#		#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
-			#],
-			#height = 50,
-#	)
-
 	option_list = ft.Row(
 			controls = [
 				#ft.Container(expand=True, content = current_layout_options),
@@ -456,13 +653,34 @@ def main(page: ft.Page):
 
 
 #	toolbar ############################################################
-	def add_blank_layer(e):
-		layer_list = layer_manager.data['layer_list']
-		layer_slot = make_layer_slot()
-		layer_slot.data['image'] = webui_flet_utils.create_blank_image()
-		layer_list.append(layer_slot)
-		message("added blank layer to canvas")
-		update_layer_manager()
+	file_path = None
+
+	def pick_images(e: ft.FilePickerResultEvent):
+		# check to see if on browser or running natively
+		if e.files is not None and e.path is None:
+			if not e.page.web:
+				file_path = e.files[0].path
+				open_import_window(e)
+			else:
+				open_upload_window(e)
+
+	def on_image_upload(e: ft.FilePickerUploadEvent):
+		if e.error:
+			message("Upload error occurred! Try again.",1)
+			return
+		open_progress_bar(e)
+		if e.progress == 1:
+			# add image as new layer here
+			message(f'Downloaded {e.file_name} successfully!')
+			close_progress_bar(e)
+			print('yay')
+
+	page.file_picker = ft.FilePicker(
+			on_result = pick_images,
+			on_upload = on_image_upload
+	)
+
+	page.overlay.append(page.file_picker)
 
 	def add_images_as_layers(images):
 		layer_list = layer_manager.data['layer_list']
@@ -472,26 +690,15 @@ def main(page: ft.Page):
 			layer_slot.data['image'] = img.data
 			layer_list.append(layer_slot)
 			message(f'added "{img.name}" as layer')
-		update_layer_manager()
+		layer_manager.update_layers()
 
-	def pick_images(e: ft.FilePickerResultEvent):
-		images = {}
-		for f in e.files:
-			images.update({f.name:vars(f)})
-		images_loaded, images_not_loaded = webui_flet_utils.load_images(images)
-		add_images_as_layers(images_loaded)
-		if images_not_loaded:
-			for img in images_not_loaded:
-				message(f'image not loaded: {img}',1)
-
-	def load_images(e):
-		add_images_dialog.pick_files(file_type = 'image', allow_multiple = True)
-
-	add_images_dialog = ft.FilePicker(
-			on_result = pick_images,
-	)
-
-	page.overlay.append(add_images_dialog)
+	def add_blank_layer(e):
+		layer_list = layer_manager.data['layer_list']
+		layer_slot = make_layer_slot()
+		layer_slot.data['image'] = webui_flet_utils.create_blank_image()
+		layer_list.append(layer_slot)
+		message("added blank layer to canvas")
+		layer_manager.update_layers()
 
 	open_gallery_button = ft.IconButton(
 			width = 50,
@@ -511,7 +718,7 @@ def main(page: ft.Page):
 			width = 50,
 			content = ft.Icon(ft.icons.IMAGE_OUTLINED),
 			tooltip = 'load image(s) as new layer(s)',
-			on_click = load_images,
+			on_click = lambda _: page.file_picker.pick_files(file_type = 'image', allow_multiple = True),
 	)
 
 	universal_tools = ft.Row(
@@ -565,147 +772,39 @@ def main(page: ft.Page):
 	)
 
 #	layer manager ######################################################
-	def update_layer_manager():
-		update_layer_indexes()
-		update_active_layer_list()
-		layer_manager.update()
-				
-	def update_active_layer_list():
-		layer_manager.data['active_layer_list'] = []
-		layer_list = layer_manager.data['layer_list']
-		for layer in layer_list:
-			if layer.data['type'] == 'slot':
-				if layer.content.content.controls[1].data['visible']:
-					layer_manager.data['active_layer_list'].append(layer)
+	layer_manager = LayerManager(
+			content = None,
+			padding = ft.padding.only(top = 4),
+			bgcolor = ft.colors.WHITE10,
+			data = {
+				'layer_list': [],
+				'active_layer_list': [],
+				'layer_being_moved': None,
+				'layer_last_index': -1,
+			},
+	)
 
-	def update_layer_indexes():
-		layer_list = layer_manager.data['layer_list']
-		index = 0
-		for layer in layer_list:
-			if layer.data['type'] == 'slot':
-				layer.data['index'] = index
-				index += 1
-
-	def move_layer_slot(index):
-		layer_list = layer_manager.data['layer_list']
-		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
-		layer_manager.data['layer_last_index'] = index
-		update_layer_manager()
-
-	def insert_layer_slot(index):
-		layer_list = layer_manager.data['layer_list']
-		layer_list.insert(index,layer_manager.data['layer_being_moved'])
-		layer_manager.data['layer_being_moved'] = None
-		layer_manager.data['layer_last_index'] = -1
-		update_layer_manager()
-
-	# layer slot controls
-	def set_layer_slot_name(slot, name):
-		slot.content.content.controls[1].content.controls[1].value = name
-
-	def show_hide_layer(e):
-		parent = e.control.data['parent']
-		if parent.data['visible']:
-			parent.data['visible'] = False
-			parent.opacity = 0.5
-			e.control.icon = ft.icons.VISIBILITY_OFF
-		else:
-			parent.data['visible'] = True
-			parent.opacity = 1.0
-			e.control.icon = ft.icons.VISIBILITY
-		update_active_layer_list()
-		parent.update()
-
-	def show_layer_spacer(e):
-		if not e.control.data['has_spacer']:
-			e.control.data['has_spacer'] = True
-			e.control.content.content.controls[0].visible = True
-			e.control.update()
-
-	def hide_layer_spacer(e):
-		if e.control.data['has_spacer']:
-			e.control.data['has_spacer'] = False
-			e.control.content.content.controls[0].visible = False
-			e.control.update()
-
-	def layer_right_click(e):
+	def layer_right_click():
 		pass
 
-	def layer_slot_will_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		index = e.control.data['index']
-		show_layer_spacer(e)
-		update_layer_manager()
-
-	def layer_slot_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		index = e.control.data['index']
-		hide_layer_spacer(e)
-		insert_layer_slot(index)
-
-	def layer_slot_leave(e):
-		layer_list = layer_manager.data['layer_list']
-		index = e.control.data['index']
-		hide_layer_spacer(e)
-		if layer_manager.data['layer_being_moved']:
-			return
-		move_layer_slot(index)
-
-
-	## tab layer controls
-	def layer_will_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		if layer_list:
-			if layer_list[-1].data['type'] != 'spacer':
-				layer_list.append(make_layer_spacer())
-		else:
-			layer_list.append(make_layer_spacer())
-		update_layer_manager()
-
-	def layer_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		if layer_list:
-			if layer_list[-1].data['type'] == 'spacer':
-				layer_list.pop(-1)
-		layer_list.append(layer_manager.data['layer_being_moved'])
-		layer_manager.data['layer_being_moved'] = None
-		update_layer_manager()
-
-	def layer_leave(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		if layer_list:
-			if layer_list[-1].data['type'] == 'spacer':
-				layer_list.pop(-1)
-		update_layer_manager()
-
-	def make_layer_spacer():
-		layer_spacer = ft.Container(
-				content = ft.Divider(
-						height = 10,
-						color = ft.colors.BLACK
-				),
-				data = {
-						'type':'spacer',
-				},
+	def make_layer_holder():
+		layer_holder = ft.DragTarget(
+			group = 'layer',
+			content = ft.Column(
+					spacing = 0,
+					scroll = 'hidden',
+					controls = [],
+			),
+			on_will_accept = layer_manager.layer_will_accept,
+			on_accept = layer_manager.layer_accept,
+			on_leave = layer_manager.layer_leave,
 		)
-		return layer_spacer
+		return layer_holder
 
-
-	# layer displays
 	def make_layer_display():
 		try:
 			make_layer_display.count += 1
-		except Exception:
+		except AttributeError:
 			make_layer_display.count = 1
 
 		layer_display = ft.Column(
@@ -734,7 +833,7 @@ def main(page: ft.Page):
 		layer_icon = ft.IconButton(
 				icon = ft.icons.VISIBILITY,
 				tooltip = 'show/hide',
-				on_click = show_hide_layer,
+				on_click = layer_manager.show_hide_layer,
 				data = {'parent':layer_display.controls[1]},
 		)
 		layer_label = ft.TextField(
@@ -752,20 +851,20 @@ def main(page: ft.Page):
 								tooltip = 'drag to move',
 						),
 				),
-				on_secondary_tap = layer_right_click,
+				on_secondary_tap = layer_right_click
 		)
 		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
 		return layer_display
 
 	def make_layer_slot():
-		layer_slot = ft.DragTarget(
+		layer_slot = LayerSlot(
 				group = 'layer',
 				content = ft.Container(
 						content = make_layer_display(),
 				),
-				on_will_accept = layer_slot_will_accept,
-				on_accept = layer_slot_accept,
-				on_leave = layer_slot_leave,
+				on_will_accept = layer_manager.layer_slot_will_accept,
+				on_accept = layer_manager.layer_slot_accept,
+				on_leave = layer_manager.layer_slot_leave,
 				data = {
 						'index': -1,
 						'type': 'slot',
@@ -775,28 +874,7 @@ def main(page: ft.Page):
 		)
 		return layer_slot
 
-	layer_manager = ft.Container(
-			content = ft.DragTarget(
-					group = 'layer',
-					content = ft.Column(
-							spacing = 0,
-							scroll = 'hidden',
-							controls = [],
-					),
-					on_will_accept = layer_will_accept,
-					on_accept = layer_accept,
-					on_leave = layer_leave,
-			),
-			padding = ft.padding.only(top = 4),
-			bgcolor = ft.colors.WHITE10,
-			data = {
-				'layer_list': [],
-				'active_layer_list': [],
-				'layer_being_moved': None,
-				'layer_last_index': -1,
-			},
-	)
-	layer_manager.data['layer_list'] = layer_manager.content.content.controls
+	layer_manager.content = make_layer_holder()
 
 
 #	asset manager ######################################################
@@ -1201,7 +1279,9 @@ def main(page: ft.Page):
 #	workspace ##########################################################
 	def draggable_out_of_bounds(e):
 		if e.data == 'false':
-			layer_accept(e)
+			if layer_manager.data['layer_being_moved']:
+				index = layer_manager.data['layer_being_moved'].data['index']
+				layer_manager.insert_layer_slot(index)
 
 	catchall = ft.DragTarget(
 			group = 'catchall',
@@ -1231,9 +1311,7 @@ def main(page: ft.Page):
 	)
 
 	page.title = "Stable Diffusion Playground"
-	page.theme_mode = "dark"
 	page.add(full_page)
+	layer_manager.update_layers()
 
-
-
-ft.app(target=main, port=8505)
+ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")

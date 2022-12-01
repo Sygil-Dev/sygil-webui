@@ -176,7 +176,9 @@ performance_page:
     keep_all_models_loaded:
         display: bool
         value: !!bool 'false'
-    #no_verify_input: False
+    no_verify_input:
+        display: bool
+        value: !!bool 'false'
     #no_half: False
     #use_float16: False
     #precision: "autocast"
