@@ -59,6 +59,7 @@ general:
     no_half: False
     use_float16: False
     precision: "autocast"
+    use_cudnn: False
     optimized: False
     optimized_turbo: False
     optimized_config: "optimizedSD/v1-inference.yaml"

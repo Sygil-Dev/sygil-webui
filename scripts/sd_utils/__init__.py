@@ -95,6 +95,12 @@ except ImportError as e:
 # remove all the annoying python warnings.
 shutup.please()
 
+# the following lines should help fixing an issue with nvidia 16xx cards.
+if "defaults" in st.session_state:
+    if st.session_state["defaults"].general.use_cudnn:
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.enabled = True 
+
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
     from transformers import logging
@@ -1613,6 +1619,10 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 #
 @retry(tries=5)
 def generation_callback(img, i=0):
+    
+    # try to do garbage collection before decoding the image
+    torch_gc()
+    
     if "update_preview_frequency" not in st.session_state:
         raise StopException
 
