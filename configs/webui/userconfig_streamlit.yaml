@@ -1,0 +1,348 @@
+general:
+  version: 1.24.6
+  streamlit_telemetry: false
+  default_theme: dark
+  huggingface_token: ''
+  stable_horde_api: '0000000000'
+  gpu: 0
+  outdir: outputs
+  default_model: Stable Diffusion v1.5
+  base_model: Stable Diffusion v1.5
+  default_model_config: configs/stable-diffusion/v1-inference.yaml
+  default_model_path: models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt
+  use_sd_concepts_library: true
+  sd_concepts_library_folder: models/custom/sd-concepts-library
+  GFPGAN_dir: ./models/gfpgan
+  GFPGAN_model: GFPGANv1.4
+  LDSR_dir: ./models/ldsr
+  LDSR_model: model
+  RealESRGAN_dir: ./models/realesrgan
+  RealESRGAN_model: RealESRGAN_x4plus
+  upscaling_method: RealESRGAN
+  outdir_txt2img: outputs/txt2img
+  outdir_img2img: outputs/img2img
+  outdir_img2txt: outputs/img2txt
+  gfpgan_cpu: false
+  esrgan_cpu: false
+  extra_models_cpu: false
+  extra_models_gpu: false
+  gfpgan_gpu: 0
+  esrgan_gpu: 0
+  keep_all_models_loaded: false
+  save_metadata: true
+  save_format: png
+  skip_grid: false
+  skip_save: false
+  grid_quality: 95
+  n_rows: -1
+  no_verify_input: false
+  no_half: false
+  use_float16: false
+  precision: autocast
+  optimized: false
+  optimized_turbo: false
+  optimized_config: optimizedSD/v1-inference.yaml
+  enable_attention_slicing: false
+  enable_minimal_memory_usage: false
+  update_preview: true
+  update_preview_frequency: 10
+admin:
+  hide_server_setting: false
+  hide_browser_setting: false
+debug:
+  enable_hydralit: false
+txt2img:
+  prompt: null
+  width:
+    value: 512
+    min_value: 64
+    max_value: 2048
+    step: 64
+  height:
+    value: 512
+    min_value: 64
+    max_value: 2048
+    step: 64
+  cfg_scale:
+    value: 7.5
+    min_value: 1.0
+    step: 0.5
+  seed: ''
+  batch_count:
+    value: 1
+  batch_size:
+    value: 1
+  sampling_steps:
+    value: 30
+    min_value: 10
+    max_value: 250
+    step: 10
+  LDSR_config:
+    sampling_steps: 50
+    preDownScale: 1
+    postDownScale: 1
+    downsample_method: Lanczos
+  default_sampler: k_euler
+  separate_prompts: false
+  update_preview: true
+  update_preview_frequency: 10
+  normalize_prompt_weights: true
+  save_individual_images: true
+  save_grid: true
+  group_by_prompt: false
+  save_as_jpg: false
+  use_GFPGAN: false
+  use_RealESRGAN: false
+  use_LDSR: false
+  RealESRGAN_model: RealESRGAN_x4plus
+  use_upscaling: false
+  variant_amount:
+    value: 0.0
+    min_value: 0.0
+    max_value: 1.0
+    step: 0.01
+  variant_seed: ''
+  write_info_files: true
+txt2vid:
+  default_model: runwayml/stable-diffusion-v1-5
+  custom_models_list:
+  - runwayml/stable-diffusion-v1-5
+  - CompVis/stable-diffusion-v1-4
+  - hakurei/waifu-diffusion
+  prompt: null
+  width:
+    value: 512
+    min_value: 64
+    max_value: 2048
+    step: 64
+  height:
+    value: 512
+    min_value: 64
+    max_value: 2048
+    step: 64
+  cfg_scale:
+    value: 7.5
+    min_value: 1.0
+    step: 0.5
+  batch_count:
+    value: 1
+  batch_size:
+    value: 1
+  sampling_steps:
+    value: 30
+    min_value: 10
+    max_value: 250
+    step: 10
+  num_inference_steps:
+    value: 200
+    min_value: 10
+    max_value: 500
+    step: 10
+  seed: ''
+  default_sampler: k_euler
+  scheduler_name: klms
+  separate_prompts: false
+  update_preview: true
+  update_preview_frequency: 10
+  dynamic_preview_frequency: true
+  normalize_prompt_weights: true
+  save_individual_images: true
+  save_video: true
+  save_video_on_stop: false
+  group_by_prompt: true
+  write_info_files: true
+  do_loop: false
+  use_lerp_for_text: false
+  save_as_jpg: false
+  use_GFPGAN: false
+  use_RealESRGAN: false
+  RealESRGAN_model: RealESRGAN_x4plus
+  use_upscaling: false
+  variant_amount:
+    value: 0.0
+    min_value: 0.0
+    max_value: 1.0
+    step: 0.01
+  variant_seed: ''
+  beta_start:
+    value: 0.00085
+    min_value: 0.0001
+    max_value: 0.03
+    step: 0.0001
+    format: '%.5f'
+  beta_end:
+    value: 0.012
+    min_value: 0.0001
+    max_value: 0.03
+    step: 0.0001
+    format: '%.5f'
+  beta_scheduler_type: scaled_linear
+  max_duration_in_seconds: 30
+  LDSR_config:
+    sampling_steps: 50
+    preDownScale: 1
+    postDownScale: 1
+    downsample_method: Lanczos
+img2img:
+  prompt: null
+  sampler_name: k_euler
+  denoising_strength:
+    value: 0.75
+    min_value: 0.0
+    max_value: 1.0
+    step: 0.01
+  mask_mode: 0
+  noise_mode: Matched Noise
+  mask_restore: false
+  resize_mode: 0
+  seed: ''
+  ddim_eta: 0.0
+  width:
+    value: 512
+    min_value: 64
+    max_value: 2048
+    step: 64
+  height:
+    value: 512
+    min_value: 64
+    max_value: 2048
+    step: 64
+  cfg_scale:
+    value: 7.5
+    min_value: 1.0
+    step: 0.5
+  batch_count:
+    value: 1
+  batch_size:
+    value: 1
+  sampling_steps:
+    value: 30
+    min_value: 10
+    max_value: 250
+    step: 10
+  num_inference_steps:
+    value: 200
+    min_value: 10
+    max_value: 500
+    step: 10
+  find_noise_steps:
+    value: 100
+    min_value: 100
+    step: 100
+  LDSR_config:
+    sampling_steps: 50
+    preDownScale: 1
+    postDownScale: 1
+    downsample_method: Lanczos
+  loopback: true
+  random_seed_loopback: true
+  separate_prompts: false
+  update_preview: true
+  update_preview_frequency: 10
+  normalize_prompt_weights: true
+  save_individual_images: true
+  save_grid: true
+  group_by_prompt: false
+  save_as_jpg: false
+  use_GFPGAN: false
+  use_RealESRGAN: false
+  RealESRGAN_model: RealESRGAN_x4plus
+  use_upscaling: false
+  variant_amount: 0.0
+  variant_seed: ''
+  write_info_files: true
+img2txt:
+  batch_size: 2000
+  blip_image_eval_size: 512
+  keep_all_models_loaded: false
+post_processing:
+  save_original_images: true
+  outdir_post_processing: outputs/post_processing
+concepts_library:
+  concepts_per_page: 12
+gfpgan:
+  strength: 100
+textual_inversion:
+  pretrained_model_name_or_path: models/diffusers/stable-diffusion-v1-5
+  tokenizer_name: models/clip-vit-large-patch14
+daisi_app:
+  running_on_daisi_io: false
+model_manager:
+  models:
+    stable_diffusion:
+      model_name: Stable Diffusion v1.5
+      save_location: ./models/ldm/stable-diffusion-v1
+      files:
+        model_ckpt:
+          file_name: Stable Diffusion v1.5.ckpt
+          download_link: https://huggingface.co/ZeroCool94/stable-diffusion-v1-5/resolve/main/Stable%20Diffusion%20v1-5-Pruned-ema%20only.ckpt
+    gfpgan:
+      model_name: GFPGAN
+      save_location: ./models/gfpgan
+      files:
+        gfpgan_1_4:
+          file_name: GFPGANv1.4.pth
+          download_link: https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth
+        resnet_50:
+          file_name: detection_Resnet50_Final.pth
+          save_location: ./gfpgan/weights
+          download_link: https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth
+        parsing_parsenet:
+          file_name: parsing_parsenet.pth
+          save_location: ./gfpgan/weights
+          download_link: https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth
+    realesrgan:
+      model_name: RealESRGAN
+      save_location: ./models/realesrgan
+      files:
+        x4plus:
+          file_name: RealESRGAN_x4plus.pth
+          download_link: https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
+        x4plus_anime_6b:
+          file_name: RealESRGAN_x4plus_anime_6B.pth
+          download_link: https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth
+    waifu_diffusion:
+      model_name: Waifu Diffusion v1.3
+      save_location: ./models/custom
+      files:
+        waifu_diffusion:
+          file_name: Waifu-Diffusion-v1-3 Full ema.ckpt
+          download_link: https://huggingface.co/hakurei/waifu-diffusion-v1-3/resolve/main/wd-v1-3-full.ckpt
+    trinart_stable_diffusion:
+      model_name: TrinArt Stable Diffusion v2
+      save_location: ./models/custom
+      files:
+        trinart:
+          file_name: trinart.ckpt
+          download_link: https://huggingface.co/naclbit/trinart_stable_diffusion_v2/resolve/main/trinart2_step95000.ckpt
+    sd_wd_ld_trinart_merged:
+      model_name: SD1.5-WD1.3-LD-Trinart-Merged
+      save_location: ./models/custom
+      files:
+        sd_wd_ld_trinart_merged:
+          file_name: SD1.5-WD1.3-LD-Trinart-Merged.ckpt
+          download_link: https://huggingface.co/ZeroCool94/sd1.5-wd1.3-ld-trinart-merged/resolve/main/SD1.5-WD1.3-LD-Trinart-Merged.ckpt
+    stable_diffusion_concept_library:
+      model_name: Stable Diffusion Concept Library
+      save_location: ./models/custom/sd-concepts-library/
+      files:
+        concept_library:
+          file_name: ''
+          download_link: https://github.com/Sygil-Dev/sd-concepts-library
+    blip_model:
+      model_name: Blip Model
+      save_location: ./models/blip
+      files:
+        blip:
+          file_name: model__base_caption.pth
+          download_link: https://storage.googleapis.com/sfr-vision-language-research/BLIP/models/model*_base_caption.pth
+    ldsr:
+      model_name: Latent Diffusion Super Resolution (LDSR)
+      save_location: ./models/ldsr
+      files:
+        project_yaml:
+          file_name: project.yaml
+          download_link: https://heibox.uni-heidelberg.de/f/31a76b13ea27482981b4/?dl=1
+        ldsr_model:
+          file_name: model.ckpt
+          download_link: https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1
