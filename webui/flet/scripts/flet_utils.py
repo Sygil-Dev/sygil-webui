@@ -1,4 +1,4 @@
-# webui_utils.py
+# flet_utils.py
 
 # imports
 import os, yaml, js2py
@@ -25,7 +25,7 @@ def log_message(message):
     with open(log_file,'a+') as log:
         log.write(message)
 
-# Settings
+# settings
 path_to_default_config = 'configs/webui/webui_flet.yaml'
 path_to_user_config = 'configs/webui/userconfig_flet.yaml'
 
@@ -58,19 +58,14 @@ def save_user_settings_to_config(settings):
         yaml.dump(settings, f, default_flow_style=False)
 
 
-# file handling
-
-
-
-
-# Image handling
+# image handling
 def create_blank_image():
     img = Image.new('RGBA',(512,512),(0,0,0,0))
     return img
 
 
 
-# Textual Inversion
+# textual inversion
 textual_inversion_grid_row_list = [
 	'model', 'medium', 'artist', 'trending', 'movement', 'flavors', 'techniques', 'tags',
 	]
