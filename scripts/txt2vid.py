@@ -21,7 +21,7 @@ https://github.com/nateraw/stable-diffusion-videos
 repo and the original gist script from
 https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
 """
-from sd_utils import st, MemUsageMonitor, server_state, torch_gc, \
+from sd_utils import st, MemUsageMonitor, server_state, no_rerun, torch_gc, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, hc, seed_to_int, logger, slerp, optimize_update_preview_frequency, \
      load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel
@@ -1909,25 +1909,25 @@ def layout():
         #print("Loading models")
         # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
         #load_models(False, st.session_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
-
-        if st.session_state["use_GFPGAN"]:
-            if "GFPGAN" in server_state:
-                logger.info("GFPGAN already loaded")
+        with no_rerun:
+            if st.session_state["use_GFPGAN"]:
+                if "GFPGAN" in server_state:
+                    logger.info("GFPGAN already loaded")
+                else:
+                    with col2:
+                        with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                            # Load GFPGAN
+                            if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+                                try:
+                                    load_GFPGAN()
+                                    logger.info("Loaded GFPGAN")
+                                except Exception:
+                                    import traceback
+                                    logger.error("Error loading GFPGAN:", file=sys.stderr)
+                                    logger.error(traceback.format_exc(), file=sys.stderr)
             else:
-                with col2:
-                    with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                        # Load GFPGAN
-                        if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-                            try:
-                                load_GFPGAN()
-                                logger.info("Loaded GFPGAN")
-                            except Exception:
-                                import traceback
-                                logger.error("Error loading GFPGAN:", file=sys.stderr)
-                                logger.error(traceback.format_exc(), file=sys.stderr)
-        else:
-            if "GFPGAN" in server_state:
-                del server_state["GFPGAN"]
+                if "GFPGAN" in server_state:
+                    del server_state["GFPGAN"]
 
         #try:
         # run video generation

@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-from sd_utils import st, server_state, \
+from sd_utils import st, server_state, no_rerun, \
      generation_callback, process_images, KDiffusionSampler, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, load_models, hc, seed_to_int, logger, \
@@ -694,11 +694,12 @@ def layout():
 			#print("Loading models")
 			# load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
 			with col3_img2img_layout:
-				with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-					load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-								use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
-								use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
-								CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
+				with no_rerun:
+					with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+						load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+									use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
+									use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+									CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
 			if uploaded_images:
 				#image = Image.fromarray(image).convert('RGBA')
