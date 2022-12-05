@@ -316,6 +316,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
             sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
         elif sampler_name == 'k_dpm_2':
             sampler = KDiffusionSampler(server_state["model"],'dpm_2')
+        elif sampler_name == 'k_dpmpp_2m':
+            sampler = KDiffusionSampler(server_state["model"],'dpmpp_2m')
         elif sampler_name == 'k_euler_a':
             sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
         elif sampler_name == 'k_euler':
@@ -519,7 +521,7 @@ def layout():
                                                               step=st.session_state['defaults'].txt2img.sampling_steps.step,
                                                               help="Set the default number of sampling steps to use. Default is: 30 (with k_euler)")
 
-            sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+            sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpmpp_2m",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
                                         index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")
 
