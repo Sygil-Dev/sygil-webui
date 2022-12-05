@@ -3,12 +3,14 @@ import gc
 import math
 import torch
 import torch.nn as nn
+from torch.nn.functional import silu
 import numpy as np
 from einops import rearrange
 
 from ldm.util import instantiate_from_config
 from ldm.modules.attention import LinearAttention
 
+import psutil
 
 def get_timestep_embedding(timesteps, embedding_dim):
     """
@@ -29,11 +31,6 @@ def get_timestep_embedding(timesteps, embedding_dim):
     if embedding_dim % 2 == 1:  # zero pad
         emb = torch.nn.functional.pad(emb, (0,1,0,0))
     return emb
-
-
-def nonlinearity(x):
-    # swish
-    return x*torch.sigmoid(x)
 
 
 def Normalize(in_channels, num_groups=32):
@@ -120,30 +117,17 @@ class ResnetBlock(nn.Module):
                                                     padding=0)
 
     def forward(self, x, temb):
-        h1 = x
-        h2 = self.norm1(h1)
-        del h1
-
-        h3 = nonlinearity(h2)
-        del h2
-
-        h4 = self.conv1(h3)
-        del h3
+        h = self.norm1(x)
+        h = silu(h)
+        h = self.conv1(h)
 
         if temb is not None:
-            h4 = h4 + self.temb_proj(nonlinearity(temb))[:,:,None,None]
+            h = h + self.temb_proj(silu(temb))[:,:,None,None]
 
-        h5 = self.norm2(h4)
-        del h4
-
-        h6 = nonlinearity(h5)
-        del h5
-
-        h7 = self.dropout(h6)
-        del h6
-
-        h8 = self.conv2(h7)
-        del h7
+        h = self.norm2(h)
+        h = silu(h)
+        h = self.dropout(h)
+        h = self.conv2(h)
 
         if self.in_channels != self.out_channels:
             if self.use_conv_shortcut:
@@ -151,8 +135,7 @@ class ResnetBlock(nn.Module):
             else:
                 x = self.nin_shortcut(x)
 
-        return x + h8
-
+        return x + h
 
 class LinAttnBlock(LinearAttention):
     """to match AttnBlock usage"""
@@ -209,21 +192,29 @@ class AttnBlock(nn.Module):
 
         h_ = torch.zeros_like(k, device=q.device)
 
-        stats = torch.cuda.memory_stats(q.device)
-        mem_active = stats['active_bytes.all.current']
-        mem_reserved = stats['reserved_bytes.all.current']
-        mem_free_cuda, _ = torch.cuda.mem_get_info(torch.cuda.current_device())
-        mem_free_torch = mem_reserved - mem_active
-        mem_free_total = mem_free_cuda + mem_free_torch
+        if q.device.type == 'cuda':
+            stats = torch.cuda.memory_stats(q.device)
+            mem_active = stats['active_bytes.all.current']
+            mem_reserved = stats['reserved_bytes.all.current']
+            mem_free_cuda, _ = torch.cuda.mem_get_info(torch.cuda.current_device())
+            mem_free_torch = mem_reserved - mem_active
+            mem_free_total = mem_free_cuda + mem_free_torch
 
-        tensor_size = q.shape[0] * q.shape[1] * k.shape[2] * 4
-        mem_required = tensor_size * 2.5
-        steps = 1
+            tensor_size = q.shape[0] * q.shape[1] * k.shape[2] * 4
+            mem_required = tensor_size * 2.5
+            steps = 1
 
-        if mem_required > mem_free_total:
-            steps = 2**(math.ceil(math.log(mem_required / mem_free_total, 2)))
+            if mem_required > mem_free_total:
+                steps = 2**(math.ceil(math.log(mem_required / mem_free_total, 2)))
+            
+            slice_size = q.shape[1] // steps if (q.shape[1] % steps) == 0 else q.shape[1]
 
-        slice_size = q.shape[1] // steps if (q.shape[1] % steps) == 0 else q.shape[1]
+        else:
+            if psutil.virtual_memory().available / (1024**3) < 12:
+                slice_size = 1
+            else:
+                slice_size = min(q.shape[1], math.floor(2**30 / (q.shape[0] * q.shape[1])))
+        
         for i in range(0, q.shape[1], slice_size):
             end = i + slice_size
 
@@ -373,7 +364,7 @@ class Model(nn.Module):
             assert t is not None
             temb = get_timestep_embedding(t, self.ch)
             temb = self.temb.dense[0](temb)
-            temb = nonlinearity(temb)
+            temb = silu(temb)
             temb = self.temb.dense[1](temb)
         else:
             temb = None
@@ -407,7 +398,7 @@ class Model(nn.Module):
 
         # end
         h = self.norm_out(h)
-        h = nonlinearity(h)
+        h = silu(h)
         h = self.conv_out(h)
         return h
 
@@ -504,7 +495,7 @@ class Encoder(nn.Module):
 
         # end
         h = self.norm_out(h)
-        h = nonlinearity(h)
+        h = silu(h)
         h = self.conv_out(h)
         return h
 
@@ -590,54 +581,36 @@ class Decoder(nn.Module):
         temb = None
 
         # z to block_in
-        h1 = self.conv_in(z)
+        h = self.conv_in(z)
 
         # middle
-        h2 = self.mid.block_1(h1, temb)
-        del h1
-
-        h3 = self.mid.attn_1(h2)
-        del h2
-
-        h = self.mid.block_2(h3, temb)
-        del h3
+        h = self.mid.block_1(h, temb)
+        h = self.mid.attn_1(h)
+        h = self.mid.block_2(h, temb)
 
         # prepare for up sampling
         gc.collect()
-        torch.cuda.empty_cache()
+        if h.device.type == 'cuda':
+            torch.cuda.empty_cache()
 
         # upsampling
         for i_level in reversed(range(self.num_resolutions)):
             for i_block in range(self.num_res_blocks+1):
                 h = self.up[i_level].block[i_block](h, temb)
                 if len(self.up[i_level].attn) > 0:
-                    t = h
-                    h = self.up[i_level].attn[i_block](t)
-                    del t
-
+                    h = self.up[i_level].attn[i_block](h)
             if i_level != 0:
-                t = h
-                h = self.up[i_level].upsample(t)
-                del t
+                h = self.up[i_level].upsample(h)
 
         # end
         if self.give_pre_end:
             return h
 
-        h1 = self.norm_out(h)
-        del h
-
-        h2 = nonlinearity(h1)
-        del h1
-
-        h = self.conv_out(h2)
-        del h2
-
+        h = self.norm_out(h)
+        h = silu(h)
+        h = self.conv_out(h)
         if self.tanh_out:
-            t = h
-            h = torch.tanh(t)
-            del t
-
+            h = torch.tanh(h)
         return h
 
 
@@ -672,7 +645,7 @@ class SimpleDecoder(nn.Module):
                 x = layer(x)
 
         h = self.norm_out(x)
-        h = nonlinearity(h)
+        h = silu(h)
         x = self.conv_out(h)
         return x
 
@@ -720,7 +693,7 @@ class UpsampleDecoder(nn.Module):
             if i_level != self.num_resolutions - 1:
                 h = self.upsample_blocks[k](h)
         h = self.norm_out(h)
-        h = nonlinearity(h)
+        h = silu(h)
         h = self.conv_out(h)
         return h
 
@@ -896,7 +869,7 @@ class FirstStagePostProcessor(nn.Module):
         z_fs = self.encode_with_pretrained(x)
         z = self.proj_norm(z_fs)
         z = self.proj(z)
-        z = nonlinearity(z)
+        z = silu(z)
 
         for submodel, downmodel in zip(self.model,self.downsampler):
             z = submodel(z,temb=None)
@@ -905,4 +878,3 @@ class FirstStagePostProcessor(nn.Module):
         if self.do_reshape:
             z = rearrange(z,'b c h w -> b (h w) c')
         return z
-

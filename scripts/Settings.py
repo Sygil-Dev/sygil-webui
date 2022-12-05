@@ -125,8 +125,13 @@ def layout():
                 st.session_state["defaults"].general.no_half = st.checkbox("No Half", value=st.session_state['defaults'].general.no_half,
                                                                            help="DO NOT switch the model to 16-bit floats. Default: False")
 
+                st.session_state["defaults"].general.use_cudnn = st.checkbox("Use cudnn", value=st.session_state['defaults'].general.use_cudnn,
+                                                                               help="Switch the pytorch backend to use cudnn, this should help with fixing Nvidia 16xx cards getting" 
+                                                                               "a black or green image. Default: False")
+                
                 st.session_state["defaults"].general.use_float16 = st.checkbox("Use float16", value=st.session_state['defaults'].general.use_float16,
                                                                                help="Switch the model to 16-bit floats. Default: False")
+                
 
                 precision_list = ['full', 'autocast']
                 st.session_state["defaults"].general.precision = st.selectbox("Precision", precision_list, index=precision_list.index(st.session_state['defaults'].general.precision),

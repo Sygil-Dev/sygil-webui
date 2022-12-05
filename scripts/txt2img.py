@@ -426,6 +426,12 @@ def layout():
             placeholder = "A corgi wearing a top hat as an oil painting."
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
             sygil_suggestions.suggestion_area(placeholder)
+            
+            if "defaults" in st.session_state:
+                if st.session_state['defaults'].admin.global_negative_prompt:
+                    prompt += f"### {st.session_state['defaults'].admin.global_negative_prompt}"
+                
+            print(prompt)
 
         # creating the page layout using columns
         col1, col2, col3 = st.columns([2,5,2], gap="large")

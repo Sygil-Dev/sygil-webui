@@ -1,0 +1,24 @@
+[submodule "backend"]
+	path = backend
+	url = ../../Sygil-Dev/dalle-flow.git
+[submodule "backend/clip-as-service"]
+	path = backend/clip-as-service
+	url = ../../jina-ai/clip-as-service.git
+[submodule "backend/clipseg"]
+	path = backend/clipseg
+	url = ../../timojl/clipseg.git
+[submodule "backend/dalle_flow"]
+	path = backend/dalle_flow
+	url = ../../Sygil-Dev/dalle-flow.git
+[submodule "backend/glid-3-xl"]
+	path = backend/glid-3-xl
+	url = ../../jina-ai/glid-3-xl.git
+[submodule "backend/latent-diffusion"]
+	path = backend/latent-diffusion
+	url = ../../CompVis/latent-diffusion.git
+[submodule "backend/stable-diffusion"]
+	path = backend/stable-diffusion
+	url = ../../AmericanPresidentJimmyCarter/stable-diffusion.git
+[submodule "backend/SwinIR"]
+	path = backend/SwinIR
+	url = ../../jina-ai/SwinIR.git

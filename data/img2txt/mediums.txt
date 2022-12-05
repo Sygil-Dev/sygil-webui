@@ -1,4 +1,12 @@
+a 2 koma
+a 2koma
 a 3D render
+a 4 koma
+a 4koma
+a 6 koma
+a 6koma
+a 8 koma
+a 8koma
 a black and white photo
 a bronze sculpture
 a cartoon
@@ -25,6 +33,7 @@ a gouache
 a hologram
 a hyperrealistic painting
 a jigsaw puzzle
+a koma
 a low poly render
 a macro photograph
 a manga drawing
