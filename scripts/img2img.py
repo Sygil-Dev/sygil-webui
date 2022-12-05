@@ -82,6 +82,8 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
 	elif sampler_name == 'k_dpm_2':
 		sampler = KDiffusionSampler(server_state["model"],'dpm_2')
+	elif sampler_name == 'k_dpmpp_2m':
+		sampler = KDiffusionSampler(server_state["model"],'dpmpp_2m')
 	elif sampler_name == 'k_euler_a':
 		sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
 	elif sampler_name == 'k_euler':
@@ -411,7 +413,7 @@ def layout():
 																 min_value=st.session_state['defaults'].img2img.sampling_steps.min_value,
 																 step=st.session_state['defaults'].img2img.sampling_steps.step)
 
-			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpmpp_2m",  "k_heun", "PLMS", "DDIM"]
 			st.session_state["sampler_name"] = st.selectbox("Sampling method",sampler_name_list,
 									index=sampler_name_list.index(st.session_state['defaults'].img2img.sampler_name), help="Sampling method to use.")
 
