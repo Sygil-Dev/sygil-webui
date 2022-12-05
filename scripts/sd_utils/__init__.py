@@ -22,7 +22,7 @@ from streamlit.runtime.scriptrunner import StopException
 #from streamlit.runtime.scriptrunner import script_run_context
 
 #streamlit components section
-from streamlit_server_state import server_state, server_state_lock
+from streamlit_server_state import server_state, server_state_lock, no_rerun
 import hydralit_components as hc
 from hydralit import HydraHeadApp
 import streamlit_nested_layout
