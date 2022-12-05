@@ -9,17 +9,19 @@ SHELL ["/bin/bash", "-c"]
 ENV PYTHONPATH=/sd
 
 EXPOSE 8501
+COPY ./runpod_entrypoint.sh /sd/entrypoint.sh
 COPY ./data/DejaVuSans.ttf /usr/share/fonts/truetype/
 COPY ./configs/ /sd/configs/
+copy ./configs/webui/webui_streamlit.yaml /sd/configs/webui/userconfig_streamlit.yaml
 COPY ./data/ /sd/data/
 COPY ./frontend/ /sd/frontend/
 COPY ./gfpgan/ /sd/gfpgan/
 COPY ./images/ /sd/images/
 COPY ./ldm/ /sd/ldm/
 COPY ./models/ /sd/models/
+copy ./optimizedSD/ /sd/optimizedSD/
 COPY ./scripts/ /sd/scripts/
 COPY ./.streamlit/ /sd/.streamlit/
-COPY ./runpod_entrypoint.sh /sd/entrypoint.sh
 ENTRYPOINT /sd/entrypoint.sh
 
 RUN mkdir -p ~/.streamlit/
