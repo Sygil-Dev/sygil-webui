@@ -19,7 +19,8 @@ def log_message(message):
         log_file = log_message.log
     except AttributeError:
         log_prefix = prefix.strftime("%Y%m%d_%H%M%S")
-        log_message.log = os.path.join('logs/webui/',log_prefix+'webui_flet.log')
+        os.makedirs('log/webui/flet', exist_ok=True)
+        log_message.log = os.path.join('log/webui/flet',log_prefix+'webui_flet.log')
         log_file = log_message.log
     # write message to logfile
     with open(log_file,'a+') as log:
