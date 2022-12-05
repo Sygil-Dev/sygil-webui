@@ -121,20 +121,86 @@ def main(page: ft.Page):
 		page.update()
 
 	def open_gallery_window(e):
+		init_gallery_display_images()
 		page.dialog = gallery_window
 		gallery_window.open = True
 		page.update()
 
+	def get_gallery_images(gallery_name):
+		return flet_utils.get_gallery_images(gallery_name)
+
+	def init_gallery_display_images():
+		gallery = gallery_window.current_gallery
+		for i in range(len(gallery)):
+			image = gallery[i]
+			image_name = list(image.keys())[0]
+			image_path = image[image_name]['img_path']
+			image_data = None
+			if 'info_path' in image[image_name]:
+				image_data = image[image_name]['info_path']
+			gallery_display.controls[0].controls.append(
+					ft.Image(
+							src = image_path,
+							tooltip = image_name,
+							gapless_playback = True,
+					)
+			)
+
+
+	gallery_display = ft.Stack(
+			[
+					ft.Row(
+							controls = None,
+							wrap = False,
+							scroll = 'always',
+							expand = True,
+					),
+					ft.Column(
+							controls = [
+									ft.Row(
+											controls = [
+													ft.IconButton(
+															height = page.height * 0.75,
+															icon_size = 50,
+															content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
+															tooltip = 'last image',
+															on_click = None,
+													),
+													ft.IconButton(
+															height = page.height * 0.75,
+															icon_size = 50,
+															content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
+															tooltip = 'next image',
+															on_click = None,
+													),
+											],
+											expand = True,
+											alignment = 'spaceBetween',
+									),
+							],
+							alignment = 'center',
+					),
+			],
+	)
+
 	gallery_window = GalleryWindow(
 			title = ft.Text('Gallery'),
-			content = ft.Row(
-					controls = [
-							ft.Text('Under Construction.'),
-							ft.Container(
-									width = page.width * 0.75,
-									height = page.height * 0.75,
-							),
-					],
+			content = ft.Container(
+					width = page.width * 0.5,
+					content = ft.Tabs(
+							selected_index = 0,
+							animation_duration = 300,
+							tabs = [
+								ft.Tab(
+										text = "Uploads",
+										content = gallery_display,
+								),
+								ft.Tab(
+										text = "Output",
+										content = gallery_display,
+								),
+							],
+					),
 			),
 			actions = [
 					ft.ElevatedButton(
@@ -150,6 +216,10 @@ def main(page: ft.Page):
 			],
 			actions_alignment="end",
 	)
+
+	gallery_window.uploads = get_gallery_images('uploads')
+	gallery_window.current_gallery = gallery_window.uploads
+	gallery_window.current_image_position = 0
 
 
 #	upload window ######################################################

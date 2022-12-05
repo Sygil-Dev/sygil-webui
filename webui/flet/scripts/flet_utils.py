@@ -51,7 +51,7 @@ def get_user_settings_from_config():
         with open(path_to_user_config) as f:
             user_settings = yaml.safe_load(f)
         settings.update(user_settings)
-    # regardless, return settings
+    # regardless, return settings as dict
     return settings
 
 def save_user_settings_to_config(settings):
@@ -63,10 +63,14 @@ def save_user_settings_to_config(settings):
 path_to_assets = "webui/flet/assets"
 path_to_uploads = "webui/flet/uploads"
 
+# creates blank image   (to do: take size as arg)
 def create_blank_image():
     img = Image.new('RGBA',(512,512),(0,0,0,0))
     return img
 
+# takes name of image
+# returns dict
+#   name of image : image handle
 def get_image_from_uploads(name):
     path_to_image = os.path.join(path_to_uploads, name)
     if os.path.exists(path_to_image):
@@ -75,6 +79,31 @@ def get_image_from_uploads(name):
     else:
         log_message(f'image not found: "{name}"')
         return {name:None}
+
+
+# takes name of gallery as arg ('assets','output','uploads')
+# returns list of dicts
+#       name of image:
+#           'img_path' : path_to_image
+#           'info_path' : path_to_yaml
+def get_gallery_images(gallery_name):
+    path_to_gallery = None
+    if gallery_name == 'uploads':
+        path_to_gallery = path_to_uploads
+    else:
+        log_message(f'gallery not found: "{gallery_name}"')
+        return None
+    images = []
+    files = os.listdir(path_to_gallery)
+    for f in files:
+        if f.endswith(('.jpg','.jpeg','.png')):
+            path_to_file = os.path.join(path_to_gallery,f)
+            images.append({f:{'img_path':path_to_file}})
+        if f.endswith(('.yaml')):
+            path_to_file = os.path.join(path_to_gallery,f)
+            images.append({f:{'info_path':path_to_file}})
+    #pprint(images)
+    return images
 
 
 # textual inversion
