@@ -17,7 +17,7 @@ copy ./scripts/ /sd/scripts/
 copy ./ldm/ /sd/ldm/
 copy ./frontend/ /sd/frontend/
 copy ./configs/ /sd/configs/
-copy ./configs/webui/webui_streamlit.yaml /sd/configs/userconfig_streamlit.yaml
+copy ./configs/webui/webui_streamlit.yaml /sd/configs/webui/userconfig_streamlit.yaml
 copy ./.streamlit/ /sd/.streamlit/
 copy ./optimizedSD/ /sd/optimizedSD/
 ENTRYPOINT /sd/entrypoint.sh
