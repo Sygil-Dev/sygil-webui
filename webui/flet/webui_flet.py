@@ -171,8 +171,31 @@ def main(page: ft.Page):
 				file_list.append(img)
 			file_picker.upload(file_list)				
 
+	def upload_complete(e):
+		progress_bars.clear()
+		selected_files.controls.clear()
+		close_upload_window(e)
+		page.message('File upload(s) complete.')
+		layer_manager.add_images_as_layers(file_picker.images)
+		file_picker.images.clear()
 
-	selected_files = ft.Column();
+	def get_image_from_uploads(name):
+		return flet_utils.get_image_from_uploads(name)
+
+	def get_file_display(name, progress):
+		display = ft.Column(
+				controls = [
+						ft.Row([ft.Text(name)]),
+						progress,
+				],
+		)
+		return display
+
+	selected_files = ft.Column(
+			scroll = 'auto',
+			tight = True,
+			controls = [],
+	);
 	progress_bars: Dict[str, ft.ProgressBar] = {}
 
 	upload_window = ft.AlertDialog(
@@ -225,7 +248,8 @@ def main(page: ft.Page):
 						color = 'blue',
 				)
 				progress_bars[f.name] = prog
-				selected_files.controls.append(ft.Row([ft.Text(f.name),prog]))
+				selected_files.controls.append(get_file_display(f.name,prog))
+				file_picker.pending += 1
 			# import if local, upload if remote
 			if not e.page.web:
 				open_import_window(e)
@@ -234,18 +258,25 @@ def main(page: ft.Page):
 
 	def on_image_upload(e: ft.FilePickerUploadEvent):
 		if e.error:
-			page.message("Upload error occurred! Try again.",1)
-			return
-		# update progress bars
-		progress_bars[e.file_name].value = e.progress
-		progress_bars[e.file_name].update()
-
+			page.message(f"Upload error occurred! Failed to fetch '{e.file_name}'.",1)
+			file_picker.pending -= 1
+		else:
+			# update progress bars
+			progress_bars[e.file_name].value = e.progress
+			progress_bars[e.file_name].update()
+			if e.progress >= 1:
+				file_picker.pending -= 1
+				file_picker.images.update(get_image_from_uploads(e.file_name))
+		if file_picker.pending <= 0:
+			file_picker.pending = 0
+			upload_complete(e)
 
 	file_picker = ft.FilePicker(
 			on_result = pick_images,
 			on_upload = on_image_upload
 	)
-
+	file_picker.pending = 0
+	file_picker.images = {}
 	page.overlay.append(file_picker)
 
 #	layouts ############################################################

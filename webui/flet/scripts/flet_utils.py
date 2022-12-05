@@ -13,7 +13,7 @@ def log_message(message):
     # get time and format message
     prefix = datetime.now()
     msg_prefix = prefix.strftime("%Y/%m/%d %H:%M:%S")
-    message = msg_prefix + message
+    message = msg_prefix + "  " + message
     # check to see if we're appending to current logfile or making a new one'
     try:
         log_file = log_message.log
@@ -60,10 +60,21 @@ def save_user_settings_to_config(settings):
 
 
 # image handling
+path_to_assets = "webui/flet/assets"
+path_to_uploads = "webui/flet/uploads"
+
 def create_blank_image():
     img = Image.new('RGBA',(512,512),(0,0,0,0))
     return img
 
+def get_image_from_uploads(name):
+    path_to_image = os.path.join(path_to_uploads, name)
+    if os.path.exists(path_to_image):
+        img = Image.open(path_to_image)
+        return {name:img}
+    else:
+        log_message(f'image not found: "{name}"')
+        return {name:None}
 
 
 # textual inversion

@@ -6,6 +6,7 @@ from scripts import flet_utils
 
 
 class LayerManager(ft.Container):
+	# first make a column to hold the layers
 	def make_layer_holder(self):
 		layer_holder = ft.DragTarget(
 			group = 'layer',
@@ -19,7 +20,8 @@ class LayerManager(ft.Container):
 			on_leave = self.layer_leave,
 		)
 		return layer_holder
-
+	
+	# make a slot for each layer to go in
 	def make_layer_slot(self):
 		layer_slot = LayerSlot(
 				group = 'layer',
@@ -38,6 +40,7 @@ class LayerManager(ft.Container):
 		)
 		return layer_slot
 
+	# make the display for the layer
 	def make_layer_display(self):
 		try:
 			self.layer_count += 1
@@ -93,14 +96,20 @@ class LayerManager(ft.Container):
 		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
 		return layer_display
 
-	def update_layer_indexes(self):
-		layer_list = self.data['layer_list']
-		index = 0
-		for layer in layer_list:
-			if layer.data['type'] == 'slot':
-				layer.data['index'] = index
-				index += 1
-				
+	# keep track of which layers are active/visible
+	def show_hide_layer(self, e):
+		parent = e.control.data['parent']
+		if parent.data['visible']:
+			parent.data['visible'] = False
+			parent.opacity = 0.5
+			e.control.icon = ft.icons.VISIBILITY_OFF
+		else:
+			parent.data['visible'] = True
+			parent.opacity = 1.0
+			e.control.icon = ft.icons.VISIBILITY
+		self.update_active_layer_list()
+		parent.update()
+
 	def update_active_layer_list(self):
 		self.data['active_layer_list'] = []
 		layer_list = self.data['layer_list']
@@ -109,6 +118,15 @@ class LayerManager(ft.Container):
 				if layer.content.content.controls[1].data['visible']:
 					self.data['active_layer_list'].append(layer)
 
+	# handle layer shuffling
+	def update_layer_indexes(self):
+		layer_list = self.data['layer_list']
+		index = 0
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				layer.data['index'] = index
+				index += 1
+				
 	def move_layer_slot(self, index):
 		layer_list = self.data['layer_list']
 		self.data['layer_being_moved'] = layer_list.pop(index)
@@ -127,22 +145,6 @@ class LayerManager(ft.Container):
 		self.update_layer_indexes()
 		self.update_active_layer_list()
 		self.update()
-
-	def show_hide_layer(self, e):
-		parent = e.control.data['parent']
-		if parent.data['visible']:
-			parent.data['visible'] = False
-			parent.opacity = 0.5
-			e.control.icon = ft.icons.VISIBILITY_OFF
-		else:
-			parent.data['visible'] = True
-			parent.opacity = 1.0
-			e.control.icon = ft.icons.VISIBILITY
-		self.update_active_layer_list()
-		parent.update()
-
-	def layer_right_click(self,e):
-		pass
 
 	def layer_slot_will_accept(self, e):
 		if not self.data['layer_being_moved']:
@@ -168,7 +170,7 @@ class LayerManager(ft.Container):
 			return
 		self.move_layer_slot(index)
 
-	## tab controls
+	# catch layers that are dropped outside slots
 	def layer_will_accept(self, e):
 		if not self.data['layer_being_moved']:
 			return
@@ -206,16 +208,7 @@ class LayerManager(ft.Container):
 				layer_list.pop(-1)
 		self.update_layers()
 
-	def add_images_as_layers(images):
-		layer_list = self.data['layer_list']
-		for img in images:
-			layer_slot = self.make_layer_slot()
-			self.set_layer_slot_name(layer_slot, img.name)
-			layer_slot.data['image'] = img.data
-			layer_list.append(layer_slot)
-			self.page.message(f'added "{img.name}" as layer')
-		self.update_layers()
-
+	# handle toolbar functions
 	def add_blank_layer(self, e):
 		layer_list = self.data['layer_list']
 		layer_slot = self.make_layer_slot()
@@ -224,7 +217,24 @@ class LayerManager(ft.Container):
 		self.page.message("added blank layer to canvas")
 		self.update_layers()
 
+	def add_images_as_layers(self, images):
+		layer_list = self.data['layer_list']
+		for img in images:
+			if images[img] == None:
+				continue
+			layer_slot = self.make_layer_slot()
+			layer_slot.set_layer_slot_name(img)
+			layer_slot.data['image'] = images[img]
+			layer_list.append(layer_slot)
+			self.page.message(f'added "{img}" as layer')
+		self.update_layers()
 
+	# fetch layer option on right click
+	def layer_right_click(self,e):
+		pass
+
+
+	# make each layer slot a target
 class LayerSlot(ft.DragTarget):
 	def set_layer_slot_name(self, name):
 		self.content.content.controls[1].content.controls[1].value = name
