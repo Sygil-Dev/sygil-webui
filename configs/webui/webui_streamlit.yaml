@@ -59,6 +59,7 @@ general:
     no_half: False
     use_float16: False
     precision: "autocast"
+    use_cudnn: False
     optimized: False
     optimized_turbo: False
     optimized_config: "optimizedSD/v1-inference.yaml"
@@ -70,6 +71,7 @@ general:
 admin:
     hide_server_setting: False
     hide_browser_setting: False
+    global_negative_prompt: ""
 
 debug:
     enable_hydralit: False
@@ -219,6 +221,7 @@ txt2vid:
 
     beta_scheduler_type: "scaled_linear"
     max_duration_in_seconds: 30
+    fps: 30
 
     LDSR_config:
         sampling_steps: 50

@@ -22,7 +22,7 @@ from streamlit.runtime.scriptrunner import StopException
 #from streamlit.runtime.scriptrunner import script_run_context
 
 #streamlit components section
-from streamlit_server_state import server_state, server_state_lock
+from streamlit_server_state import server_state, server_state_lock, no_rerun
 import hydralit_components as hc
 from hydralit import HydraHeadApp
 import streamlit_nested_layout
@@ -72,6 +72,7 @@ from io import BytesIO
 from packaging import version
 from pathlib import Path
 from huggingface_hub import hf_hub_download
+import shutup
 
 #import librosa
 from logger import logger, set_logger_verbosity, quiesce_logger
@@ -90,6 +91,15 @@ except ImportError as e:
 
 # end of imports
 #---------------------------------------------------------------------------------------------------------------
+
+# remove all the annoying python warnings.
+shutup.please()
+
+# the following lines should help fixing an issue with nvidia 16xx cards.
+if "defaults" in st.session_state:
+    if st.session_state["defaults"].general.use_cudnn:
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.enabled = True 
 
 try:
     # this silences the annoying "Some weights of the model checkpoint were not used when initializing..." message at start.
@@ -261,10 +271,13 @@ def set_page_title(title):
 
 
 def make_grid(n_items=5, n_cols=5):
+    # Compute number of rows
     n_rows = 1 + n_items // int(n_cols)
 
+    # Create rows
     rows = [st.container() for _ in range(n_rows)]
 
+    # Create columns in each row
     cols_per_row = [r.columns(n_cols) for r in rows]
     cols = [column for row in cols_per_row for column in row]
 
@@ -272,29 +285,29 @@ def make_grid(n_items=5, n_cols=5):
 
 
 def merge(file1, file2, out, weight):
-    alpha = (weight)/100
     if not(file1.endswith(".ckpt")):
         file1 += ".ckpt"
     if not(file2.endswith(".ckpt")):
         file2 += ".ckpt"
     if not(out.endswith(".ckpt")):
         out += ".ckpt"
-    #Load Models
-    model_0 = torch.load(file1)
-    model_1 = torch.load(file2)
-    theta_0 = model_0['state_dict']
-    theta_1 = model_1['state_dict']
-
-    for key in theta_0.keys():
-        if 'model' in key and key in theta_1:
-            theta_0[key] = (alpha) * theta_0[key] + (1-alpha) * theta_1[key]
-
-    logger.info("RUNNING...\n(STAGE 2)")
-
-    for key in theta_1.keys():
-        if 'model' in key and key not in theta_0:
-            theta_0[key] = theta_1[key]
-    torch.save(model_0, out)
+    try: 
+        #Load Models
+        model_0 = torch.load(file1)
+        model_1 = torch.load(file2)
+        theta_0 = model_0['state_dict']
+        theta_1 = model_1['state_dict']
+        alpha = (weight)/100
+        for key in theta_0.keys():
+            if 'model' in key and key in theta_1:
+                theta_0[key] = (alpha) * theta_0[key] + (1-alpha) * theta_1[key]
+        logger.info("RUNNING...\n(STAGE 2)")
+        for key in theta_1.keys():
+            if 'model' in key and key not in theta_0:
+                theta_0[key] = theta_1[key]
+        torch.save(model_0, out)
+    except:
+        logger.error("Error in merging") 
 
 
 def human_readable_size(size, decimal_places=3):
@@ -483,7 +496,7 @@ def load_model_from_config(config, ckpt, verbose=False):
         if "global_step" in pl_sd:
             logger.info(f"Global Step: {pl_sd['global_step']}")
         sd = pl_sd["state_dict"]
-        model = instantiate_from_config(config.model)
+        model = instantiate_from_config(config.model, personalization_config='')
         m, u = model.load_state_dict(sd, strict=False)
         if len(m) > 0 and verbose:
             logger.info("missing keys:")
@@ -1606,6 +1619,10 @@ def ModelLoader(models,load=False,unload=False,imgproc_realesrgan_model_name='Re
 #
 @retry(tries=5)
 def generation_callback(img, i=0):
+    
+    # try to do garbage collection before decoding the image
+    torch_gc()
+    
     if "update_preview_frequency" not in st.session_state:
         raise StopException
 
@@ -2395,7 +2412,7 @@ def process_images(
             else: # just behave like usual
                 c = (server_state["model"] if not st.session_state['defaults'].general.optimized else server_state["modelCS"]).get_learned_conditioning(prompts)
 
-
+                
             shape = [opt_C, height // opt_f, width // opt_f]
 
             if st.session_state['defaults'].general.optimized:

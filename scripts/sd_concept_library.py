@@ -107,7 +107,7 @@ def getConceptsFromPath(page, conceptPerPage, searchText=""):
 
 					# Maintain the aspect ratio (max 200x200)
 					resizedImage = originalImage.copy()
-					resizedImage.thumbnail((200, 200), Image.ANTIALIAS)
+					resizedImage.thumbnail((200, 200), Image.Resampling.LANCZOS)
 
 					# concept["images"].append(resizedImage)
 

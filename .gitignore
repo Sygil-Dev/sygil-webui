@@ -54,10 +54,12 @@ condaenv.*.requirements.txt
 # 	Repo-specific
 # =========================================================================== #
 /configs/webui/userconfig_streamlit.yaml
+/configs/webui/userconfig_flet.yaml
 /custom-conda-path.txt
 !/src/components/*
 !/src/pages/*
 /src/*
+/inputs
 /outputs
 /model_cache
 /log/**/*.png

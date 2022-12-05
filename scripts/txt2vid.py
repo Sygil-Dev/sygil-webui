@@ -21,7 +21,7 @@ https://github.com/nateraw/stable-diffusion-videos
 repo and the original gist script from
 https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
 """
-from sd_utils import st, MemUsageMonitor, server_state, torch_gc, \
+from sd_utils import st, MemUsageMonitor, server_state, no_rerun, torch_gc, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, hc, seed_to_int, logger, slerp, optimize_update_preview_frequency, \
      load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel
@@ -54,7 +54,7 @@ from diffusers import StableDiffusionPipeline, DiffusionPipeline
 #from stable_diffusion_videos import StableDiffusionWalkPipeline
 
 from diffusers.schedulers import DDIMScheduler, LMSDiscreteScheduler, \
-     PNDMScheduler
+     PNDMScheduler, DDPMScheduler
 
 from diffusers.configuration_utils import FrozenDict
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
@@ -189,10 +189,10 @@ def make_video_pyav(
 
         write_video(
             output_filepath,
-                    frames,
-                        fps=fps,
-                        audio_array=audio_tensor,
-                audio_fps=sr,
+            frames,
+            fps=fps,
+            audio_array=audio_tensor,
+            audio_fps=sr,
             audio_codec="aac",
             options={"crf": "10", "pix_fmt": "yuv420p"},
         )
@@ -777,22 +777,22 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
             prompt_config_path.write_text(
                 json.dumps(
                                 dict(
-                                        prompts=prompts,
-                                            seeds=seeds,
-                                                num_interpolation_steps=num_interpolation_steps,
-                                                fps=fps,
-                                                num_inference_steps=num_inference_steps,
-                                                guidance_scale=guidance_scale,
-                                                eta=eta,
-                                                upsample=upsample,
-                                                height=height,
-                                                width=width,
-                                                audio_filepath=audio_filepath,
-                                                audio_start_sec=audio_start_sec,
-                                                ),
-
-                                    indent=2,
-                                        sort_keys=False,
+                                    prompts=prompts,
+                                    seeds=seeds,
+                                    num_interpolation_steps=num_interpolation_steps,
+                                    fps=fps,
+                                    num_inference_steps=num_inference_steps,
+                                    guidance_scale=guidance_scale,
+                                    eta=eta,
+                                    upsample=upsample,
+                                    height=height,
+                                    width=width,
+                                    audio_filepath=audio_filepath,
+                                    audio_start_sec=audio_start_sec,
+                                    ),
+                                
+                                indent=2,
+                                sort_keys=False,
                             )
             )
         else:
@@ -946,6 +946,7 @@ def diffuse(
         num_inference_steps,
         cfg_scale,
         eta,
+        fps=30
         ):
 
     torch_device = cond_latents.get_device()
@@ -1055,8 +1056,7 @@ def diffuse(
                 speed = "it/s"
                 duration = 1 / duration
 
-            #
-            total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
+            total_frames = st.session_state.max_duration_in_seconds * fps
             total_steps = st.session_state.sampling_steps + st.session_state.num_inference_steps
 
             if i > st.session_state.sampling_steps:
@@ -1124,16 +1124,18 @@ def load_diffusers_model(weights_path,torch_device):
 
                 if weights_path == "runwayml/stable-diffusion-v1-5":
                     model_path = os.path.join("models", "diffusers", "stable-diffusion-v1-5")
+                else:
+                    model_path = weights_path
 
                 if not os.path.exists(model_path + "/model_index.json"):
                     server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
                         weights_path,
-                                            use_local_file=True,
-                                                use_auth_token=st.session_state["defaults"].general.huggingface_token,
-                                                torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-                                                revision="fp16" if not st.session_state['defaults'].general.no_half else None,
-                                                safety_checker=None,  # Very important for videos...lots of false positives while interpolating
-                                                #custom_pipeline="interpolate_stable_diffusion",
+                        use_local_file=True,
+                        use_auth_token=st.session_state["defaults"].general.huggingface_token,
+                        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+                        revision="fp16" if not st.session_state['defaults'].general.no_half else None,
+                        safety_checker=None,  # Very important for videos...lots of false positives while interpolating
+                        #custom_pipeline="interpolate_stable_diffusion",
 
                     )
 
@@ -1141,11 +1143,11 @@ def load_diffusers_model(weights_path,torch_device):
                 else:
                     server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
                         model_path,
-                                            use_local_file=True,
-                                                torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
-                                                revision="fp16" if not st.session_state['defaults'].general.no_half else None,
-                                                safety_checker=None,  # Very important for videos...lots of false positives while interpolating
-                                                #custom_pipeline="interpolate_stable_diffusion",
+                        use_local_file=True,
+                        torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
+                        revision="fp16" if not st.session_state['defaults'].general.no_half else None,
+                        safety_checker=None,  # Very important for videos...lots of false positives while interpolating
+                        #custom_pipeline="interpolate_stable_diffusion",
                     )
 
                 server_state["pipe"].unet.to(torch_device)
@@ -1195,13 +1197,13 @@ def load_diffusers_model(weights_path,torch_device):
                 st.session_state["progress_bar_text"].error(e)
 
 #
-def save_video_to_disk(frames, seeds, sanitized_prompt, fps=6,save_video=True, outdir='outputs'):
+def save_video_to_disk(frames, seeds, sanitized_prompt, fps=30,save_video=True, outdir='outputs'):
     if save_video:
         # write video to memory
         #output = io.BytesIO()
         #writer = imageio.get_writer(os.path.join(os.getcwd(), st.session_state['defaults'].general.outdir, "txt2vid"), im, extension=".mp4", fps=30)
         #try:
-        video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}{datetime.now().strftime('%Y%m-%d%H-%M%S-') + str(uuid4())[:8]}.mp4")
+        video_path = os.path.join(os.getcwd(), outdir, "txt2vid",f"{seeds}_{sanitized_prompt}{datetime.datetime.now().strftime('%Y%m-%d%H-%M%S-') + str(uuid4())[:8]}.mp4")
         writer = imageio.get_writer(video_path, fps=fps)
         for frame in frames:
             writer.append_data(frame)
@@ -1357,8 +1359,30 @@ def txt2vid(
     klms_scheduler = LMSDiscreteScheduler(
         beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
     )
+    
+    #flaxddims_scheduler = FlaxDDIMScheduler(
+        #beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+    #)
+    
+    #flaxddpms_scheduler = FlaxDDPMScheduler(
+        #beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+    #)
+    
+    #flaxpndms_scheduler = FlaxPNDMScheduler(
+        #beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+    #)
+    
+    ddpms_scheduler = DDPMScheduler(
+        beta_start=beta_start, beta_end=beta_end, beta_schedule=beta_schedule
+    )    
 
-    SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler, klms=klms_scheduler)
+    SCHEDULERS = dict(default=default_scheduler, ddim=ddim_scheduler,
+                      klms=klms_scheduler,
+                      ddpms=ddpms_scheduler,
+                      #flaxddims=flaxddims_scheduler,
+                      #flaxddpms=flaxddpms_scheduler,
+                      #flaxpndms=flaxpndms_scheduler,
+                      )
 
     with st.session_state["progress_bar_text"].container():
         with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
@@ -1482,9 +1506,9 @@ def txt2vid(
                         #)
 
         # old code
-        total_frames = (st.session_state.sampling_steps + st.session_state.num_inference_steps) * st.session_state.max_duration_in_seconds
+        total_frames = st.session_state.max_duration_in_seconds * fps
 
-        while second_count < max_duration_in_seconds:
+        while frame_index+1 <= total_frames:
             st.session_state["frame_duration"] = 0
             st.session_state["frame_speed"] = 0
             st.session_state["current_frame"] = frame_index
@@ -1506,7 +1530,7 @@ def txt2vid(
                 #init = slerp(gpu, float(t), init1, init2)
 
                 with autocast("cuda"):
-                    image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta)
+                    image = diffuse(server_state["pipe"], cond_embeddings, init, num_inference_steps, cfg_scale, eta, fps=fps)
 
                 if st.session_state["save_individual_images"] and not st.session_state["use_GFPGAN"] and not st.session_state["use_RealESRGAN"]:
                     #im = Image.fromarray(image)
@@ -1560,6 +1584,8 @@ def txt2vid(
 
                 st.session_state["frame_duration"] = duration
                 st.session_state["frame_speed"] = speed
+                if frame_index+1 > total_frames:
+                    break
 
             init1 = init2
 
@@ -1602,6 +1628,10 @@ def layout():
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
             sygil_suggestions.suggestion_area(placeholder)
 
+            if "defaults" in st.session_state:
+                if st.session_state['defaults'].admin.global_negative_prompt:
+                    prompt += f"### {st.session_state['defaults'].admin.global_negative_prompt}"
+
         # Every form must have a submit button, the extra blank spaces is a temp way to align it with the input field. Needs to be done in CSS or some other way.
         generate_col1.write("")
         generate_col1.write("")
@@ -1632,6 +1662,9 @@ def layout():
 
             st.session_state["max_duration_in_seconds"] = st.number_input("Max Duration In Seconds:", value=st.session_state['defaults'].txt2vid.max_duration_in_seconds,
                                                                           help="Specify the max duration in seconds you want your video to be.")
+            
+            st.session_state["fps"] = st.number_input("Frames per Second (FPS):", value=st.session_state['defaults'].txt2vid.fps,
+                                                                          help="Specify the frame rate of the video.")
 
             with st.expander("Preview Settings"):
                 #st.session_state["update_preview"] = st.checkbox("Update Image Preview", value=st.session_state['defaults'].txt2vid.update_preview,
@@ -1713,7 +1746,9 @@ def layout():
         #sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
         #sampler_name = st.selectbox("Sampling method", sampler_name_list,
                         #index=sampler_name_list.index(st.session_state['defaults'].txt2vid.default_sampler), help="Sampling method to use. Default: k_euler")
-        scheduler_name_list = ["klms", "ddim"]
+        scheduler_name_list = ["klms", "ddim", "ddpms", 
+                               #"flaxddims", "flaxddpms", "flaxpndms"
+                               ]
         scheduler_name = st.selectbox("Scheduler:", scheduler_name_list,
                                       index=scheduler_name_list.index(st.session_state['defaults'].txt2vid.scheduler_name), help="Scheduler to use. Default: klms")
 
@@ -1874,45 +1909,46 @@ def layout():
         #print("Loading models")
         # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
         #load_models(False, st.session_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
-
-        if st.session_state["use_GFPGAN"]:
-            if "GFPGAN" in server_state:
-                logger.info("GFPGAN already loaded")
+        with no_rerun:
+            if st.session_state["use_GFPGAN"]:
+                if "GFPGAN" in server_state:
+                    logger.info("GFPGAN already loaded")
+                else:
+                    with col2:
+                        with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                            # Load GFPGAN
+                            if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+                                try:
+                                    load_GFPGAN()
+                                    logger.info("Loaded GFPGAN")
+                                except Exception:
+                                    import traceback
+                                    logger.error("Error loading GFPGAN:", file=sys.stderr)
+                                    logger.error(traceback.format_exc(), file=sys.stderr)
             else:
-                with col2:
-                    with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                        # Load GFPGAN
-                        if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-                            try:
-                                load_GFPGAN()
-                                logger.info("Loaded GFPGAN")
-                            except Exception:
-                                import traceback
-                                logger.error("Error loading GFPGAN:", file=sys.stderr)
-                                logger.error(traceback.format_exc(), file=sys.stderr)
-        else:
-            if "GFPGAN" in server_state:
-                del server_state["GFPGAN"]
+                if "GFPGAN" in server_state:
+                    del server_state["GFPGAN"]
 
         #try:
         # run video generation
         video, seed, info, stats = txt2vid(prompts=prompt, gpu=st.session_state["defaults"].general.gpu,
                                            num_steps=st.session_state.sampling_steps, max_duration_in_seconds=st.session_state.max_duration_in_seconds,
-                                                   num_inference_steps=st.session_state.num_inference_steps,
-                                                   cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
-                                                   outdir=st.session_state["defaults"].general.outdir,
-                                                   do_loop=st.session_state["do_loop"],
-                                                   use_lerp_for_text=st.session_state["use_lerp_for_text"],
-                                                   seeds=seed, quality=100, eta=0.0, width=width,
-                                                   height=height, weights_path=custom_model, scheduler=scheduler_name,
-                                                   disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
-                                                   beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
-                                                   beta_schedule=beta_scheduler_type, starting_image=None)
+                                           num_inference_steps=st.session_state.num_inference_steps,
+                                           cfg_scale=cfg_scale, save_video_on_stop=save_video_on_stop,
+                                           outdir=st.session_state["defaults"].general.outdir,
+                                           do_loop=st.session_state["do_loop"],
+                                           use_lerp_for_text=st.session_state["use_lerp_for_text"],
+                                           seeds=seed, quality=100, eta=0.0, width=width,
+                                           height=height, weights_path=custom_model, scheduler=scheduler_name,
+                                           disable_tqdm=False, beta_start=st.session_state['defaults'].txt2vid.beta_start.value,
+                                           beta_end=st.session_state['defaults'].txt2vid.beta_end.value,
+                                           beta_schedule=beta_scheduler_type, starting_image=None, fps=st.session_state.fps)
 
         if video and save_video_on_stop:
+            if os.path.exists(video): # temporary solution to bypass exception
             # show video preview on the UI after we hit the stop button
             # currently not working as session_state is cleared on StopException
-            preview_video.video(open(video, 'rb').read())
+                preview_video.video(open(video, 'rb').read())
 
         #message.success('Done!', icon="✅")
         message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")

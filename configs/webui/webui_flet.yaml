@@ -1,0 +1,199 @@
+# This file is part of sygil-webui (https://github.com/Sygil-Dev/sygil-webui/).
+
+# Copyright 2022 Sygil-Dev team.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# UI defaults configuration file. It is automatically loaded if located at configs/webui/webui_flet.yaml.
+# Any changes made here will be available automatically on the web app without having to stop it.
+# You may add overrides in a file named "userconfig_flet.yaml" in this folder, which can contain any subset
+# of the properties below.
+
+# any section labeled '_page' will get it's own tab in settings
+# any section without that suffix will still be read by parser and stored in session
+#
+# display types
+#           -- every display type must have 'value: '
+#           -- to do: add 'tooltip : ' to every display type
+#                   --(make optional, not everything needs one.)
+#   bool
+#       -value
+#   dropdown
+#       -value
+#       -option_list
+#   slider
+#       -value
+#       -min
+#       -max
+#       -step
+#   textinput
+#       -value
+#
+# list of value types
+#   !!bool      boolean     'true' 'false'
+#   !!float     float       '0.01'
+#   !!int       integer     '23'
+#   !!str       string      'foo' 'bar'
+#   !!null      None
+
+webui_page:
+    default_theme:
+        display: dropdown
+        value: 'dark'
+        option_list:
+            - !!str 'dark'
+            - !!str 'light'
+    default_text_size:
+        display: slider
+        value: !!int '20'
+        min: !!int '10'
+        max: !!int '32'
+        step: !!float '2.0'
+    max_message_history:
+        display: slider
+        value: !!int '20'
+        min: !!int '1'
+        max: !!int '100'
+        step: !!int '1'
+
+general_page:
+    huggingface_token:
+        display: textinput
+        value: !!str ''
+    stable_horde_api:
+        display: textinput
+        value: !!str '0000000000'
+    global_negative_prompt:
+        display: textinput
+        value: !!str " "
+    default_model:
+        display: textinput
+        value: !!str "Stable Diffusion v1.5"
+    base_model:
+        display: textinput
+        value: !!str "Stable Diffusion v1.5"
+    default_model_config:
+        display: textinput
+        value: !!str "configs/stable-diffusion/v1-inference.yaml"
+    default_model_path:
+        display: textinput
+        value: !!str "models/ldm/stable-diffusion-v1/Stable Diffusion v1.5.ckpt"
+    use_sd_concepts_library:
+        display: bool
+        value: !!bool 'true'
+    sd_concepts_library_folder:
+        display: textinput
+        value: !!str "models/custom/sd-concepts-library"
+    GFPGAN_dir:
+        display: textinput
+        value: !!str "./models/gfpgan"
+    GFPGAN_model:
+        display: textinput
+        value: !!str "GFPGANv1.4"
+    LDSR_dir:
+        display: textinput
+        value: !!str "./models/ldsr"
+    LDSR_model:
+        display: textinput
+        value: !!str "model"
+    RealESRGAN_dir:
+        display: textinput
+        value: !!str "./models/realesrgan"
+    RealESRGAN_model:
+        display: textinput
+        value: !!str "RealESRGAN_x4plus"
+    upscaling_method:
+        display: textinput
+        value: !!str "RealESRGAN"
+
+output_page:
+    outdir:
+        display: textinput
+        value: !!str 'outputs'
+    outdir_txt2img:
+        display: textinput
+        value: !!str "outputs/txt2img"
+    outdir_img2img:
+        display: textinput
+        value: !!str "outputs/img2img"
+    outdir_img2txt:
+        display: textinput
+        value: !!str "outputs/img2txt"
+    save_metadata:
+        display: bool
+        value: !!bool true
+    save_format:
+        display: dropdown
+        value: !!str "png"
+        option_list:
+            - !!str 'png'
+            - !!str 'jpeg'
+    skip_grid:
+        display: bool
+        value: !!bool 'false'
+    skip_save:
+        display: bool
+        value: !!bool 'false'
+    #grid_quality: 95
+    #n_rows: -1
+    #update_preview: True
+    #update_preview_frequency: 10
+
+performance_page:
+    gpu:
+        display: dropdown
+        value: !!str ''
+        option_list:
+            - !!str '0:'
+    gfpgan_cpu:
+        display: bool
+        value: !!bool 'false'
+    esrgan_cpu:
+        display: bool
+        value: !!bool 'false'
+    extra_models_cpu:
+        display: bool
+        value: !!bool 'false'
+    extra_models_gpu:
+        display: bool
+        value: !!bool 'false'
+    gfpgan_gpu:
+        display: textinput
+        value: !!int 0
+    esrgan_gpu:
+        display: textinput
+        value: !!int 0
+    keep_all_models_loaded:
+        display: bool
+        value: !!bool 'false'
+    #no_verify_input: False
+    #no_half: False
+    #use_float16: False
+    #precision: "autocast"
+    #optimized: False
+    #optimized_turbo: False
+    #optimized_config: "optimizedSD/v1-inference.yaml"
+    #enable_attention_slicing: False
+    #enable_minimal_memory_usage: False
+
+server_page:
+    hide_server_setting:
+        display: bool
+        value: !!bool 'false'
+    hide_browser_setting:
+        display: bool
+        value: !!bool 'false'
+
+textual_inversion:
+    pretrained_model_name_or_path: "models/diffusers/stable-diffusion-v1-5"
+    tokenizer_name: "models/clip-vit-large-patch14"
