@@ -6,11 +6,12 @@ SHELL ["/bin/bash", "-c"]
 WORKDIR /install
 
 RUN apt-get update && \
-    apt-get install -y wget curl git build-essential zip unzip nano openssh-server libgl1 && \
+    apt-get install -y wget curl git build-essential zip unzip nano openssh-server libgl1 libsndfile1-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 COPY ./requirements.txt /install/
+COPY ./setup.py /install/
 
 RUN /opt/conda/bin/python -m pip install -r /install/requirements.txt
 
