@@ -100,6 +100,8 @@ def get_gallery_images(gallery_name):
 	files = []
 	if os.path.exists(path_to_gallery):
 		files = os.listdir(path_to_gallery)
+	else:
+		return None
 	for f in files:
 		if f.endswith(('.jpg','.jpeg','.png')):
 			path_to_file = os.path.join('/uploads',f)

@@ -128,7 +128,18 @@ def main(page: ft.Page):
 	def get_gallery_images(gallery_name):
 		return flet_utils.get_gallery_images(gallery_name)
 
-	def refresh_gallery_images(gallery_name):
+	def refresh_gallery(gallery_name):
+		index = None
+		if gallery_name == 'uploads':
+			index = 0
+		elif gallery_name == 'outputs':
+			index = 1
+		else:
+			page.message(f'{gallery_name} gallery not found.', 1)
+			return None
+		gallery_window.content.content.tabs[index].content = get_gallery_display(gallery_name)
+
+	def get_gallery_display(gallery_name):
 		gallery_display = ft.Stack(
 				[
 						ft.Row(
@@ -165,6 +176,16 @@ def main(page: ft.Page):
 				],
 		)
 		gallery = get_gallery_images(gallery_name)
+		if len(gallery) < 1:
+			gallery_display.controls[0].controls.append(
+					ft.Image(
+							src = '/images/chickens.jpg',
+							tooltip = 'Nothing here but us chickens!',
+							gapless_playback = True,
+					)
+			)
+			return gallery_display
+			
 		for i in range(len(gallery)):
 			image = gallery[i]
 			image_name = list(image.keys())[0]
@@ -192,11 +213,11 @@ def main(page: ft.Page):
 							tabs = [
 								ft.Tab(
 										text = "Uploads",
-										content = refresh_gallery_images('uploads'),
+										content = get_gallery_display('uploads'),
 								),
 								ft.Tab(
 										text = "Outputs",
-										content = refresh_gallery_images('outputs'),
+										content = get_gallery_display('outputs'),
 								),
 							],
 					),
@@ -243,6 +264,7 @@ def main(page: ft.Page):
 		page.message('File upload(s) complete.')
 		layer_manager.add_images_as_layers(file_picker.images)
 		file_picker.images.clear()
+		refresh_gallery('uploads')
 
 	def get_image_from_uploads(name):
 		return flet_utils.get_image_from_uploads(name)
