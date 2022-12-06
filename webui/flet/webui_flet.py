@@ -6,13 +6,22 @@ from flet.ref import Ref
 from math import pi
 from typing import Optional
 from loguru import logger
+
 # utils imports
-import webui_flet_utils
+from scripts import flet_utils
+from scripts.flet_layer_manager import LayerManager
+from scripts.flet_settings_window import SettingsWindow
 
 # for debugging
 from pprint import pprint
 
+# custom classes
 
+class GalleryWindow(ft.AlertDialog):
+	def empty(self):
+		pass
+
+#	main ###############################################################
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 
@@ -20,33 +29,54 @@ def main(page: ft.Page):
 		if err:
 			text = "ERROR:  " + text
 		add_message_to_messages(err,text)
-		webui_flet_utils.log_message(text)
+		flet_utils.log_message(text)
+
+	page.message = message
 
 	def load_settings():
-		settings = webui_flet_utils.get_user_settings_from_config()
+		settings = flet_utils.get_user_settings_from_config()
 		page.session.set('settings',settings)
 		page.update()
 
 	def save_settings_to_config():
 		settings = page.session.get('settings')
-		webui_flet_utils.save_user_settings_to_config(settings)
+		flet_utils.save_user_settings_to_config(settings)
 
 	def reset_settings_from_config():
-		settings = webui_flet_utils.get_default_settings_from_config()
+		settings = flet_utils.get_default_settings_from_config()
 		page.session.remove('settings')
 		page.session.set('settings',settings)
 		save_settings_to_config()
 
 #	init ###############################################################
+	page.current_layout = 'Default'
+	page.appbar_height = 50
+	page.bottom_panel_height = page.height * 0.2
+	page.toolbox_height = 250
+	page.toolbar_width = 50
+	page.toolbar_button_size = 40
+	page.layers_width = 250
+	page.right_panel_width = 250
+
+	page.current_tool = 'pan'
+	page.canvas_size = [512,512]
+
+	
 	if not page.session.contains_key('settings'):
 		load_settings()
 		settings = page.session.get('settings')
 		if 'webui_page' in settings:
 			if 'default_theme' in settings['webui_page']:
 				page.theme_mode = settings['webui_page']['default_theme']['value']
-		MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
+			if 'max_message_history' in settings['webui_page']:
+				MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
 
 		page.session.set('layout','default')
+
+
+	page.workspace_width = page.width - page.toolbar_width - page.layers_width - page.right_panel_width
+	page.workspace_height = page.height - page.appbar_height - page.bottom_panel_height
+	
 
 #	settings window ####################################################
 	def close_settings_window(e):
@@ -58,162 +88,25 @@ def main(page: ft.Page):
 		settings_window.open = True
 		page.update()
 
-	def update_settings_window():
-		settings_window.content.content.tabs = get_settings_window_tabs()
-		page.update()
-
-	def update_settings_window_tab(section):
-		for i, tab in enumerate(settings_window.content.content.tabs):
-			if section.startswith(tab.text):
-				settings_window.content.content.tabs[i].content = get_settings_window_tab_page(section)
-				return
-
 	def apply_settings(e):
-		update_settings_window()
+		settings_window.update_settings_window()
 
 	def save_settings(e):
 		save_settings_to_config()
-		update_settings_window()
+		settings_window.update_settings_window()
 
 	def reset_settings(e):
 		reset_settings_from_config()
-		update_settings_window()
+		settings_window.update_settings_window()
 
-	def settings_window_tab_setting_changed(e):
-		settings = page.session.get('settings')
-		settings[e.control.data][e.control.label]['value'] = e.control.value
-		update_settings_window_tab(e.control.data)
-		page.update()
-
-	def settings_window_tab_slider_changed(e):
-		settings = page.session.get('settings')
-		parent = e.control.data
-		settings[parent.data[0]][parent.data[1]]['value'] = e.control.value
-		parent.controls[0].value = e.control.value
-		parent.controls[1].value = e.control.value
-		update_settings_window_tab(parent.data[0])
-		page.update()
-
-	def get_settings_window_tab_page_setting_slider(settings,section,setting,display_width):
-		setting_slider = []
-		label = ft.Text(
-				value = setting,
-				text_align = 'center',
-		)
-		row = ft.Row(
-			width = display_width,
-			data = [section, setting],
-			controls = [],
-		)
-		slider = ft.Slider(
-				value = settings[setting]['value'],
-				label = "{value}",
-				min = settings[setting]['min'],
-				max = settings[setting]['max'],
-				divisions = int((settings[setting]['max'] - settings[setting]['min']) / settings[setting]['step']),
-				on_change = settings_window_tab_slider_changed,
-				data = row,
-				expand = 4,
-		)
-		value = ft.TextField(
-				value = settings[setting]['value'],
-				on_submit = settings_window_tab_slider_changed,
-				data = row,
-				content_padding = 10,
-				expand = 1,
-		)
-		row.controls.extend([slider,value])
-		setting_slider.extend([label,row])
-		return setting_slider
-
-	def get_settings_window_tab_settings(section):
-		settings = page.session.get('settings')
-		settings = settings[section]
-		section_settings = [ft.Divider(height=10, color='gray')]
-		display_width = (page.width * 0.25) - 5
-		for setting in settings:
-			if 'value' not in settings[setting]:
-				continue
-			display = None
-			display_type = settings[setting]['display']
-			if display_type == 'dropdown':
-				option_list = []
-				for i in range(len(settings[setting]['option_list'])):
-					item = ft.dropdown.Option(
-							text = settings[setting]['option_list'][i]
-					)
-					option_list.append(item)
-				display = ft.Dropdown(
-						label = setting,
-						value = settings[setting]['value'],
-						options = option_list,
-						on_change = settings_window_tab_setting_changed,
-						data = section,
-						content_padding = 10,
-						width = display_width,
-				)
-			elif display_type == 'textinput':
-				display = ft.TextField(
-						label = setting,
-						value = settings[setting]['value'],
-						on_submit = settings_window_tab_setting_changed,
-						data = section,
-						content_padding = 10,
-						width = display_width,
-				)
-			elif display_type == 'bool':
-				display = ft.Switch(
-						label = setting,
-						value = settings[setting]['value'],
-						on_change = settings_window_tab_setting_changed,
-						data = section,
-						width = display_width,
-				)
-			elif display_type == 'slider':
-				display = ft.Column(
-						controls = get_settings_window_tab_page_setting_slider(settings,section,setting,display_width),
-				)
-			else:
-				continue
-			new_row = ft.Row(
-					controls = [
-							display,
-					]
-			)
-			section_settings.append(new_row)
-		return section_settings
-
-	def get_settings_window_tab_page(section):
-		settings_window_tab_page = ft.Column(
-				alignment = 'start',
-				scroll = 'auto',
-				controls = get_settings_window_tab_settings(section),
-		)
-		return settings_window_tab_page
-
-	def get_settings_window_tabs():
-		settings = page.session.get('settings')
-		tabs = []
-		for section in settings:
-			if section.endswith('_page'):
-				tab = ft.Tab(
-					text = section.split('_')[0],
-					content = get_settings_window_tab_page(section),
-				)
-				tabs.append(tab)
-		return tabs
-
-	settings_window_tabs = get_settings_window_tabs()
-
-	settings_window = ft.AlertDialog(
-			#modal = True,
+	settings_window = SettingsWindow(
 			title = ft.Text("Settings"),
 			content = ft.Container(
 					width = page.width * 0.50,
 					content = ft.Tabs(
 							selected_index = 0,
 							animation_duration = 300,
-							tabs = settings_window_tabs,
+							tabs = None,
 					),
 			),
 			actions = [
@@ -233,9 +126,11 @@ def main(page: ft.Page):
 							on_click = reset_settings,
 					),
 			],
-			actions_alignment="end",
-			#on_dismiss=lambda e: print("Modal dialog dismissed!"),
+			actions_alignment = "end",
 	)
+
+	settings_window.get_settings_window_tabs(page.session.get('settings'))
+
 
 #	gallery window #####################################################
 	def close_gallery_window(e):
@@ -247,16 +142,102 @@ def main(page: ft.Page):
 		gallery_window.open = True
 		page.update()
 
-	gallery_window = ft.AlertDialog(
+	def get_gallery_images(gallery_name):
+		return flet_utils.get_gallery_images(gallery_name)
+
+	def refresh_gallery(gallery_name):
+		index = None
+		if gallery_name == 'uploads':
+			index = 0
+		elif gallery_name == 'outputs':
+			index = 1
+		else:
+			page.message(f'{gallery_name} gallery not found.', 1)
+			return None
+		gallery_window.content.content.tabs[index].content = get_gallery_display(gallery_name)
+
+	def get_gallery_display(gallery_name):
+		gallery_display = ft.Stack(
+				[
+						ft.Row(
+								controls = None,
+								wrap = False,
+								scroll = 'always',
+								expand = True,
+						),
+						ft.Column(
+								controls = [
+										ft.Row(
+												controls = [
+														ft.IconButton(
+																height = page.height * 0.75,
+																icon_size = 50,
+																content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
+																tooltip = 'last image',
+																on_click = None,
+														),
+														ft.IconButton(
+																height = page.height * 0.75,
+																icon_size = 50,
+																content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
+																tooltip = 'next image',
+																on_click = None,
+														),
+												],
+												expand = True,
+												alignment = 'spaceBetween',
+										),
+								],
+								alignment = 'center',
+						),
+				],
+		)
+		gallery = get_gallery_images(gallery_name)
+		if len(gallery) < 1:
+			gallery_display.controls[0].controls.append(
+					ft.Image(
+							src = '/images/chickens.jpg',
+							tooltip = 'Nothing here but us chickens!',
+							gapless_playback = True,
+					)
+			)
+			return gallery_display
+			
+		for i in range(len(gallery)):
+			image = gallery[i]
+			image_name = list(image.keys())[0]
+			image_path = image[image_name]['img_path']
+			image_data = None
+			if 'info_path' in image[image_name]:
+				image_data = image[image_name]['info_path']
+			gallery_display.controls[0].controls.append(
+					ft.Image(
+							src = image_path,
+							tooltip = image_name,
+							gapless_playback = True,
+					)
+			)
+		return gallery_display
+
+
+	gallery_window = GalleryWindow(
 			title = ft.Text('Gallery'),
-			content = ft.Row(
-					controls = [
-							ft.Text('Under Construction.'),
-							ft.Container(
-									width = page.width * 0.75,
-									height = page.height * 0.75,
-							),
-					],
+			content = ft.Container(
+					width = page.width * 0.5,
+					content = ft.Tabs(
+							selected_index = 0,
+							animation_duration = 300,
+							tabs = [
+								ft.Tab(
+										text = "Uploads",
+										content = get_gallery_display('uploads'),
+								),
+								ft.Tab(
+										text = "Outputs",
+										content = get_gallery_display('outputs'),
+								),
+							],
+					),
 			),
 			actions = [
 					ft.ElevatedButton(
@@ -274,11 +255,139 @@ def main(page: ft.Page):
 	)
 
 
+#	upload window ######################################################
+	def close_upload_window(e):
+		upload_window.open = False
+		page.update()
+
+	def open_upload_window(e):
+		page.dialog = upload_window
+		upload_window.open = True
+		page.update()
+
+	def upload_file(e):
+		if file_picker.result is not None and file_picker.result.files is not None:
+			file_list = []
+			for f in file_picker.result.files:
+				upload_url = page.get_upload_url(f.name, 600)
+				img = ft.FilePickerUploadFile(f.name,upload_url)
+				file_list.append(img)
+			file_picker.upload(file_list)
+
+	def upload_complete(e):
+		progress_bars.clear()
+		selected_files.controls.clear()
+		close_upload_window(e)
+		page.message('File upload(s) complete.')
+		layer_manager.add_images_as_layers(file_picker.images)
+		file_picker.images.clear()
+		refresh_gallery('uploads')
+
+	def get_image_from_uploads(name):
+		return flet_utils.get_image_from_uploads(name)
+
+	def get_file_display(name, progress):
+		display = ft.Column(
+				controls = [
+						ft.Row([ft.Text(name)]),
+						progress,
+				],
+		)
+		return display
+
+	selected_files = ft.Column(
+			scroll = 'auto',
+			tight = True,
+			controls = [],
+	);
+	progress_bars: Dict[str, ft.ProgressBar] = {}
+
+	upload_window = ft.AlertDialog(
+		title = ft.Text("Confirm file upload(s)"),
+		content = selected_files,
+		#modal = True,
+		actions_alignment = "center",
+		actions = [
+			ft.ElevatedButton("UPLOAD", on_click = upload_file),
+			ft.TextButton("CANCEL", on_click = close_upload_window),
+		],
+	)
+
+
+#	import window ######################################################
+	def close_import_window(e):
+		import_window.open = False
+		page.update()
+
+	def open_import_window(e):
+		page.dialog = import_window
+		gallery_window.open = True
+		page.update()
+
+	def import_file(e):
+		close_import_window(e)
+		pass
+
+	import_window = ft.AlertDialog(
+		title=ft.Text("Confirm file import(s)"),
+		content=selected_files,
+		#modal=True,
+		actions_alignment="center",
+		actions=[
+			ft.ElevatedButton("IMPORT", on_click = import_file),
+			ft.TextButton("CANCEL", on_click = close_import_window),
+		],
+	)
+
+
+#	file picker ########################################################
+	def pick_images(e: ft.FilePickerResultEvent):
+		progress_bars.clear()
+		selected_files.controls.clear()
+		# check to see if files or directory were chosen
+		if e.files is not None and e.path is None:
+			for f in e.files:
+				prog = ft.ProgressBar(
+						value = 0,
+						color = 'blue',
+				)
+				progress_bars[f.name] = prog
+				selected_files.controls.append(get_file_display(f.name,prog))
+				file_picker.pending += 1
+			# import if local, upload if remote
+			if not e.page.web:
+				open_import_window(e)
+			else:
+				open_upload_window(e)
+
+	def on_image_upload(e: ft.FilePickerUploadEvent):
+		if e.error:
+			page.message(f"Upload error occurred! Failed to fetch '{e.file_name}'.",1)
+			file_picker.pending -= 1
+		else:
+			# update progress bars
+			progress_bars[e.file_name].value = e.progress
+			progress_bars[e.file_name].update()
+			if e.progress >= 1:
+				file_picker.pending -= 1
+				file_picker.images.update(get_image_from_uploads(e.file_name))
+		if file_picker.pending <= 0:
+			file_picker.pending = 0
+			upload_complete(e)
+
+	file_picker = ft.FilePicker(
+			on_result = pick_images,
+			on_upload = on_image_upload
+	)
+	file_picker.pending = 0
+	file_picker.images = {}
+	page.overlay.append(file_picker)
+
 #	layouts ############################################################
 	def change_layout(e):
-		page.session.set('layout',e.control.value)
+		page.current_layout = e.control.value
 		#set_current_options()
-		set_current_tools()
+		#set_current_tools()
 		set_property_panel_options()
 		page.update()
 
@@ -292,7 +401,7 @@ def main(page: ft.Page):
 		#	current_layout_options.controls.append(node_editor_layout_options)
 
 	def set_current_tools():
-		layout = page.session.get('layout')
+		layout = page.current_layout
 		if layout == 'Default':
 			set_tools(default_tools)
 		elif layout == 'Textual Inversion':
@@ -302,7 +411,7 @@ def main(page: ft.Page):
 		toolbar.update()
 
 	def set_property_panel_options():
-		layout = page.session.get('layout')
+		layout = page.current_layout
 		if layout == 'Default':
 			set_properties(default_properties)
 		elif layout == 'Textual Inversion':
@@ -327,13 +436,13 @@ def main(page: ft.Page):
 			tooltip = "Prompt to use for generation.",
 			autofocus = True,
 			hint_text = "A corgi wearing a top hat as an oil painting.",
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	generate_button = ft.ElevatedButton(
 			text = "Generate",
-			on_click=None,
-			height = 50,
+			on_click = None,
+			height = page.appbar_height,
 	)
 
 
@@ -393,7 +502,7 @@ def main(page: ft.Page):
 							height = 50,
 					)
 			],
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	def change_theme(e):
@@ -413,23 +522,14 @@ def main(page: ft.Page):
 			on_click = change_theme,
 			expand = 1,
 			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
-			height = 50,
+			height = page.appbar_height,
 			)
 
 	settings_button = ft.IconButton(
 			icon = ft.icons.SETTINGS,
 			on_click = open_settings_window,
-			height = 50,
+			height = page.appbar_height,
 	)
-
-#	menu_button = ft.PopupMenuButton(
-			#items = [
-			#		#ft.PopupMenuItem(text="Settings", on_click=open_settings_modal),
-			#		ft.PopupMenuItem(),  # divider
-			#		#ft.PopupMenuItem(text="Checked item", checked=False, on_click=check_item_clicked),
-			#],
-			#height = 50,
-#	)
 
 	option_list = ft.Row(
 			controls = [
@@ -439,7 +539,7 @@ def main(page: ft.Page):
 				ft.Container(expand = 1, content = settings_button),
 				#ft.Container(expand = 1, content = menu_button),
 			],
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	appbar = ft.Row(
@@ -451,343 +551,129 @@ def main(page: ft.Page):
 					#ft.Container(expand = 1, content = generate_button),
 					ft.Container(expand = 4, content = option_list),
 			],
-			height = 50,
+			height = page.appbar_height,
 	)
 
 
 #	toolbar ############################################################
 	def add_blank_layer(e):
-		layer_list = layer_manager.data['layer_list']
-		layer_slot = make_layer_slot()
-		layer_slot.data['image'] = webui_flet_utils.create_blank_image()
-		layer_list.append(layer_slot)
-		message("added blank layer to canvas")
-		update_layer_manager()
+		layer_manager.add_blank_layer(e)
 
-	def add_images_as_layers(images):
-		layer_list = layer_manager.data['layer_list']
-		for img in images:
-			layer_slot = make_layer_slot()
-			set_layer_slot_name(layer_slot, img.name)
-			layer_slot.data['image'] = img.data
-			layer_list.append(layer_slot)
-			message(f'added "{img.name}" as layer')
-		update_layer_manager()
-
-	def pick_images(e: ft.FilePickerResultEvent):
-		images = {}
-		for f in e.files:
-			images.update({f.name:vars(f)})
-		images_loaded, images_not_loaded = webui_flet_utils.load_images(images)
-		add_images_as_layers(images_loaded)
-		if images_not_loaded:
-			for img in images_not_loaded:
-				message(f'image not loaded: {img}',1)
-
-	def load_images(e):
-		add_images_dialog.pick_files(file_type = 'image', allow_multiple = True)
-
-	add_images_dialog = ft.FilePicker(
-			on_result = pick_images,
-	)
-
-	page.overlay.append(add_images_dialog)
+	def pan_canvas_tool(e):
+		page.current_tool = 'pan'
 
 	open_gallery_button = ft.IconButton(
-			width = 50,
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
 			content = ft.Icon(ft.icons.DASHBOARD_OUTLINED),
 			tooltip = 'Gallery',
 			on_click = open_gallery_window,
 	)
 
 	add_blank_layer_button = ft.IconButton(
-			width = 50,
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
 			content = ft.Icon(ft.icons.ADD_OUTLINED),
 			tooltip = 'add new blank layer',
 			on_click = add_blank_layer,
 	)
 
 	add_image_as_layer_button = ft.IconButton(
-			width = 50,
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
 			content = ft.Icon(ft.icons.IMAGE_OUTLINED),
 			tooltip = 'load image(s) as new layer(s)',
-			on_click = load_images,
+			on_click = lambda _: file_picker.pick_files(file_type = 'image', allow_multiple = True),
 	)
 
-	universal_tools = ft.Row(
-			alignment = 'start',
-			width = 50,
-			wrap = True,
-			controls = [
-				open_gallery_button,
-				add_blank_layer_button,
-				add_image_as_layer_button,
-			]
+	pan_canvas_button = ft.IconButton(
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
+			content = ft.Icon(ft.icons.OPEN_WITH_OUTLINED),
+			tooltip = 'pan canvas',
+			on_click = pan_canvas_tool,
 	)
 
-	# default tools
-	default_tools = ft.Row(
-			alignment = 'start',
-			wrap = True,
-			controls = [
-			],
+	toolbox = ft.Container(
+			padding = 0,
+			margin = 0,
+			height = 250,
+			clip_behavior = 'antiAlias',
+			content = ft.Row(
+					alignment = 'start',
+					wrap = True,
+					spacing = 0,
+					run_spacing = 0,
+					controls = [
+						open_gallery_button,
+						add_blank_layer_button,
+						add_image_as_layer_button,
+						ft.Divider(height = 10),
+						pan_canvas_button,
+					]
+			)
 	)
 
-	# textual inversion tools
-	textual_inversion_tools = ft.Row(
-			alignment = 'start',
-			wrap = True,
-			controls = [
-			],
-	)
-
-	# node editor tools
-	node_editor_tools = ft.Row(
-			alignment = 'start',
-			wrap = True,
-			controls = [
-			],
-	)
-
-	def set_tools(control):
-		toolbar.content.controls[1] = control
+	def resize_toolbox(e: ft.DragUpdateEvent):
+		min_height = (page.toolbar_button_size * 2)
+		page.toolbox_height = max(min_height, page.toolbox_height + e.delta_y)
+		toolbox.height = page.toolbox_height
 		toolbar.update()
 
-	current_tools = default_tools
+	tool_divider = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_toolbox,
+			content = ft.Divider(
+					height = 10,
+			),
+	)
+
+	tool_properties = ft.Container(
+			content = ft.Column(
+					controls = [],
+			)
+	)
+
+	def resize_toolbar(e: ft.DragUpdateEvent):
+		page.toolbar_width = max(50, page.toolbar_width + e.delta_x)
+		toolbar.width = page.toolbar_width + 10
+		page.update()
+
+	toolbar_dragbar = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_toolbar,
+			content = ft.VerticalDivider(
+					width = 4,
+			),
+	)
 
 	toolbar = ft.Container(
-			content = ft.Column(
+			width = page.toolbar_width + 10,
+			margin = 0,
+			padding = 0,
+			content = ft.Row(
 					controls = [
-						universal_tools,
-						current_tools,
+						ft.Column(
+								controls = [
+									toolbox,
+									tool_divider,
+									tool_properties,
+								],
+								alignment = 'start',
+								expand = True,
+						),
+						toolbar_dragbar,
 					],
+					expand = True,
 			),
 	)
 
 #	layer manager ######################################################
-	def update_layer_manager():
-		update_layer_indexes()
-		update_active_layer_list()
-		layer_manager.update()
-				
-	def update_active_layer_list():
-		layer_manager.data['active_layer_list'] = []
-		layer_list = layer_manager.data['layer_list']
-		for layer in layer_list:
-			if layer.data['type'] == 'slot':
-				if layer.content.content.controls[1].data['visible']:
-					layer_manager.data['active_layer_list'].append(layer)
-
-	def update_layer_indexes():
-		layer_list = layer_manager.data['layer_list']
-		index = 0
-		for layer in layer_list:
-			if layer.data['type'] == 'slot':
-				layer.data['index'] = index
-				index += 1
-
-	def move_layer_slot(index):
-		layer_list = layer_manager.data['layer_list']
-		layer_manager.data['layer_being_moved'] = layer_list.pop(index)
-		layer_manager.data['layer_last_index'] = index
-		update_layer_manager()
-
-	def insert_layer_slot(index):
-		layer_list = layer_manager.data['layer_list']
-		layer_list.insert(index,layer_manager.data['layer_being_moved'])
-		layer_manager.data['layer_being_moved'] = None
-		layer_manager.data['layer_last_index'] = -1
-		update_layer_manager()
-
-	# layer slot controls
-	def set_layer_slot_name(slot, name):
-		slot.content.content.controls[1].content.controls[1].value = name
-
-	def show_hide_layer(e):
-		parent = e.control.data['parent']
-		if parent.data['visible']:
-			parent.data['visible'] = False
-			parent.opacity = 0.5
-			e.control.icon = ft.icons.VISIBILITY_OFF
-		else:
-			parent.data['visible'] = True
-			parent.opacity = 1.0
-			e.control.icon = ft.icons.VISIBILITY
-		update_active_layer_list()
-		parent.update()
-
-	def show_layer_spacer(e):
-		if not e.control.data['has_spacer']:
-			e.control.data['has_spacer'] = True
-			e.control.content.content.controls[0].visible = True
-			e.control.update()
-
-	def hide_layer_spacer(e):
-		if e.control.data['has_spacer']:
-			e.control.data['has_spacer'] = False
-			e.control.content.content.controls[0].visible = False
-			e.control.update()
-
-	def layer_right_click(e):
-		pass
-
-	def layer_slot_will_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		index = e.control.data['index']
-		show_layer_spacer(e)
-		update_layer_manager()
-
-	def layer_slot_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		index = e.control.data['index']
-		hide_layer_spacer(e)
-		insert_layer_slot(index)
-
-	def layer_slot_leave(e):
-		layer_list = layer_manager.data['layer_list']
-		index = e.control.data['index']
-		hide_layer_spacer(e)
-		if layer_manager.data['layer_being_moved']:
-			return
-		move_layer_slot(index)
-
-
-	## tab layer controls
-	def layer_will_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		if layer_list:
-			if layer_list[-1].data['type'] != 'spacer':
-				layer_list.append(make_layer_spacer())
-		else:
-			layer_list.append(make_layer_spacer())
-		update_layer_manager()
-
-	def layer_accept(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		if layer_list:
-			if layer_list[-1].data['type'] == 'spacer':
-				layer_list.pop(-1)
-		layer_list.append(layer_manager.data['layer_being_moved'])
-		layer_manager.data['layer_being_moved'] = None
-		update_layer_manager()
-
-	def layer_leave(e):
-		if not layer_manager.data['layer_being_moved']:
-			return
-		layer_list = layer_manager.data['layer_list']
-		if layer_list:
-			if layer_list[-1].data['type'] == 'spacer':
-				layer_list.pop(-1)
-		update_layer_manager()
-
-	def make_layer_spacer():
-		layer_spacer = ft.Container(
-				content = ft.Divider(
-						height = 10,
-						color = ft.colors.BLACK
-				),
-				data = {
-						'type':'spacer',
-				},
-		)
-		return layer_spacer
-
-
-	# layer displays
-	def make_layer_display():
-		try:
-			make_layer_display.count += 1
-		except Exception:
-			make_layer_display.count = 1
-
-		layer_display = ft.Column(
-				controls = [
-						ft.Container(
-								content = ft.Divider(
-										height = 10,
-										color = ft.colors.BLACK,
-								),
-								visible = False,
-						),
-						ft.Container(
-								content = ft.Row(
-										controls = [],
-										
-								),
-								data = {
-										'visible':True,
-								},
-								bgcolor = ft.colors.WHITE30,
-								padding = 4,
-						),
-				],
-				spacing = 0,
-		)
-		layer_icon = ft.IconButton(
-				icon = ft.icons.VISIBILITY,
-				tooltip = 'show/hide',
-				on_click = show_hide_layer,
-				data = {'parent':layer_display.controls[1]},
-		)
-		layer_label = ft.TextField(
-				value = ("layer_" + str(make_layer_display.count)),
-				data = {'parent':layer_display.controls[1]},
-				content_padding = 10,
-				expand = True,
-		)
-		layer_handle = ft.GestureDetector(
-				content = ft.Draggable(
-						group = 'layer',
-						content = ft.Icon(
-								name = ft.icons.DRAG_HANDLE,
-								data = {'parent':layer_display.controls[1]},
-								tooltip = 'drag to move',
-						),
-				),
-				on_secondary_tap = layer_right_click,
-		)
-		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
-		return layer_display
-
-	def make_layer_slot():
-		layer_slot = ft.DragTarget(
-				group = 'layer',
-				content = ft.Container(
-						content = make_layer_display(),
-				),
-				on_will_accept = layer_slot_will_accept,
-				on_accept = layer_slot_accept,
-				on_leave = layer_slot_leave,
-				data = {
-						'index': -1,
-						'type': 'slot',
-						'has_spacer': False,
-						'image': None,
-				}
-		)
-		return layer_slot
-
-	layer_manager = ft.Container(
-			content = ft.DragTarget(
-					group = 'layer',
-					content = ft.Column(
-							spacing = 0,
-							scroll = 'hidden',
-							controls = [],
-					),
-					on_will_accept = layer_will_accept,
-					on_accept = layer_accept,
-					on_leave = layer_leave,
-			),
-			padding = ft.padding.only(top = 4),
+	layer_manager = LayerManager(
+			content = None,
+			padding = ft.padding.only(top = 4, left = 0, right = 0),
 			bgcolor = ft.colors.WHITE10,
 			data = {
 				'layer_list': [],
@@ -796,7 +682,8 @@ def main(page: ft.Page):
 				'layer_last_index': -1,
 			},
 	)
-	layer_manager.data['layer_list'] = layer_manager.content.content.controls
+
+	layer_manager.content = layer_manager.make_layer_holder()
 
 
 #	asset manager ######################################################
@@ -807,47 +694,105 @@ def main(page: ft.Page):
 							ft.Text("Under Construction"),
 					],
 			),
+			padding = ft.padding.only(top = 4),
 			bgcolor = ft.colors.WHITE10,
 	)
 
 
 #	layers/asset tab ###################################################
+	def resize_layers(e: ft.DragUpdateEvent):
+		page.layers_width = max(250, page.layers_width + e.delta_x)
+		layers.width = page.layers_width
+		page.update()
+
+	layers_dragbar = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_layers,
+			content = ft.VerticalDivider(
+					width = 4,
+			),
+	)
+
 	layers = ft.Container(
-			width = 200,
-			content = ft.Tabs(
-					selected_index = 0,
-					animation_duration = 300,
-					tabs = [
-						ft.Tab(
-								text = "Layers",
-								content = layer_manager,
+			width = page.layers_width,
+			margin = 0,
+			padding = 0,
+			content = ft.Row(
+					controls = [
+						ft.Column(
+							controls = [
+								ft.Tabs(
+										selected_index = 0,
+										animation_duration = 300,
+										tabs = [
+											ft.Tab(
+													text = "Layers",
+													content = layer_manager,
+											),
+											ft.Tab(
+													text = "Assets",
+													content = asset_manager,
+											),
+										],
+								),
+							],
+							alignment = 'start',
+							expand = True
 						),
-						ft.Tab(
-								text = "Assets",
-								content = asset_manager,
+						layers_dragbar,
+					],
+					expand = True,
+			),
+	)
+
+#	canvas #############################################################
+	def drag_image(e: ft.DragUpdateEvent):
+		e.control.top = e.control.top + e.delta_y
+		e.control.left = e.control.left + e.delta_x
+		e.control.update()
+
+
+	def refresh_image_stack():
+		pass
+
+	def center_image_stack():
+		image_stack.left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
+		image_stack.top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
+		canvas.update()
+
+	image_stack = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = drag_image,
+			left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
+			top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
+			content = ft.Stack(
+					[
+						ft.Image(
+								src = '/images/templategrid_albedo.png',
+								width = page.canvas_size[0],
+								height = page.canvas_size[1],
+								gapless_playback = True,
+								expand = True,
 						),
 					],
 			),
 	)
 
-#	canvas #############################################################
 	canvas = ft.Container(
 			content = ft.Stack(
 					[
-						ft.Image(
-								src=f"https://i.redd.it/qdxksbar05o31.jpg",
-								#width=300,
-								#height=300,
-								#fit="contain",
-								gapless_playback=True,
-								expand=True,
-						),
+						image_stack,
 					],
 					clip_behavior = None,
 			),
 			alignment = ft.alignment.center,
 			expand = True,
+			padding = 4,
+			margin = 0,
 	)
+	
 
 
 #	text editor ########################################################
@@ -894,7 +839,7 @@ def main(page: ft.Page):
 			spacing = 0,
 			scroll = 'auto',
 			auto_scroll = True,
-			controls = [],			
+			controls = [],
 	)
 	messages_window = ft.Container(
 			bgcolor = ft.colors.BLACK12,
@@ -906,7 +851,7 @@ def main(page: ft.Page):
 	)
 
 	bottom_panel = ft.Container(
-			height = page.height * .2,
+			height = page.bottom_panel_height,
 			padding = ft.padding.only(bottom = 12),
 			content = ft.Tabs(
 					selected_index = 0,
@@ -932,11 +877,13 @@ def main(page: ft.Page):
 							bottom_panel,
 					],
 			),
+			padding = 0,
+			margin = 0,
 			expand = True,
 	)
 
 
-#	property panel #####################################################
+#	properties #########################################################
 	# canvas layout properties
 	model_menu = ft.Dropdown(
 			label = "Custom Models",
@@ -1025,7 +972,7 @@ def main(page: ft.Page):
 	# textual inversion layout properties
 	def set_clip_model(e):
 		pass
-	
+
 	clip_model_menu = ft.Dropdown(
 			label = "Clip Model",
 			value = 0,
@@ -1063,12 +1010,12 @@ def main(page: ft.Page):
 	def get_textual_inversion_grid_row(row_name):
 		row_items = []
 		row_items.append(ft.Text(value = row_name))
-		row_items.append(ft.Text(value = webui_flet_utils.get_textual_inversion_row_value(row_name)))
+		row_items.append(ft.Text(value = flet_utils.get_textual_inversion_row_value(row_name)))
 		return row_items
 
 	def get_textual_inversion_results_grid():
 		grid_rows = []
-		for item in webui_flet_utils.textual_inversion_grid_row_list:
+		for item in flet_utils.textual_inversion_grid_row_list:
 			grid_rows.append(
 				ft.Row(
 					controls = get_textual_inversion_grid_row(item),
@@ -1079,7 +1026,7 @@ def main(page: ft.Page):
 
 	def get_textual_inversion_results(e):
 		e.control.data = get_textual_inversion_settings()
-		webui_flet_utils.run_textual_inversion(e.control.data)
+		flet_utils.run_textual_inversion(e.control.data)
 		textual_inversion_results.content = get_textual_inversion_results_grid()
 		page.update()
 
@@ -1140,7 +1087,7 @@ def main(page: ft.Page):
 		property_panel.content.controls[0] = control
 		property_panel.update()
 
-	# property panel
+#	property panel #####################################################
 	property_panel = ft.Container(
 			padding = ft.padding.only(top = 12, left = 4, right = 4),
 			bgcolor = ft.colors.WHITE10,
@@ -1162,22 +1109,51 @@ def main(page: ft.Page):
 			),
 	)
 
-	right_panel = ft.Container(
-			content = ft.Tabs(
-					selected_index = 0,
-					animation_duration = 300,
-					tabs = [
-							ft.Tab(
-									text = 'Properties',
-									content = property_panel,
-							),
-							ft.Tab(
-									text = 'Advanced',
-									content = advanced_panel,
-							),
-					],
+#	right panel ########################################################
+	def resize_right_panel(e: ft.DragUpdateEvent):
+		page.right_panel_width = max(250, page.right_panel_width - e.delta_x)
+		right_panel.width = page.right_panel_width
+		page.update()
+
+	right_panel_dragbar = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_right_panel,
+			content = ft.VerticalDivider(
+					width = 4,
 			),
-			width = 250,
+	)
+
+	right_panel = ft.Container(
+			width = page.right_panel_width,
+			margin = 0,
+			padding = 0,
+			content = ft.Row(
+					controls = [
+						right_panel_dragbar,
+						ft.Column(
+								controls = [
+									ft.Tabs(
+											selected_index = 0,
+											animation_duration = 300,
+											tabs = [
+													ft.Tab(
+															text = 'Properties',
+															content = property_panel,
+													),
+													ft.Tab(
+															text = 'Advanced',
+															content = advanced_panel,
+													),
+											],
+									),
+								],
+								alignment = 'start',
+								expand = True
+						),
+					],
+					expand = True,
+			),
 	)
 
 
@@ -1201,7 +1177,9 @@ def main(page: ft.Page):
 #	workspace ##########################################################
 	def draggable_out_of_bounds(e):
 		if e.data == 'false':
-			layer_accept(e)
+			if layer_manager.data['layer_being_moved']:
+				index = layer_manager.data['layer_being_moved'].data['index']
+				layer_manager.insert_layer_slot(index)
 
 	catchall = ft.DragTarget(
 			group = 'catchall',
@@ -1218,7 +1196,7 @@ def main(page: ft.Page):
 					current_layout,
 			],
 	)
-	
+
 
 #	make page ##########################################################
 	full_page = ft.Stack(
@@ -1231,9 +1209,9 @@ def main(page: ft.Page):
 	)
 
 	page.title = "Stable Diffusion Playground"
-	page.theme_mode = "dark"
 	page.add(full_page)
 
 
+	layer_manager.update_layers()
 
-ft.app(target=main, port=8505)
+ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")
