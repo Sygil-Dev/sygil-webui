@@ -29,7 +29,7 @@ streamlit==1.14.0
 streamlit-on-Hover-tabs==1.0.1
 streamlit-option-menu==0.3.2
 streamlit_nested_layout==0.1.1
-streamlit-server-state==0.14.2
+streamlit-server-state==0.15.0
 streamlit-tensorboard==0.0.2
 streamlit-elements==0.1.* # used for the draggable dashboard and new UI design (WIP)
 streamlit-ace==0.1.1 # used to replace the text area on the prompt and also for the code editor tool.

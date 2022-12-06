@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-from sd_utils import st, MemUsageMonitor, server_state, \
+from sd_utils import st, MemUsageMonitor, server_state, no_rerun, \
      get_next_sequence_number, check_prompt_length, torch_gc, \
      save_sample, generation_callback, process_images, \
      KDiffusionSampler, \
@@ -316,6 +316,8 @@ def txt2img(prompt: str, ddim_steps: int, sampler_name: str, n_iter: int, batch_
             sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
         elif sampler_name == 'k_dpm_2':
             sampler = KDiffusionSampler(server_state["model"],'dpm_2')
+        elif sampler_name == 'k_dpmpp_2m':
+            sampler = KDiffusionSampler(server_state["model"],'dpmpp_2m')
         elif sampler_name == 'k_euler_a':
             sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
         elif sampler_name == 'k_euler':
@@ -431,7 +433,7 @@ def layout():
                 if st.session_state['defaults'].admin.global_negative_prompt:
                     prompt += f"### {st.session_state['defaults'].admin.global_negative_prompt}"
                 
-            print(prompt)
+            #print(prompt)
 
         # creating the page layout using columns
         col1, col2, col3 = st.columns([2,5,2], gap="large")
@@ -519,7 +521,7 @@ def layout():
                                                               step=st.session_state['defaults'].txt2img.sampling_steps.step,
                                                               help="Set the default number of sampling steps to use. Default is: 30 (with k_euler)")
 
-            sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+            sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpmpp_2m",  "k_heun", "PLMS", "DDIM"]
             sampler_name = st.selectbox("Sampling method", sampler_name_list,
                                         index=sampler_name_list.index(st.session_state['defaults'].txt2img.default_sampler), help="Sampling method to use. Default: k_euler")
 
@@ -658,12 +660,13 @@ def layout():
         if generate_button:
 
             with col2:
-                if not use_stable_horde:
-                    with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                        load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-                                    use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
-                                    use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
-                                    CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
+                with no_rerun:
+                    if not use_stable_horde:
+                        with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                            load_models(use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+                                        use_GFPGAN=st.session_state["use_GFPGAN"], GFPGAN_model=st.session_state["GFPGAN_model"] ,
+                                        use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+                                        CustomModel_available=server_state["CustomModel_available"], custom_model=st.session_state["custom_model"])
 
                 #print(st.session_state['use_RealESRGAN'])
                 #print(st.session_state['use_LDSR'])
