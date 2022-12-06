@@ -49,6 +49,19 @@ def main(page: ft.Page):
 		save_settings_to_config()
 
 #	init ###############################################################
+	page.current_layout = 'Default'
+	page.appbar_height = 50
+	page.bottom_panel_height = page.height * 0.2
+	page.toolbox_height = 250
+	page.toolbar_width = 50
+	page.toolbar_button_size = 40
+	page.layers_width = 250
+	page.right_panel_width = 250
+
+	page.current_tool = 'pan'
+	page.canvas_size = [512,512]
+
+	
 	if not page.session.contains_key('settings'):
 		load_settings()
 		settings = page.session.get('settings')
@@ -60,6 +73,10 @@ def main(page: ft.Page):
 
 		page.session.set('layout','default')
 
+
+	page.workspace_width = page.width - page.toolbar_width - page.layers_width - page.right_panel_width
+	page.workspace_height = page.height - page.appbar_height - page.bottom_panel_height
+	
 
 #	settings window ####################################################
 	def close_settings_window(e):
@@ -368,9 +385,9 @@ def main(page: ft.Page):
 
 #	layouts ############################################################
 	def change_layout(e):
-		page.session.set('layout',e.control.value)
+		page.current_layout = e.control.value
 		#set_current_options()
-		set_current_tools()
+		#set_current_tools()
 		set_property_panel_options()
 		page.update()
 
@@ -384,7 +401,7 @@ def main(page: ft.Page):
 		#	current_layout_options.controls.append(node_editor_layout_options)
 
 	def set_current_tools():
-		layout = page.session.get('layout')
+		layout = page.current_layout
 		if layout == 'Default':
 			set_tools(default_tools)
 		elif layout == 'Textual Inversion':
@@ -394,7 +411,7 @@ def main(page: ft.Page):
 		toolbar.update()
 
 	def set_property_panel_options():
-		layout = page.session.get('layout')
+		layout = page.current_layout
 		if layout == 'Default':
 			set_properties(default_properties)
 		elif layout == 'Textual Inversion':
@@ -419,13 +436,13 @@ def main(page: ft.Page):
 			tooltip = "Prompt to use for generation.",
 			autofocus = True,
 			hint_text = "A corgi wearing a top hat as an oil painting.",
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	generate_button = ft.ElevatedButton(
 			text = "Generate",
-			on_click=None,
-			height = 50,
+			on_click = None,
+			height = page.appbar_height,
 	)
 
 
@@ -485,7 +502,7 @@ def main(page: ft.Page):
 							height = 50,
 					)
 			],
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	def change_theme(e):
@@ -505,13 +522,13 @@ def main(page: ft.Page):
 			on_click = change_theme,
 			expand = 1,
 			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
-			height = 50,
+			height = page.appbar_height,
 			)
 
 	settings_button = ft.IconButton(
 			icon = ft.icons.SETTINGS,
 			on_click = open_settings_window,
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	option_list = ft.Row(
@@ -522,7 +539,7 @@ def main(page: ft.Page):
 				ft.Container(expand = 1, content = settings_button),
 				#ft.Container(expand = 1, content = menu_button),
 			],
-			height = 50,
+			height = page.appbar_height,
 	)
 
 	appbar = ft.Row(
@@ -534,7 +551,7 @@ def main(page: ft.Page):
 					#ft.Container(expand = 1, content = generate_button),
 					ft.Container(expand = 4, content = option_list),
 			],
-			height = 50,
+			height = page.appbar_height,
 	)
 
 
@@ -542,37 +559,74 @@ def main(page: ft.Page):
 	def add_blank_layer(e):
 		layer_manager.add_blank_layer(e)
 
+	def pan_canvas_tool(e):
+		page.current_tool = 'pan'
+
 	open_gallery_button = ft.IconButton(
-			width = 50,
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
 			content = ft.Icon(ft.icons.DASHBOARD_OUTLINED),
 			tooltip = 'Gallery',
 			on_click = open_gallery_window,
 	)
 
 	add_blank_layer_button = ft.IconButton(
-			width = 50,
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
 			content = ft.Icon(ft.icons.ADD_OUTLINED),
 			tooltip = 'add new blank layer',
 			on_click = add_blank_layer,
 	)
 
 	add_image_as_layer_button = ft.IconButton(
-			width = 50,
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
 			content = ft.Icon(ft.icons.IMAGE_OUTLINED),
 			tooltip = 'load image(s) as new layer(s)',
 			on_click = lambda _: file_picker.pick_files(file_type = 'image', allow_multiple = True),
 	)
 
+	pan_canvas_button = ft.IconButton(
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
+			content = ft.Icon(ft.icons.OPEN_WITH_OUTLINED),
+			tooltip = 'pan canvas',
+			on_click = pan_canvas_tool,
+	)
+
 	toolbox = ft.Container(
+			padding = 0,
+			margin = 0,
+			height = 250,
+			clip_behavior = 'antiAlias',
 			content = ft.Row(
 					alignment = 'start',
 					wrap = True,
+					spacing = 0,
+					run_spacing = 0,
 					controls = [
 						open_gallery_button,
 						add_blank_layer_button,
 						add_image_as_layer_button,
+						ft.Divider(height = 10),
+						pan_canvas_button,
 					]
 			)
+	)
+
+	def resize_toolbox(e: ft.DragUpdateEvent):
+		min_height = (page.toolbar_button_size * 2)
+		page.toolbox_height = max(min_height, page.toolbox_height + e.delta_y)
+		toolbox.height = page.toolbox_height
+		toolbar.update()
+
+	tool_divider = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_toolbox,
+			content = ft.Divider(
+					height = 10,
+			),
 	)
 
 	tool_properties = ft.Container(
@@ -581,20 +635,45 @@ def main(page: ft.Page):
 			)
 	)
 
+	def resize_toolbar(e: ft.DragUpdateEvent):
+		page.toolbar_width = max(50, page.toolbar_width + e.delta_x)
+		toolbar.width = page.toolbar_width + 10
+		page.update()
+
+	toolbar_dragbar = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_toolbar,
+			content = ft.VerticalDivider(
+					width = 4,
+			),
+	)
+
 	toolbar = ft.Container(
-			width = 50,
-			content = ft.Column(
+			width = page.toolbar_width + 10,
+			margin = 0,
+			padding = 0,
+			content = ft.Row(
 					controls = [
-						toolbox,
-						tool_properties,
+						ft.Column(
+								controls = [
+									toolbox,
+									tool_divider,
+									tool_properties,
+								],
+								alignment = 'start',
+								expand = True,
+						),
+						toolbar_dragbar,
 					],
+					expand = True,
 			),
 	)
 
 #	layer manager ######################################################
 	layer_manager = LayerManager(
 			content = None,
-			padding = ft.padding.only(top = 4),
+			padding = ft.padding.only(top = 4, left = 0, right = 0),
 			bgcolor = ft.colors.WHITE10,
 			data = {
 				'layer_list': [],
@@ -615,47 +694,105 @@ def main(page: ft.Page):
 							ft.Text("Under Construction"),
 					],
 			),
+			padding = ft.padding.only(top = 4),
 			bgcolor = ft.colors.WHITE10,
 	)
 
 
 #	layers/asset tab ###################################################
+	def resize_layers(e: ft.DragUpdateEvent):
+		page.layers_width = max(250, page.layers_width + e.delta_x)
+		layers.width = page.layers_width
+		page.update()
+
+	layers_dragbar = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_layers,
+			content = ft.VerticalDivider(
+					width = 4,
+			),
+	)
+
 	layers = ft.Container(
-			width = 200,
-			content = ft.Tabs(
-					selected_index = 0,
-					animation_duration = 300,
-					tabs = [
-						ft.Tab(
-								text = "Layers",
-								content = layer_manager,
+			width = page.layers_width,
+			margin = 0,
+			padding = 0,
+			content = ft.Row(
+					controls = [
+						ft.Column(
+							controls = [
+								ft.Tabs(
+										selected_index = 0,
+										animation_duration = 300,
+										tabs = [
+											ft.Tab(
+													text = "Layers",
+													content = layer_manager,
+											),
+											ft.Tab(
+													text = "Assets",
+													content = asset_manager,
+											),
+										],
+								),
+							],
+							alignment = 'start',
+							expand = True
 						),
-						ft.Tab(
-								text = "Assets",
-								content = asset_manager,
+						layers_dragbar,
+					],
+					expand = True,
+			),
+	)
+
+#	canvas #############################################################
+	def drag_image(e: ft.DragUpdateEvent):
+		e.control.top = e.control.top + e.delta_y
+		e.control.left = e.control.left + e.delta_x
+		e.control.update()
+
+
+	def refresh_image_stack():
+		pass
+
+	def center_image_stack():
+		image_stack.left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
+		image_stack.top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
+		canvas.update()
+
+	image_stack = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = drag_image,
+			left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
+			top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
+			content = ft.Stack(
+					[
+						ft.Image(
+								src = '/images/templategrid_albedo.png',
+								width = page.canvas_size[0],
+								height = page.canvas_size[1],
+								gapless_playback = True,
+								expand = True,
 						),
 					],
 			),
 	)
 
-#	canvas #############################################################
 	canvas = ft.Container(
 			content = ft.Stack(
 					[
-						ft.Image(
-								src=f"https://i.redd.it/qdxksbar05o31.jpg",
-								#width=300,
-								#height=300,
-								#fit="contain",
-								gapless_playback=True,
-								expand=True,
-						),
+						image_stack,
 					],
 					clip_behavior = None,
 			),
 			alignment = ft.alignment.center,
 			expand = True,
+			padding = 4,
+			margin = 0,
 	)
+	
 
 
 #	text editor ########################################################
@@ -714,7 +851,7 @@ def main(page: ft.Page):
 	)
 
 	bottom_panel = ft.Container(
-			height = page.height * .2,
+			height = page.bottom_panel_height,
 			padding = ft.padding.only(bottom = 12),
 			content = ft.Tabs(
 					selected_index = 0,
@@ -740,11 +877,13 @@ def main(page: ft.Page):
 							bottom_panel,
 					],
 			),
+			padding = 0,
+			margin = 0,
 			expand = True,
 	)
 
 
-#	property panel #####################################################
+#	properties #########################################################
 	# canvas layout properties
 	model_menu = ft.Dropdown(
 			label = "Custom Models",
@@ -948,7 +1087,7 @@ def main(page: ft.Page):
 		property_panel.content.controls[0] = control
 		property_panel.update()
 
-	# property panel
+#	property panel #####################################################
 	property_panel = ft.Container(
 			padding = ft.padding.only(top = 12, left = 4, right = 4),
 			bgcolor = ft.colors.WHITE10,
@@ -970,22 +1109,51 @@ def main(page: ft.Page):
 			),
 	)
 
-	right_panel = ft.Container(
-			content = ft.Tabs(
-					selected_index = 0,
-					animation_duration = 300,
-					tabs = [
-							ft.Tab(
-									text = 'Properties',
-									content = property_panel,
-							),
-							ft.Tab(
-									text = 'Advanced',
-									content = advanced_panel,
-							),
-					],
+#	right panel ########################################################
+	def resize_right_panel(e: ft.DragUpdateEvent):
+		page.right_panel_width = max(250, page.right_panel_width - e.delta_x)
+		right_panel.width = page.right_panel_width
+		page.update()
+
+	right_panel_dragbar = ft.GestureDetector(
+			mouse_cursor = ft.MouseCursor.MOVE,
+			drag_interval = 50,
+			on_pan_update = resize_right_panel,
+			content = ft.VerticalDivider(
+					width = 4,
 			),
-			width = 250,
+	)
+
+	right_panel = ft.Container(
+			width = page.right_panel_width,
+			margin = 0,
+			padding = 0,
+			content = ft.Row(
+					controls = [
+						right_panel_dragbar,
+						ft.Column(
+								controls = [
+									ft.Tabs(
+											selected_index = 0,
+											animation_duration = 300,
+											tabs = [
+													ft.Tab(
+															text = 'Properties',
+															content = property_panel,
+													),
+													ft.Tab(
+															text = 'Advanced',
+															content = advanced_panel,
+													),
+											],
+									),
+								],
+								alignment = 'start',
+								expand = True
+						),
+					],
+					expand = True,
+			),
 	)
 
 
