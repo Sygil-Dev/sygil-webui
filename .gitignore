@@ -67,7 +67,7 @@ condaenv.*.requirements.txt
 /flagged/*
 /gfpgan/*
 /models/*
-/webui/flet/uploads
+/webui/flet/assets/uploads/*
 
 z_version_env.tmp
 scripts/bridgeData.py

@@ -121,7 +121,6 @@ def main(page: ft.Page):
 		page.update()
 
 	def open_gallery_window(e):
-		init_gallery_display_images()
 		page.dialog = gallery_window
 		gallery_window.open = True
 		page.update()
@@ -129,8 +128,43 @@ def main(page: ft.Page):
 	def get_gallery_images(gallery_name):
 		return flet_utils.get_gallery_images(gallery_name)
 
-	def init_gallery_display_images():
-		gallery = gallery_window.current_gallery
+	def refresh_gallery_images(gallery_name):
+		gallery_display = ft.Stack(
+				[
+						ft.Row(
+								controls = None,
+								wrap = False,
+								scroll = 'always',
+								expand = True,
+						),
+						ft.Column(
+								controls = [
+										ft.Row(
+												controls = [
+														ft.IconButton(
+																height = page.height * 0.75,
+																icon_size = 50,
+																content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
+																tooltip = 'last image',
+																on_click = None,
+														),
+														ft.IconButton(
+																height = page.height * 0.75,
+																icon_size = 50,
+																content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
+																tooltip = 'next image',
+																on_click = None,
+														),
+												],
+												expand = True,
+												alignment = 'spaceBetween',
+										),
+								],
+								alignment = 'center',
+						),
+				],
+		)
+		gallery = get_gallery_images(gallery_name)
 		for i in range(len(gallery)):
 			image = gallery[i]
 			image_name = list(image.keys())[0]
@@ -145,43 +179,8 @@ def main(page: ft.Page):
 							gapless_playback = True,
 					)
 			)
+		return gallery_display
 
-
-	gallery_display = ft.Stack(
-			[
-					ft.Row(
-							controls = None,
-							wrap = False,
-							scroll = 'always',
-							expand = True,
-					),
-					ft.Column(
-							controls = [
-									ft.Row(
-											controls = [
-													ft.IconButton(
-															height = page.height * 0.75,
-															icon_size = 50,
-															content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
-															tooltip = 'last image',
-															on_click = None,
-													),
-													ft.IconButton(
-															height = page.height * 0.75,
-															icon_size = 50,
-															content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
-															tooltip = 'next image',
-															on_click = None,
-													),
-											],
-											expand = True,
-											alignment = 'spaceBetween',
-									),
-							],
-							alignment = 'center',
-					),
-			],
-	)
 
 	gallery_window = GalleryWindow(
 			title = ft.Text('Gallery'),
@@ -193,11 +192,11 @@ def main(page: ft.Page):
 							tabs = [
 								ft.Tab(
 										text = "Uploads",
-										content = gallery_display,
+										content = refresh_gallery_images('uploads'),
 								),
 								ft.Tab(
-										text = "Output",
-										content = gallery_display,
+										text = "Outputs",
+										content = refresh_gallery_images('outputs'),
 								),
 							],
 					),
@@ -217,10 +216,6 @@ def main(page: ft.Page):
 			actions_alignment="end",
 	)
 
-	gallery_window.uploads = get_gallery_images('uploads')
-	gallery_window.current_gallery = gallery_window.uploads
-	gallery_window.current_image_position = 0
-
 
 #	upload window ######################################################
 	def close_upload_window(e):
@@ -239,7 +234,7 @@ def main(page: ft.Page):
 				upload_url = page.get_upload_url(f.name, 600)
 				img = ft.FilePickerUploadFile(f.name,upload_url)
 				file_list.append(img)
-			file_picker.upload(file_list)				
+			file_picker.upload(file_list)
 
 	def upload_complete(e):
 		progress_bars.clear()
@@ -685,7 +680,7 @@ def main(page: ft.Page):
 			spacing = 0,
 			scroll = 'auto',
 			auto_scroll = True,
-			controls = [],			
+			controls = [],
 	)
 	messages_window = ft.Container(
 			bgcolor = ft.colors.BLACK12,
@@ -816,7 +811,7 @@ def main(page: ft.Page):
 	# textual inversion layout properties
 	def set_clip_model(e):
 		pass
-	
+
 	clip_model_menu = ft.Dropdown(
 			label = "Clip Model",
 			value = 0,
@@ -1011,7 +1006,7 @@ def main(page: ft.Page):
 					current_layout,
 			],
 	)
-	
+
 
 #	make page ##########################################################
 	full_page = ft.Stack(
@@ -1029,4 +1024,4 @@ def main(page: ft.Page):
 
 	layer_manager.update_layers()
 
-ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="uploads")
+ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")
