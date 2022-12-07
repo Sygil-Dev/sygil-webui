@@ -94,7 +94,12 @@ def get_image_from_path(path):
 def get_visible_from_image_stack(image_list):
 	visible_image = create_blank_image()
 	for image in image_list:
-		visible_image = Image.alpha_composite(visible_image,image)
+		# need to crop images for composite
+		x0, y0 = (image.width * 0.5) - 256, (image.height * 0.5) - 256
+		x1, y1 = x0 + 512, y0 + 512
+		box = (x0, y0, x1, y1)
+		cropped_image = image.crop(box)
+		visible_image = Image.alpha_composite(visible_image,cropped_image)
 	return visible_image
 
 # converts Image to base64 string

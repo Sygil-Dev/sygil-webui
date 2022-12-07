@@ -12,7 +12,7 @@ class LayerManager(ft.Container):
 			group = 'layer',
 			content = ft.Column(
 					spacing = 0,
-					scroll = 'hidden',
+					scroll = 'auto',
 					controls = [],
 			),
 			on_will_accept = self.layer_will_accept,
@@ -63,6 +63,7 @@ class LayerManager(ft.Container):
 								),
 								data = {
 										'visible':True,
+										'locked':False,
 								},
 								bgcolor = ft.colors.WHITE30,
 								padding = 4,
@@ -70,10 +71,16 @@ class LayerManager(ft.Container):
 				],
 				spacing = 0,
 		)
-		layer_icon = ft.IconButton(
+		layer_show_hide = ft.IconButton(
 				icon = ft.icons.VISIBILITY,
 				tooltip = 'show/hide',
 				on_click = self.show_hide_layer,
+				data = {'parent':layer_display.controls[1]},
+		)
+		layer_lock_unlock = ft.IconButton(
+				icon = ft.icons.LOCK_OPEN_OUTLINED,
+				tooltip = 'lock/unlock',
+				on_click = self.lock_unlock_layer,
 				data = {'parent':layer_display.controls[1]},
 		)
 		layer_label = ft.TextField(
@@ -93,7 +100,7 @@ class LayerManager(ft.Container):
 				),
 				on_secondary_tap = self.layer_right_click
 		)
-		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
+		layer_display.controls[1].content.controls.extend([layer_show_hide,layer_lock_unlock,layer_label,layer_handle])
 		return layer_display
 
 	# update all layer info
@@ -101,8 +108,9 @@ class LayerManager(ft.Container):
 		self.page.layer_list = self.content.content.controls
 		self.update_layer_indexes()
 		self.update_visible_layer_list()
-		self.page.refresh_canvas()
+		self.update_active_layer_list()
 		self.update()
+		self.page.refresh_canvas()
 
 	# keep track of which layers are visible
 	def show_hide_layer(self, e):
@@ -117,6 +125,7 @@ class LayerManager(ft.Container):
 			e.control.icon = ft.icons.VISIBILITY
 		self.update_visible_layer_list()
 		parent.update()
+		self.page.refresh_canvas()
 
 	def update_visible_layer_list(self):
 		self.page.visible_layer_list = []
@@ -125,6 +134,26 @@ class LayerManager(ft.Container):
 			if layer.data['type'] == 'slot':
 				if layer.content.content.controls[1].data['visible']:
 					self.page.visible_layer_list.append(layer)
+
+	# keep track of which layers are active
+	def lock_unlock_layer(self, e):
+		parent = e.control.data['parent']
+		if parent.data['locked']:
+			parent.data['locked'] = False
+			e.control.icon = ft.icons.LOCK_OPEN_OUTLINED
+		else:
+			parent.data['locked'] = True
+			e.control.icon = ft.icons.LOCK_OUTLINED
+		self.update_active_layer_list()
+		parent.update()
+
+	def update_active_layer_list(self):
+		self.page.active_layer_list = []
+		layer_list = self.page.layer_list
+		for layer in layer_list:
+			if layer.data['type'] == 'slot':
+				if not layer.content.content.controls[1].data['locked']:
+					self.page.active_layer_list.append(layer)
 
 	# handle layer shuffling
 	def update_layer_indexes(self):

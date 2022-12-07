@@ -58,6 +58,8 @@ def main(page: ft.Page):
 		image_stack.content.controls[0].src_base64 = image_stack.image_base64
 		image_stack.update()
 
+	page.refresh_canvas = refresh_canvas
+
 #	init ###############################################################
 	# ui
 	page.current_layout = 'Default'
@@ -78,7 +80,6 @@ def main(page: ft.Page):
 	# canvas
 	page.canvas_background = 'webui/flet/assets/images/templategrid_albedo.png'
 	page.canvas_size = [512,512]
-	page.refresh_canvas = refresh_canvas
 
 	
 	if not page.session.contains_key('settings'):
@@ -93,8 +94,8 @@ def main(page: ft.Page):
 		page.session.set('layout','default')
 
 
-	page.workspace_width = page.width - page.toolbar_width - page.layers_width - page.right_panel_width
-	page.workspace_height = page.height - page.appbar_height - page.bottom_panel_height
+	page.workspace_width = page.width - (page.toolbar_width + page.layers_width + page.right_panel_width)
+	page.workspace_height = page.height - (page.appbar_height + page.bottom_panel_height)
 	
 
 #	settings window ####################################################
@@ -579,7 +580,13 @@ def main(page: ft.Page):
 		layer_manager.add_blank_layer(e)
 
 	def pan_canvas_tool(e):
-		page.current_tool = 'pan'
+		set_current_tool('pan')
+
+	def move_layer_tool(e):
+		set_current_tool('move')
+
+	def brush_tool(e):
+		set_current_tool('brush')
 
 	open_gallery_button = ft.IconButton(
 			width = page.toolbar_button_size,
@@ -608,9 +615,25 @@ def main(page: ft.Page):
 	pan_canvas_button = ft.IconButton(
 			width = page.toolbar_button_size,
 			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.OPEN_WITH_OUTLINED),
+			content = ft.Icon(ft.icons.PAN_TOOL_OUTLINED),
 			tooltip = 'pan canvas',
 			on_click = pan_canvas_tool,
+	)
+
+	move_layer_button = ft.IconButton(
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
+			content = ft.Icon(ft.icons.OPEN_WITH_OUTLINED),
+			tooltip = 'move layer(s)',
+			on_click = move_layer_tool,
+	)
+
+	brush_button = ft.IconButton(
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
+			content = ft.Icon(ft.icons.BRUSH_OUTLINED),
+			tooltip = 'brush tool',
+			on_click = brush_tool,
 	)
 
 	toolbox = ft.Container(
@@ -629,6 +652,8 @@ def main(page: ft.Page):
 						add_image_as_layer_button,
 						ft.Divider(height = 10),
 						pan_canvas_button,
+						move_layer_button,
+						brush_button,
 					]
 			)
 	)
@@ -690,6 +715,7 @@ def main(page: ft.Page):
 	)
 
 #	layer manager ######################################################
+	# LayerManager == ft.Container
 	layer_manager = LayerManager(
 			content = None,
 			padding = ft.padding.only(top = 4, left = 0, right = 0),
@@ -736,7 +762,8 @@ def main(page: ft.Page):
 	layers = ft.Container(
 			width = page.layers_width,
 			margin = 0,
-			padding = 0,
+			padding = ft.padding.only(bottom = 12),
+			clip_behavior = 'antiAlias',
 			content = ft.Row(
 					controls = [
 						ft.Column(
@@ -767,16 +794,41 @@ def main(page: ft.Page):
 
 #	canvas #############################################################
 
-	def drag_canvas(e: ft.DragUpdateEvent):
+	def set_current_tool(tool):
+		page.current_tool = tool
+		if tool == 'pan':
+			image_stack.mouse_cursor = ft.MouseCursor.GRAB
+			image_stack.on_pan_update = pan_canvas
+		elif tool == 'move':
+			image_stack.mouse_cursor = ft.MouseCursor.MOVE
+			image_stack.on_pan_update = move_layer
+		elif tool == 'brush':
+			image_stack.mouse_cursor = ft.MouseCursor.PRECISE
+			image_stack.on_pan_update = paint_layer
+		image_stack.update()
+
+	def pan_canvas(e: ft.DragUpdateEvent):
 		e.control.top = e.control.top + e.delta_y
 		e.control.left = e.control.left + e.delta_x
 		e.control.update()
 
+	def zoom_canvas(e: ft.ScrollEvent):
+		e.control.content.controls[0].width = e.control.content.controls[0].width + e.scroll_delta_y
+		e.control.content.controls[0].height = e.control.content.controls[0].height + e.scroll_delta_y
+		e.control.update()
+
+	def drag_layer(e: ft.DragUpdateEvent):
+		pass
+
+	def paint_layer(e: ft.DragUpdateEvent):
+		pass
+
 	# ImageStack == ft.GestureDetector
 	image_stack = ImageStack(
-			mouse_cursor = ft.MouseCursor.MOVE,
+			mouse_cursor = ft.MouseCursor.GRAB,
 			drag_interval = 50,
-			on_pan_update = drag_canvas,
+			on_pan_update = pan_canvas,
+			on_scroll = zoom_canvas,
 			left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
 			top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
 			content = ft.Stack(
@@ -792,11 +844,22 @@ def main(page: ft.Page):
 			),
 	)
 
+	canvas_overlay = ft.Stack(
+			[
+				ft.Container(
+						content = ft.Text(value = str(page.canvas_size)),
+						bottom = 4,
+						right = 4,
+				)
+			],
+	)
+
 	# Canvas == ft.Container
 	canvas = Canvas(  
 			content = ft.Stack(
 					[
 						image_stack,
+						canvas_overlay,
 					],
 					clip_behavior = None,
 			),
@@ -838,7 +901,7 @@ def main(page: ft.Page):
 	def prune_messages():
 		if len(messages.controls) > MAX_MESSAGE_HISTORY:
 			messages.controls.pop(0)
-		page.update()
+		messages.update()
 
 	def add_message_to_messages(err,text):
 		if err:
