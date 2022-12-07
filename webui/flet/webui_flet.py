@@ -1,6 +1,5 @@
 # Flet imports
 import flet as ft
-from flet.ref import Ref
 
 # other imports
 from math import pi
@@ -9,8 +8,9 @@ from loguru import logger
 
 # utils imports
 from scripts import flet_utils
-from scripts.flet_layer_manager import LayerManager
 from scripts.flet_settings_window import SettingsWindow
+from scripts.flet_layer_manager import LayerManager
+from scripts.flet_canvas import Canvas, ImageStack
 
 # for debugging
 from pprint import pprint
@@ -48,7 +48,18 @@ def main(page: ft.Page):
 		page.session.set('settings',settings)
 		save_settings_to_config()
 
+	def refresh_canvas():
+		image_list = [flet_utils.get_image_from_path(page.canvas_background)]
+		for layer in page.visible_layer_list:
+			image_list.append(layer.data['image'])
+		image_stack.image_list = image_list
+		image_stack.image = flet_utils.get_visible_from_image_stack(image_list)
+		image_stack.image_base64 = flet_utils.convert_image_to_base64(image_stack.image)
+		image_stack.content.controls[0].src_base64 = image_stack.image_base64
+		image_stack.update()
+
 #	init ###############################################################
+	# ui
 	page.current_layout = 'Default'
 	page.appbar_height = 50
 	page.bottom_panel_height = page.height * 0.2
@@ -58,8 +69,16 @@ def main(page: ft.Page):
 	page.layers_width = 250
 	page.right_panel_width = 250
 
+	# tools
 	page.current_tool = 'pan'
+	# layer manager
+	page.layer_list = []
+	page.visible_layer_list = []
+	page.active_layer_list = []
+	# canvas
+	page.canvas_background = 'webui/flet/assets/images/templategrid_albedo.png'
 	page.canvas_size = [512,512]
+	page.refresh_canvas = refresh_canvas
 
 	
 	if not page.session.contains_key('settings'):
@@ -677,7 +696,7 @@ def main(page: ft.Page):
 			bgcolor = ft.colors.WHITE10,
 			data = {
 				'layer_list': [],
-				'active_layer_list': [],
+				'visible_layer_list': [],
 				'layer_being_moved': None,
 				'layer_last_index': -1,
 			},
@@ -747,30 +766,23 @@ def main(page: ft.Page):
 	)
 
 #	canvas #############################################################
-	def drag_image(e: ft.DragUpdateEvent):
+
+	def drag_canvas(e: ft.DragUpdateEvent):
 		e.control.top = e.control.top + e.delta_y
 		e.control.left = e.control.left + e.delta_x
 		e.control.update()
 
-
-	def refresh_image_stack():
-		pass
-
-	def center_image_stack():
-		image_stack.left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
-		image_stack.top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
-		canvas.update()
-
-	image_stack = ft.GestureDetector(
+	# ImageStack == ft.GestureDetector
+	image_stack = ImageStack(
 			mouse_cursor = ft.MouseCursor.MOVE,
 			drag_interval = 50,
-			on_pan_update = drag_image,
+			on_pan_update = drag_canvas,
 			left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
 			top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
 			content = ft.Stack(
 					[
 						ft.Image(
-								src = '/images/templategrid_albedo.png',
+								src_base64 = None,
 								width = page.canvas_size[0],
 								height = page.canvas_size[1],
 								gapless_playback = True,
@@ -780,7 +792,8 @@ def main(page: ft.Page):
 			),
 	)
 
-	canvas = ft.Container(
+	# Canvas == ft.Container
+	canvas = Canvas(  
 			content = ft.Stack(
 					[
 						image_stack,
@@ -1213,5 +1226,7 @@ def main(page: ft.Page):
 
 
 	layer_manager.update_layers()
+	page.refresh_canvas()
+
 
 ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")

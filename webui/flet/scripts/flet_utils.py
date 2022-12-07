@@ -1,8 +1,9 @@
 # flet_utils.py
 
 # imports
-import os, yaml, js2py
+import os, yaml, base64
 from PIL import Image
+from io import BytesIO
 from datetime import datetime
 from pprint import pprint
 
@@ -75,12 +76,34 @@ def create_blank_image():
 def get_image_from_uploads(name):
 	path_to_image = os.path.join(path_to_uploads, name)
 	if os.path.exists(path_to_image):
-		img = Image.open(path_to_image)
-		return {name:img}
+		image = Image.open(path_to_image)
+		image = image.convert("RGBA")
+		return {name:image}
 	else:
 		log_message(f'image not found: "{name}"')
 		return {name:None}
 
+def get_image_from_path(path):
+	image = Image.open(path)
+	image = image.resize((512,512))
+	image = image.convert("RGBA")
+	return image
+
+# takes list of Image(s) as arg
+# returns single composite of all images
+def get_visible_from_image_stack(image_list):
+	visible_image = create_blank_image()
+	for image in image_list:
+		visible_image = Image.alpha_composite(visible_image,image)
+	return visible_image
+
+# converts Image to base64 string
+def convert_image_to_base64(image):
+	image_buffer = BytesIO()
+	image.save(image_buffer, format='PNG')
+	image_buffer.seek(0)
+	image_bytes = image_buffer.getvalue()
+	return base64.b64encode(image_bytes).decode()
 
 # takes name of gallery as arg ('assets','output','uploads')
 # returns list of dicts
@@ -109,7 +132,6 @@ def get_gallery_images(gallery_name):
 		if f.endswith(('.yaml')):
 			path_to_file = os.path.join('/uploads',f)
 			images.append({f:{'info_path':path_to_file}})
-	#pprint(images)
 	return images
 
 

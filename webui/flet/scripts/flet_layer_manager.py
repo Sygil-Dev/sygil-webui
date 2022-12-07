@@ -96,7 +96,15 @@ class LayerManager(ft.Container):
 		layer_display.controls[1].content.controls.extend([layer_icon,layer_label,layer_handle])
 		return layer_display
 
-	# keep track of which layers are active/visible
+	# update all layer info
+	def update_layers(self):
+		self.page.layer_list = self.content.content.controls
+		self.update_layer_indexes()
+		self.update_visible_layer_list()
+		self.page.refresh_canvas()
+		self.update()
+
+	# keep track of which layers are visible
 	def show_hide_layer(self, e):
 		parent = e.control.data['parent']
 		if parent.data['visible']:
@@ -107,20 +115,20 @@ class LayerManager(ft.Container):
 			parent.data['visible'] = True
 			parent.opacity = 1.0
 			e.control.icon = ft.icons.VISIBILITY
-		self.update_active_layer_list()
+		self.update_visible_layer_list()
 		parent.update()
 
-	def update_active_layer_list(self):
-		self.data['active_layer_list'] = []
-		layer_list = self.data['layer_list']
+	def update_visible_layer_list(self):
+		self.page.visible_layer_list = []
+		layer_list = self.page.layer_list
 		for layer in layer_list:
 			if layer.data['type'] == 'slot':
 				if layer.content.content.controls[1].data['visible']:
-					self.data['active_layer_list'].append(layer)
+					self.page.visible_layer_list.append(layer)
 
 	# handle layer shuffling
 	def update_layer_indexes(self):
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		index = 0
 		for layer in layer_list:
 			if layer.data['type'] == 'slot':
@@ -128,28 +136,22 @@ class LayerManager(ft.Container):
 				index += 1
 				
 	def move_layer_slot(self, index):
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		self.data['layer_being_moved'] = layer_list.pop(index)
 		self.data['layer_last_index'] = index
 		self.update_layers()
 
 	def insert_layer_slot(self, index):
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		layer_list.insert(index,self.data['layer_being_moved'])
 		self.data['layer_being_moved'] = None
 		self.data['layer_last_index'] = -1
 		self.update_layers()
 
-	def update_layers(self):
-		self.data['layer_list'] = self.content.content.controls
-		self.update_layer_indexes()
-		self.update_active_layer_list()
-		self.update()
-
 	def layer_slot_will_accept(self, e):
 		if not self.data['layer_being_moved']:
 			return
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		index = e.control.data['index']
 		e.control.show_layer_spacer()
 		self.update_layers()
@@ -157,13 +159,13 @@ class LayerManager(ft.Container):
 	def layer_slot_accept(self, e):
 		if not self.data['layer_being_moved']:
 			return
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		index = e.control.data['index']
 		e.control.hide_layer_spacer()
 		self.insert_layer_slot(index)
 
 	def layer_slot_leave(self, e):
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		index = e.control.data['index']
 		e.control.hide_layer_spacer()
 		if self.data['layer_being_moved']:
@@ -174,24 +176,28 @@ class LayerManager(ft.Container):
 	def layer_will_accept(self, e):
 		if not self.data['layer_being_moved']:
 			return
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		if layer_list:
 			if layer_list[-1].data['type'] != 'spacer':
-				layer_list.append(ft.Container(
-				content = ft.Divider(height = 10,color = ft.colors.BLACK),
-				data = {'type':'spacer'}
-				))
+				layer_list.append(
+					ft.Container(
+							content = ft.Divider(height = 10,color = ft.colors.BLACK),
+							data = {'type':'spacer'}
+					)
+				)
 		else:
-			layer_list.append(ft.Container(
-				content = ft.Divider(height = 10,color = ft.colors.BLACK),
-				data = {'type':'spacer'}
-			))
+			layer_list.append(
+				ft.Container(
+						content = ft.Divider(height = 10,color = ft.colors.BLACK),
+						data = {'type':'spacer'}
+				)
+			)
 		self.update_layers()
 
 	def layer_accept(self, e):
 		if not self.data['layer_being_moved']:
 			return
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		if layer_list:
 			if layer_list[-1].data['type'] == 'spacer':
 				layer_list.pop(-1)
@@ -202,7 +208,7 @@ class LayerManager(ft.Container):
 	def layer_leave(self, e):
 		if not self.data['layer_being_moved']:
 			return
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		if layer_list:
 			if layer_list[-1].data['type'] == 'spacer':
 				layer_list.pop(-1)
@@ -210,7 +216,7 @@ class LayerManager(ft.Container):
 
 	# handle toolbar functions
 	def add_blank_layer(self, e):
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		layer_slot = self.make_layer_slot()
 		layer_slot.data['image'] = flet_utils.create_blank_image()
 		layer_list.append(layer_slot)
@@ -218,7 +224,7 @@ class LayerManager(ft.Container):
 		self.update_layers()
 
 	def add_images_as_layers(self, images):
-		layer_list = self.data['layer_list']
+		layer_list = self.page.layer_list
 		for img in images:
 			if images[img] == None:
 				continue
@@ -234,7 +240,7 @@ class LayerManager(ft.Container):
 		pass
 
 
-	# make each layer slot a target
+# make each layer slot a target
 class LayerSlot(ft.DragTarget):
 	def set_layer_slot_name(self, name):
 		self.content.content.controls[1].content.controls[1].value = name
