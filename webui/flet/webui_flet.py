@@ -9,22 +9,20 @@ from loguru import logger
 # utils imports
 from scripts import flet_utils
 from scripts.flet_settings_window import SettingsWindow
+from scripts.flet_gallery_window import GalleryWindow, GalleryDisplay
 from scripts.flet_layer_manager import LayerManager
 from scripts.flet_canvas import Canvas, ImageStack
 
 # for debugging
 from pprint import pprint
 
-# custom classes
-
-class GalleryWindow(ft.AlertDialog):
-	def empty(self):
-		pass
 
 #	main ###############################################################
 @logger.catch(reraise=True)
 def main(page: ft.Page):
 
+#	init ###############################################################
+	# messages
 	def message(text, err = 0):
 		if err:
 			text = "ERROR:  " + text
@@ -33,6 +31,74 @@ def main(page: ft.Page):
 
 	page.message = message
 
+	# ui
+	page.current_layout = 'Default'
+	page.appbar_height = 50
+	page.bottom_panel_height = page.height * 0.2
+	page.toolbox_height = 250
+	page.toolbar_width = 50
+	page.toolbar_button_size = 40
+	page.left_panel_width = 250
+	page.right_panel_width = 250
+
+	page.primary_color = None
+	page.secondary_color = 'white_10'
+	page.tertiary_color = 'blue'
+
+	def change_theme(e):
+		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
+
+		if "(Light theme)" in theme_switcher.tooltip:
+			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
+
+		if "(Dark theme)" in theme_switcher.tooltip:
+			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
+
+		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
+		page.update()
+
+	page.change_theme = change_theme
+
+	# layouts
+	def set_layout(e):
+		page.current_layout = e.control.value
+		set_property_panel_options()
+		page.update()
+
+	page.set_layout = set_layout
+	
+	# tools
+	page.current_tool = 'pan'
+
+	# layer manager
+	page.layer_list = []
+	page.visible_layer_list = []
+	page.active_layer_list = []
+
+	# canvas
+	page.canvas_background = flet_utils.get_canvas_background('webui/flet/assets/images/templategrid_albedo.png')
+	page.canvas_size = [512,512]
+
+	def get_viewport_size():
+		viewport_width = page.width - (page.toolbar_width + page.left_panel_width + page.right_panel_width)
+		viewport_height = page.height - (page.appbar_height + page.bottom_panel_height)
+		return (viewport_width, viewport_height)
+
+	page.get_viewport_size = get_viewport_size
+
+	def refresh_canvas():
+		image_list = [page.canvas_background]
+		for layer in page.visible_layer_list:
+			image_list.append(layer.data['image'])
+		image_stack.image_list = image_list
+		image_stack.image = flet_utils.get_visible_from_image_stack(image_list)
+		image_stack.image_base64 = flet_utils.convert_image_to_base64(image_stack.image)
+		image_stack.content.controls[0].src_base64 = image_stack.image_base64
+		image_stack.update()
+
+	page.refresh_canvas = refresh_canvas
+
+	# settings
 	def load_settings():
 		settings = flet_utils.get_user_settings_from_config()
 		page.session.set('settings',settings)
@@ -48,40 +114,6 @@ def main(page: ft.Page):
 		page.session.set('settings',settings)
 		save_settings_to_config()
 
-	def refresh_canvas():
-		image_list = [flet_utils.get_image_from_path(page.canvas_background)]
-		for layer in page.visible_layer_list:
-			image_list.append(layer.data['image'])
-		image_stack.image_list = image_list
-		image_stack.image = flet_utils.get_visible_from_image_stack(image_list)
-		image_stack.image_base64 = flet_utils.convert_image_to_base64(image_stack.image)
-		image_stack.content.controls[0].src_base64 = image_stack.image_base64
-		image_stack.update()
-
-	page.refresh_canvas = refresh_canvas
-
-#	init ###############################################################
-	# ui
-	page.current_layout = 'Default'
-	page.appbar_height = 50
-	page.bottom_panel_height = page.height * 0.2
-	page.toolbox_height = 250
-	page.toolbar_width = 50
-	page.toolbar_button_size = 40
-	page.layers_width = 250
-	page.right_panel_width = 250
-
-	# tools
-	page.current_tool = 'pan'
-	# layer manager
-	page.layer_list = []
-	page.visible_layer_list = []
-	page.active_layer_list = []
-	# canvas
-	page.canvas_background = 'webui/flet/assets/images/templategrid_albedo.png'
-	page.canvas_size = [512,512]
-
-	
 	if not page.session.contains_key('settings'):
 		load_settings()
 		settings = page.session.get('settings')
@@ -94,8 +126,6 @@ def main(page: ft.Page):
 		page.session.set('layout','default')
 
 
-	page.workspace_width = page.width - (page.toolbar_width + page.layers_width + page.right_panel_width)
-	page.workspace_height = page.height - (page.appbar_height + page.bottom_panel_height)
 	
 
 #	settings window ####################################################
@@ -119,10 +149,12 @@ def main(page: ft.Page):
 		reset_settings_from_config()
 		settings_window.update_settings_window()
 
+	# SettingsWindow == ft.AlertDialog
 	settings_window = SettingsWindow(
 			title = ft.Text("Settings"),
 			content = ft.Container(
 					width = page.width * 0.50,
+					bgcolor = page.primary_color,
 					content = ft.Tabs(
 							selected_index = 0,
 							animation_duration = 300,
@@ -162,113 +194,72 @@ def main(page: ft.Page):
 		gallery_window.open = True
 		page.update()
 
-	def get_gallery_images(gallery_name):
-		return flet_utils.get_gallery_images(gallery_name)
+	def refresh_gallery(name):
+		pass # placeholder
 
-	def refresh_gallery(gallery_name):
-		index = None
-		if gallery_name == 'uploads':
-			index = 0
-		elif gallery_name == 'outputs':
-			index = 1
-		else:
-			page.message(f'{gallery_name} gallery not found.', 1)
-			return None
-		gallery_window.content.content.tabs[index].content = get_gallery_display(gallery_name)
+	def add_as_new_layer(e):
+		pass
 
-	def get_gallery_display(gallery_name):
-		gallery_display = ft.Stack(
-				[
-						ft.Row(
-								controls = None,
-								wrap = False,
-								scroll = 'always',
-								expand = True,
-						),
-						ft.Column(
-								controls = [
-										ft.Row(
-												controls = [
-														ft.IconButton(
-																height = page.height * 0.75,
-																icon_size = 50,
-																content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
-																tooltip = 'last image',
-																on_click = None,
-														),
-														ft.IconButton(
-																height = page.height * 0.75,
-																icon_size = 50,
-																content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
-																tooltip = 'next image',
-																on_click = None,
-														),
-												],
-												expand = True,
-												alignment = 'spaceBetween',
-										),
-								],
-								alignment = 'center',
-						),
-				],
-		)
-		gallery = get_gallery_images(gallery_name)
-		if len(gallery) < 1:
-			gallery_display.controls[0].controls.append(
-					ft.Image(
-							src = '/images/chickens.jpg',
-							tooltip = 'Nothing here but us chickens!',
-							gapless_playback = True,
-					)
-			)
-			return gallery_display
-			
-		for i in range(len(gallery)):
-			image = gallery[i]
-			image_name = list(image.keys())[0]
-			image_path = image[image_name]['img_path']
-			image_data = None
-			if 'info_path' in image[image_name]:
-				image_data = image[image_name]['info_path']
-			gallery_display.controls[0].controls.append(
-					ft.Image(
-							src = image_path,
-							tooltip = image_name,
-							gapless_playback = True,
-					)
-			)
-		return gallery_display
+	def save_to_disk(e):
+		pass
+
+	def remove_from_gallery(e):
+		pass
 
 
+	# GalleryDisplay == ft.Container
+	uploads_gallery = GalleryDisplay(
+			content = None,
+			clip_behavior = 'antiAlias',
+			bgcolor = page.primary_color,
+			margin = 0,
+			padding = 4,
+	)
+
+	outputs_gallery = GalleryDisplay(
+			content = None,
+			clip_behavior = 'antiAlias',
+			bgcolor = page.primary_color,
+			margin = 0,
+			padding = 4,
+	)
+
+	# GalleryWindow == ft.AlertDialog
 	gallery_window = GalleryWindow(
 			title = ft.Text('Gallery'),
 			content = ft.Container(
 					width = page.width * 0.5,
+					bgcolor = page.primary_color,
 					content = ft.Tabs(
 							selected_index = 0,
 							animation_duration = 300,
 							tabs = [
 								ft.Tab(
 										text = "Uploads",
-										content = get_gallery_display('uploads'),
+										content = uploads_gallery,
 								),
 								ft.Tab(
 										text = "Outputs",
-										content = get_gallery_display('outputs'),
+										content = outputs_gallery,
 								),
 							],
 					),
 			),
 			actions = [
 					ft.ElevatedButton(
+							text = "Add As New Layer",
+							icon = ft.icons.ADD_OUTLINED,
+							on_click = add_as_new_layer,
+					),
+					ft.ElevatedButton(
 							text = "Save",
-							icon = ft.icons.SAVE,
-							on_click = None,
+							icon = ft.icons.SAVE_OUTLINED,
+							on_click = save_to_disk,
 					),
 					ft.ElevatedButton(
 							text = "Discard",
-							icon = ft.icons.RESTORE_FROM_TRASH_ROUNDED,
-							on_click = None,
+							icon = ft.icons.DELETE_OUTLINED,
+							on_click = remove_from_gallery,
 					),
 			],
 			actions_alignment="end",
@@ -404,21 +395,6 @@ def main(page: ft.Page):
 	page.overlay.append(file_picker)
 
 #	layouts ############################################################
-	def change_layout(e):
-		page.current_layout = e.control.value
-		#set_current_options()
-		#set_current_tools()
-		set_property_panel_options()
-		page.update()
-
-#	def set_current_layout_options():
-		#layout = page.session.get('layout')
-		#if layout == 'Default':
-		#	current_layout_options.controls.append(default_layout_options)
-		#elif layout == 'Textual Inversion':
-		#	current_layout_options.controls.append(textual_inversion_layout_options)
-		#elif layout == 'Node Editor':
-		#	current_layout_options.controls.append(node_editor_layout_options)
 
 	def set_current_tools():
 		layout = page.current_layout
@@ -444,6 +420,7 @@ def main(page: ft.Page):
 	app_bar_title = ft.Text(
 			value = "Sygil",
 			size = 20,
+			color = page.tertiary_color,
 			text_align = 'center',
 	)
 
@@ -465,46 +442,6 @@ def main(page: ft.Page):
 			height = page.appbar_height,
 	)
 
-
-#	default_layout_options = ft.Row(
-			#alignment = 'start',
-			#controls = [
-			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Canvas'), tooltip ='Canvas Options', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Layers'), tooltip ='Layer Options', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Tools'), tooltip ='Toolbox', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Text(value = 'Preferences'), tooltip ='Set Editor Preferences', on_click = None, disabled=True)),
-			#],
-			#height = 50,
-#	)
-
-#	textual_inversion_layout_options = ft.Row(
-			#alignment = 'start',
-			#controls = [
-			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='textual_inversion options 1', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 2', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'textual_inversion options 3', on_click = None, disabled=True)),
-			#],
-			#height = 50,
-#	)
-
-#	node_editor_layout_options = ft.Row(
-			#alignment = 'start',
-			#controls = [
-			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip ='node_editor options 1', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 2', on_click = None, disabled=True)),
-			#	ft.Container(ft.IconButton(content = ft.Icon(ft.icons.ADD_OUTLINED), tooltip = 'node_editor options 3', on_click = None, disabled=True)),
-			#],
-			#height = 50,
-#	)
-
-#	current_layout_options = ft.Row(
-			#alignment = 'start',
-			#controls = [
-			#	ft.Container(content = default_layout_options),
-			#],
-			#height = 50,
-#	)
-
 	layout_menu = ft.Row(
 			alignment = 'start',
 			controls = [
@@ -517,7 +454,7 @@ def main(page: ft.Page):
 							value = 'Default',
 							content_padding = 10,
 							width = 200,
-							on_change = change_layout,
+							on_change = page.set_layout,
 							tooltip = "Switch between different workspaces",
 							height = 50,
 					)
@@ -525,21 +462,9 @@ def main(page: ft.Page):
 			height = page.appbar_height,
 	)
 
-	def change_theme(e):
-		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
-
-		if "(Light theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
-
-		if "(Dark theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
-
-		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
-		page.update()
-
 	theme_switcher = ft.IconButton(
 			ft.icons.WB_SUNNY_OUTLINED,
-			on_click = change_theme,
+			on_click = page.change_theme,
 			expand = 1,
 			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
 			height = page.appbar_height,
@@ -553,11 +478,9 @@ def main(page: ft.Page):
 
 	option_list = ft.Row(
 			controls = [
-				#ft.Container(expand=True, content = current_layout_options),
 				ft.Container(expand = 2, content = layout_menu),
 				ft.Container(expand = 1, content = theme_switcher),
 				ft.Container(expand = 1, content = settings_button),
-				#ft.Container(expand = 1, content = menu_button),
 			],
 			height = page.appbar_height,
 	)
@@ -637,6 +560,7 @@ def main(page: ft.Page):
 	)
 
 	toolbox = ft.Container(
+			bgcolor = page.secondary_color,
 			padding = 0,
 			margin = 0,
 			height = 250,
@@ -650,7 +574,7 @@ def main(page: ft.Page):
 						open_gallery_button,
 						add_blank_layer_button,
 						add_image_as_layer_button,
-						ft.Divider(height = 10),
+						ft.Divider(height = 10, color = page.tertiary_color),
 						pan_canvas_button,
 						move_layer_button,
 						brush_button,
@@ -669,11 +593,15 @@ def main(page: ft.Page):
 			drag_interval = 50,
 			on_pan_update = resize_toolbox,
 			content = ft.Divider(
+					color = page.tertiary_color,
 					height = 10,
 			),
 	)
 
 	tool_properties = ft.Container(
+			bgcolor = page.secondary_color,
+			padding = 0,
+			margin = 0,
 			content = ft.Column(
 					controls = [],
 			)
@@ -681,7 +609,7 @@ def main(page: ft.Page):
 
 	def resize_toolbar(e: ft.DragUpdateEvent):
 		page.toolbar_width = max(50, page.toolbar_width + e.delta_x)
-		toolbar.width = page.toolbar_width + 10
+		toolbar.width = page.toolbar_width
 		page.update()
 
 	toolbar_dragbar = ft.GestureDetector(
@@ -690,20 +618,21 @@ def main(page: ft.Page):
 			on_pan_update = resize_toolbar,
 			content = ft.VerticalDivider(
 					width = 4,
+					color = page.tertiary_color,
 			),
 	)
 
 	toolbar = ft.Container(
-			width = page.toolbar_width + 10,
+			width = page.toolbar_width,
+			bgcolor = page.primary_color,
 			margin = 0,
-			padding = 0,
+			padding = ft.padding.only(left = 0, top = 0, right = 0, bottom = 10),
 			content = ft.Row(
 					controls = [
 						ft.Column(
 								controls = [
 									toolbox,
 									tool_divider,
-									tool_properties,
 								],
 								alignment = 'start',
 								expand = True,
@@ -718,8 +647,8 @@ def main(page: ft.Page):
 	# LayerManager == ft.Container
 	layer_manager = LayerManager(
 			content = None,
+			bgcolor = page.secondary_color,
 			padding = ft.padding.only(top = 4, left = 0, right = 0),
-			bgcolor = ft.colors.WHITE10,
 			data = {
 				'layer_list': [],
 				'visible_layer_list': [],
@@ -740,29 +669,31 @@ def main(page: ft.Page):
 					],
 			),
 			padding = ft.padding.only(top = 4),
-			bgcolor = ft.colors.WHITE10,
+			bgcolor = page.secondary_color,
 	)
 
 
-#	layers/asset tab ###################################################
-	def resize_layers(e: ft.DragUpdateEvent):
-		page.layers_width = max(250, page.layers_width + e.delta_x)
-		layers.width = page.layers_width
+#	left panel ###################################################
+	def resize_left_panel(e: ft.DragUpdateEvent):
+		page.left_panel_width = max(250, page.left_panel_width + e.delta_x)
+		left_panel.width = page.left_panel_width
 		page.update()
 
-	layers_dragbar = ft.GestureDetector(
+	left_panel_dragbar = ft.GestureDetector(
 			mouse_cursor = ft.MouseCursor.MOVE,
 			drag_interval = 50,
-			on_pan_update = resize_layers,
+			on_pan_update = resize_left_panel,
 			content = ft.VerticalDivider(
 					width = 4,
+					color = page.tertiary_color,
 			),
 	)
 
-	layers = ft.Container(
-			width = page.layers_width,
+	left_panel = ft.Container(
+			width = page.left_panel_width,
+			bgcolor = page.primary_color,
 			margin = 0,
-			padding = ft.padding.only(bottom = 12),
+			padding = ft.padding.only(left = 0, top = 0, right = 0, bottom = 10),
 			clip_behavior = 'antiAlias',
 			content = ft.Row(
 					controls = [
@@ -786,7 +717,7 @@ def main(page: ft.Page):
 							alignment = 'start',
 							expand = True
 						),
-						layers_dragbar,
+						left_panel_dragbar,
 					],
 					expand = True,
 			),
@@ -813,11 +744,11 @@ def main(page: ft.Page):
 		e.control.update()
 
 	def zoom_canvas(e: ft.ScrollEvent):
-		e.control.content.controls[0].width = e.control.content.controls[0].width + e.scroll_delta_y
-		e.control.content.controls[0].height = e.control.content.controls[0].height + e.scroll_delta_y
+		e.control.content.controls[0].width = e.control.content.controls[0].width - e.scroll_delta_y
+		e.control.content.controls[0].height = e.control.content.controls[0].height - e.scroll_delta_y
 		e.control.update()
 
-	def drag_layer(e: ft.DragUpdateEvent):
+	def move_layer(e: ft.DragUpdateEvent):
 		pass
 
 	def paint_layer(e: ft.DragUpdateEvent):
@@ -829,12 +760,12 @@ def main(page: ft.Page):
 			drag_interval = 50,
 			on_pan_update = pan_canvas,
 			on_scroll = zoom_canvas,
-			left = (page.workspace_width * 0.5) - (page.canvas_size[0] * 0.5) - 4,
-			top = (page.workspace_height * 0.5) - (page.canvas_size[1] * 0.5) - 4,
+			left = 0, # ((page.get_viewport_size())[0] * 0.5) - (page.canvas_size[0] * 0.5),
+			top = 0, # ((page.get_viewport_size())[1] * 0.5) - (page.canvas_size[1] * 0.5),
 			content = ft.Stack(
 					[
 						ft.Image(
-								src_base64 = None,
+								src_base64 = flet_utils.convert_image_to_base64(page.canvas_background),
 								width = page.canvas_size[0],
 								height = page.canvas_size[1],
 								gapless_playback = True,
@@ -855,7 +786,7 @@ def main(page: ft.Page):
 	)
 
 	# Canvas == ft.Container
-	canvas = Canvas(  
+	canvas = Canvas(
 			content = ft.Stack(
 					[
 						image_stack,
@@ -865,20 +796,23 @@ def main(page: ft.Page):
 			),
 			alignment = ft.alignment.center,
 			expand = True,
+			bgcolor = page.secondary_color,
 			padding = 4,
 			margin = 0,
 	)
-	
-
 
 #	text editor ########################################################
 	text_editor = ft.Container(
 			content = ft.Text('Under Construction.'),
+			bgcolor = page.secondary_color,
 			expand = True,
 	)
 
-#	top panel ##########################################################
-	top_panel = ft.Container(
+#	viewport ##########################################################
+	viewport = ft.Container(
+			bgcolor = page.primary_color,
+			padding = 0,
+			margin = 0,
 			content = ft.Tabs(
 					selected_index = 0,
 					animation_duration = 300,
@@ -918,7 +852,7 @@ def main(page: ft.Page):
 			controls = [],
 	)
 	messages_window = ft.Container(
-			bgcolor = ft.colors.BLACK12,
+			bgcolor = page.secondary_color,
 			content = messages,
 	)
 	video_editor_window = ft.Column(
@@ -928,7 +862,8 @@ def main(page: ft.Page):
 
 	bottom_panel = ft.Container(
 			height = page.bottom_panel_height,
-			padding = ft.padding.only(bottom = 12),
+			bgcolor = page.primary_color,
+			padding = ft.padding.only(left = 0, top = 0, right = 0, bottom = 10),
 			content = ft.Tabs(
 					selected_index = 0,
 					animation_duration = 300,
@@ -949,10 +884,11 @@ def main(page: ft.Page):
 	center_panel = ft.Container(
 			content = ft.Column(
 					controls = [
-							top_panel,
+							viewport,
 							bottom_panel,
 					],
 			),
+			bgcolor = page.primary_color,
 			padding = 0,
 			margin = 0,
 			expand = True,
@@ -997,6 +933,9 @@ def main(page: ft.Page):
 	)
 
 	default_properties = ft.Container(
+			bgcolor = page.secondary_color,
+			padding = 0,
+			margin = 0,
 			content = ft.Column(
 					spacing = 12,
 					controls = [
@@ -1038,7 +977,7 @@ def main(page: ft.Page):
 									),
 								],
 							),
-							ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							ft.Divider(height = 10, color = page.tertiary_color),
 					]
 			),
 			expand = True
@@ -1111,6 +1050,7 @@ def main(page: ft.Page):
 	textual_inversion_results = ft.Container(content = None)
 
 	textual_inversion_properties = ft.Container(
+			bgcolor = page.secondary_color,
 			content = ft.Column(
 					controls = [
 							ft.Row(
@@ -1134,7 +1074,7 @@ def main(page: ft.Page):
 								],
 								alignment = 'spaceAround',
 							),
-							ft.Draggable(content=ft.Divider(height=10, color="gray")),
+							ft.Divider(height=10, color = page.tertiary_color),
 							ft.Row(
 								controls = [
 									textual_inversion_results,
@@ -1149,6 +1089,9 @@ def main(page: ft.Page):
 
 	# node editor layout properties
 	node_editor_properties = ft.Container(
+			bgcolor = page.secondary_color,
+			padding = 0,
+			margin = 0,
 			content = ft.Column(
 					controls = [
 							ft.Text("Under Construction")
@@ -1166,7 +1109,7 @@ def main(page: ft.Page):
 #	property panel #####################################################
 	property_panel = ft.Container(
 			padding = ft.padding.only(top = 12, left = 4, right = 4),
-			bgcolor = ft.colors.WHITE10,
+			bgcolor = page.secondary_color,
 			content = ft.Column(
 					spacing = 0,
 					controls = [
@@ -1177,7 +1120,7 @@ def main(page: ft.Page):
 
 # 	advanced panel #####################################################
 	advanced_panel = ft.Container(
-			bgcolor = ft.colors.WHITE10,
+			bgcolor = page.secondary_color,
 			content = ft.Column(
 					controls = [
 							ft.Text("Under Construction."),
@@ -1197,11 +1140,13 @@ def main(page: ft.Page):
 			on_pan_update = resize_right_panel,
 			content = ft.VerticalDivider(
 					width = 4,
+					color = page.tertiary_color,
 			),
 	)
 
 	right_panel = ft.Container(
 			width = page.right_panel_width,
+			bgcolor = page.primary_color,
 			margin = 0,
 			padding = 0,
 			content = ft.Row(
@@ -1239,7 +1184,7 @@ def main(page: ft.Page):
 			controls = [
 				toolbar,
 				ft.VerticalDivider(width=2, color="gray", opacity = 0),
-				layers,
+				left_panel,
 				ft.VerticalDivider(width=2, color="gray", opacity = 0),
 				center_panel,
 				ft.VerticalDivider(width=2, color="gray", opacity = 0),
@@ -1275,13 +1220,19 @@ def main(page: ft.Page):
 
 
 #	make page ##########################################################
-	full_page = ft.Stack(
-			[
-					catchall,
-					workspace,
-			],
-			height = page.height,
-			width = page.width,
+	full_page = ft.Container(
+			bgcolor = page.primary_color,
+			padding = 0,
+			margin = 0,
+			expand = True,
+			content = ft.Stack(
+					[
+							catchall,
+							workspace,
+					],
+					height = page.height,
+					width = page.width,
+			),
 	)
 
 	page.title = "Stable Diffusion Playground"
@@ -1289,7 +1240,6 @@ def main(page: ft.Page):
 
 
 	layer_manager.update_layers()
-	page.refresh_canvas()
 
 
 ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")

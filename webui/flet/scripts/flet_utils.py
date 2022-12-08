@@ -83,7 +83,7 @@ def get_image_from_uploads(name):
 		log_message(f'image not found: "{name}"')
 		return {name:None}
 
-def get_image_from_path(path):
+def get_canvas_background(path):
 	image = Image.open(path)
 	image = image.resize((512,512))
 	image = image.convert("RGBA")
