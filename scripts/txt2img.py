@@ -19,7 +19,7 @@ from sd_utils import st, MemUsageMonitor, server_state, no_rerun, \
      save_sample, generation_callback, process_images, \
      KDiffusionSampler, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
-     LDSR_available, load_models, hc, seed_to_int, logger
+     LDSR_available, load_models, hc, seed_to_int, logger, set_page_title
 
 # streamlit imports
 from streamlit.runtime.scriptrunner import StopException
@@ -670,30 +670,35 @@ def layout():
 
                 #print(st.session_state['use_RealESRGAN'])
                 #print(st.session_state['use_LDSR'])
-                #try:
-                #
+                try:
+                
 
-                output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["batch_count"], st.session_state["batch_size"],
-                                                            cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
-                                                            save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'],
-                                                            use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
-                                                            use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
-                                                            variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files,
-                                                            use_stable_horde=use_stable_horde, stable_horde_key=stable_horde_key)
+                    output_images, seeds, info, stats = txt2img(prompt, st.session_state.sampling_steps, sampler_name, st.session_state["batch_count"], st.session_state["batch_size"],
+                                                                cfg_scale, seed, height, width, separate_prompts, normalize_prompt_weights, save_individual_images,
+                                                                save_grid, group_by_prompt, save_as_jpg, st.session_state["use_GFPGAN"], st.session_state['GFPGAN_model'],
+                                                                use_RealESRGAN=st.session_state["use_RealESRGAN"], RealESRGAN_model=st.session_state["RealESRGAN_model"],
+                                                                use_LDSR=st.session_state["use_LDSR"], LDSR_model=st.session_state["LDSR_model"],
+                                                                variant_amount=variant_amount, variant_seed=variant_seed, write_info_files=write_info_files,
+                                                                use_stable_horde=use_stable_horde, stable_horde_key=stable_horde_key)
+    
+                    message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
+    
+                    with gallery_tab:
+                        logger.info(seeds)
+                        st.session_state["gallery"].text = ""
+                        sdGallery(output_images)
+    
 
-                message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
-
-            with gallery_tab:
-                logger.info(seeds)
-                st.session_state["gallery"].text = ""
-                sdGallery(output_images)
-
-
-            #except (StopException, KeyError):
-                #print(f"Received Streamlit StopException")
-
-                # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
-                # use the current col2 first tab to show the preview_img and update it as its generated.
-                #preview_image.image(output_images)
+                except (StopException,
+                        #KeyError
+                        ):
+                    print(f"Received Streamlit StopException")
+                    
+                    # reset the page title so the percent doesnt stay on it confusing the user.
+                    set_page_title(f"Stable Diffusion Playground")
+    
+                    # this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
+                    # use the current col2 first tab to show the preview_img and update it as its generated.
+                    #preview_image.image(output_images)
 
 
