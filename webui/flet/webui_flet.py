@@ -10,6 +10,7 @@ from loguru import logger
 from scripts import flet_utils
 from scripts.flet_settings_window import SettingsWindow
 from scripts.flet_gallery_window import GalleryWindow, GalleryDisplay
+from scripts.flet_tool_manager import toolbar
 from scripts.flet_layer_manager import LayerManager
 from scripts.flet_canvas import Canvas, ImageStack
 
@@ -53,9 +54,7 @@ def main(page: ft.Page):
 	page.tab_padding = ft.padding.only(left = 2, top = 12, right = 2, bottom = 8)
 	page.tab_margin = 0
 	page.divider_height = 10
-	page.divider_cursor = ft.MouseCursor.RESIZE_ROW
 	page.vertical_divider_width = 10
-	page.vertical_divider_cursor = ft.MouseCursor.RESIZE_COLUMN
 
 	def change_theme(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
@@ -511,149 +510,27 @@ def main(page: ft.Page):
 
 
 #	toolbar ############################################################
-	def add_blank_layer(e):
-		layer_manager.add_blank_layer(e)
 
-	def pan_canvas_tool(e):
-		set_current_tool('pan')
+	page.toolbar = toolbar
+	toolbar.width = page.toolbar_width
+	toolbar.bgcolor = page.primary_color
+	toolbar.padding = page.container_padding
+	toolbar.margin = page.container_margin
 
-	def move_layer_tool(e):
-		set_current_tool('move')
+	toolbar.toolbox.bgcolor = page.secondary_color
+	toolbar.toolbox.padding = page.container_padding
+	toolbar.toolbox.margin = page.container_margin
 
-	def brush_tool(e):
-		set_current_tool('brush')
+	toolbar.tool_divider.content.height = page.divider_height
+	toolbar.tool_divider.content.color = page.tertiary_color
 
-	open_gallery_button = ft.IconButton(
-			width = page.toolbar_button_size,
-			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.DASHBOARD_OUTLINED),
-			tooltip = 'Gallery',
-			on_click = open_gallery_window,
-	)
+	toolbar.tool_properties.bgcolor = page.secondary_color
+	toolbar.tool_properties.padding = page.container_padding
+	toolbar.tool_properties.margin = page.container_margin
 
-	add_blank_layer_button = ft.IconButton(
-			width = page.toolbar_button_size,
-			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.ADD_OUTLINED),
-			tooltip = 'add new blank layer',
-			on_click = add_blank_layer,
-	)
+	toolbar.toolbar_dragbar.content.width = page.vertical_divider_width
+	toolbar.toolbar_dragbar.content.color = page.tertiary_color
 
-	add_image_as_layer_button = ft.IconButton(
-			width = page.toolbar_button_size,
-			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.IMAGE_OUTLINED),
-			tooltip = 'load image(s) as new layer(s)',
-			on_click = lambda _: file_picker.pick_files(file_type = 'image', allow_multiple = True),
-	)
-
-	pan_canvas_button = ft.IconButton(
-			width = page.toolbar_button_size,
-			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.PAN_TOOL_OUTLINED),
-			tooltip = 'pan canvas',
-			on_click = pan_canvas_tool,
-	)
-
-	move_layer_button = ft.IconButton(
-			width = page.toolbar_button_size,
-			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.OPEN_WITH_OUTLINED),
-			tooltip = 'move layer(s)',
-			on_click = move_layer_tool,
-	)
-
-	brush_button = ft.IconButton(
-			width = page.toolbar_button_size,
-			icon_size = page.toolbar_button_size * 0.5,
-			content = ft.Icon(ft.icons.BRUSH_OUTLINED),
-			tooltip = 'brush tool',
-			on_click = brush_tool,
-	)
-
-	toolbox = ft.Container(
-			bgcolor = page.secondary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-			height = page.toolbox_height,
-			clip_behavior = 'antiAlias',
-			content = ft.Row(
-					alignment = 'start',
-					wrap = True,
-					spacing = 0,
-					run_spacing = 0,
-					controls = [
-						open_gallery_button,
-						add_blank_layer_button,
-						add_image_as_layer_button,
-						ft.Divider(height = page.divider_height, color = page.tertiary_color),
-						pan_canvas_button,
-						move_layer_button,
-						brush_button,
-					]
-			)
-	)
-
-	def resize_toolbox(e: ft.DragUpdateEvent):
-		min_height = (page.toolbar_button_size * 2)
-		page.toolbox_height = max(min_height, page.toolbox_height + e.delta_y)
-		toolbox.height = page.toolbox_height
-		toolbar.update()
-
-	tool_divider = ft.GestureDetector(
-			mouse_cursor = page.divider_cursor,
-			drag_interval = 50,
-			on_pan_update = resize_toolbox,
-			content = ft.Divider(
-					color = page.tertiary_color,
-					height = 10,
-			),
-	)
-
-	tool_properties = ft.Container(
-			bgcolor = page.secondary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-			content = ft.Column(
-					controls = [],
-			)
-	)
-
-	def resize_toolbar(e: ft.DragUpdateEvent):
-		page.toolbar_width = max(50, page.toolbar_width + e.delta_x)
-		toolbar.width = page.toolbar_width
-		page.update()
-
-	toolbar_dragbar = ft.GestureDetector(
-			mouse_cursor = page.vertical_divider_cursor,
-			drag_interval = 50,
-			on_pan_update = resize_toolbar,
-			content = ft.VerticalDivider(
-					width = page.vertical_divider_width,
-					color = page.tertiary_color,
-			),
-	)
-
-	toolbar = ft.Container(
-			width = page.toolbar_width,
-			bgcolor = page.primary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-			content = ft.Row(
-					controls = [
-						ft.Column(
-								controls = [
-									toolbox,
-									tool_divider,
-								],
-								alignment = 'start',
-								expand = True,
-						),
-						toolbar_dragbar,
-					],
-					expand = True,
-			),
-	)
 
 #	layer manager ######################################################
 	# LayerManager == ft.Container
@@ -694,7 +571,7 @@ def main(page: ft.Page):
 		page.update()
 
 	left_panel_dragbar = ft.GestureDetector(
-			mouse_cursor = page.vertical_divider_cursor,
+			mouse_cursor = ft.MouseCursor.RESIZE_COLUMN,
 			drag_interval = 50,
 			on_pan_update = resize_left_panel,
 			content = ft.VerticalDivider(
@@ -1198,7 +1075,7 @@ def main(page: ft.Page):
 		page.update()
 
 	right_panel_dragbar = ft.GestureDetector(
-			mouse_cursor = page.vertical_divider_cursor,
+			mouse_cursor = ft.MouseCursor.RESIZE_COLUMN,
 			drag_interval = 50,
 			on_pan_update = resize_right_panel,
 			content = ft.VerticalDivider(
@@ -1298,7 +1175,7 @@ def main(page: ft.Page):
 	page.title = "Stable Diffusion Playground"
 	page.add(full_page)
 
-
+	toolbar.setup()
 	layer_manager.update_layers()
 
 
