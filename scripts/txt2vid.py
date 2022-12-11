@@ -24,7 +24,7 @@ https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
 from sd_utils import st, MemUsageMonitor, server_state, no_rerun, torch_gc, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, hc, seed_to_int, logger, slerp, optimize_update_preview_frequency, \
-     load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel
+     load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel, set_page_title
 
 
 # streamlit imports
@@ -1082,6 +1082,9 @@ def diffuse(
 
             if "progress_bar" in st.session_state:
                 st.session_state["progress_bar"].progress(total_percent if total_percent < 100 else 100)
+                
+                if st.session_state["defaults"].general.show_percent_in_tab_title:
+                    set_page_title(f"({percent if percent < 100 else 100}%) Stable Diffusion Playground")
 
     except KeyError:
         raise StopException
@@ -1593,6 +1596,9 @@ def txt2vid(
         video_path = save_video_to_disk(frames, seeds, sanitized_prompt, save_video=save_video, outdir=outdir)
 
     except StopException:
+        # reset the page title so the percent doesnt stay on it confusing the user.
+        set_page_title(f"Stable Diffusion Playground")
+        
         if save_video_on_stop:
             logger.info("Streamlit Stop Exception Received. Saving video")
             video_path = save_video_to_disk(frames, seeds, sanitized_prompt, save_video=save_video, outdir=outdir)

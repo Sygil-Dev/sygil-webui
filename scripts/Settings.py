@@ -208,6 +208,11 @@ def layout():
 
                 st.session_state["defaults"].general.no_verify_input = st.checkbox("Do not Verify Input", value=st.session_state['defaults'].general.no_verify_input,
                                                                                    help="Do not verify input to check if it's too long. Default: False")
+                
+                st.session_state["defaults"].general.show_percent_in_tab_title = st.checkbox("Show Percent in tab title", value=st.session_state['defaults'].general.show_percent_in_tab_title,
+                                                                                   help="Add the progress percent value to the page title on the tab on your browser. "
+                                                                                   "This is useful in case you need to know how the generation is going while doign something else"
+                                                                                   "in another tab on your browser. Default: True")
 
                 st.session_state["defaults"].daisi_app.running_on_daisi_io = st.checkbox("Running on Daisi.io?", value=st.session_state['defaults'].daisi_app.running_on_daisi_io,
                                                                                          help="Specify if we are running on app.Daisi.io . Default: False")

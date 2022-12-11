@@ -18,7 +18,7 @@ from sd_utils import st, server_state, no_rerun, \
      generation_callback, process_images, KDiffusionSampler, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, load_models, hc, seed_to_int, logger, \
-	 resize_image, get_matched_noise, CFGMaskedDenoiser, ImageFilter
+	 resize_image, get_matched_noise, CFGMaskedDenoiser, ImageFilter, set_page_title
 
 # streamlit imports
 from streamlit.runtime.scriptrunner import StopException
@@ -735,8 +735,12 @@ def layout():
 					#show a message when the generation is complete.
 					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
-				except (StopException, KeyError):
+				except (StopException,
+						#KeyError
+						):
 					logger.info(f"Received Streamlit StopException")
+					# reset the page title so the percent doesnt stay on it confusing the user.
+					set_page_title(f"Stable Diffusion Playground")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.

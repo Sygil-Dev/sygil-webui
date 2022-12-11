@@ -1692,6 +1692,8 @@ def generation_callback(img, i=0):
     if "progress_bar" in st.session_state:
         try:
             st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+            if st.session_state["defaults"].general.show_percent_in_tab_title:
+                set_page_title(f"({percent if percent < 100 else 100}%) Stable Diffusion Playground")
         except UnboundLocalError as e:
             #logger.error(e)
             pass
