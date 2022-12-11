@@ -4,6 +4,15 @@ import flet as ft
 from scripts import flet_utils
 
 
+def open_gallery(e):
+	e.control.page.open_gallery(e)
+
+def blank_layer(e):
+	e.control.page.layer_manager.add_blank_layer(e)
+
+def load_image(e):
+	e.control.page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
+
 def tool_select(e):
 	toolbox.clear_tools()
 	e.control.page.current_tool = e.control.data['label']
@@ -19,9 +28,9 @@ class Action():
 		self.on_click = on_click
 
 action_list = [
-	Action('gallery', ft.icons.DASHBOARD_OUTLINED, 'Gallery', None),
-	Action('blank layer', ft.icons.ADD_OUTLINED, 'Add blank layer', None),
-	Action('load image', ft.icons.IMAGE_OUTLINED, 'Load image as layer', None),
+	Action('gallery', ft.icons.DASHBOARD_OUTLINED, 'Gallery', open_gallery),
+	Action('blank layer', ft.icons.ADD_OUTLINED, 'Add blank layer', blank_layer),
+	Action('load image', ft.icons.IMAGE_OUTLINED, 'Load image as layer', load_image),
 ]
 
 class Tool():

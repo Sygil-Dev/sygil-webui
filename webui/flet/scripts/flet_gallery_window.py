@@ -74,7 +74,7 @@ class GalleryDisplay(ft.Container):
 					)
 			)
 			return gallery_display
-			
+
 		for i in range(len(gallery)):
 			image = gallery[i]
 			image_name = list(image.keys())[0]
@@ -90,4 +90,69 @@ class GalleryDisplay(ft.Container):
 					)
 			)
 		return gallery_display
-	
+
+
+def refresh_gallery(name):
+	pass # placeholder
+
+def add_as_new_layer(e):
+	pass
+
+def save_to_disk(e):
+	pass
+
+def remove_from_gallery(e):
+	pass
+
+uploads_gallery = GalleryDisplay(
+		content = None,
+		clip_behavior = 'antiAlias',
+)
+
+outputs_gallery = GalleryDisplay(
+		content = None,
+		clip_behavior = 'antiAlias',
+)
+
+# GalleryWindow == ft.AlertDialog
+gallery_window = GalleryWindow(
+		title = ft.Text('Gallery'),
+		content = ft.Container(
+				content = ft.Tabs(
+						selected_index = 0,
+						animation_duration = 300,
+						tabs = [
+							ft.Tab(
+									text = "Uploads",
+									content = uploads_gallery,
+							),
+							ft.Tab(
+									text = "Outputs",
+									content = outputs_gallery,
+							),
+						],
+				),
+		),
+		actions = [
+				ft.ElevatedButton(
+						text = "Add As New Layer",
+						icon = ft.icons.ADD_OUTLINED,
+						on_click = add_as_new_layer,
+				),
+				ft.ElevatedButton(
+						text = "Save",
+						icon = ft.icons.SAVE_OUTLINED,
+						on_click = save_to_disk,
+				),
+				ft.ElevatedButton(
+						text = "Discard",
+						icon = ft.icons.DELETE_OUTLINED,
+						on_click = remove_from_gallery,
+				),
+		],
+		actions_alignment="end",
+)
+
+gallery_window.uploads_gallery = uploads_gallery
+gallery_window.outputs_gallery = outputs_gallery
+

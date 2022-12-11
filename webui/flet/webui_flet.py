@@ -9,9 +9,9 @@ from loguru import logger
 # utils imports
 from scripts import flet_utils
 from scripts.flet_settings_window import SettingsWindow
-from scripts.flet_gallery_window import GalleryWindow, GalleryDisplay
+from scripts.flet_gallery_window import gallery_window
 from scripts.flet_tool_manager import toolbar
-from scripts.flet_layer_manager import LayerManager
+from scripts.flet_layer_manager import layer_manager
 from scripts.flet_canvas import Canvas, ImageStack
 
 # for debugging
@@ -200,83 +200,28 @@ def main(page: ft.Page):
 		gallery_window.open = False
 		page.update()
 
+	page.close_gallery = close_gallery_window
+
 	def open_gallery_window(e):
 		page.dialog = gallery_window
 		gallery_window.open = True
 		page.update()
 
-	def refresh_gallery(name):
-		pass # placeholder
+	page.open_gallery = open_gallery_window
 
-	def add_as_new_layer(e):
-		pass
+	page.gallery = gallery_window
+	gallery_window.content.width = page.width * 0.5
+	gallery_window.content.bgcolor = page.primary_color
+	gallery_window.content.padding = page.container_padding
+	gallery_window.content.margin = page.container_margin
 
-	def save_to_disk(e):
-		pass
+	gallery_window.outputs_gallery.bgcolor = page.primary_color
+	gallery_window.outputs_gallery.padding = page.container_padding
+	gallery_window.outputs_gallery.margin = page.container_margin
 
-	def remove_from_gallery(e):
-		pass
-
-
-	# GalleryDisplay == ft.Container
-	uploads_gallery = GalleryDisplay(
-			content = None,
-			clip_behavior = 'antiAlias',
-			bgcolor = page.primary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-	)
-
-	outputs_gallery = GalleryDisplay(
-			content = None,
-			clip_behavior = 'antiAlias',
-			bgcolor = page.primary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-	)
-
-	# GalleryWindow == ft.AlertDialog
-	gallery_window = GalleryWindow(
-			title = ft.Text('Gallery'),
-			content = ft.Container(
-					width = page.width * 0.5,
-					bgcolor = page.primary_color,
-					padding = page.container_padding,
-					margin = page.container_margin,
-					content = ft.Tabs(
-							selected_index = 0,
-							animation_duration = 300,
-							tabs = [
-								ft.Tab(
-										text = "Uploads",
-										content = uploads_gallery,
-								),
-								ft.Tab(
-										text = "Outputs",
-										content = outputs_gallery,
-								),
-							],
-					),
-			),
-			actions = [
-					ft.ElevatedButton(
-							text = "Add As New Layer",
-							icon = ft.icons.ADD_OUTLINED,
-							on_click = add_as_new_layer,
-					),
-					ft.ElevatedButton(
-							text = "Save",
-							icon = ft.icons.SAVE_OUTLINED,
-							on_click = save_to_disk,
-					),
-					ft.ElevatedButton(
-							text = "Discard",
-							icon = ft.icons.DELETE_OUTLINED,
-							on_click = remove_from_gallery,
-					),
-			],
-			actions_alignment="end",
-	)
+	gallery_window.uploads_gallery.bgcolor = page.primary_color
+	gallery_window.uploads_gallery.padding = page.container_padding
+	gallery_window.uploads_gallery.margin = page.container_margin
 
 
 #	upload window ######################################################
@@ -401,9 +346,11 @@ def main(page: ft.Page):
 			on_result = pick_images,
 			on_upload = on_image_upload
 	)
+
+	page.file_picker = file_picker
+	page.overlay.append(file_picker)
 	file_picker.pending = 0
 	file_picker.images = {}
-	page.overlay.append(file_picker)
 
 #	layouts ############################################################
 
@@ -533,21 +480,11 @@ def main(page: ft.Page):
 
 
 #	layer manager ######################################################
-	# LayerManager == ft.Container
-	layer_manager = LayerManager(
-			content = None,
-			bgcolor = page.secondary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-			data = {
-				'layer_list': [],
-				'visible_layer_list': [],
-				'layer_being_moved': None,
-				'layer_last_index': -1,
-			},
-	)
 
-	layer_manager.content = layer_manager.make_layer_holder()
+	page.layer_manager = layer_manager
+	layer_manager.bgcolor = page.secondary_color
+	layer_manager.padding = page.container_padding
+	layer_manager.margin = page.container_margin
 
 
 #	asset manager ######################################################

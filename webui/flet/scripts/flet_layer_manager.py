@@ -6,21 +6,6 @@ from scripts import flet_utils
 
 
 class LayerManager(ft.Container):
-	# first make a column to hold the layers
-	def make_layer_holder(self):
-		layer_holder = ft.DragTarget(
-			group = 'layer',
-			content = ft.Column(
-					spacing = 0,
-					scroll = 'auto',
-					controls = [],
-			),
-			on_will_accept = self.layer_will_accept,
-			on_accept = self.layer_accept,
-			on_leave = self.layer_leave,
-		)
-		return layer_holder
-
 	# make a slot for each layer to go in
 	def make_layer_slot(self):
 		layer_slot = LayerSlot(
@@ -268,8 +253,6 @@ class LayerManager(ft.Container):
 	def layer_right_click(self,e):
 		pass
 
-
-# make each layer slot a target
 class LayerSlot(ft.DragTarget):
 	def set_layer_slot_name(self, name):
 		self.content.content.controls[1].content.controls[1].value = name
@@ -286,3 +269,33 @@ class LayerSlot(ft.DragTarget):
 			self.content.content.controls[0].visible = False
 			self.update()
 
+def layer_will_accept(e):
+	layer_manager.layer_will_accept(e)
+
+def layer_accept(e):
+	layer_manager.layer_accept(e)
+
+def layer_leave(e):
+	layer_manager.layer_leave(e)
+
+layer_holder = ft.DragTarget(
+		group = 'layer',
+		content = ft.Column(
+				spacing = 0,
+				scroll = 'auto',
+				controls = [],
+		),
+		on_will_accept = layer_will_accept,
+		on_accept = layer_accept,
+		on_leave = layer_leave,
+)
+
+layer_manager = LayerManager(
+		content = layer_holder,
+		data = {
+			'layer_list': [],
+			'visible_layer_list': [],
+			'layer_being_moved': None,
+			'layer_last_index': -1,
+		},
+)
