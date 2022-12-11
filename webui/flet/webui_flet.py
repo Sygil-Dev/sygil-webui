@@ -45,6 +45,18 @@ def main(page: ft.Page):
 	page.secondary_color = 'white_10'
 	page.tertiary_color = 'blue'
 
+	page.text_size = 20
+	page.icon_size = 20
+	page.container_padding = 0
+	page.container_margin = 0
+	page.tab_color = 'white_10'
+	page.tab_padding = ft.padding.only(left = 2, top = 12, right = 2, bottom = 8)
+	page.tab_margin = 0
+	page.divider_height = 10
+	page.divider_cursor = ft.MouseCursor.RESIZE_ROW
+	page.vertical_divider_width = 10
+	page.vertical_divider_cursor = ft.MouseCursor.RESIZE_COLUMN
+
 	def change_theme(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
 
@@ -66,7 +78,7 @@ def main(page: ft.Page):
 		page.update()
 
 	page.set_layout = set_layout
-	
+
 	# tools
 	page.current_tool = 'pan'
 
@@ -80,8 +92,8 @@ def main(page: ft.Page):
 	page.canvas_size = [512,512]
 
 	def get_viewport_size():
-		viewport_width = page.width - (page.toolbar_width + page.left_panel_width + page.right_panel_width)
-		viewport_height = page.height - (page.appbar_height + page.bottom_panel_height)
+		viewport_width = page.width - (page.toolbar_width + (page.vertical_divider_width * 3) + page.left_panel_width + page.right_panel_width)
+		viewport_height = page.height - (page.appbar_height * 3) - page.bottom_panel_height
 		return (viewport_width, viewport_height)
 
 	page.get_viewport_size = get_viewport_size
@@ -126,7 +138,7 @@ def main(page: ft.Page):
 		page.session.set('layout','default')
 
 
-	
+
 
 #	settings window ####################################################
 	def close_settings_window(e):
@@ -212,16 +224,16 @@ def main(page: ft.Page):
 			content = None,
 			clip_behavior = 'antiAlias',
 			bgcolor = page.primary_color,
-			margin = 0,
-			padding = 4,
+			padding = page.container_padding,
+			margin = page.container_margin,
 	)
 
 	outputs_gallery = GalleryDisplay(
 			content = None,
 			clip_behavior = 'antiAlias',
 			bgcolor = page.primary_color,
-			margin = 0,
-			padding = 4,
+			padding = page.container_padding,
+			margin = page.container_margin,
 	)
 
 	# GalleryWindow == ft.AlertDialog
@@ -230,6 +242,8 @@ def main(page: ft.Page):
 			content = ft.Container(
 					width = page.width * 0.5,
 					bgcolor = page.primary_color,
+					padding = page.container_padding,
+					margin = page.container_margin,
 					content = ft.Tabs(
 							selected_index = 0,
 							animation_duration = 300,
@@ -316,7 +330,6 @@ def main(page: ft.Page):
 	upload_window = ft.AlertDialog(
 		title = ft.Text("Confirm file upload(s)"),
 		content = selected_files,
-		#modal = True,
 		actions_alignment = "center",
 		actions = [
 			ft.ElevatedButton("UPLOAD", on_click = upload_file),
@@ -342,7 +355,6 @@ def main(page: ft.Page):
 	import_window = ft.AlertDialog(
 		title=ft.Text("Confirm file import(s)"),
 		content=selected_files,
-		#modal=True,
 		actions_alignment="center",
 		actions=[
 			ft.ElevatedButton("IMPORT", on_click = import_file),
@@ -561,9 +573,9 @@ def main(page: ft.Page):
 
 	toolbox = ft.Container(
 			bgcolor = page.secondary_color,
-			padding = 0,
-			margin = 0,
-			height = 250,
+			padding = page.container_padding,
+			margin = page.container_margin,
+			height = page.toolbox_height,
 			clip_behavior = 'antiAlias',
 			content = ft.Row(
 					alignment = 'start',
@@ -574,7 +586,7 @@ def main(page: ft.Page):
 						open_gallery_button,
 						add_blank_layer_button,
 						add_image_as_layer_button,
-						ft.Divider(height = 10, color = page.tertiary_color),
+						ft.Divider(height = page.divider_height, color = page.tertiary_color),
 						pan_canvas_button,
 						move_layer_button,
 						brush_button,
@@ -589,7 +601,7 @@ def main(page: ft.Page):
 		toolbar.update()
 
 	tool_divider = ft.GestureDetector(
-			mouse_cursor = ft.MouseCursor.MOVE,
+			mouse_cursor = page.divider_cursor,
 			drag_interval = 50,
 			on_pan_update = resize_toolbox,
 			content = ft.Divider(
@@ -600,8 +612,8 @@ def main(page: ft.Page):
 
 	tool_properties = ft.Container(
 			bgcolor = page.secondary_color,
-			padding = 0,
-			margin = 0,
+			padding = page.container_padding,
+			margin = page.container_margin,
 			content = ft.Column(
 					controls = [],
 			)
@@ -613,11 +625,11 @@ def main(page: ft.Page):
 		page.update()
 
 	toolbar_dragbar = ft.GestureDetector(
-			mouse_cursor = ft.MouseCursor.MOVE,
+			mouse_cursor = page.vertical_divider_cursor,
 			drag_interval = 50,
 			on_pan_update = resize_toolbar,
 			content = ft.VerticalDivider(
-					width = 4,
+					width = page.vertical_divider_width,
 					color = page.tertiary_color,
 			),
 	)
@@ -625,8 +637,8 @@ def main(page: ft.Page):
 	toolbar = ft.Container(
 			width = page.toolbar_width,
 			bgcolor = page.primary_color,
-			margin = 0,
-			padding = ft.padding.only(left = 0, top = 0, right = 0, bottom = 10),
+			padding = page.container_padding,
+			margin = page.container_margin,
 			content = ft.Row(
 					controls = [
 						ft.Column(
@@ -648,7 +660,8 @@ def main(page: ft.Page):
 	layer_manager = LayerManager(
 			content = None,
 			bgcolor = page.secondary_color,
-			padding = ft.padding.only(top = 4, left = 0, right = 0),
+			padding = page.container_padding,
+			margin = page.container_margin,
 			data = {
 				'layer_list': [],
 				'visible_layer_list': [],
@@ -668,8 +681,9 @@ def main(page: ft.Page):
 							ft.Text("Under Construction"),
 					],
 			),
-			padding = ft.padding.only(top = 4),
 			bgcolor = page.secondary_color,
+			padding = page.container_padding,
+			margin = page.container_margin,
 	)
 
 
@@ -680,11 +694,11 @@ def main(page: ft.Page):
 		page.update()
 
 	left_panel_dragbar = ft.GestureDetector(
-			mouse_cursor = ft.MouseCursor.MOVE,
+			mouse_cursor = page.vertical_divider_cursor,
 			drag_interval = 50,
 			on_pan_update = resize_left_panel,
 			content = ft.VerticalDivider(
-					width = 4,
+					width = page.vertical_divider_width,
 					color = page.tertiary_color,
 			),
 	)
@@ -692,8 +706,8 @@ def main(page: ft.Page):
 	left_panel = ft.Container(
 			width = page.left_panel_width,
 			bgcolor = page.primary_color,
-			margin = 0,
-			padding = ft.padding.only(left = 0, top = 0, right = 0, bottom = 10),
+			padding = page.container_padding,
+			margin = page.container_margin,
 			clip_behavior = 'antiAlias',
 			content = ft.Row(
 					controls = [
@@ -730,12 +744,19 @@ def main(page: ft.Page):
 		if tool == 'pan':
 			image_stack.mouse_cursor = ft.MouseCursor.GRAB
 			image_stack.on_pan_update = pan_canvas
+			image_stack.on_scroll = None
+		elif tool == 'zoom':
+			image_stack.mouse_cursor = ft.MouseCursor.MOVE
+			image_stack.on_pan_update = None
+			image_stack.on_scroll = zoom_canvas
 		elif tool == 'move':
 			image_stack.mouse_cursor = ft.MouseCursor.MOVE
-			image_stack.on_pan_update = move_layer
+			image_stack.on_pan_update = None
+			image_stack.on_scroll = None
 		elif tool == 'brush':
 			image_stack.mouse_cursor = ft.MouseCursor.PRECISE
-			image_stack.on_pan_update = paint_layer
+			image_stack.on_pan_update = None
+			image_stack.on_scroll = None
 		image_stack.update()
 
 	def pan_canvas(e: ft.DragUpdateEvent):
@@ -760,8 +781,8 @@ def main(page: ft.Page):
 			drag_interval = 50,
 			on_pan_update = pan_canvas,
 			on_scroll = zoom_canvas,
-			left = 0, # ((page.get_viewport_size())[0] * 0.5) - (page.canvas_size[0] * 0.5),
-			top = 0, # ((page.get_viewport_size())[1] * 0.5) - (page.canvas_size[1] * 0.5),
+			left = ((page.get_viewport_size())[0] * 0.5) - (page.canvas_size[0] * 0.5),
+			top = ((page.get_viewport_size())[1] * 0.5) - (page.canvas_size[1] * 0.5),
 			content = ft.Stack(
 					[
 						ft.Image(
@@ -775,8 +796,42 @@ def main(page: ft.Page):
 			),
 	)
 
+	def zoom_in_canvas(e):
+		pass
+
+	def zoom_out_canvas(e):
+		pass
+
+	zoom_in_button = ft.IconButton(
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
+			content = ft.Icon(ft.icons.ZOOM_IN_OUTLINED),
+			tooltip = 'zoom in canvas',
+			on_click = zoom_in_canvas,
+	)
+
+	zoom_out_button = ft.IconButton(
+			width = page.toolbar_button_size,
+			icon_size = page.toolbar_button_size * 0.5,
+			content = ft.Icon(ft.icons.ZOOM_OUT_OUTLINED),
+			tooltip = 'zoom out canvas',
+			on_click = zoom_out_canvas,
+	)
+
+	canvas_tools = ft.Container(
+			content = ft.Column(
+					controls = [
+						zoom_in_button,
+						zoom_out_button,
+					],
+			),
+			top = 4,
+			right = 4,
+	)
+
 	canvas_overlay = ft.Stack(
 			[
+				canvas_tools,
 				ft.Container(
 						content = ft.Text(value = str(page.canvas_size)),
 						bottom = 4,
@@ -797,8 +852,8 @@ def main(page: ft.Page):
 			alignment = ft.alignment.center,
 			expand = True,
 			bgcolor = page.secondary_color,
-			padding = 4,
-			margin = 0,
+			padding = page.container_padding,
+			margin = page.container_margin,
 	)
 
 #	text editor ########################################################
@@ -811,8 +866,8 @@ def main(page: ft.Page):
 #	viewport ##########################################################
 	viewport = ft.Container(
 			bgcolor = page.primary_color,
-			padding = 0,
-			margin = 0,
+			padding = page.container_padding,
+			margin = page.container_margin,
 			content = ft.Tabs(
 					selected_index = 0,
 					animation_duration = 300,
@@ -853,6 +908,8 @@ def main(page: ft.Page):
 	)
 	messages_window = ft.Container(
 			bgcolor = page.secondary_color,
+			padding = page.container_padding,
+			margin = page.container_margin,
 			content = messages,
 	)
 	video_editor_window = ft.Column(
@@ -863,7 +920,8 @@ def main(page: ft.Page):
 	bottom_panel = ft.Container(
 			height = page.bottom_panel_height,
 			bgcolor = page.primary_color,
-			padding = ft.padding.only(left = 0, top = 0, right = 0, bottom = 10),
+			padding = page.container_padding,
+			margin = page.container_margin,
 			content = ft.Tabs(
 					selected_index = 0,
 					animation_duration = 300,
@@ -889,8 +947,8 @@ def main(page: ft.Page):
 					],
 			),
 			bgcolor = page.primary_color,
-			padding = 0,
-			margin = 0,
+			padding = page.container_padding,
+			margin = page.container_margin,
 			expand = True,
 	)
 
@@ -933,9 +991,9 @@ def main(page: ft.Page):
 	)
 
 	default_properties = ft.Container(
-			bgcolor = page.secondary_color,
-			padding = 0,
-			margin = 0,
+			bgcolor = page.tab_color,
+			padding = page.tab_padding,
+			margin = page.tab_margin,
 			content = ft.Column(
 					spacing = 12,
 					controls = [
@@ -1050,7 +1108,9 @@ def main(page: ft.Page):
 	textual_inversion_results = ft.Container(content = None)
 
 	textual_inversion_properties = ft.Container(
-			bgcolor = page.secondary_color,
+			bgcolor = page.tab_color,
+			padding = page.tab_padding,
+			margin = page.tab_margin,
 			content = ft.Column(
 					controls = [
 							ft.Row(
@@ -1089,9 +1149,9 @@ def main(page: ft.Page):
 
 	# node editor layout properties
 	node_editor_properties = ft.Container(
-			bgcolor = page.secondary_color,
-			padding = 0,
-			margin = 0,
+			bgcolor = page.tab_color,
+			padding = page.tab_padding,
+			margin = page.tab_margin,
 			content = ft.Column(
 					controls = [
 							ft.Text("Under Construction")
@@ -1108,8 +1168,9 @@ def main(page: ft.Page):
 
 #	property panel #####################################################
 	property_panel = ft.Container(
-			padding = ft.padding.only(top = 12, left = 4, right = 4),
-			bgcolor = page.secondary_color,
+			bgcolor = page.tab_color,
+			padding = page.tab_padding,
+			margin = page.tab_margin,
 			content = ft.Column(
 					spacing = 0,
 					controls = [
@@ -1120,7 +1181,9 @@ def main(page: ft.Page):
 
 # 	advanced panel #####################################################
 	advanced_panel = ft.Container(
-			bgcolor = page.secondary_color,
+			bgcolor = page.tab_color,
+			padding = page.tab_padding,
+			margin = page.tab_margin,
 			content = ft.Column(
 					controls = [
 							ft.Text("Under Construction."),
@@ -1135,11 +1198,11 @@ def main(page: ft.Page):
 		page.update()
 
 	right_panel_dragbar = ft.GestureDetector(
-			mouse_cursor = ft.MouseCursor.MOVE,
+			mouse_cursor = page.vertical_divider_cursor,
 			drag_interval = 50,
 			on_pan_update = resize_right_panel,
 			content = ft.VerticalDivider(
-					width = 4,
+					width = page.vertical_divider_width,
 					color = page.tertiary_color,
 			),
 	)
@@ -1147,8 +1210,8 @@ def main(page: ft.Page):
 	right_panel = ft.Container(
 			width = page.right_panel_width,
 			bgcolor = page.primary_color,
-			margin = 0,
-			padding = 0,
+			padding = page.container_padding,
+			margin = page.container_margin,
 			content = ft.Row(
 					controls = [
 						right_panel_dragbar,
@@ -1183,11 +1246,8 @@ def main(page: ft.Page):
 	default_layout = ft.Row(
 			controls = [
 				toolbar,
-				ft.VerticalDivider(width=2, color="gray", opacity = 0),
 				left_panel,
-				ft.VerticalDivider(width=2, color="gray", opacity = 0),
 				center_panel,
-				ft.VerticalDivider(width=2, color="gray", opacity = 0),
 				right_panel,
 			],
 			expand=True,

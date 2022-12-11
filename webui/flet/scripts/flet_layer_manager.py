@@ -20,7 +20,7 @@ class LayerManager(ft.Container):
 			on_leave = self.layer_leave,
 		)
 		return layer_holder
-	
+
 	# make a slot for each layer to go in
 	def make_layer_slot(self):
 		layer_slot = LayerSlot(
@@ -59,7 +59,7 @@ class LayerManager(ft.Container):
 						ft.Container(
 								content = ft.Row(
 										controls = [],
-										
+
 								),
 								data = {
 										'visible':True,
@@ -163,7 +163,7 @@ class LayerManager(ft.Container):
 			if layer.data['type'] == 'slot':
 				layer.data['index'] = index
 				index += 1
-				
+
 	def move_layer_slot(self, index):
 		layer_list = self.page.layer_list
 		self.data['layer_being_moved'] = layer_list.pop(index)
