@@ -10,6 +10,7 @@ from loguru import logger
 from scripts import flet_utils
 from scripts.flet_settings_window import settings_window
 from scripts.flet_gallery_window import gallery_window
+from scripts.flet_file_manager import file_picker, uploads, imports
 from scripts.flet_tool_manager import toolbar
 from scripts.flet_layer_manager import layer_manager
 from scripts.flet_canvas import Canvas, ImageStack
@@ -188,133 +189,46 @@ def main(page: ft.Page):
 	gallery_window.uploads_gallery.margin = page.container_margin
 
 
-#	upload window ######################################################
+#	file manager ######################################################
 	def close_upload_window(e):
-		upload_window.open = False
+		uploads.open = False
 		page.update()
+
+	page.close_uploads = close_upload_window
 
 	def open_upload_window(e):
-		page.dialog = upload_window
-		upload_window.open = True
+		page.dialog = uploads
+		uploads.content = page.selected_files
+		uploads.open = True
 		page.update()
 
-	def upload_file(e):
-		if file_picker.result is not None and file_picker.result.files is not None:
-			file_list = []
-			for f in file_picker.result.files:
-				upload_url = page.get_upload_url(f.name, 600)
-				img = ft.FilePickerUploadFile(f.name,upload_url)
-				file_list.append(img)
-			file_picker.upload(file_list)
+	page.open_uploads = open_upload_window
 
-	def upload_complete(e):
-		progress_bars.clear()
-		selected_files.controls.clear()
-		close_upload_window(e)
-		page.message('File upload(s) complete.')
-		layer_manager.add_images_as_layers(file_picker.images)
-		file_picker.images.clear()
-		refresh_gallery('uploads')
+	def close_import_window(e):
+		imports.open = False
+		page.update()
 
-	def get_image_from_uploads(name):
-		return flet_utils.get_image_from_uploads(name)
+	page.close_imports = close_import_window
 
-	def get_file_display(name, progress):
-		display = ft.Column(
-				controls = [
-						ft.Row([ft.Text(name)]),
-						progress,
-				],
-		)
-		return display
+	def open_import_window(e):
+		page.dialog = imports
+		imports.content = page.selected_files
+		imports.open = True
+		page.update()
 
-	selected_files = ft.Column(
+	page.open_imports = open_import_window
+
+	page.selected_files = ft.Column(
 			scroll = 'auto',
 			tight = True,
 			controls = [],
 	);
-	progress_bars: Dict[str, ft.ProgressBar] = {}
 
-	upload_window = ft.AlertDialog(
-		title = ft.Text("Confirm file upload(s)"),
-		content = selected_files,
-		actions_alignment = "center",
-		actions = [
-			ft.ElevatedButton("UPLOAD", on_click = upload_file),
-			ft.TextButton("CANCEL", on_click = close_upload_window),
-		],
-	)
-
-
-#	import window ######################################################
-	def close_import_window(e):
-		import_window.open = False
-		page.update()
-
-	def open_import_window(e):
-		page.dialog = import_window
-		gallery_window.open = True
-		page.update()
-
-	def import_file(e):
-		close_import_window(e)
-		pass
-
-	import_window = ft.AlertDialog(
-		title=ft.Text("Confirm file import(s)"),
-		content=selected_files,
-		actions_alignment="center",
-		actions=[
-			ft.ElevatedButton("IMPORT", on_click = import_file),
-			ft.TextButton("CANCEL", on_click = close_import_window),
-		],
-	)
-
-
-#	file picker ########################################################
-	def pick_images(e: ft.FilePickerResultEvent):
-		progress_bars.clear()
-		selected_files.controls.clear()
-		# check to see if files or directory were chosen
-		if e.files is not None and e.path is None:
-			for f in e.files:
-				prog = ft.ProgressBar(
-						value = 0,
-						color = 'blue',
-				)
-				progress_bars[f.name] = prog
-				selected_files.controls.append(get_file_display(f.name,prog))
-				file_picker.pending += 1
-			# import if local, upload if remote
-			if not e.page.web:
-				open_import_window(e)
-			else:
-				open_upload_window(e)
-
-	def on_image_upload(e: ft.FilePickerUploadEvent):
-		if e.error:
-			page.message(f"Upload error occurred! Failed to fetch '{e.file_name}'.",1)
-			file_picker.pending -= 1
-		else:
-			# update progress bars
-			progress_bars[e.file_name].value = e.progress
-			progress_bars[e.file_name].update()
-			if e.progress >= 1:
-				file_picker.pending -= 1
-				file_picker.images.update(get_image_from_uploads(e.file_name))
-		if file_picker.pending <= 0:
-			file_picker.pending = 0
-			upload_complete(e)
-
-	file_picker = ft.FilePicker(
-			on_result = pick_images,
-			on_upload = on_image_upload
-	)
-
+	page.progress_bars: Dict[str, ft.ProgressBar] = {}
+	page.uploads = uploads
+	page.imports = imports
 	page.file_picker = file_picker
 	page.overlay.append(file_picker)
-	file_picker.pending = 0
-	file_picker.images = {}
 
 #	layouts ############################################################
 
