@@ -8,7 +8,7 @@ from loguru import logger
 
 # utils imports
 from scripts import flet_utils
-from scripts.flet_settings_window import SettingsWindow
+from scripts.flet_settings_window import settings_window
 from scripts.flet_gallery_window import gallery_window
 from scripts.flet_tool_manager import toolbar
 from scripts.flet_layer_manager import layer_manager
@@ -56,7 +56,7 @@ def main(page: ft.Page):
 	page.divider_height = 10
 	page.vertical_divider_width = 10
 
-	def change_theme(e):
+	def change_theme_mode(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
 
 		if "(Light theme)" in theme_switcher.tooltip:
@@ -68,7 +68,7 @@ def main(page: ft.Page):
 		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
 		page.update()
 
-	page.change_theme = change_theme
+	page.change_theme_mode = change_theme_mode
 
 	# layouts
 	def set_layout(e):
@@ -144,56 +144,20 @@ def main(page: ft.Page):
 		settings_window.open = False
 		page.update()
 
+	page.close_settings = close_settings_window
+
 	def open_settings_window(e):
 		page.dialog = settings_window
 		settings_window.open = True
 		page.update()
 
-	def apply_settings(e):
-		settings_window.update_settings_window()
+	page.open_settings = open_settings_window
 
-	def save_settings(e):
-		save_settings_to_config()
-		settings_window.update_settings_window()
-
-	def reset_settings(e):
-		reset_settings_from_config()
-		settings_window.update_settings_window()
-
-	# SettingsWindow == ft.AlertDialog
-	settings_window = SettingsWindow(
-			title = ft.Text("Settings"),
-			content = ft.Container(
-					width = page.width * 0.50,
-					bgcolor = page.primary_color,
-					content = ft.Tabs(
-							selected_index = 0,
-							animation_duration = 300,
-							tabs = None,
-					),
-			),
-			actions = [
-					ft.ElevatedButton(
-							text = "Apply",
-							icon = ft.icons.CHECK_CIRCLE,
-							on_click = apply_settings,
-					),
-					ft.ElevatedButton(
-							text = "Save",
-							icon = ft.icons.SAVE,
-							on_click = save_settings,
-					),
-					ft.ElevatedButton(
-							text = "Restore Defaults",
-							icon = ft.icons.RESTORE_FROM_TRASH_ROUNDED,
-							on_click = reset_settings,
-					),
-			],
-			actions_alignment = "end",
-	)
-
-	settings_window.get_settings_window_tabs(page.session.get('settings'))
-
+	page.settings_window = settings_window
+	settings_window.content.width = page.width * 0.50
+	settings_window.content.bgcolor = page.primary_color
+	settings_window.content.padding = page.container_padding
+	settings_window.content.margin = page.container_margin
 
 #	gallery window #####################################################
 	def close_gallery_window(e):
@@ -209,7 +173,7 @@ def main(page: ft.Page):
 
 	page.open_gallery = open_gallery_window
 
-	page.gallery = gallery_window
+	page.gallery_window = gallery_window
 	gallery_window.content.width = page.width * 0.5
 	gallery_window.content.bgcolor = page.primary_color
 	gallery_window.content.padding = page.container_padding
@@ -377,7 +341,7 @@ def main(page: ft.Page):
 #	app bar ############################################################
 	app_bar_title = ft.Text(
 			value = "Sygil",
-			size = 20,
+			size = page.appbar_height * 0.5,
 			color = page.tertiary_color,
 			text_align = 'center',
 	)
@@ -414,7 +378,7 @@ def main(page: ft.Page):
 							width = 200,
 							on_change = page.set_layout,
 							tooltip = "Switch between different workspaces",
-							height = 50,
+							height = page.appbar_height,
 					)
 			],
 			height = page.appbar_height,
@@ -422,7 +386,7 @@ def main(page: ft.Page):
 
 	theme_switcher = ft.IconButton(
 			ft.icons.WB_SUNNY_OUTLINED,
-			on_click = page.change_theme,
+			on_click = page.change_theme_mode,
 			expand = 1,
 			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
 			height = page.appbar_height,
@@ -430,7 +394,7 @@ def main(page: ft.Page):
 
 	settings_button = ft.IconButton(
 			icon = ft.icons.SETTINGS,
-			on_click = open_settings_window,
+			on_click = page.open_settings,
 			height = page.appbar_height,
 	)
 
@@ -1112,8 +1076,10 @@ def main(page: ft.Page):
 	page.title = "Stable Diffusion Playground"
 	page.add(full_page)
 
-	toolbar.setup()
-	layer_manager.update_layers()
+	page.settings_window.setup(page.session.get('settings'))
+	page.gallery_window.setup()
+	page.toolbar.setup()
+	page.layer_manager.update_layers()
 
 
 ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")

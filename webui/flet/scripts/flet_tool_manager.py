@@ -1,8 +1,10 @@
 # flet_tool_manager.py
 
+# Flet imports
 import flet as ft
-from scripts import flet_utils
 
+# utils imports
+from scripts import flet_utils
 
 def open_gallery(e):
 	e.control.page.open_gallery(e)

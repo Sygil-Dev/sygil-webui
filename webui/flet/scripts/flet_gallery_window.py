@@ -8,7 +8,7 @@ from scripts import flet_utils
 
 
 class GalleryWindow(ft.AlertDialog):
-	def empty(self):
+	def setup(self):
 		pass
 
 	def get_gallery_images(self, gallery_name):
