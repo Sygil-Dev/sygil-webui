@@ -9,27 +9,26 @@ from scripts import flet_utils
 
 class GalleryWindow(ft.AlertDialog):
 	def setup(self):
-		pass
-
-	def get_gallery_images(self, gallery_name):
-		return flet_utils.get_gallery_images(gallery_name)
+		self.refresh_gallery('uploads')
+		self.refresh_gallery('outputs')
 
 	def refresh_gallery(self, gallery_name):
 		index = None
 		if gallery_name == 'uploads':
-			index = 0
+			self.uploads_gallery.get_gallery_display(gallery_name)
 		elif gallery_name == 'outputs':
-			index = 1
+			self.outputs_gallery.get_gallery_display(gallery_name)
 		else:
 			page.message(f'{gallery_name} gallery not found.', 1)
 			return None
-		gallery_window.content.content.tabs[index].content = get_gallery_display(gallery_name)
 
+	def get_gallery_images(self, gallery_name):
+		return flet_utils.get_gallery_images(gallery_name)
 
 
 class GalleryDisplay(ft.Container):
 	def get_gallery_display(self, gallery_name):
-		gallery_display = ft.Stack(
+		self.content = ft.Stack(
 				[
 						ft.Row(
 								controls = None,
@@ -42,14 +41,14 @@ class GalleryDisplay(ft.Container):
 										ft.Row(
 												controls = [
 														ft.IconButton(
-																height = page.height * 0.75,
+																height = self.height * 0.75,
 																icon_size = 50,
 																content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
 																tooltip = 'previous image',
 																on_click = None,
 														),
 														ft.IconButton(
-																height = page.height * 0.75,
+																height = self.height * 0.75,
 																icon_size = 50,
 																content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
 																tooltip = 'next image',
@@ -64,16 +63,16 @@ class GalleryDisplay(ft.Container):
 						),
 				],
 		)
-		gallery = get_gallery_images(gallery_name)
-		if len(gallery) < 1:
-			gallery_display.controls[0].controls.append(
+		gallery = gallery_window.get_gallery_images(gallery_name)
+		if not gallery:
+			self.content.controls[0].controls.append(
 					ft.Image(
 							src = '/images/chickens.jpg',
 							tooltip = 'Nothing here but us chickens!',
 							gapless_playback = True,
 					)
 			)
-			return gallery_display
+			return
 
 		for i in range(len(gallery)):
 			image = gallery[i]
@@ -82,18 +81,14 @@ class GalleryDisplay(ft.Container):
 			image_data = None
 			if 'info_path' in image[image_name]:
 				image_data = image[image_name]['info_path']
-			gallery_display.controls[0].controls.append(
+			self.content.controls[0].controls.append(
 					ft.Image(
 							src = image_path,
 							tooltip = image_name,
 							gapless_playback = True,
 					)
 			)
-		return gallery_display
 
-
-def refresh_gallery(name):
-	pass # placeholder
 
 def add_as_new_layer(e):
 	pass

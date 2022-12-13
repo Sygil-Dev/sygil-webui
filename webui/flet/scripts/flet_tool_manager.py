@@ -10,7 +10,7 @@ def open_gallery(e):
 	e.control.page.open_gallery(e)
 
 def blank_layer(e):
-	e.control.page.layer_manager.add_blank_layer(e)
+	e.control.page.asset_manager.add_blank_layer(e)
 
 def load_image(e):
 	e.control.page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
@@ -159,5 +159,5 @@ toolbar = ToolBar(
 toolbar.toolbox = toolbox
 toolbar.tool_divider = tool_divider
 toolbar.tool_properties = tool_properties
-toolbar.toolbar_dragbar = toolbar_dragbar
+toolbar.dragbar = toolbar_dragbar
 

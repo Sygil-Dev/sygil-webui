@@ -66,8 +66,14 @@ path_to_uploads = "webui/flet/assets/uploads"
 path_to_outputs = "webui/flet/assets/outputs"
 
 # creates blank image   (to do: take size as arg)
-def create_blank_image():
-	img = Image.new('RGBA',(512,512),(0,0,0,0))
+def create_blank_image(size):
+	try:
+		create_blank_image.count +=1
+	except AttributeError:
+		create_blank_image.count = 1
+	name = 'blank_layer_' + str(create_blank_image.count).zfill(2)
+	img = Image.new('RGBA',size,(0,0,0,0))
+	img.filename = name
 	return img
 
 # takes name of image
@@ -78,10 +84,10 @@ def get_image_from_uploads(name):
 	if os.path.exists(path_to_image):
 		image = Image.open(path_to_image)
 		image = image.convert("RGBA")
-		return {name:image}
+		return image
 	else:
 		log_message(f'image not found: "{name}"')
-		return {name:None}
+		return None
 
 def get_canvas_background(path):
 	image = Image.open(path)
@@ -117,15 +123,15 @@ def convert_image_to_base64(image):
 #           'info_path' : path_to_yaml
 def get_gallery_images(gallery_name):
 	path_to_gallery = None
+	images = []
+	files = []
 	if gallery_name == 'uploads':
 		path_to_gallery = path_to_uploads
 	elif gallery_name == 'outputs':
 		path_to_gallery = path_to_outputs
 	else:
 		log_message(f'gallery not found: "{gallery_name}"')
-		return None
-	images = []
-	files = []
+		return images
 	if os.path.exists(path_to_gallery):
 		files = os.listdir(path_to_gallery)
 	else:

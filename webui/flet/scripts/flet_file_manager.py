@@ -22,7 +22,7 @@ class UploadWindow(ft.AlertDialog):
 		e.page.selected_files.controls.clear()
 		e.page.close_uploads(e)
 		e.page.message('File upload(s) complete.')
-		e.page.layer_manager.add_images_as_layers(file_picker.images)
+		e.page.asset_manager.add_images_as_layers(file_picker.images)
 		file_picker.images.clear()
 		e.page.refresh_gallery('uploads')
 
