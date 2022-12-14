@@ -8,7 +8,22 @@ from scripts import flet_utils
 
 
 class PropertyManager(ft.Container):
-	pass
+	def set_tab_text_size(self, size):
+		for tab in self.tabs:
+			tab.tab_content.size = size
+
+	def set_tab_bgcolor(self, color):
+		for tab in self.tabs:
+			tab.content.content.bgcolor = color
+
+	def set_tab_padding(self, padding):
+		for tab in self.tabs:
+			tab.content.padding = padding
+
+	def set_tab_margin(self, margin):
+		for tab in self.tabs:
+			tab.content.margin = margin
+
 
 class PropertyPanel(ft.Container):
 	pass
@@ -20,6 +35,7 @@ property_panel = PropertyPanel(
 						ft.Text("Under Construction"),
 				],
 		),
+		clip_behavior = 'antiAlias',
 )
 
 output_panel = PropertyPanel(
@@ -29,6 +45,7 @@ output_panel = PropertyPanel(
 						ft.Text("Under Construction."),
 				],
 		),
+		clip_behavior = 'antiAlias',
 )
 
 def resize_property_manager(e: ft.DragUpdateEvent):
@@ -54,12 +71,16 @@ property_manager = PropertyManager(
 										animation_duration = 300,
 										tabs = [
 												ft.Tab(
-														text = 'Properties',
 														content = property_panel,
+														tab_content = ft.Text(
+																value = "Properties",
+														),
 												),
 												ft.Tab(
-														text = 'Output',
 														content = output_panel,
+														tab_content = ft.Text(
+																value = "Output",
+														),
 												),
 										],
 								),
@@ -70,8 +91,10 @@ property_manager = PropertyManager(
 				],
 				expand = True,
 		),
+		clip_behavior = 'antiAlias',
 )
 
+property_manager.tabs = property_manager.content.controls[1].controls[0].tabs
 property_manager.dragbar = property_manager_dragbar
 property_manager.property_panel = property_panel
 property_manager.output_panel = output_panel

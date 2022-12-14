@@ -71,6 +71,12 @@ image_stack = ImageStack(
 		content = ft.Stack(),
 )
 
+canvas_size_display = ft.Container(
+		content = ft.Text(
+				value = "test",
+		),
+)
+
 def zoom_in_canvas(e):
 	pass
 
@@ -92,9 +98,11 @@ zoom_out_button = ft.IconButton(
 canvas_tools = ft.Container(
 		content = ft.Column(
 				controls = [
+					canvas_size_display,
 					zoom_in_button,
 					zoom_out_button,
 				],
+				horizontal_alignment = 'end',
 		),
 		top = 4,
 		right = 4,
@@ -103,18 +111,9 @@ canvas_tools = ft.Container(
 canvas_tools.zoom_in = zoom_in_button
 canvas_tools.zoom_out = zoom_out_button
 
-canvas_size_display = ft.Container(
-		content = ft.Text(
-				value = "test",
-		),
-		bottom = 4,
-		right = 4,
-)
-
 canvas_overlay = CanvasOverlay(
 		[
 			canvas_tools,
-			canvas_size_display,
 		],
 )
 
@@ -129,6 +128,7 @@ canvas = Canvas(
 				],
 				clip_behavior = None,
 		),
+		clip_behavior = 'antiAlias',
 		alignment = ft.alignment.center,
 		expand = True,
 )

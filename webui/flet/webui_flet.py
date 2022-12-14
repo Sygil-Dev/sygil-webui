@@ -11,6 +11,7 @@ from scripts import flet_utils
 from scripts.flet_settings_window import settings_window
 from scripts.flet_gallery_window import gallery_window
 from scripts.flet_file_manager import file_picker, uploads, imports
+from scripts.flet_appbar import appbar
 from scripts.flet_tool_manager import toolbar
 from scripts.flet_asset_manager import asset_manager
 from scripts.flet_canvas import canvas
@@ -50,7 +51,7 @@ def main(page: ft.Page):
 	page.tertiary_color = 'blue'
 
 	page.text_color = None
-	page.text_size = 20
+	page.text_size = 14
 	page.icon_size = 20
 	page.padding = 0
 	page.margin = 0
@@ -65,13 +66,13 @@ def main(page: ft.Page):
 	def change_theme_mode(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
 
-		if "(Light theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Light theme)", '')
+		if "(Light theme)" in appbar.theme_switcher.tooltip:
+			appbar.theme_switcher.tooltip = appbar.theme_switcher.tooltip.replace("(Light theme)", '')
 
-		if "(Dark theme)" in theme_switcher.tooltip:
-			theme_switcher.tooltip = theme_switcher.tooltip.replace("(Dark theme)", '')
+		if "(Dark theme)" in appbar.theme_switcher.tooltip:
+			appbar.theme_switcher.tooltip = appbar.theme_switcher.tooltip.replace("(Dark theme)", '')
 
-		theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
+		appbar.theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
 		page.update()
 
 	page.change_theme_mode = change_theme_mode
@@ -256,85 +257,27 @@ def main(page: ft.Page):
 
 #	app bar ############################################################
 
-	app_bar_title = ft.Text(
-			value = "Sygil",
-			size = page.appbar_height * 0.5,
-			color = page.tertiary_color,
-			text_align = 'center',
-	)
+	# have to rename appbar --> titlebar, because page.appbar is something we don't want.
+	page.titlebar = appbar
+	appbar.width = page.width
+	appbar.height = page.appbar_height
 
-	prompt = ft.TextField(
-			value = "",
-			min_lines = 1,
-			max_lines = 1,
-			content_padding = 10,
-			shift_enter = True,
-			tooltip = "Prompt to use for generation.",
-			autofocus = True,
-			hint_text = "A corgi wearing a top hat as an oil painting.",
-			height = page.appbar_height,
-	)
+	appbar.title.size = page.appbar_height * 0.5
+	appbar.title.color = page.tertiary_color
 
-	generate_button = ft.ElevatedButton(
-			text = "Generate",
-			on_click = None,
-			height = page.appbar_height,
-	)
+	appbar.prompt.text_size = max(12,page.appbar_height * 0.25)
+	appbar.prompt.focused_border_color = page.tertiary_color
 
-	layout_menu = ft.Row(
-			alignment = 'start',
-			controls = [
-					ft.Dropdown(
-							options = [
-								ft.dropdown.Option(text="Default"),
-								ft.dropdown.Option(text="Textual Inversion"),
-								ft.dropdown.Option(text="Node Editor"),
-							],
-							value = 'Default',
-							content_padding = 10,
-							width = 200,
-							on_change = page.set_layout,
-							tooltip = "Switch between different workspaces",
-							height = page.appbar_height,
-					)
-			],
-			height = page.appbar_height,
-	)
+	appbar.layout_menu.controls[0].text_size = page.text_size
 
-	theme_switcher = ft.IconButton(
-			ft.icons.WB_SUNNY_OUTLINED,
-			on_click = page.change_theme_mode,
-			expand = 1,
-			tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}",
-			height = page.appbar_height,
-			)
+	appbar.theme_switcher.size = page.appbar_height
+	appbar.theme_switcher.icon_size = page.appbar_height * 0.5
+	appbar.theme_switcher.tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}"
+	appbar.theme_switcher.on_click = page.change_theme_mode
 
-	settings_button = ft.IconButton(
-			icon = ft.icons.SETTINGS,
-			on_click = page.open_settings,
-			height = page.appbar_height,
-	)
-
-	option_list = ft.Row(
-			controls = [
-				ft.Container(expand = 2, content = layout_menu),
-				ft.Container(expand = 1, content = theme_switcher),
-				ft.Container(expand = 1, content = settings_button),
-			],
-			height = page.appbar_height,
-	)
-
-	appbar = ft.Row(
-			width = page.width,
-			controls = [
-					ft.Container(content = app_bar_title),
-					ft.VerticalDivider(width = 20, opacity = 0),
-					ft.Container(expand = 6, content = prompt),
-					#ft.Container(expand = 1, content = generate_button),
-					ft.Container(expand = 4, content = option_list),
-			],
-			height = page.appbar_height,
-	)
+	appbar.settings_button.size = page.appbar_height
+	appbar.settings_button.icon_size = page.appbar_height * 0.5
+	appbar.settings_button.on_click = page.open_settings
 
 
 #	toolbar ############################################################
@@ -367,17 +310,13 @@ def main(page: ft.Page):
 	asset_manager.bgcolor = page.primary_color
 	asset_manager.padding = page.container_padding
 	asset_manager.margin = page.container_margin
+	asset_manager.set_tab_text_size(page.text_size)
+	asset_manager.set_tab_bgcolor(page.secondary_color)
+	asset_manager.set_tab_padding(page.container_padding)
+	asset_manager.set_tab_margin(page.container_margin)
 
 	asset_manager.dragbar.content.width = page.vertical_divider_width
 	asset_manager.dragbar.content.color = page.tertiary_color
-
-	asset_manager.layer_panel.bgcolor = page.secondary_color
-	asset_manager.layer_panel.padding = page.container_padding
-	asset_manager.layer_panel.margin = page.container_margin
-
-	asset_manager.asset_panel.bgcolor = page.secondary_color
-	asset_manager.asset_panel.padding = page.container_padding
-	asset_manager.asset_panel.margin = page.container_margin
 
 
 #	canvas #############################################################
@@ -414,12 +353,19 @@ def main(page: ft.Page):
 					animation_duration = 300,
 					tabs = [
 							ft.Tab(
-									text = 'Canvas',
 									content = canvas,
+									tab_content = ft.Text(
+											value = 'Canvas',
+											size = page.text_size,
+									),
 							),
 							ft.Tab(
 									text = 'Text Editor',
 									content = text_editor,
+									tab_content = ft.Text(
+											value = 'Text Editor',
+											size = page.text_size,
+									),
 							),
 					],
 			),
@@ -504,17 +450,13 @@ def main(page: ft.Page):
 	property_manager.bgcolor = page.primary_color
 	property_manager.padding = page.container_padding
 	property_manager.margin = page.container_margin
+	property_manager.set_tab_text_size(page.text_size)
+	property_manager.set_tab_bgcolor(page.secondary_color)
+	property_manager.set_tab_padding(page.container_padding)
+	property_manager.set_tab_margin(page.container_margin)
 
 	property_manager.dragbar.content.width = page.vertical_divider_width
 	property_manager.dragbar.content.color = page.tertiary_color
-
-	property_manager.property_panel.bgcolor = page.secondary_color
-	property_manager.property_panel.padding = page.container_padding
-	property_manager.property_panel.margin = page.container_margin
-
-	property_manager.output_panel.bgcolor = page.secondary_color
-	property_manager.output_panel.padding = page.container_padding
-	property_manager.output_panel.margin = page.container_margin
 
 
 #	layouts ############################################################

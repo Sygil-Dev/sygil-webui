@@ -17,6 +17,24 @@ class AssetManager(ft.Container):
 	def add_images_as_layers(self, images):
 		self.layer_panel.add_images_as_layers(images)
 
+	def set_tab_text_size(self, size):
+		for tab in self.tabs:
+			tab.tab_content.size = size
+
+	def set_tab_bgcolor(self, color):
+		for tab in self.tabs:
+			tab.content.bgcolor = color
+
+	def set_tab_padding(self, padding):
+		for tab in self.tabs:
+			tab.content.padding = padding
+
+	def set_tab_margin(self, margin):
+		for tab in self.tabs:
+			tab.content.margin = margin
+
+
+
 class AssetPanel(ft.Container):
 	pass
 
@@ -48,7 +66,9 @@ class LayerPanel(ft.Container):
 	def add_layer_slot(self, image):
 		label = ft.TextField(
 				value = image.filename,
-				content_padding = ft.padding.only(left = 4, top = 0, right = 0, bottom = 0),
+				focused_border_color = self.page.tertiary_color,
+				text_size = self.page.text_size,
+				content_padding = ft.padding.only(left = 12, top = 0, right = 0, bottom = 0),
 				expand = True,
 		)
 		handle = ft.Icon(
@@ -61,6 +81,7 @@ class LayerPanel(ft.Container):
 							label,
 							handle,
 						],
+						height = self.page.icon_size * 2,
 						expand = True,
 				),
 		)
@@ -135,7 +156,6 @@ asset_manager_dragbar = ft.GestureDetector(
 )
 
 asset_manager = AssetManager(
-		clip_behavior = 'antiAlias',
 		content = ft.Row(
 				controls = [
 					ft.Column(
@@ -145,12 +165,16 @@ asset_manager = AssetManager(
 									animation_duration = 300,
 									tabs = [
 										ft.Tab(
-												text = "Layers",
 												content = layer_panel,
+												tab_content = ft.Text(
+														value = "Layers",
+												),
 										),
 										ft.Tab(
-												text = "Assets",
 												content = asset_panel,
+												tab_content = ft.Text(
+														value = "Assets",
+												),
 										),
 									],
 							),
@@ -162,8 +186,10 @@ asset_manager = AssetManager(
 				],
 				expand = True,
 		),
+		clip_behavior = 'antiAlias',
 )
 
+asset_manager.tabs = asset_manager.content.controls[0].controls[0].tabs
 asset_manager.dragbar = asset_manager_dragbar
 asset_manager.layer_panel = layer_panel
 asset_manager.asset_panel = asset_panel

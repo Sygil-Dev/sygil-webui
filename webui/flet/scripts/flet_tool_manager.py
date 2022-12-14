@@ -154,6 +154,7 @@ toolbar = ToolBar(
 				],
 				expand = True,
 		),
+		clip_behavior = 'antiAlias',
 )
 
 toolbar.toolbox = toolbox
