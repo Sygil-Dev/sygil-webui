@@ -15,6 +15,7 @@ from scripts.flet_appbar import appbar
 from scripts.flet_tool_manager import toolbar
 from scripts.flet_asset_manager import asset_manager
 from scripts.flet_canvas import canvas
+from scripts.flet_messages import messages
 from scripts.flet_property_manager import property_manager
 
 # for debugging
@@ -27,13 +28,8 @@ def main(page: ft.Page):
 
 #	init ###############################################################
 	# messages
-	def message(text, err = 0):
-		if err:
-			text = "ERROR:  " + text
-		add_message_to_messages(err,text)
-		flet_utils.log_message(text)
-
-	page.message = message
+	page.message = messages.message
+	page.max_message_history = 50
 
 	# ui
 	page.current_layout = 'Default'
@@ -375,56 +371,18 @@ def main(page: ft.Page):
 
 #	bottom_panel #######################################################
 
-	def prune_messages():
-		if len(messages.controls) > MAX_MESSAGE_HISTORY:
-			messages.controls.pop(0)
-		messages.update()
+	page.messages = messages
+	messages.height = page.bottom_panel_height
+	messages.bgcolor = page.primary_color
+	messages.padding = page.container_padding
+	messages.margin = page.container_margin
+	messages.set_tab_text_size(page.text_size)
+	messages.set_tab_bgcolor(page.secondary_color)
+	messages.set_tab_padding(page.container_padding)
+	messages.set_tab_margin(page.container_margin)
 
-	def add_message_to_messages(err,text):
-		if err:
-			msg = ft.Text(value = text, color = ft.colors.RED)
-		else:
-			msg = ft.Text(value = text)
-		messages.controls.append(msg)
-		prune_messages()
-
-	messages = ft.Column(
-			spacing = 0,
-			scroll = 'auto',
-			auto_scroll = True,
-			controls = [],
-	)
-	messages_window = ft.Container(
-			bgcolor = page.secondary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-			content = messages,
-	)
-	video_editor_window = ft.Column(
-			expand = True,
-			controls = [ft.Text("Under Construction")]
-	)
-
-	bottom_panel = ft.Container(
-			height = page.bottom_panel_height,
-			bgcolor = page.primary_color,
-			padding = page.container_padding,
-			margin = page.container_margin,
-			content = ft.Tabs(
-					selected_index = 0,
-					animation_duration = 300,
-					tabs = [
-							ft.Tab(
-									text = "Messages",
-									content = messages_window,
-							),
-							ft.Tab(
-									text = "Video Editor",
-									content = video_editor_window,
-							),
-					],
-			)
-	)
+	messages.dragbar.content.height = page.divider_height
+	messages.dragbar.content.color = page.tertiary_color
 
 
 #	center panel #######################################################
@@ -433,7 +391,7 @@ def main(page: ft.Page):
 			content = ft.Column(
 					controls = [
 							viewport,
-							bottom_panel,
+							messages,
 					],
 			),
 			bgcolor = page.primary_color,

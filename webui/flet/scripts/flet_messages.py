@@ -1,0 +1,113 @@
+# flet_messages.py
+
+# Flet imports
+import flet as ft
+
+# utils imports
+from scripts import flet_utils
+
+
+
+class Messages(ft.Container):
+	def setup(self):
+		pass
+
+	def set_tab_text_size(self, size):
+		for tab in self.tabs:
+			tab.tab_content.size = size
+
+	def set_tab_bgcolor(self, color):
+		for tab in self.tabs:
+			tab.content.bgcolor = color
+
+	def set_tab_padding(self, padding):
+		for tab in self.tabs:
+			tab.content.padding = padding
+
+	def set_tab_margin(self, margin):
+		for tab in self.tabs:
+			tab.content.margin = margin
+
+	def resize_messages(self, e: ft.DragUpdateEvent):
+		self.page.bottom_panel_height = max(100, self.page.bottom_panel_height - e.delta_y)
+		self.height = self.page.bottom_panel_height
+		self.page.update()
+
+	def message(self, text, err = 0):
+		if err:
+			text = "ERROR:  " + text
+		self.add_message_to_messages(err,text)
+		flet_utils.log_message(text)
+
+	def prune_messages(self):
+		if len(message_list.controls) > self.page.max_message_history:
+			message_list.controls.pop(0)
+		message_list.update()
+
+	def add_message_to_messages(self,err,text):
+		if err:
+			msg = ft.Text(value = text, color = ft.colors.RED)
+		else:
+			msg = ft.Text(value = text)
+		message_list.controls.append(msg)
+		self.prune_messages()
+
+message_list = ft.Column(
+		spacing = 0,
+		scroll = 'auto',
+		auto_scroll = True,
+		controls = [],
+)
+
+messages_panel = ft.Container(
+		content = message_list,
+)
+
+video_editor_panel = ft.Column(
+		expand = True,
+		controls = [ft.Text("Under Construction")]
+)
+
+def resize_messages(e):
+	messages.resize_messages(e)
+
+messages_dragbar = ft.GestureDetector(
+		mouse_cursor = ft.MouseCursor.RESIZE_ROW,
+		drag_interval = 50,
+		on_pan_update = resize_messages,
+		content = ft.Divider(),
+)
+
+messages = Messages(
+		content = ft.Column(
+				controls = [
+						messages_dragbar,
+						ft.Tabs(
+								selected_index = 0,
+								animation_duration = 300,
+								tabs = [
+										ft.Tab(
+												content = messages_panel,
+												tab_content = ft.Text(
+														value = 'Messages',
+												),
+										),
+										ft.Tab(
+												content = video_editor_panel,
+												tab_content = ft.Text(
+														value = 'Video Editor',
+												),
+										),
+								],
+						),
+				],
+		),
+		clip_behavior = 'antiAlias',
+)
+
+messages.dragbar = messages_dragbar
+messages.tabs = messages.content.controls[1].tabs
+messages.messages_panel = messages_panel
+messages.video_editor_panel = video_editor_panel
+messages.message_list = message_list
+
