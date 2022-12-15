@@ -63,9 +63,8 @@ class Messages(ft.Container):
 		message_list.controls.append(msg)
 		self.prune_messages()
 
-message_list = ft.Column(
-		spacing = 0,
-		scroll = 'auto',
+message_list = ft.ListView(
+		spacing = 4,
 		auto_scroll = True,
 		controls = [],
 )

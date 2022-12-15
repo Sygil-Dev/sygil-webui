@@ -68,8 +68,8 @@ class ToolManager(ft.Container):
 		self.tool_properties.padding = self.page.container_padding
 		self.tool_properties.margin = self.page.container_margin
 
-		self.dragbar.content.width = self.page.vertical_divider_width
-		self.dragbar.content.color = self.page.tertiary_color
+		self.dragbar.width = self.page.vertical_divider_width
+		self.dragbar.color = self.page.tertiary_color
 
 	def resize_tool_manager(self, e: ft.DragUpdateEvent):
 		self.page.tool_manager_width = max(50, self.page.tool_manager_width + e.delta_x)
@@ -176,7 +176,6 @@ tool_manager = ToolManager(
 								tool_properties,
 							],
 							alignment = 'start',
-							horizontal_alignment = 'center',
 							expand = True,
 					),
 					tool_manager_dragbar,
@@ -189,5 +188,5 @@ tool_manager = ToolManager(
 tool_manager.toolbox = toolbox
 tool_manager.tool_divider = tool_divider.content.content
 tool_manager.tool_properties = tool_properties
-tool_manager.dragbar = tool_manager_dragbar
+tool_manager.dragbar = tool_manager_dragbar.content
 

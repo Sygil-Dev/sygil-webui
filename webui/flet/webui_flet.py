@@ -80,7 +80,6 @@ def main(page: ft.Page):
 	# layouts
 	def set_layout(e):
 		page.current_layout = e.control.value
-		set_property_panel_options()
 		page.update()
 
 	page.set_layout = set_layout
@@ -91,19 +90,16 @@ def main(page: ft.Page):
 
 	# asset manager
 	page.asset_manager = asset_manager
-	page.layer_list = []
-	page.visible_layer_list = []
-	page.active_layer_list = []
 
 	# canvas
 	page.canvas = canvas
 	page.canvas_background = flet_utils.get_canvas_background('webui/flet/assets/images/templategrid_albedo.png')
-	page.canvas_size = (512,512)
+	page.canvas_size = [512,512]
 
 	def get_viewport_size():
 		viewport_width = page.width - (page.tool_manager_width + (page.vertical_divider_width * 3) + page.left_panel_width + page.right_panel_width)
-		viewport_height = page.height - (page.appbar_height * 3) - page.bottom_panel_height
-		return (viewport_width, viewport_height)
+		viewport_height = page.height - (page.titlebar_height * 3) - page.bottom_panel_height
+		return viewport_width, viewport_height
 
 	page.get_viewport_size = get_viewport_size
 
@@ -287,25 +283,6 @@ def main(page: ft.Page):
 
 
 #	layouts ############################################################
-
-	def set_current_tools():
-		layout = page.current_layout
-		if layout == 'Default':
-			set_tools(default_tools)
-		elif layout == 'Textual Inversion':
-			set_tools(textual_inversion_tools)
-		elif layout == 'Node Editor':
-			set_tools(node_editor_tools)
-		tool_manager.update()
-
-	def set_property_panel_options():
-		layout = page.current_layout
-		if layout == 'Default':
-			set_properties(default_properties)
-		elif layout == 'Textual Inversion':
-			set_properties(textual_inversion_properties)
-		elif layout == 'Node Editor':
-			set_properties(node_editor_properties)
 
 	default_layout = ft.Row(
 			controls = [

@@ -18,6 +18,8 @@ class Canvas(ft.Container):
 
 		self.overlay.canvas_size.content.color = self.page.text_color
 		self.overlay.canvas_size.content.size = self.page.text_size
+		self.add_layer_image(self.page.canvas_background)
+		self.center_canvas()
 		self.refresh_canvas()
 
 	def refresh_canvas(self):
@@ -26,9 +28,14 @@ class Canvas(ft.Container):
 	def set_current_tool(self,tool):
 		self.page.current_tool = tool
 
+	def add_layer_image(self, image):
+		self.image_stack.add_layer_image(image)
+		self.update()
+
 	def center_canvas(self):
-		self.image_stack.left = (self.page.workspace_width * 0.5) - (self.page.canvas_size[0] * 0.5),
-		self.image_stack.top = (self.page.workspace_height * 0.5) - (self.page.canvas_size[1] * 0.5),
+		width, height = self.page.get_viewport_size()
+		self.image_stack.left = (width * 0.5) - 2048
+		self.image_stack.top = (height * 0.5) - 2048
 		canvas.update()
 
 	def pan_canvas(self):
@@ -47,34 +54,54 @@ class CanvasOverlay(ft.Stack):
 		self.update()
 
 class ImageStack(ft.GestureDetector):
-	def add_layer_image(self):
-		pass
+	def add_layer_image(self, image):
+		layer_image = LayerImage(
+				mouse_cursor = ft.MouseCursor.GRAB,
+				drag_interval = 50,
+				on_pan_update = self.drag_layer,
+				left = 0,
+				top = 0,
+				width = image.width,
+				height = image.height,
+				content = ft.Image(
+						src_base64 = flet_utils.convert_image_to_base64(image),
+						width = image.width,
+						height = image.height,
+						gapless_playback = True,
+				),
+		)
+		self.content.controls.append(layer_image)
 
-
-class LayerImage(ft.GestureDetector):
-	def center_layer(self):
-		self.left = (self.page.workspace_width * 0.5) - (self.page.canvas_size[0] * 0.5),
-		self.top = (self.page.workspace_height * 0.5) - (self.page.canvas_size[1] * 0.5),
+	def center_layer(self, e):
+		width, height = self.page.get_viewport_size()
+		self.left = (width * 0.5) - (self.width * 0.5),
+		self.top = (height * 0.5) - (self.height * 0.5),
 		canvas.update()
 
-	def drag_layer(self):
+	def drag_layer(self, e):
 		pass
 
-	def resize_layer(self):
+	def resize_layer(self, e):
 		pass
 
-	def draw_on_layer(self):
+	def draw_on_layer(self, e):
 		pass
 
-	def paint_on_layer(self):
+	def paint_on_layer(self, e):
 		pass
 
+class LayerImage(ft.GestureDetector):
+	pass
+
+def pan_canvas(e):
+	canvas.pan_canvas(e)
 
 image_stack = ImageStack(
-		mouse_cursor = ft.MouseCursor.GRAB,
+#		mouse_cursor = ft.MouseCursor.GRAB,
 		drag_interval = 50,
-		on_pan_update = None,
-		on_scroll = None,
+		on_pan_update = pan_canvas,
+		width = 4096,
+		height = 4096,
 		left = 0,
 		top = 0,
 		content = ft.Stack(),
@@ -115,6 +142,11 @@ canvas_tools = ft.Container(
 		),
 		top = 4,
 		right = 4,
+		padding = 4,
+		border_radius = 10,
+		opacity = 0.5,
+		bgcolor = 'black',
+
 )
 
 canvas_tools.zoom_in = zoom_in_button
@@ -135,7 +167,6 @@ canvas = Canvas(
 					image_stack,
 					canvas_overlay,
 				],
-				clip_behavior = None,
 		),
 		clip_behavior = 'antiAlias',
 		alignment = ft.alignment.center,

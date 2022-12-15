@@ -91,7 +91,7 @@ def get_image_from_uploads(name):
 
 def get_canvas_background(path):
 	image = Image.open(path)
-	image = image.resize((512,512))
+	image = image.resize((4096,4096))
 	image = image.convert("RGBA")
 	return image
 
