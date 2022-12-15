@@ -427,7 +427,10 @@ def layout():
             #prompt = st.text_area("Input Text","")
             placeholder = "A corgi wearing a top hat as an oil painting."
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
-            sygil_suggestions.suggestion_area(placeholder)
+            
+            if "defaults" in st.session_state:
+                if st.session_state["defaults"].general.enable_suggestions:
+                    sygil_suggestions.suggestion_area(placeholder)
             
             if "defaults" in st.session_state:
                 if st.session_state['defaults'].admin.global_negative_prompt:
