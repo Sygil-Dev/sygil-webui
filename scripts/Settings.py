@@ -213,6 +213,9 @@ def layout():
                                                                                    help="Add the progress percent value to the page title on the tab on your browser. "
                                                                                    "This is useful in case you need to know how the generation is going while doign something else"
                                                                                    "in another tab on your browser. Default: True")
+                
+                st.session_state["defaults"].general.enable_suggestions = st.checkbox("Enable Suggestions Box", value=st.session_state['defaults'].general.enable_suggestions,
+                                                                                   help="Adds a suggestion box under the prompt when clicked. Default: True")
 
                 st.session_state["defaults"].daisi_app.running_on_daisi_io = st.checkbox("Running on Daisi.io?", value=st.session_state['defaults'].daisi_app.running_on_daisi_io,
                                                                                          help="Specify if we are running on app.Daisi.io . Default: False")

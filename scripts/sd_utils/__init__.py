@@ -109,6 +109,9 @@ try:
 except:
     pass
 
+# disable diffusers telemetry
+os.environ["DISABLE_TELEMETRY"] = "YES"
+
 # remove some annoying deprecation warnings that show every now and then.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)

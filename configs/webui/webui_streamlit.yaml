@@ -57,6 +57,7 @@ general:
     n_rows: -1
     no_verify_input: False
     show_percent_in_tab_title: True
+    enable_suggestions: True
     no_half: False
     use_float16: False
     precision: "autocast"
