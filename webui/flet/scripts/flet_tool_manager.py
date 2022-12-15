@@ -49,17 +49,35 @@ tool_list = [
 	Tool('fill', ft.icons.FORMAT_COLOR_FILL_OUTLINED, 'Fill tool', tool_select),
 ]
 
-class ToolBar(ft.Container):
+class ToolManager(ft.Container):
 	def setup(self):
 		self.toolbox.get_tools()
+		self.width = self.page.tool_manager_width
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
 
-	def resize_toolbar(self, e: ft.DragUpdateEvent):
-		self.page.toolbar_width = max(50, self.page.toolbar_width + e.delta_x)
-		toolbar.width = self.page.toolbar_width
+		self.toolbox.bgcolor = self.page.secondary_color
+		self.toolbox.padding = self.page.container_padding
+		self.toolbox.margin = self.page.container_margin
+
+		self.tool_divider.height = self.page.divider_height
+		self.tool_divider.color = self.page.tertiary_color
+
+		self.tool_properties.bgcolor = self.page.secondary_color
+		self.tool_properties.padding = self.page.container_padding
+		self.tool_properties.margin = self.page.container_margin
+
+		self.dragbar.content.width = self.page.vertical_divider_width
+		self.dragbar.content.color = self.page.tertiary_color
+
+	def resize_tool_manager(self, e: ft.DragUpdateEvent):
+		self.page.tool_manager_width = max(50, self.page.tool_manager_width + e.delta_x)
+		tool_manager.width = self.page.tool_manager_width
 		self.page.update()
 
 	def resize_toolbox(self, e: ft.DragUpdateEvent):
-		min_height = (self.page.toolbar_button_size * 2)
+		min_height = (self.page.tool_manager_button_size * 2)
 		self.page.toolbox_height = max(min_height, self.page.toolbox_height + e.delta_y)
 		toolbox.height = self.page.toolbox_height
 		self.update()
@@ -68,14 +86,18 @@ class ToolBox(ft.Container):
 	def get_tools(self):
 		for action in action_list:
 			self.content.controls.append(self.make_button(action))
-		divider = ft.Divider(
-				height = self.page.divider_height,
-				color = self.page.tertiary_color,
+		divider = ft.Container(
+				content = ft.Divider(
+						height = self.page.divider_height,
+						color = self.page.tertiary_color,
+				),
+				margin = 0,
+				padding = ft.padding.only(left = 10, top = 0, right = 0, bottom = 0),
 		)
 		self.content.controls.append(divider)
 		for tool in tool_list:
 			self.content.controls.append(self.make_button(tool))
-		toolbar.update()
+		tool_manager.update()
 
 	def make_button(self,button_info):
 		button = ft.IconButton(
@@ -107,17 +129,23 @@ toolbox = ToolBox(
 				spacing = 0,
 				run_spacing = 0,
 				controls = [],
-		)
+		),
+		margin = 0,
+		padding = ft.padding.only(left = 15, top = 0, right = 0, bottom = 0),
 )
 
 def resize_toolbox(e):
-	toolbar.resize_toolbox(e)
+	tool_manager.resize_toolbox(e)
 
 tool_divider = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_ROW,
 		drag_interval = 50,
 		on_pan_update = resize_toolbox,
-		content = ft.Divider(),
+		content = ft.Container(
+				content = ft.Divider(),
+				margin = 0,
+				padding = ft.padding.only(left = 10, top = 0, right = 0, bottom = 0),
+		),
 )
 
 # ToolPropertyPanel == ft.Container
@@ -127,18 +155,18 @@ tool_properties = ToolPropertyPanel(
 		)
 )
 
-def resize_toolbar(e):
-	toolbar.resize_toolbar(e)
+def resize_tool_manager(e):
+	tool_manager.resize_tool_manager(e)
 
-toolbar_dragbar = ft.GestureDetector(
+tool_manager_dragbar = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_COLUMN,
 		drag_interval = 50,
-		on_pan_update = resize_toolbar,
+		on_pan_update = resize_tool_manager,
 		content = ft.VerticalDivider(),
 )
 
-# ToolBar = ft.Container
-toolbar = ToolBar(
+# ToolManager = ft.Container
+tool_manager = ToolManager(
 		content = ft.Row(
 				controls = [
 					ft.Column(
@@ -148,17 +176,18 @@ toolbar = ToolBar(
 								tool_properties,
 							],
 							alignment = 'start',
+							horizontal_alignment = 'center',
 							expand = True,
 					),
-					toolbar_dragbar,
+					tool_manager_dragbar,
 				],
 				expand = True,
 		),
 		clip_behavior = 'antiAlias',
 )
 
-toolbar.toolbox = toolbox
-toolbar.tool_divider = tool_divider
-toolbar.tool_properties = tool_properties
-toolbar.dragbar = toolbar_dragbar
+tool_manager.toolbox = toolbox
+tool_manager.tool_divider = tool_divider.content.content
+tool_manager.tool_properties = tool_properties
+tool_manager.dragbar = tool_manager_dragbar
 

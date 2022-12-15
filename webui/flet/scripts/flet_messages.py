@@ -10,7 +10,18 @@ from scripts import flet_utils
 
 class Messages(ft.Container):
 	def setup(self):
-		pass
+		self.height = self.page.bottom_panel_height
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.set_tab_text_size(self.page.text_size)
+		self.set_tab_bgcolor(self.page.secondary_color)
+		self.set_tab_padding(self.page.container_padding)
+		self.set_tab_margin(self.page.container_margin)
+
+		self.dragbar.content.height = self.page.divider_height
+		self.dragbar.content.color = self.page.tertiary_color
 
 	def set_tab_text_size(self, size):
 		for tab in self.tabs:
@@ -79,7 +90,7 @@ messages_dragbar = ft.GestureDetector(
 )
 
 messages = Messages(
-		content = ft.Column(
+		content = ft.Stack(
 				controls = [
 						messages_dragbar,
 						ft.Tabs(

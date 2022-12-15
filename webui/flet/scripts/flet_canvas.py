@@ -9,6 +9,15 @@ from scripts import flet_utils
 
 class Canvas(ft.Container):
 	def setup(self):
+		self.bgcolor = self.page.secondary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.overlay.tools.zoom_in = self.page.icon_size
+		self.overlay.tools.zoom_out = self.page.icon_size
+
+		self.overlay.canvas_size.content.color = self.page.text_color
+		self.overlay.canvas_size.content.size = self.page.text_size
 		self.refresh_canvas()
 
 	def refresh_canvas(self):

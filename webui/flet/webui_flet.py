@@ -11,8 +11,8 @@ from scripts import flet_utils
 from scripts.flet_settings_window import settings_window
 from scripts.flet_gallery_window import gallery_window
 from scripts.flet_file_manager import file_picker, uploads, imports
-from scripts.flet_appbar import appbar
-from scripts.flet_tool_manager import toolbar
+from scripts.flet_titlebar import titlebar
+from scripts.flet_tool_manager import tool_manager
 from scripts.flet_asset_manager import asset_manager
 from scripts.flet_canvas import canvas
 from scripts.flet_messages import messages
@@ -28,16 +28,17 @@ def main(page: ft.Page):
 
 #	init ###############################################################
 	# messages
+	page.messages = messages
 	page.message = messages.message
 	page.max_message_history = 50
 
 	# ui
 	page.current_layout = 'Default'
-	page.appbar_height = 50
+	page.titlebar_height = 50
 	page.bottom_panel_height = page.height * 0.2
 	page.toolbox_height = 250
-	page.toolbar_width = 50
-	page.toolbar_button_size = 40
+	page.tool_manager_width = 50
+	page.tool_manager_button_size = 40
 	page.left_panel_width = 200
 	page.right_panel_width = 250
 
@@ -58,6 +59,9 @@ def main(page: ft.Page):
 	page.tab_margin = 0
 	page.divider_height = 10
 	page.vertical_divider_width = 10
+
+	# titlebar
+	page.titlebar = titlebar
 
 	def change_theme_mode(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
@@ -82,23 +86,29 @@ def main(page: ft.Page):
 	page.set_layout = set_layout
 
 	# tools
+	page.tool_manager = tool_manager
 	page.current_tool = 'pan'
 
-	# layer manager
+	# asset manager
+	page.asset_manager = asset_manager
 	page.layer_list = []
 	page.visible_layer_list = []
 	page.active_layer_list = []
 
 	# canvas
+	page.canvas = canvas
 	page.canvas_background = flet_utils.get_canvas_background('webui/flet/assets/images/templategrid_albedo.png')
 	page.canvas_size = (512,512)
 
 	def get_viewport_size():
-		viewport_width = page.width - (page.toolbar_width + (page.vertical_divider_width * 3) + page.left_panel_width + page.right_panel_width)
+		viewport_width = page.width - (page.tool_manager_width + (page.vertical_divider_width * 3) + page.left_panel_width + page.right_panel_width)
 		viewport_height = page.height - (page.appbar_height * 3) - page.bottom_panel_height
 		return (viewport_width, viewport_height)
 
 	page.get_viewport_size = get_viewport_size
+
+	# property manager
+	page.property_manager = property_manager
 
 	# settings
 	def load_settings():
@@ -126,8 +136,6 @@ def main(page: ft.Page):
 				MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
 
 		page.session.set('layout','default')
-
-
 
 
 #	settings window ####################################################
@@ -167,9 +175,8 @@ def main(page: ft.Page):
 
 	page.open_gallery = open_gallery_window
 
-	page.refresh_gallery = gallery_window.refresh_gallery
-
 	page.gallery_window = gallery_window
+	page.refresh_gallery = gallery_window.refresh_gallery
 	gallery_window.content.width = page.width * 0.5
 	gallery_window.content.bgcolor = page.primary_color
 	gallery_window.content.padding = page.container_padding
@@ -186,7 +193,7 @@ def main(page: ft.Page):
 	gallery_window.uploads_gallery.margin = page.container_margin
 
 
-#	file manager ######################################################
+#	file manager #######################################################
 
 	def close_upload_window(e):
 		uploads.open = False
@@ -229,116 +236,13 @@ def main(page: ft.Page):
 	page.overlay.append(file_picker)
 
 
-#	layouts ############################################################
-
-	def set_current_tools():
-		layout = page.current_layout
-		if layout == 'Default':
-			set_tools(default_tools)
-		elif layout == 'Textual Inversion':
-			set_tools(textual_inversion_tools)
-		elif layout == 'Node Editor':
-			set_tools(node_editor_tools)
-		toolbar.update()
-
-	def set_property_panel_options():
-		layout = page.current_layout
-		if layout == 'Default':
-			set_properties(default_properties)
-		elif layout == 'Textual Inversion':
-			set_properties(textual_inversion_properties)
-		elif layout == 'Node Editor':
-			set_properties(node_editor_properties)
-
-
-#	app bar ############################################################
-
-	# have to rename appbar --> titlebar, because page.appbar is something we don't want.
-	page.titlebar = appbar
-	appbar.width = page.width
-	appbar.height = page.appbar_height
-
-	appbar.title.size = page.appbar_height * 0.5
-	appbar.title.color = page.tertiary_color
-
-	appbar.prompt.text_size = max(12,page.appbar_height * 0.25)
-	appbar.prompt.focused_border_color = page.tertiary_color
-
-	appbar.layout_menu.controls[0].text_size = page.text_size
-
-	appbar.theme_switcher.size = page.appbar_height
-	appbar.theme_switcher.icon_size = page.appbar_height * 0.5
-	appbar.theme_switcher.tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if page.theme_mode == 'light' else '(Dark theme)'}"
-	appbar.theme_switcher.on_click = page.change_theme_mode
-
-	appbar.settings_button.size = page.appbar_height
-	appbar.settings_button.icon_size = page.appbar_height * 0.5
-	appbar.settings_button.on_click = page.open_settings
-
-
-#	toolbar ############################################################
-
-	page.toolbar = toolbar
-	toolbar.width = page.toolbar_width
-	toolbar.bgcolor = page.primary_color
-	toolbar.padding = page.container_padding
-	toolbar.margin = page.container_margin
-
-	toolbar.toolbox.bgcolor = page.secondary_color
-	toolbar.toolbox.padding = page.container_padding
-	toolbar.toolbox.margin = page.container_margin
-
-	toolbar.tool_divider.content.height = page.divider_height
-	toolbar.tool_divider.content.color = page.tertiary_color
-
-	toolbar.tool_properties.bgcolor = page.secondary_color
-	toolbar.tool_properties.padding = page.container_padding
-	toolbar.tool_properties.margin = page.container_margin
-
-	toolbar.dragbar.content.width = page.vertical_divider_width
-	toolbar.dragbar.content.color = page.tertiary_color
-
-
-#	layer manager ######################################################
-
-	page.asset_manager = asset_manager
-	asset_manager.width = page.left_panel_width
-	asset_manager.bgcolor = page.primary_color
-	asset_manager.padding = page.container_padding
-	asset_manager.margin = page.container_margin
-	asset_manager.set_tab_text_size(page.text_size)
-	asset_manager.set_tab_bgcolor(page.secondary_color)
-	asset_manager.set_tab_padding(page.container_padding)
-	asset_manager.set_tab_margin(page.container_margin)
-
-	asset_manager.dragbar.content.width = page.vertical_divider_width
-	asset_manager.dragbar.content.color = page.tertiary_color
-
-
-#	canvas #############################################################
-
-	page.canvas = canvas
-	canvas.bgcolor = page.secondary_color
-	canvas.padding = page.container_padding
-	canvas.margin = page.container_margin
-
-	canvas.overlay.tools.zoom_in = page.icon_size
-	canvas.overlay.tools.zoom_out = page.icon_size
-
-	canvas.overlay.canvas_size.content.color = page.text_color
-	canvas.overlay.canvas_size.content.size = page.text_size
-
-
-#	text editor ########################################################
+#	center panel #############################################################
 
 	text_editor = ft.Container(
 			content = ft.Text('Under Construction.'),
 			bgcolor = page.secondary_color,
 			expand = True,
 	)
-
-
-#	viewport ##########################################################
 
 	viewport = ft.Container(
 			bgcolor = page.primary_color,
@@ -368,25 +272,6 @@ def main(page: ft.Page):
 			expand = True,
 	)
 
-
-#	bottom_panel #######################################################
-
-	page.messages = messages
-	messages.height = page.bottom_panel_height
-	messages.bgcolor = page.primary_color
-	messages.padding = page.container_padding
-	messages.margin = page.container_margin
-	messages.set_tab_text_size(page.text_size)
-	messages.set_tab_bgcolor(page.secondary_color)
-	messages.set_tab_padding(page.container_padding)
-	messages.set_tab_margin(page.container_margin)
-
-	messages.dragbar.content.height = page.divider_height
-	messages.dragbar.content.color = page.tertiary_color
-
-
-#	center panel #######################################################
-
 	center_panel = ft.Container(
 			content = ft.Column(
 					controls = [
@@ -401,27 +286,30 @@ def main(page: ft.Page):
 	)
 
 
-#	property manager ###################################################
-
-	page.property_manager = property_manager
-	property_manager.width = page.right_panel_width
-	property_manager.bgcolor = page.primary_color
-	property_manager.padding = page.container_padding
-	property_manager.margin = page.container_margin
-	property_manager.set_tab_text_size(page.text_size)
-	property_manager.set_tab_bgcolor(page.secondary_color)
-	property_manager.set_tab_padding(page.container_padding)
-	property_manager.set_tab_margin(page.container_margin)
-
-	property_manager.dragbar.content.width = page.vertical_divider_width
-	property_manager.dragbar.content.color = page.tertiary_color
-
-
 #	layouts ############################################################
+
+	def set_current_tools():
+		layout = page.current_layout
+		if layout == 'Default':
+			set_tools(default_tools)
+		elif layout == 'Textual Inversion':
+			set_tools(textual_inversion_tools)
+		elif layout == 'Node Editor':
+			set_tools(node_editor_tools)
+		tool_manager.update()
+
+	def set_property_panel_options():
+		layout = page.current_layout
+		if layout == 'Default':
+			set_properties(default_properties)
+		elif layout == 'Textual Inversion':
+			set_properties(textual_inversion_properties)
+		elif layout == 'Node Editor':
+			set_properties(node_editor_properties)
 
 	default_layout = ft.Row(
 			controls = [
-				toolbar,
+				tool_manager,
 				asset_manager,
 				center_panel,
 				property_manager,
@@ -441,7 +329,7 @@ def main(page: ft.Page):
 			expand = True,
 			content = ft.Column(
 					controls = [
-						appbar,
+						titlebar,
 						current_layout,
 					],
 			),
@@ -454,9 +342,13 @@ def main(page: ft.Page):
 
 	page.settings_window.setup(page.session.get('settings'))
 	page.gallery_window.setup()
-	page.toolbar.setup()
+	page.titlebar.setup()
+	page.tool_manager.setup()
 	page.asset_manager.setup()
 	page.canvas.setup()
+	page.messages.setup()
+	page.property_manager.setup()
+	page.update()
 
 
 ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")

@@ -9,7 +9,18 @@ from scripts import flet_utils
 
 class AssetManager(ft.Container):
 	def setup(self):
-		pass
+		self.width = self.page.left_panel_width
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.set_tab_text_size(self.page.text_size)
+		self.set_tab_bgcolor(self.page.secondary_color)
+		self.set_tab_padding(self.page.container_padding)
+		self.set_tab_margin(self.page.container_margin)
+
+		self.dragbar.content.width = self.page.vertical_divider_width
+		self.dragbar.content.color = self.page.tertiary_color
 
 	def add_blank_layer(self, e):
 		self.layer_panel.add_blank_layer(e)

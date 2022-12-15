@@ -9,6 +9,9 @@ from scripts import flet_utils
 
 class GalleryWindow(ft.AlertDialog):
 	def setup(self):
+		self.refresh_galleries()
+
+	def refresh_galleries(self):
 		self.refresh_gallery('uploads')
 		self.refresh_gallery('outputs')
 
@@ -41,14 +44,14 @@ class GalleryDisplay(ft.Container):
 										ft.Row(
 												controls = [
 														ft.IconButton(
-																height = self.height * 0.75,
+																height = self.height * 0.5,
 																icon_size = 50,
 																content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
 																tooltip = 'previous image',
 																on_click = None,
 														),
 														ft.IconButton(
-																height = self.height * 0.75,
+																height = self.height * 0.5,
 																icon_size = 50,
 																content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
 																tooltip = 'next image',
