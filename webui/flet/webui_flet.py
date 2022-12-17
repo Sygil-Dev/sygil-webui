@@ -93,7 +93,7 @@ def main(page: ft.Page):
 
 	# canvas
 	page.canvas = canvas
-	page.canvas_background = flet_utils.get_canvas_background('webui/flet/assets/images/templategrid_albedo.png')
+	page.canvas_background = flet_utils.get_canvas_background('webui/flet/assets/images/default_grid_texture.png')
 	page.canvas_size = [512,512]
 
 	def get_viewport_size():

@@ -65,7 +65,7 @@ layout_menu = ft.Row(
 						],
 						value = 'Default',
 						text_size = 20,
-						alignment = ft.alignment.center,
+#						alignment = ft.alignment.center,
 						content_padding = ft.padding.only(left = 12, top = 0, right = 0, bottom = 0),
 						tooltip = "Switch between different workspaces",
 						on_change = set_layout,
