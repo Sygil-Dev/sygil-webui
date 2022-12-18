@@ -19,45 +19,54 @@ class Canvas(ft.Container):
 		self.overlay.canvas_size.content.color = self.page.text_color
 		self.overlay.canvas_size.content.size = self.page.text_size
 		self.add_canvas_background()
-		self.center_canvas()
+		self.center_canvas(self)
 		self.refresh_canvas()
 
 	def refresh_canvas(self):
 		self.overlay.refresh_canvas_overlay()
 
-	def set_current_tool(self,tool):
+	def set_current_tool(self, tool):
 		self.page.current_tool = tool
 
 	def add_canvas_background(self):
 		self.image_stack.add_canvas_background()
-		self.update()
 
 	def add_layer_image(self, image):
 		self.image_stack.add_layer_image(image)
-		self.update()
 
-	def center_canvas(self):
+	def center_canvas(self, e):
 		width, height = self.page.get_viewport_size()
+		self.image_stack.offset_x = 0
+		self.image_stack.offset_y = 0
 		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5)
 		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5)
 		self.update()
 
-	def pan_canvas(self, e):
-		pass
+	def align_canvas(self, e):
+		width, height = self.page.get_viewport_size()
+		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5) + self.image_stack.offset_x
+		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5) + self.image_stack.offset_y
+		self.update()
+
+
+	def pan_canvas(self, e: ft.DragUpdateEvent):
+		self.image_stack.offset_x += e.delta_x
+		self.image_stack.offset_y += e.delta_y
+		self.align_canvas(e)
 
 	def zoom_in(self, e):
 		if self.image_stack.scale >= 4.0:
 			self.image_stack.scale = 4.0
 		else:
 			self.image_stack.scale += 0.05
-		self.center_canvas()
+		self.align_canvas(e)
 
 	def zoom_out(self, e):
 		if self.image_stack.scale <= 0.1:
 			self.image_stack.scale = 0.1
 		else:
 			self.image_stack.scale -= 0.05
-		self.center_canvas()
+		self.align_canvas(e)
 
 class CanvasOverlay(ft.Stack):
 	def refresh_canvas_overlay(self):
@@ -74,7 +83,7 @@ class ImageStack(ft.GestureDetector):
 	def add_canvas_background(self):
 		image = self.page.canvas_background
 		canvas_bg = LayerImage(
-				mouse_cursor = None,
+				mouse_cursor = ft.MouseCursor.MOVE,
 				drag_interval = 50,
 				on_pan_update = pan_canvas,
 				left = 0,
@@ -110,17 +119,19 @@ class ImageStack(ft.GestureDetector):
 						gapless_playback = True,
 				),
 		)
+		self.center_layer(layer_image)
+		self.content.controls.append(layer_image)
+		canvas.layers.append(layer_image)
+
+	def center_layer(self, layer_image):
 		layer_image.offset_x = 0
 		layer_image.offset_y = 0
-		self.content.controls.append(layer_image)
+		layer_image.left = (self.width * 0.5) - (layer_image.width * 0.5)
+		layer_image.top = (self.height * 0.5) - (layer_image.height * 0.5)
 
-	def center_layer(self, e):
-		width, height = self.page.get_viewport_size()
-		e.control.left = (width * 0.5) - (e.control.width * 0.5)
-		e.control.top = (height * 0.5) - (e.control.height * 0.5)
-		e.control.offset_x = 0
-		e.control.offset_y = 0
-		canvas.update()
+	def align_layer(self, layer_image):
+		layer_image.left = (self.width * 0.5) - (layer_image.width * 0.5) + layer_image.offset_x
+		layer_image.top = (self.height * 0.5) - (layer_image.height * 0.5) + layer_image.offset_y
 
 	def drag_layer(self, e):
 		pass
@@ -159,6 +170,21 @@ canvas_size_display = ft.Container(
 		content = ft.Text(
 				value = "test",
 		),
+		left = 4,
+		bottom = 4,
+		padding = 4,
+		border_radius = 10,
+		opacity = 0.5,
+		bgcolor = 'black',
+)
+
+def center_canvas(e):
+	canvas.center_canvas(e)
+
+center_canvas_button = ft.IconButton(
+		content = ft.Icon(ft.icons.FILTER_CENTER_FOCUS_OUTLINED),
+		tooltip = 'center canvas',
+		on_click = center_canvas,
 )
 
 def zoom_in_canvas(e):
@@ -182,7 +208,7 @@ zoom_out_button = ft.IconButton(
 canvas_tools = ft.Container(
 		content = ft.Column(
 				controls = [
-					canvas_size_display,
+					center_canvas_button,
 					zoom_in_button,
 					zoom_out_button,
 				],
@@ -194,7 +220,6 @@ canvas_tools = ft.Container(
 		border_radius = 10,
 		opacity = 0.5,
 		bgcolor = 'black',
-
 )
 
 canvas_tools.zoom_in = zoom_in_button
@@ -202,12 +227,13 @@ canvas_tools.zoom_out = zoom_out_button
 
 canvas_overlay = CanvasOverlay(
 		[
+			canvas_size_display,
 			canvas_tools,
 		],
 )
 
-canvas_overlay.tools = canvas_tools
 canvas_overlay.canvas_size = canvas_size_display
+canvas_overlay.tools = canvas_tools
 
 canvas = Canvas(
 		content = ft.Stack(
@@ -223,4 +249,4 @@ canvas = Canvas(
 
 canvas.image_stack = image_stack
 canvas.overlay = canvas_overlay
-
+canvas.layers = []

@@ -51,7 +51,7 @@ class AssetPanel(ft.Container):
 
 class LayerPanel(ft.Container):
 	def update_layers(self):
-		self.layers = self.content,content.controls
+		self.layers = self.content.content.controls
 		self.update_layer_indexes()
 		self.update_visible_layers()
 		self.update()
@@ -110,16 +110,17 @@ class LayerPanel(ft.Container):
 	def add_blank_layer(self, e):
 		image = flet_utils.create_blank_image(self.page.canvas_size)
 		self.add_layer_slot(image)
+		self.page.canvas.add_layer_image(image)
 		self.page.message("added blank layer to canvas")
+
+	def add_image_as_layer(self, image):
+		self.add_layer_slot(image)
+		self.page.canvas.add_layer_image(image)
+		self.page.message(f'added "{image.filename}" as layer')
 
 	def add_images_as_layers(self, images):
 		for image in images:
-			if not image:
-				continue
-			self.make_layer_slot(image)
-			self.page.message(f'added "{image}" as layer')
-		self.update_layers()
-
+			self.add_image_as_layer(image)
 
 class LayerSlot(ft.Container):
 	pass

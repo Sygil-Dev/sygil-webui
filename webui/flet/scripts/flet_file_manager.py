@@ -25,6 +25,7 @@ class UploadWindow(ft.AlertDialog):
 		e.page.asset_manager.add_images_as_layers(file_picker.images)
 		file_picker.images.clear()
 		e.page.refresh_gallery('uploads')
+		e.page.update()
 
 	def get_image_from_uploads(self, name):
 		return flet_utils.get_image_from_uploads(name)
@@ -102,7 +103,7 @@ def on_image_upload(e: ft.FilePickerUploadEvent):
 		e.page.progress_bars[e.file_name].update()
 		if e.progress >= 1:
 			file_picker.pending -= 1
-			file_picker.images.update(uploads.get_image_from_uploads(e.file_name))
+			file_picker.images.append(uploads.get_image_from_uploads(e.file_name))
 	if file_picker.pending <= 0:
 		file_picker.pending = 0
 		uploads.upload_complete(e)
@@ -113,5 +114,5 @@ file_picker = ft.FilePicker(
 )
 
 file_picker.pending = 0
-file_picker.images = {}
+file_picker.images = []
 

@@ -72,7 +72,7 @@ def create_blank_image(size):
 	except AttributeError:
 		create_blank_image.count = 1
 	name = 'blank_layer_' + str(create_blank_image.count).zfill(2)
-	img = Image.new('RGBA',size,(0,0,0,0))
+	img = Image.new('RGBA',size,(0,0,0,1))
 	img.filename = name
 	return img
 
@@ -84,6 +84,7 @@ def get_image_from_uploads(name):
 	if os.path.exists(path_to_image):
 		image = Image.open(path_to_image)
 		image = image.convert("RGBA")
+		image.filename = name
 		return image
 	else:
 		log_message(f'image not found: "{name}"')
