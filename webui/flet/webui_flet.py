@@ -5,6 +5,8 @@ import flet as ft
 from math import pi
 from typing import Optional
 from loguru import logger
+import logging
+#logging.basicConfig(level=logging.DEBUG)
 
 # utils imports
 from scripts import flet_utils
@@ -66,13 +68,13 @@ def main(page: ft.Page):
 	def change_theme_mode(e):
 		page.theme_mode = "dark" if page.theme_mode == "light" else "light"
 
-		if "(Light theme)" in appbar.theme_switcher.tooltip:
-			appbar.theme_switcher.tooltip = appbar.theme_switcher.tooltip.replace("(Light theme)", '')
+		if "(Light theme)" in titlebar.theme_switcher.tooltip:
+			titlebar.theme_switcher.tooltip = titlebar.theme_switcher.tooltip.replace("(Light theme)", '')
 
-		if "(Dark theme)" in appbar.theme_switcher.tooltip:
-			appbar.theme_switcher.tooltip = appbar.theme_switcher.tooltip.replace("(Dark theme)", '')
+		if "(Dark theme)" in titlebar.theme_switcher.tooltip:
+			titlebar.theme_switcher.tooltip = titlebar.theme_switcher.tooltip.replace("(Dark theme)", '')
 
-		appbar.theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
+		titlebar.theme_switcher.tooltip += "(Light theme)" if page.theme_mode == "light" else "(Dark theme)"
 		page.update()
 
 	page.change_theme_mode = change_theme_mode
@@ -199,7 +201,6 @@ def main(page: ft.Page):
 
 	def open_upload_window(e):
 		page.dialog = uploads
-		uploads.content = page.selected_files
 		uploads.open = True
 		page.update()
 
@@ -213,19 +214,11 @@ def main(page: ft.Page):
 
 	def open_import_window(e):
 		page.dialog = imports
-		imports.content = page.selected_files
 		imports.open = True
 		page.update()
 
 	page.open_imports = open_import_window
 
-	page.selected_files = ft.Column(
-			scroll = 'auto',
-			tight = True,
-			controls = [],
-	);
-
-	page.progress_bars: Dict[str, ft.ProgressBar] = {}
 	page.uploads = uploads
 	page.imports = imports
 	page.file_picker = file_picker
