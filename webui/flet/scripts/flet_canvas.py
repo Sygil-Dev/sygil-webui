@@ -17,17 +17,18 @@ class Canvas(ft.Container):
 		self.overlay.tools.zoom_in = self.page.icon_size
 		self.overlay.tools.zoom_out = self.page.icon_size
 
-		self.overlay.canvas_size.content.color = self.page.text_color
-		self.overlay.canvas_size.content.size = self.page.text_size
+		self.overlay.size_display.content.color = self.page.text_color
+		self.overlay.size_display.content.size = self.page.text_size
 		self.add_canvas_background()
 		self.center_canvas(self)
 		self.refresh_canvas()
+		self.update()
 
 	def lock_canvas(self):
-		self.overlay.canvas_cover.lock_canvas()
+		self.overlay.cover.lock_canvas()
 
 	def unlock_canvas(self):
-		self.overlay.canvas_cover.unlock_canvas()
+		self.overlay.cover.unlock_canvas()
 
 	def refresh_canvas(self):
 		self.overlay.refresh_canvas_overlay()
@@ -42,18 +43,25 @@ class Canvas(ft.Container):
 		self.image_stack.add_layer_image(image)
 		self.update()
 
+	def get_image_stack_preview(self):
+		return self.image_stack.get_preview()
+
 	def center_canvas(self, e):
 		width, height = self.page.get_viewport_size()
 		self.image_stack.offset_x = 0
 		self.image_stack.offset_y = 0
 		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5)
 		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5)
+		self.overlay.preview.left = self.image_stack.left
+		self.overlay.preview.top = self.image_stack.top
 		self.update()
 
 	def align_canvas(self, e):
 		width, height = self.page.get_viewport_size()
 		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5) + self.image_stack.offset_x
 		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5) + self.image_stack.offset_y
+		self.overlay.preview.left = self.image_stack.left
+		self.overlay.preview.top = self.image_stack.top
 		self.update()
 
 	def pan_canvas(self, e: ft.DragUpdateEvent):
@@ -72,6 +80,7 @@ class Canvas(ft.Container):
 		else:
 			self.image_stack.scale += 0.05
 		self.image_stack.get_scaled_size()
+		self.overlay.preview.scale = self.image_stack.scale
 		self.align_canvas(e)
 
 	def zoom_out(self, e):
@@ -79,6 +88,7 @@ class Canvas(ft.Container):
 			self.image_stack.scale = 0.1
 		else:
 			self.image_stack.scale -= 0.05
+		self.overlay.preview.scale = self.image_stack.scale
 		self.image_stack.get_scaled_size()
 		self.align_canvas(e)
 
@@ -101,6 +111,7 @@ class ImageStack(ft.Container):
 						gapless_playback = True,
 				),
 		)
+		canvas_bg.image = image
 		self.canvas_bg = canvas_bg
 		self.content.controls.append(canvas_bg)
 
@@ -111,15 +122,22 @@ class ImageStack(ft.Container):
 				width = image.width,
 				height = image.height,
 				content = ft.Image(
-						src = f'assets/uploads/{image.filename}',
+						src = f'{image.path}',
 						width = image.width,
 						height = image.height,
 						gapless_playback = True,
 				),
 		)
+		layer_image.image = image
 		self.center_layer(layer_image)
 		self.content.controls.append(layer_image)
-		canvas.layers.append(layer_image)
+		canvas.refresh_canvas()
+
+	def get_preview(self):
+		stack = []
+		for layer in self.content.controls:
+			stack.append(layer.image)
+		return flet_utils.get_preview_from_stack(self.page.canvas_size, stack)
 
 	def get_scaled_size(self):
 		self.scaled_width = self.width * self.scale
@@ -151,10 +169,19 @@ class LayerImage(ft.Container):
 class CanvasOverlay(ft.Stack):
 	def refresh_canvas_overlay(self):
 		self.refresh_canvas_size_display()
+		self.refresh_canvas_preview()
 
 	def refresh_canvas_size_display(self):
-		self.canvas_size.content.value = str(self.page.canvas_size)
+		self.size_display.content.value = str(self.page.canvas_size)
 		self.update()
+
+	def refresh_canvas_preview(self):
+		preview = canvas.get_image_stack_preview()
+		self.preview.content.src_base64 = flet_utils.convert_image_to_base64(preview)
+		self.preview.content.width = preview.width
+		self.preview.content.height = preview.height
+		self.preview.image = preview
+		self.page.property_manager.set_preview_image(preview)
 
 
 def pan_canvas(e):
@@ -175,39 +202,32 @@ image_stack.scaled_width = image_stack.width
 image_stack.scaled_height = image_stack.height
 
 
-class CanvasCover(ft.Container):
-	def lock_canvas(self):
-		self.bgcolor = 'black'
-		self.opacity = 0.5,
-		self.content = self.loading
+canvas_cover = ft.Container(
+		content = None,
+		expand = True,
+		bgcolor = 'black',
+		opacity = 0.5,
+)
 
-	def unlock_canvas(self):
-		self.bgcolor = None
-		self.opacity = 1.0,
-		self.content = self.detector
+canvas_preview = LayerImage(
+		width = 4096,
+		height = 4096,
+		padding = 0,
+		margin = 0,
+		image_fit = ft.ImageFit.CONTAIN,
+		alignment = ft.alignment.center,
+		content = ft.Image(
+				src_base64 = None,
+				gapless_playback = True,
+		),
+)
 
-gesture_detector = ft.GestureDetector(
+
+canvas_gestures = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.MOVE,
 		drag_interval = 10,
 		on_pan_update = pan_canvas,
 )
-
-canvas_loading = ft.ProgressRing(
-		width = 50,
-		height = 50,
-		stroke_width = 4,
-		value = None,
-)
-
-canvas_cover = CanvasCover(
-		content = gesture_detector,
-		expand = True,
-		bgcolor = None,
-		opacity = 1.0,
-)
-
-canvas_cover.detector = gesture_detector
-canvas_cover.loading = canvas_loading
 
 canvas_size_display = ft.Container(
 		content = ft.Text(
@@ -273,13 +293,16 @@ canvas_tools.zoom_out = zoom_out_button
 canvas_overlay = CanvasOverlay(
 		[
 			canvas_cover,
+			canvas_preview,
+			canvas_gestures,
 			canvas_size_display,
 			canvas_tools,
 		],
 )
 
-canvas_overlay.canvas_cover = canvas_cover
-canvas_overlay.canvas_size = canvas_size_display
+canvas_overlay.cover = canvas_cover
+canvas_overlay.preview = canvas_preview
+canvas_overlay.size_display = canvas_size_display
 canvas_overlay.tools = canvas_tools
 
 
@@ -298,4 +321,4 @@ canvas = Canvas(
 
 canvas.image_stack = image_stack
 canvas.overlay = canvas_overlay
-canvas.layers = []
+

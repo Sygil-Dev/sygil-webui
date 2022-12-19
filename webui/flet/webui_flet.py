@@ -7,7 +7,7 @@ from math import pi
 from typing import Optional
 from loguru import logger
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 # utils imports
 from scripts import flet_utils
@@ -110,6 +110,7 @@ def main(page: ft.Page):
 
 	# property manager
 	page.property_manager = property_manager
+	page.preview_height = 200
 
 	# settings
 	def load_settings():

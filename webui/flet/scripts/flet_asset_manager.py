@@ -171,28 +171,28 @@ asset_manager = AssetManager(
 		content = ft.Row(
 				controls = [
 					ft.Column(
-						controls = [
-							ft.Tabs(
-									selected_index = 0,
-									animation_duration = 300,
-									tabs = [
-										ft.Tab(
-												content = layer_panel,
-												tab_content = ft.Text(
-														value = "Layers",
-												),
-										),
-										ft.Tab(
-												content = asset_panel,
-												tab_content = ft.Text(
-														value = "Assets",
-												),
-										),
-									],
-							),
-						],
-						alignment = 'start',
-						expand = True
+							controls = [
+								ft.Tabs(
+										selected_index = 0,
+										animation_duration = 300,
+										tabs = [
+											ft.Tab(
+													content = layer_panel,
+													tab_content = ft.Text(
+															value = "Layers",
+													),
+											),
+											ft.Tab(
+													content = asset_panel,
+													tab_content = ft.Text(
+															value = "Assets",
+													),
+											),
+										],
+								),
+							],
+							alignment = 'start',
+							expand = True
 					),
 					asset_manager_dragbar,
 				],

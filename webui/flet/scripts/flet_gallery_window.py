@@ -85,16 +85,22 @@ class GalleryDisplay(ft.Container):
 			if 'info_path' in image[image_name]:
 				image_data = image[image_name]['info_path']
 			self.content.controls[0].controls.append(
-					ft.Image(
-							src = image_path,
-							tooltip = image_name,
-							gapless_playback = True,
+					ft.Container(
+							content = ft.Image(
+									src = image_path,
+									tooltip = image_name,
+									gapless_playback = True,
+							),
+							image_fit = ft.ImageFit.CONTAIN,
+							padding = 0,
+							margin = 0,
+							on_click =
 					)
 			)
 
 
 def add_as_new_layer(e):
-	pass
+	e.page.asset_manager.add_image_as_layer(gallery_window.selected_image)
 
 def save_to_disk(e):
 	pass
@@ -153,4 +159,4 @@ gallery_window = GalleryWindow(
 
 gallery_window.uploads_gallery = uploads_gallery
 gallery_window.outputs_gallery = outputs_gallery
-
+gallery_window.selected_image = None

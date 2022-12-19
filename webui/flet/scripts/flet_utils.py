@@ -85,6 +85,7 @@ def get_image_from_uploads(name):
 		image = Image.open(path_to_image)
 		image = image.convert("RGBA")
 		image.filename = name
+		image.path = path_to_image
 		return image
 	else:
 		log_message(f'image not found: "{name}"')
@@ -97,16 +98,18 @@ def get_canvas_background(path):
 
 # takes list of Image(s) as arg
 # returns single composite of all images
-def get_visible_from_image_stack(image_list):
-	visible_image = create_blank_image()
-	for image in image_list:
+def get_preview_from_stack(size, images):
+	preview = create_blank_image(size)
+	canvas_width = size[0]
+	canvas_height = size[1]
+	for image in images:
 		# need to crop images for composite
-		x0, y0 = (image.width * 0.5) - 256, (image.height * 0.5) - 256
-		x1, y1 = x0 + 512, y0 + 512
+		x0, y0 = (image.width - canvas_width) * 0.5, (image.height - canvas_height) * 0.5
+		x1, y1 = x0 + canvas_width, y0 + canvas_height
 		box = (x0, y0, x1, y1)
 		cropped_image = image.crop(box)
-		visible_image = Image.alpha_composite(visible_image,cropped_image)
-	return visible_image
+		preview = Image.alpha_composite(preview,cropped_image)
+	return preview
 
 # converts Image to base64 string
 def convert_image_to_base64(image):
