@@ -40,6 +40,7 @@ class Canvas(ft.Container):
 
 	def add_layer_image(self, image):
 		self.image_stack.add_layer_image(image)
+		self.update()
 
 	def center_canvas(self, e):
 		width, height = self.page.get_viewport_size()
@@ -51,18 +52,18 @@ class Canvas(ft.Container):
 
 	def align_canvas(self, e):
 		width, height = self.page.get_viewport_size()
-		self.image_stack.left = (width * 0.5) - (self.image_stack.scaled_width * 0.5) + self.image_stack.offset_x
-		self.image_stack.top = (height * 0.5) - (self.image_stack.scaled_height * 0.5) + self.image_stack.offset_y
+		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5) + self.image_stack.offset_x
+		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5) + self.image_stack.offset_y
 		self.update()
 
 	def pan_canvas(self, e: ft.DragUpdateEvent):
 		self.image_stack.offset_x += e.delta_x
 		self.image_stack.offset_y += e.delta_y
 		width, height = self.page.get_viewport_size()
-		self.image_stack.offset_x = max(self.image_stack.offset_x, (width - self.image_stack.scaled_width) * 0.5)
-		self.image_stack.offset_y = max(self.image_stack.offset_y, (height - self.image_stack.scaled_height) * 0.5)
-		self.image_stack.offset_x = min(self.image_stack.offset_x, (self.image_stack.scaled_width - width) * 0.5)
-		self.image_stack.offset_y = min(self.image_stack.offset_y, (self.image_stack.scaled_height - height) * 0.5)
+		self.image_stack.offset_x = max(self.image_stack.offset_x, (width - self.image_stack.width) * 0.5)
+		self.image_stack.offset_y = max(self.image_stack.offset_y, (height - self.image_stack.height) * 0.5)
+		self.image_stack.offset_x = min(self.image_stack.offset_x, (self.image_stack.width - width) * 0.5)
+		self.image_stack.offset_y = min(self.image_stack.offset_y, (self.image_stack.height - height) * 0.5)
 		self.align_canvas(e)
 
 	def zoom_in(self, e):
@@ -110,7 +111,7 @@ class ImageStack(ft.Container):
 				width = image.width,
 				height = image.height,
 				content = ft.Image(
-						src_base64 = flet_utils.convert_image_to_base64(image),
+						src = f'assets/uploads/{image.filename}',
 						width = image.width,
 						height = image.height,
 						gapless_playback = True,

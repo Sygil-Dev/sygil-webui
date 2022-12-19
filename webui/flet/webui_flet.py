@@ -2,11 +2,12 @@
 import flet as ft
 
 # other imports
+import os
 from math import pi
 from typing import Optional
 from loguru import logger
 import logging
-#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 # utils imports
 from scripts import flet_utils
@@ -22,6 +23,8 @@ from scripts.flet_property_manager import property_manager
 
 # for debugging
 from pprint import pprint
+
+os.environ["FLET_WS_MAX_MESSAGE_SIZE"] = "8000000"
 
 
 #	main ###############################################################
