@@ -95,6 +95,7 @@ def main(page: ft.Page):
 
 	# asset manager
 	page.asset_manager = asset_manager
+	page.active_layer = None
 
 	# canvas
 	page.canvas = canvas
@@ -110,7 +111,6 @@ def main(page: ft.Page):
 
 	# property manager
 	page.property_manager = property_manager
-	page.preview_height = 200
 
 	# settings
 	def load_settings():

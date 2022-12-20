@@ -178,7 +178,7 @@ def open_close_layer_properties(e):
 layer_property_header = ft.Column(
 		controls = [
 			ft.TextButton(
-					text = "layer Properties",
+					text = "Layer Properties",
 					icon = ft.icons.ARROW_RIGHT,
 					on_click = open_close_layer_properties,
 					disabled = True,

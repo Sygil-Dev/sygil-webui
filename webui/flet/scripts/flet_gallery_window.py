@@ -88,9 +88,9 @@ def add_as_new_layer(e):
 		e.page.asset_manager.add_images_as_layers(gallery_window.selected_images)
 		gallery_window.selected_images.clear()
 		for tab in gallery_window.content.content.tabs:
-			for image in tab.content.controls:
+			for image in tab.content.content.controls:
 				image.border = None
-		tab.update()
+				image.update()
 
 def save_to_disk(e):
 	pass
