@@ -25,6 +25,9 @@ class AssetManager(ft.Container):
 	def add_blank_layer(self, e):
 		self.layer_panel.add_blank_layer(e)
 
+	def add_image_as_layer(self, image):
+		self.layer_panel.add_image_as_layer(image)
+
 	def add_images_as_layers(self, images):
 		self.layer_panel.add_images_as_layers(images)
 

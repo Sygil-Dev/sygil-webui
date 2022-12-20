@@ -22,6 +22,10 @@ class PropertyManager(ft.Container):
 		self.property_panel.preview.width = self.page.right_panel_width
 		self.property_panel.preview_dragbar.content.content.height = self.page.divider_height
 		self.property_panel.preview_dragbar.content.content.color = self.page.tertiary_color
+		self.property_panel.canvas_properties_dragbar.content.content.height = self.page.divider_height
+		self.property_panel.canvas_properties_dragbar.content.content.color = self.page.tertiary_color
+		self.property_panel.layer_properties_dragbar.content.content.height = self.page.divider_height
+		self.property_panel.layer_properties_dragbar.content.content.color = self.page.tertiary_color
 
 	def set_tab_text_size(self, size):
 		for tab in self.tabs:
@@ -48,8 +52,15 @@ class PropertyManager(ft.Container):
 
 class PropertyPanel(ft.Container):
 	def resize_preview(self, e):
-		self.page.preview_height = max(200, self.page.preview_height + e.delta_y)
-		self.preview.height = self.page.preview_height
+		self.preview.height = max(200, self.preview.height + e.delta_y)
+		self.update()
+
+	def resize_canvas_properties(self, e):
+		self.canvas_properties.height = max(50, self.canvas_properties.height + e.delta_y)
+		self.update()
+
+	def resize_layer_properties(self, e):
+		self.layer_properties.height = max(50, self.layer_properties.height + e.delta_y)
 		self.update()
 
 preview_pane = ft.Container(
@@ -78,17 +89,156 @@ preview_dragbar = ft.GestureDetector(
 		),
 )
 
+def get_canvas_properties(e):
+	return ft.Column(
+			controls = [
+				ft.Row(
+						controls = [
+							ft.TextField(
+									label = 'Width',
+									value = e.page.canvas_size[0],
+									text_align = 'center',
+									content_padding = 0,
+									expand = 1,
+							),
+							ft.TextField(
+									label = 'Height',
+									value = e.page.canvas_size[1],
+									text_align = 'center',
+									content_padding = 0,
+									expand = 1,
+							),
+						],
+				),
+			],
+	)
+
+def open_close_canvas_properties(e):
+	if canvas_property_header.open:
+		e.control.icon = ft.icons.ARROW_RIGHT
+		e.control.icon_color = None
+		canvas_property_header.open = False
+		canvas_property_header.controls.pop()
+		canvas_property_header.update()
+	else:
+		e.control.icon = ft.icons.ARROW_DROP_DOWN
+		e.control.icon_color = e.page.tertiary_color
+		canvas_property_header.open = True
+		canvas_property_header.controls.append(get_canvas_properties(e))
+		canvas_property_header.update()
+
+canvas_property_header = ft.Column(
+		controls = [
+			ft.TextButton(
+					text = "Canvas Properties",
+					icon = ft.icons.ARROW_RIGHT,
+					on_click = open_close_canvas_properties,
+			),
+		],
+		height = 50,
+)
+
+canvas_property_header.open = False
+
+def resize_canvas_properties(e):
+	property_panel.resize_canvas_properties(e)
+
+canvas_property_dragbar = ft.GestureDetector(
+		mouse_cursor = ft.MouseCursor.RESIZE_ROW,
+		drag_interval = 50,
+		on_pan_update = resize_canvas_properties,
+		content = ft.Container(
+				content = ft.Divider(),
+				margin = 0,
+				padding = 0,
+		),
+)
+
+def get_layer_properties(e):
+	return ft.Column(
+			controls = [
+				ft.Row(
+						controls = [
+							ft.TextField(
+									label = 'Width',
+									value = e.page.active_layer.image.width,
+									text_align = 'center',
+									content_padding = 0,
+									expand = 1,
+							),
+							ft.TextField(
+									label = 'Height',
+									value = e.page.active_layer.image_height,
+									text_align = 'center',
+									content_padding = 0,
+									expand = 1,
+							),
+						],
+				),
+			],
+	)
+
+def open_close_layer_properties(e):
+	if layer_property_header.open:
+		e.control.icon = ft.icons.ARROW_RIGHT
+		e.control.icon_color = None
+		layer_property_header.open = False
+		layer_property_header.controls.pop()
+		layer_property_header.update()
+	else:
+		e.control.icon = ft.icons.ARROW_DROP_DOWN
+		e.control.icon_color = e.page.tertiary_color
+		layer_property_header.open = True
+		layer_property_header.controls.append(get_layer_properties(e))
+		layer_property_header.update()
+
+layer_property_header = ft.Column(
+		controls = [
+			ft.TextButton(
+					text = "layer Properties",
+					icon = ft.icons.ARROW_RIGHT,
+					on_click = open_close_layer_properties,
+					disabled = True,
+			),
+		],
+		height = 50,
+)
+
+layer_property_header.open = False
+
+def resize_layer_properties(e):
+	property_panel.resize_layer_properties(e)
+
+layer_property_dragbar = ft.GestureDetector(
+		mouse_cursor = ft.MouseCursor.RESIZE_ROW,
+		drag_interval = 50,
+		on_pan_update = resize_layer_properties,
+		content = ft.Container(
+				content = ft.Divider(),
+				margin = 0,
+				padding = 0,
+		),
+)
+
 property_panel = PropertyPanel(
 		content = ft.Column(
 				controls = [
 					preview_pane,
 					preview_dragbar,
+					canvas_property_header,
+					canvas_property_dragbar,
+					layer_property_header,
+					layer_property_dragbar,
 				],
 		),
 )
 
 property_panel.preview = preview_pane
 property_panel.preview_dragbar = preview_dragbar
+property_panel.canvas_properties = canvas_property_header
+property_panel.canvas_properties_dragbar = canvas_property_dragbar
+property_panel.layer_properties = layer_property_header
+property_panel.layer_properties_dragbar = layer_property_dragbar
 
 output_panel = PropertyPanel(
 		content = ft.Column(

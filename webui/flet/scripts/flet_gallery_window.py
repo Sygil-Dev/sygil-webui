@@ -28,47 +28,30 @@ class GalleryWindow(ft.AlertDialog):
 	def get_gallery_images(self, gallery_name):
 		return flet_utils.get_gallery_images(gallery_name)
 
+	def select_image(self, e):
+		if e.control.border :
+			e.control.border = None
+			if e.control.image in self.selected_images:
+				self.selected_images.remove(e.control.image)
+			e.control.update()
+		else:
+			e.control.border = ft.border.all(2, e.page.tertiary_color)
+			self.selected_images.append(e.control.image)
+			e.control.update()
 
 class GalleryDisplay(ft.Container):
 	def get_gallery_display(self, gallery_name):
-		self.content = ft.Stack(
-				[
-						ft.Row(
-								controls = None,
-								wrap = False,
-								scroll = 'always',
-								expand = True,
-						),
-						ft.Column(
-								controls = [
-										ft.Row(
-												controls = [
-														ft.IconButton(
-																height = self.height * 0.5,
-																icon_size = 50,
-																content = ft.Icon(ft.icons.ARROW_CIRCLE_LEFT_OUTLINED),
-																tooltip = 'previous image',
-																on_click = None,
-														),
-														ft.IconButton(
-																height = self.height * 0.5,
-																icon_size = 50,
-																content = ft.Icon(ft.icons.ARROW_CIRCLE_RIGHT_OUTLINED),
-																tooltip = 'next image',
-																on_click = None,
-														),
-												],
-												expand = True,
-												alignment = 'spaceBetween',
-										),
-								],
-								alignment = 'center',
-						),
-				],
+		self.content = ft.GridView(
+				controls = None,
+				padding = 0,
+				runs_count = 3,
+				run_spacing = 12,
+				spacing = 12,
+				expand = True,
 		)
 		gallery = gallery_window.get_gallery_images(gallery_name)
 		if not gallery:
-			self.content.controls[0].controls.append(
+			self.content.controls.append(
 					ft.Image(
 							src = '/images/chickens.jpg',
 							tooltip = 'Nothing here but us chickens!',
@@ -77,30 +60,37 @@ class GalleryDisplay(ft.Container):
 			)
 			return
 
-		for i in range(len(gallery)):
-			image = gallery[i]
-			image_name = list(image.keys())[0]
-			image_path = image[image_name]['img_path']
-			image_data = None
-			if 'info_path' in image[image_name]:
-				image_data = image[image_name]['info_path']
-			self.content.controls[0].controls.append(
-					ft.Container(
-							content = ft.Image(
-									src = image_path,
-									tooltip = image_name,
-									gapless_playback = True,
-							),
-							image_fit = ft.ImageFit.CONTAIN,
-							padding = 0,
-							margin = 0,
-							on_click =
-					)
+		for image in gallery:
+			gallery_image = GalleryImage(
+					content = ft.Image(
+							src = image.path,
+							tooltip = image.filename,
+							width = image.width,
+							height = image.height,
+							gapless_playback = True,
+					),
+					image_fit = ft.ImageFit.CONTAIN,
+					height = image.height,
+					width = image.width,
+					padding = 0,
+					margin = 0,
+					border = None,
+					on_click = gallery_window.select_image
 			)
+			gallery_image.image = image
+			self.content.controls.append(gallery_image)
 
+class GalleryImage(ft.Container):
+	pass
 
 def add_as_new_layer(e):
-	e.page.asset_manager.add_image_as_layer(gallery_window.selected_image)
+	if gallery_window.selected_images:
+		e.page.asset_manager.add_images_as_layers(gallery_window.selected_images)
+		gallery_window.selected_images.clear()
+		for tab in gallery_window.content.content.tabs:
+			for image in tab.content.controls:
+				image.border = None
+		tab.update()
 
 def save_to_disk(e):
 	pass
@@ -159,4 +149,4 @@ gallery_window = GalleryWindow(
 
 gallery_window.uploads_gallery = uploads_gallery
 gallery_window.outputs_gallery = outputs_gallery
-gallery_window.selected_image = None
+gallery_window.selected_images = []

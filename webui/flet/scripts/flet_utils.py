@@ -141,11 +141,11 @@ def get_gallery_images(gallery_name):
 		return None
 	for f in files:
 		if f.endswith(('.jpg','.jpeg','.png')):
-			path_to_file = os.path.join('/uploads',f)
-			images.append({f:{'img_path':path_to_file}})
-		if f.endswith(('.yaml')):
-			path_to_file = os.path.join('/uploads',f)
-			images.append({f:{'info_path':path_to_file}})
+			image = Image.open(os.path.join(path_to_gallery,f))
+			image = image.convert("RGBA")
+			image.filename = f
+			image.path = os.path.join(gallery_name,f)
+			images.append(image)
 	return images
 
 
