@@ -66,8 +66,14 @@ path_to_uploads = "webui/flet/assets/uploads"
 path_to_outputs = "webui/flet/assets/outputs"
 
 # creates blank image   (to do: take size as arg)
-def create_blank_image():
-	img = Image.new('RGBA',(512,512),(0,0,0,0))
+def create_blank_image(size):
+	try:
+		create_blank_image.count +=1
+	except AttributeError:
+		create_blank_image.count = 1
+	name = 'blank_layer_' + str(create_blank_image.count).zfill(2)
+	img = Image.new('RGBA',size,(0,0,0,1))
+	img.filename = name
 	return img
 
 # takes name of image
@@ -78,29 +84,32 @@ def get_image_from_uploads(name):
 	if os.path.exists(path_to_image):
 		image = Image.open(path_to_image)
 		image = image.convert("RGBA")
-		return {name:image}
+		image.filename = name
+		image.path = path_to_image
+		return image
 	else:
 		log_message(f'image not found: "{name}"')
-		return {name:None}
+		return None
 
 def get_canvas_background(path):
 	image = Image.open(path)
-	image = image.resize((512,512))
 	image = image.convert("RGBA")
 	return image
 
 # takes list of Image(s) as arg
 # returns single composite of all images
-def get_visible_from_image_stack(image_list):
-	visible_image = create_blank_image()
-	for image in image_list:
+def get_preview_from_stack(size, images):
+	preview = create_blank_image(size)
+	canvas_width = size[0]
+	canvas_height = size[1]
+	for image in images:
 		# need to crop images for composite
-		x0, y0 = (image.width * 0.5) - 256, (image.height * 0.5) - 256
-		x1, y1 = x0 + 512, y0 + 512
+		x0, y0 = (image.width - canvas_width) * 0.5, (image.height - canvas_height) * 0.5
+		x1, y1 = x0 + canvas_width, y0 + canvas_height
 		box = (x0, y0, x1, y1)
 		cropped_image = image.crop(box)
-		visible_image = Image.alpha_composite(visible_image,cropped_image)
-	return visible_image
+		preview = Image.alpha_composite(preview,cropped_image)
+	return preview
 
 # converts Image to base64 string
 def convert_image_to_base64(image):
@@ -117,26 +126,26 @@ def convert_image_to_base64(image):
 #           'info_path' : path_to_yaml
 def get_gallery_images(gallery_name):
 	path_to_gallery = None
+	images = []
+	files = []
 	if gallery_name == 'uploads':
 		path_to_gallery = path_to_uploads
 	elif gallery_name == 'outputs':
 		path_to_gallery = path_to_outputs
 	else:
 		log_message(f'gallery not found: "{gallery_name}"')
-		return None
-	images = []
-	files = []
+		return images
 	if os.path.exists(path_to_gallery):
 		files = os.listdir(path_to_gallery)
 	else:
 		return None
 	for f in files:
 		if f.endswith(('.jpg','.jpeg','.png')):
-			path_to_file = os.path.join('/uploads',f)
-			images.append({f:{'img_path':path_to_file}})
-		if f.endswith(('.yaml')):
-			path_to_file = os.path.join('/uploads',f)
-			images.append({f:{'info_path':path_to_file}})
+			image = Image.open(os.path.join(path_to_gallery,f))
+			image = image.convert("RGBA")
+			image.filename = f
+			image.path = os.path.join(gallery_name,f)
+			images.append(image)
 	return images
 
 

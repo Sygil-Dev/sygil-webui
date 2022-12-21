@@ -2,10 +2,15 @@
 
 # Flet imports
 import flet as ft
+
+# utils imports
 from scripts import flet_utils
 
 
 class SettingsWindow(ft.AlertDialog):
+	def setup(self,settings):
+		self.get_settings_window_tabs(settings)
+
 	def get_settings_window_tab_page_setting_slider(self,settings,section,setting,display_width):
 		setting_slider = []
 		setting_value = None
@@ -14,7 +19,7 @@ class SettingsWindow(ft.AlertDialog):
 		elif settings[setting]['value_type'] == 'float':
 			setting_value = float(settings[setting]['value'])
 		else:
-			setting_value = settings[setting]['value']			
+			setting_value = settings[setting]['value']
 		label = ft.Text(
 				value = setting,
 				text_align = 'center',
@@ -154,4 +159,45 @@ class SettingsDisplay(ft.Row):
 		parent.controls[1].value = str(setting_value)
 		parent.data[0].update_settings_window_tab(parent.data[1])
 		self.page.update()
+
+def apply_settings(e):
+	settings_window.update_settings_window()
+
+def save_settings(e):
+	save_settings_to_config()
+	settings_window.update_settings_window()
+
+def reset_settings(e):
+	reset_settings_from_config()
+	settings_window.update_settings_window()
+
+# SettingsWindow == ft.AlertDialog
+settings_window = SettingsWindow(
+		title = ft.Text("Settings"),
+		content = ft.Container(
+				content = ft.Tabs(
+						selected_index = 0,
+						animation_duration = 300,
+						tabs = None,
+				),
+		),
+		actions = [
+				ft.ElevatedButton(
+						text = "Apply",
+						icon = ft.icons.CHECK_CIRCLE,
+						on_click = apply_settings,
+				),
+				ft.ElevatedButton(
+						text = "Save",
+						icon = ft.icons.SAVE,
+						on_click = save_settings,
+				),
+				ft.ElevatedButton(
+						text = "Restore Defaults",
+						icon = ft.icons.RESTORE_FROM_TRASH_ROUNDED,
+						on_click = reset_settings,
+				),
+		],
+		actions_alignment = "end",
+)
 
