@@ -71,11 +71,18 @@ class LayerPanel(ft.Container):
 			if layer.visible:
 				self.visible_layers.append(layer)
 
+	def update_layer_properties(self,e):
+		self.page.property_manager.refresh_layer_properties()
+
 	def make_layer_active(self, index):
 		for i, layer in enumerate(self.layers):
 			layer.active = False
+			layer.handle.color = None
 			if i == index:
 				layer.active = True
+				layer.handle.color = self.page.tertiary_color
+				self.page.active_layer = layer
+				self.page.property_manager.refresh_layer_properties()
 
 	def add_layer_slot(self, image):
 		label = ft.TextField(
@@ -84,9 +91,11 @@ class LayerPanel(ft.Container):
 				text_size = self.page.text_size,
 				content_padding = ft.padding.only(left = 12, top = 0, right = 0, bottom = 0),
 				expand = True,
+				on_submit = self.update_layer_properties,
 		)
 		handle = ft.Icon(
 				name = ft.icons.DRAG_HANDLE,
+				color = None,
 				tooltip = 'drag to move',
 		)
 		layer_slot = LayerSlot(
@@ -95,11 +104,12 @@ class LayerPanel(ft.Container):
 							label,
 							handle,
 						],
-						height = self.page.icon_size * 2,
+						height = self.page.layer_height,
 						expand = True,
 				),
 		)
 		layer_slot.label = label
+		layer_slot.handle = handle
 		layer_slot.index = 0
 		layer_slot.visible = True
 		layer_slot.active = False
@@ -108,6 +118,7 @@ class LayerPanel(ft.Container):
 		self.layers = self.content.content.controls
 		self.update_layer_indexes()
 		self.make_layer_active(0)
+		self.page.property_manager.refresh_layer_properties()
 		self.update()
 
 	def add_blank_layer(self, e):
@@ -125,22 +136,42 @@ class LayerPanel(ft.Container):
 		for image in images:
 			self.add_image_as_layer(image)
 
+	def get_layer_index_from_position(self, pos):
+		index = int(pos / self.page.layer_height)
+		if index > len(self.layers):
+			return 0
+		return index
+
 class LayerSlot(ft.Container):
 	pass
 
 
-def layer_left_click(e):
+def layer_left_click(e: ft.TapEvent):
+	index = layer_panel.get_layer_index_from_position(e.local_y)
+	layer_panel.make_layer_active(index)
+	layer_panel.update()
+
+def pickup_layer(e: ft.DragStartEvent):
+	pass
+
+def on_layer_drag(e: ft.DragUpdateEvent):
+	pass
+
+def drop_layer(e: ft.DragEndEvent):
 	pass
 
 layer_panel = LayerPanel(
 		content = ft.GestureDetector(
 				content = ft.Column(
-							controls = [],
-							expand = True,
-							scroll = 'hidden',
+						controls = [],
+						expand = True,
+						scroll = 'hidden',
 				),
 				drag_interval = 10,
-				on_tap = layer_left_click,
+				on_tap_down = layer_left_click,
+				on_vertical_drag_start = pickup_layer,
+				on_vertical_drag_update = on_layer_drag,
+				on_vertical_drag_end = drop_layer,
 		),
 )
 
@@ -153,7 +184,7 @@ layer_panel.layer_last_index = 0
 asset_panel = AssetPanel(
 		content = ft.Column(
 				controls = [
-						ft.Text("Under Construction"),
+					ft.Text("Under Construction"),
 				],
 		),
 )

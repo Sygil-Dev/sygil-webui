@@ -74,6 +74,7 @@ def create_blank_image(size):
 	name = 'blank_layer_' + str(create_blank_image.count).zfill(2)
 	img = Image.new('RGBA',size,(0,0,0,1))
 	img.filename = name
+	img.path = None
 	return img
 
 # takes name of image

@@ -96,6 +96,7 @@ def main(page: ft.Page):
 	# asset manager
 	page.asset_manager = asset_manager
 	page.active_layer = None
+	page.layer_height = 50
 
 	# canvas
 	page.canvas = canvas

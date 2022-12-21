@@ -116,18 +116,33 @@ class ImageStack(ft.Container):
 		self.content.controls.append(canvas_bg)
 
 	def add_layer_image(self, image):
-		layer_image = LayerImage(
-				left = 0,
-				top = 0,
-				width = image.width,
-				height = image.height,
-				content = ft.Image(
-						src = f'{image.path}',
-						width = image.width,
-						height = image.height,
-						gapless_playback = True,
-				),
-		)
+		layer_image = None
+		if image.path == None:
+			layer_image = LayerImage(
+					left = 0,
+					top = 0,
+					width = image.width,
+					height = image.height,
+					content = ft.Image(
+							src_base64 = flet_utils.convert_image_to_base64(image),
+							width = image.width,
+							height = image.height,
+							gapless_playback = True,
+					),
+			)
+		else:
+			layer_image = LayerImage(
+					left = 0,
+					top = 0,
+					width = image.width,
+					height = image.height,
+					content = ft.Image(
+							src = f'{image.path}',
+							width = image.width,
+							height = image.height,
+							gapless_playback = True,
+					),
+			)
 		layer_image.image = image
 		self.center_layer(layer_image)
 		self.content.controls.append(layer_image)
