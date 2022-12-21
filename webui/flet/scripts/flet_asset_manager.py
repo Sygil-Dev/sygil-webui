@@ -104,9 +104,11 @@ class LayerPanel(ft.Container):
 							label,
 							handle,
 						],
-						height = self.page.layer_height,
 						expand = True,
 				),
+				height = self.page.layer_height,
+				padding = 0,
+				margin = 0,
 		)
 		layer_slot.label = label
 		layer_slot.handle = handle
@@ -138,33 +140,54 @@ class LayerPanel(ft.Container):
 
 	def get_layer_index_from_position(self, pos):
 		index = int(pos / self.page.layer_height)
-		if index > len(self.layers):
-			return 0
 		return index
+
+	def move_layer(self, layer, index):
+		if index > len(self.layers):
+			layer = self.layers.pop(layer.index)
+			self.layers.append(layer)
+		if layer.index < index:
+			index -= 1
+		layer = self.layers.pop(layer.index)
+		self.layers.insert(index, layer)
+		self.update_layers()
 
 class LayerSlot(ft.Container):
 	pass
 
-
 def layer_left_click(e: ft.TapEvent):
 	index = layer_panel.get_layer_index_from_position(e.local_y)
+	if index >= len(layer_panel.layers):
+		return
 	layer_panel.make_layer_active(index)
 	layer_panel.update()
 
 def pickup_layer(e: ft.DragStartEvent):
-	pass
+	index = layer_panel.get_layer_index_from_position(e.local_y)
+	if index >= len(layer_panel.layers):
+		return
+	layer_panel.layer_being_moved = layer_panel.layers[index]
+	layer_panel.make_layer_active(layer_panel.layer_being_moved.index)
+	layer_panel.update()
 
 def on_layer_drag(e: ft.DragUpdateEvent):
-	pass
+	if not layer_panel.layer_being_moved:
+		return
+	index = layer_panel.get_layer_index_from_position(e.local_y)
+	if index == layer_panel.layer_being_moved.index:
+		return
+	layer_panel.move_layer(layer_panel.layer_being_moved, index)
 
 def drop_layer(e: ft.DragEndEvent):
-	pass
+	layer_panel.layer_being_moved = None
 
 layer_panel = LayerPanel(
 		content = ft.GestureDetector(
 				content = ft.Column(
 						controls = [],
+						alignment = 'start',
 						expand = True,
+						spacing = 0,
 						scroll = 'hidden',
 				),
 				drag_interval = 10,
@@ -177,7 +200,6 @@ layer_panel = LayerPanel(
 
 layer_panel.layers = []
 layer_panel.visible_layers = []
-layer_panel.active_layer = None
 layer_panel.layer_being_moved = None
 layer_panel.layer_last_index = 0
 
