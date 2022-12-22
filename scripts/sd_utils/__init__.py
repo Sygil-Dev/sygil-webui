@@ -944,7 +944,7 @@ class LDSR():
         global_step = pl_sd["global_step"]
         sd = pl_sd["state_dict"]
         config = OmegaConf.load(self.yamlPath)
-        model = instantiate_from_config(config.model)
+        model = instantiate_from_config(config.model, personalization_config="")
         m, u = model.load_state_dict(sd, strict=False)
         model.cuda()
         model.eval()
