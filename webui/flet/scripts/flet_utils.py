@@ -99,14 +99,17 @@ def get_canvas_background(path):
 
 # takes list of Image(s) as arg
 # returns single composite of all images
-def get_preview_from_stack(size, images):
+def get_preview_from_stack(size, stack):
 	preview = create_blank_image(size)
 	canvas_width = size[0]
 	canvas_height = size[1]
-	for image in images:
+	for layer in stack:
+		image = layer.image
 		# need to crop images for composite
-		x0, y0 = (image.width - canvas_width) * 0.5, (image.height - canvas_height) * 0.5
-		x1, y1 = x0 + canvas_width, y0 + canvas_height
+		x0 = ((image.width - canvas_width) * 0.5) - layer.offset_x
+		y0 = ((image.height - canvas_height) * 0.5) - layer.offset_y
+		x1 = x0 + canvas_width
+		y1 = y0 + canvas_height
 		box = (x0, y0, x1, y1)
 		cropped_image = image.crop(box)
 		preview = Image.alpha_composite(preview,cropped_image)

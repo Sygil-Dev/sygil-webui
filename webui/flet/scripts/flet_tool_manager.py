@@ -7,19 +7,20 @@ import flet as ft
 from scripts import flet_utils
 
 def open_gallery(e):
-	e.control.page.open_gallery(e)
+	e.page.open_gallery(e)
 
 def blank_layer(e):
-	e.control.page.asset_manager.add_blank_layer(e)
+	e.page.asset_manager.add_blank_layer(e)
 
 def load_image(e):
-	e.control.page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
+	e.page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
 
 def tool_select(e):
 	toolbox.clear_tools()
-	e.control.page.current_tool = e.control.data['label']
+	e.page.current_tool = e.control.data['label']
+	e.page.canvas.set_current_tool(e.control.data['label'])
 	e.control.selected = True
-	e.control.page.update()
+	e.page.update()
 
 
 class Action():
@@ -28,6 +29,8 @@ class Action():
 		self.icon = icon
 		self.tooltip = tooltip
 		self.on_click = on_click
+		self.disabled = False
+
 
 action_list = [
 	Action('gallery', ft.icons.DASHBOARD_OUTLINED, 'Gallery', open_gallery),
@@ -35,19 +38,23 @@ action_list = [
 	Action('load image', ft.icons.IMAGE_OUTLINED, 'Load image as layer', load_image),
 ]
 
+
 class Tool():
-	def __init__(self, label, icon, tooltip, on_click):
+	def __init__(self, label, icon, tooltip):
 		self.label = label
 		self.icon = icon
 		self.tooltip = tooltip
-		self.on_click = on_click
+		self.on_click = tool_select
+		self.disabled = True
+
 
 tool_list = [
-	Tool('move', ft.icons.OPEN_WITH_OUTLINED, 'Move layer(s)', tool_select),
-	Tool('select', ft.icons.HIGHLIGHT_ALT_OUTLINED, 'Select tool', tool_select),
-	Tool('brush', ft.icons.BRUSH_OUTLINED, 'Brush tool', tool_select),
-	Tool('fill', ft.icons.FORMAT_COLOR_FILL_OUTLINED, 'Fill tool', tool_select),
+	Tool('move', ft.icons.OPEN_WITH_OUTLINED, 'Move layer(s)'),
+	Tool('select', ft.icons.HIGHLIGHT_ALT_OUTLINED, 'Select tool'),
+	Tool('brush', ft.icons.BRUSH_OUTLINED, 'Brush tool'),
+	Tool('fill', ft.icons.FORMAT_COLOR_FILL_OUTLINED, 'Fill tool'),
 ]
+
 
 class ToolManager(ft.Container):
 	def setup(self):
@@ -82,6 +89,11 @@ class ToolManager(ft.Container):
 		toolbox.height = self.page.toolbox_height
 		self.update()
 
+	def enable_tools(self):
+		for tool in self.toolbox.content.controls:
+			tool.disabled = False
+		self.update()
+
 class ToolBox(ft.Container):
 	def get_tools(self):
 		for action in action_list:
@@ -109,6 +121,7 @@ class ToolBox(ft.Container):
 			tooltip = button_info.tooltip,
 			data = {'label':button_info.label},
 			on_click = button_info.on_click,
+			disabled = button_info.disabled,
 		)
 		return button
 
@@ -119,6 +132,7 @@ class ToolBox(ft.Container):
 
 class ToolPropertyPanel(ft.Container):
 	pass
+
 
 # ToolBox == ft.Container
 toolbox = ToolBox(
@@ -148,6 +162,7 @@ tool_divider = ft.GestureDetector(
 		),
 )
 
+
 # ToolPropertyPanel == ft.Container
 tool_properties = ToolPropertyPanel(
 		content = ft.Column(
@@ -164,6 +179,7 @@ tool_manager_dragbar = ft.GestureDetector(
 		on_pan_update = resize_tool_manager,
 		content = ft.VerticalDivider(),
 )
+
 
 # ToolManager = ft.Container
 tool_manager = ToolManager(

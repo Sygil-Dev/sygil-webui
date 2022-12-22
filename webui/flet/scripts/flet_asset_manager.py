@@ -48,9 +48,9 @@ class AssetManager(ft.Container):
 			tab.content.margin = margin
 
 
-
 class AssetPanel(ft.Container):
 	pass
+
 
 class LayerPanel(ft.Container):
 	def update_layers(self):
@@ -152,8 +152,10 @@ class LayerPanel(ft.Container):
 		self.layers.insert(index, layer)
 		self.update_layers()
 
+
 class LayerSlot(ft.Container):
 	pass
+
 
 def layer_left_click(e: ft.TapEvent):
 	index = layer_panel.get_layer_index_from_position(e.local_y)
@@ -181,6 +183,8 @@ def on_layer_drag(e: ft.DragUpdateEvent):
 def drop_layer(e: ft.DragEndEvent):
 	layer_panel.layer_being_moved = None
 
+
+# LayerPanel == ft.Container
 layer_panel = LayerPanel(
 		content = ft.GestureDetector(
 				content = ft.Column(
@@ -203,6 +207,8 @@ layer_panel.visible_layers = []
 layer_panel.layer_being_moved = None
 layer_panel.layer_last_index = 0
 
+
+# AssetPanel == ft.Container
 asset_panel = AssetPanel(
 		content = ft.Column(
 				controls = [
@@ -223,6 +229,8 @@ asset_manager_dragbar = ft.GestureDetector(
 		content = ft.VerticalDivider(),
 )
 
+
+# AssetManager == ft.Container
 asset_manager = AssetManager(
 		content = ft.Row(
 				controls = [
@@ -258,9 +266,9 @@ asset_manager = AssetManager(
 )
 
 asset_manager.tabs = asset_manager.content.controls[0].controls[0].tabs
-asset_manager.dragbar = asset_manager_dragbar
 asset_manager.layer_panel = layer_panel
 asset_manager.asset_panel = asset_panel
+asset_manager.dragbar = asset_manager_dragbar
 
 '''
 	# keep track of which layers are visible

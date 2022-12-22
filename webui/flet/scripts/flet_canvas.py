@@ -32,6 +32,7 @@ class Canvas(ft.Container):
 
 	def refresh_canvas(self):
 		self.overlay.refresh_canvas_overlay()
+		self.page.update()
 
 	def set_current_tool(self, tool):
 		self.page.current_tool = tool
@@ -92,8 +93,25 @@ class Canvas(ft.Container):
 		self.image_stack.get_scaled_size()
 		self.align_canvas(e)
 
-def pan_canvas(e):
-	canvas.pan_canvas(e)
+	def set_current_tool(self, tool):
+		if tool == 'pan':
+			self.overlay.controls.pop(2)
+			self.overlay.controls.insert(2,pan_tool)
+		elif tool == 'move':
+			self.overlay.controls.pop(2)
+			self.overlay.controls.insert(2,move_tool)
+		elif tool == 'box_select':
+			self.overlay.controls.pop(2)
+			self.overlay.controls.insert(2,box_select_tool)
+		elif tool == 'brush':
+			self.overlay.controls.pop(2)
+			self.overlay.controls.insert(2,brush_tool)
+		elif tool == 'fill':
+			self.overlay.controls.pop(2)
+			self.overlay.controls.insert(2,fill_tool)
+		else:
+			pass
+		self.update()
 
 class ImageStack(ft.Container):
 	def add_canvas_background(self):
@@ -112,6 +130,8 @@ class ImageStack(ft.Container):
 				),
 		)
 		canvas_bg.image = image
+		canvas_bg.offset_x = 0
+		canvas_bg.offset_y = 0
 		self.canvas_bg = canvas_bg
 		self.content.controls.append(canvas_bg)
 
@@ -144,14 +164,17 @@ class ImageStack(ft.Container):
 					),
 			)
 		layer_image.image = image
+		layer_image.offset_x = 0
+		layer_image.offset_y = 0
 		self.center_layer(layer_image)
 		self.content.controls.append(layer_image)
+		self.page.tool_manager.enable_tools()
 		canvas.refresh_canvas()
 
 	def get_preview(self):
 		stack = []
 		for layer in self.content.controls:
-			stack.append(layer.image)
+			stack.append(layer)
 		return flet_utils.get_preview_from_stack(self.page.canvas_size, stack)
 
 	def get_scaled_size(self):
@@ -159,27 +182,43 @@ class ImageStack(ft.Container):
 		self.scaled_height = self.height * self.scale
 
 	def center_layer(self, layer_image):
+		layer_image.offset_x = 0
+		layer_image.offset_y = 0
 		layer_image.left = (self.width * 0.5) - (layer_image.width * 0.5)
 		layer_image.top = (self.height * 0.5) - (layer_image.height * 0.5)
 
 	def align_layer(self, layer_image):
-		layer_image.left = (self.width * 0.5) - (layer_image.width * 0.5)
-		layer_image.top = (self.height * 0.5) - (layer_image.height * 0.5)
+		layer_image.left = ((self.width - layer_image.width) * 0.5) + layer_image.offset_x
+		layer_image.top = ((self.height - layer_image.height) * 0.5) + layer_image.offset_y
 
-	def drag_layer(self, e):
+	def move_layer(self, e: ft.DragUpdateEvent):
+		index = self.page.active_layer.index
+		layer = self.content.controls[index+1]
+		layer.offset_x += e.delta_x
+		layer.offset_y += e.delta_y
+		self.align_layer(layer)
+		self.update()
+
+	def finish_move_layer(self, e: ft.DragEndEvent):
+		canvas.refresh_canvas()
+
+	def resize_layer(self, e: ft.DragUpdateEvent):
 		pass
 
-	def resize_layer(self, e):
+	def box_select(self, e):
 		pass
 
-	def draw_on_layer(self, e):
+	def bucket_fill(self, e):
 		pass
 
-	def paint_on_layer(self, e):
-		pass
 
 class LayerImage(ft.Container):
 	pass
+
+
+class CanvasGestures(ft.GestureDetector):
+	pass
+
 
 class CanvasOverlay(ft.Stack):
 	def refresh_canvas_overlay(self):
@@ -199,9 +238,7 @@ class CanvasOverlay(ft.Stack):
 		self.page.property_manager.set_preview_image(preview)
 
 
-def pan_canvas(e):
-	canvas.pan_canvas(e)
-
+# ImageStack == ft.Container
 image_stack = ImageStack(
 		width = 4096,
 		height = 4096,
@@ -224,6 +261,8 @@ canvas_cover = ft.Container(
 		opacity = 0.5,
 )
 
+
+# LayerImage == ft.Container
 canvas_preview = LayerImage(
 		width = 4096,
 		height = 4096,
@@ -238,10 +277,66 @@ canvas_preview = LayerImage(
 )
 
 
-canvas_gestures = ft.GestureDetector(
-		mouse_cursor = ft.MouseCursor.MOVE,
+# CanvasGestures == ft.GestureDetector
+def pan_canvas(e):
+	canvas.pan_canvas(e)
+
+pan_tool = CanvasGestures(
+		mouse_cursor = ft.MouseCursor.GRAB,
 		drag_interval = 10,
 		on_pan_update = pan_canvas,
+)
+
+def select_layer(e):
+	pass
+
+def move_layer(e):
+	image_stack.move_layer(e)
+
+def finish_move_layer(e):
+	image_stack.finish_move_layer(e)
+
+move_tool = CanvasGestures(
+		mouse_cursor = ft.MouseCursor.MOVE,
+		drag_interval = 10,
+		on_pan_start = select_layer,
+		on_pan_update = move_layer,
+		on_pan_end = finish_move_layer,
+)
+
+def set_select_start(e):
+	pass
+
+def draw_select_box(e):
+	pass
+
+def get_box_select(e):
+	pass
+
+box_select_tool = CanvasGestures(
+		mouse_cursor = ft.MouseCursor.GRAB,
+		drag_interval = 10,
+		on_pan_start = set_select_start,
+		on_pan_update = draw_select_box,
+		on_pan_end = get_box_select,
+)
+
+def draw_on_layer(e):
+	pass
+
+brush_tool = CanvasGestures(
+		mouse_cursor = ft.MouseCursor.GRAB,
+		drag_interval = 10,
+		on_pan_update = draw_on_layer,
+)
+
+def fill_selection(e):
+	pass
+
+fill_tool = CanvasGestures(
+		mouse_cursor = ft.MouseCursor.GRAB,
+		drag_interval = 10,
+		on_tap = fill_selection,
 )
 
 canvas_size_display = ft.Container(
@@ -305,11 +400,13 @@ canvas_tools.center = center_canvas_button
 canvas_tools.zoom_in = zoom_in_button
 canvas_tools.zoom_out = zoom_out_button
 
+
+# CanvasOverlay == ft.Stack
 canvas_overlay = CanvasOverlay(
 		[
 			canvas_cover,
 			canvas_preview,
-			canvas_gestures,
+			pan_tool,
 			canvas_size_display,
 			canvas_tools,
 		],
@@ -321,7 +418,7 @@ canvas_overlay.size_display = canvas_size_display
 canvas_overlay.tools = canvas_tools
 
 
-
+# Canvas = ft.Container
 canvas = Canvas(
 		content = ft.Stack(
 				[
