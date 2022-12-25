@@ -84,7 +84,7 @@ preview_pane = ft.Container(
 				src_base64 = None,
 				gapless_playback = True,
 		),
-		image_fit = ft.ImageFit.CONTAIN,
+		image_fit = 'contain',
 		bgcolor = 'black',
 		height = 200,
 		padding = 0,

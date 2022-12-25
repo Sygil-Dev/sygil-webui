@@ -53,16 +53,17 @@ class Canvas(ft.Container):
 		self.image_stack.offset_y = 0
 		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5)
 		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5)
-		self.overlay.preview.left = self.image_stack.left
-		self.overlay.preview.top = self.image_stack.top
+		self.overlay.frame.left = self.image_stack.left
+		self.overlay.frame.top = self.image_stack.top
 		self.update()
 
 	def align_canvas(self, e):
 		width, height = self.page.get_viewport_size()
 		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5) + self.image_stack.offset_x
 		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5) + self.image_stack.offset_y
-		self.overlay.preview.left = self.image_stack.left
-		self.overlay.preview.top = self.image_stack.top
+		self.overlay.frame.left = self.image_stack.left
+		self.overlay.frame.top = self.image_stack.top
+		self.overlay.frame.scale = self.image_stack.scale
 		self.update()
 
 	def pan_canvas(self, e: ft.DragUpdateEvent):
@@ -81,7 +82,7 @@ class Canvas(ft.Container):
 		else:
 			self.image_stack.scale += 0.05
 		self.image_stack.get_scaled_size()
-		self.overlay.preview.scale = self.image_stack.scale
+		self.overlay.frame.scale = self.image_stack.scale
 		self.align_canvas(e)
 
 	def zoom_out(self, e):
@@ -89,7 +90,7 @@ class Canvas(ft.Container):
 			self.image_stack.scale = 0.1
 		else:
 			self.image_stack.scale -= 0.05
-		self.overlay.preview.scale = self.image_stack.scale
+		self.overlay.frame.scale = self.image_stack.scale
 		self.image_stack.get_scaled_size()
 		self.align_canvas(e)
 
@@ -231,10 +232,6 @@ class CanvasOverlay(ft.Stack):
 
 	def refresh_canvas_preview(self):
 		preview = canvas.get_image_stack_preview()
-		self.preview.content.src_base64 = flet_utils.convert_image_to_base64(preview)
-		self.preview.content.width = preview.width
-		self.preview.content.height = preview.height
-		self.preview.image = preview
 		self.page.property_manager.set_preview_image(preview)
 
 
@@ -253,29 +250,19 @@ image_stack.offset_y = 0
 image_stack.scaled_width = image_stack.width
 image_stack.scaled_height = image_stack.height
 
-
-canvas_cover = ft.Container(
-		content = None,
-		expand = True,
-		bgcolor = 'black',
-		opacity = 0.5,
-)
-
-
-# LayerImage == ft.Container
-canvas_preview = LayerImage(
+canvas_frame = ft.Container(
 		width = 4096,
 		height = 4096,
-		padding = 0,
-		margin = 0,
-		image_fit = ft.ImageFit.CONTAIN,
+		top = 0,
+		left = 0,
+		scale = 1.0,
+		image_fit = 'cover',
 		alignment = ft.alignment.center,
 		content = ft.Image(
-				src_base64 = None,
+				src_base64 = flet_utils.get_canvas_frame((512,512)),
 				gapless_playback = True,
 		),
 )
-
 
 # CanvasGestures == ft.GestureDetector
 def pan_canvas(e):
@@ -360,6 +347,15 @@ center_canvas_button = ft.IconButton(
 		on_click = center_canvas,
 )
 
+def set_pan_tool(e):
+	canvas.set_current_tool('pan')
+
+pan_canvas_button = ft.IconButton(
+		content = ft.Icon(ft.icons.PAN_TOOL_OUTLINED),
+		tooltip = 'pan canvas',
+		on_click = set_pan_tool,
+)
+
 def zoom_in_canvas(e):
 	canvas.zoom_in(e)
 
@@ -382,6 +378,7 @@ canvas_tools = ft.Container(
 		content = ft.Column(
 				controls = [
 					center_canvas_button,
+					pan_canvas_button,
 					zoom_in_button,
 					zoom_out_button,
 				],
@@ -404,16 +401,14 @@ canvas_tools.zoom_out = zoom_out_button
 # CanvasOverlay == ft.Stack
 canvas_overlay = CanvasOverlay(
 		[
-			canvas_cover,
-			canvas_preview,
+			canvas_frame,
 			pan_tool,
 			canvas_size_display,
 			canvas_tools,
 		],
 )
 
-canvas_overlay.cover = canvas_cover
-canvas_overlay.preview = canvas_preview
+canvas_overlay.frame = canvas_frame
 canvas_overlay.size_display = canvas_size_display
 canvas_overlay.tools = canvas_tools
 

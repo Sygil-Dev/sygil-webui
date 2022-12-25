@@ -314,7 +314,6 @@ def main(page: ft.Page):
 
 	page.title = "Stable Diffusion Playground"
 	page.add(workspace)
-
 	page.settings_window.setup(page.session.get('settings'))
 	page.gallery_window.setup()
 	page.titlebar.setup()
@@ -326,4 +325,4 @@ def main(page: ft.Page):
 	page.update()
 
 
-ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")
+ft.app(target=main, route_url_strategy="path", port= 8505, assets_dir="assets", upload_dir="assets/uploads")

@@ -69,7 +69,7 @@ class GalleryDisplay(ft.Container):
 							height = image.height,
 							gapless_playback = True,
 					),
-					image_fit = ft.ImageFit.CONTAIN,
+					image_fit = 'contain',
 					height = image.height,
 					width = image.width,
 					padding = 0,

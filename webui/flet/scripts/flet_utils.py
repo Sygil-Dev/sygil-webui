@@ -2,7 +2,7 @@
 
 # imports
 import os, yaml, base64
-from PIL import Image
+from PIL import Image, ImageDraw
 from io import BytesIO
 from datetime import datetime
 from pprint import pprint
@@ -72,7 +72,7 @@ def create_blank_image(size):
 	except AttributeError:
 		create_blank_image.count = 1
 	name = 'blank_layer_' + str(create_blank_image.count).zfill(2)
-	img = Image.new('RGBA',size,(0,0,0,1))
+	img = Image.new('RGBA',size,(0,0,0,0))
 	img.filename = name
 	img.path = None
 	return img
@@ -96,6 +96,19 @@ def get_canvas_background(path):
 	image = Image.open(path)
 	image = image.convert("RGBA")
 	return image
+
+# make canvas frame
+def get_canvas_frame(canvas_size):
+	image = Image.new('RGBA',(4096,4096),(0,0,0,127))
+	canvas_width = canvas_size[0]
+	canvas_height = canvas_size[1]
+	x0 = int((image.width - canvas_width) * 0.5)
+	y0 = int((image.height - canvas_height) * 0.5)
+	x1 = x0 + canvas_width
+	y1 = y0 + canvas_height
+	box = (x0, y0, x1, y1)
+	image.paste((0,0,0,0), box)
+	return convert_image_to_base64(image)
 
 # takes list of Image(s) as arg
 # returns single composite of all images
