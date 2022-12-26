@@ -117,17 +117,43 @@ def main(page: ft.Page):
 	# asset manager
 	page.asset_manager = asset_manager
 	page.active_layer = None
+	page.visible_layers = []
 	page.layer_height = 50
 
+	def set_active_layer(layer_slot):
+		if page.active_layer == layer_slot:
+			return
+		page.active_layer = layer_slot
+		page.property_manager.refresh_layer_properties()
+		page.message(f"set {layer_slot.label.value} as active layer")
+
+	page.set_active_layer = set_active_layer
+
 	def add_blank_layer():
-		page.asset_manager.add_blank_layer()
+		image = flet_utils.create_blank_image(page.canvas_size)
+		layer_slot = page.asset_manager.add_image_as_layer(image)
+		layer_slot.layer_image = page.canvas.add_layer_image(image)
+		page.message("added blank layer to canvas")
+		page.enable_tools()
+		page.refresh_layers()
 
 	page.add_blank_layer = add_blank_layer
 
-	def load_image():
+	def add_images_as_layers(images):
+		layer_slots = page.asset_manager.add_images_as_layers(images)
+		for slot in layer_slots:
+			slot.layer_image = page.canvas.add_layer_image(slot.image)
+			page.message(f'added "{slot.image.filename}" as layer')
+		page.enable_tools()
+		page.refresh_layers()
+
+	page.add_images_as_layers = add_images_as_layers
+
+	def load_images():
 		page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
 
-	page.load_image = load_image
+	page.load_images = load_images
+
 
 	# canvas
 	page.canvas = canvas
@@ -136,16 +162,11 @@ def main(page: ft.Page):
 
 	def get_viewport_size():
 		viewport_width = page.width - (page.tool_manager_width + (page.vertical_divider_width * 3) + page.left_panel_width + page.right_panel_width)
-		viewport_height = page.height - (page.titlebar_height * 3) - page.bottom_panel_height
+		viewport_height = page.height - (page.titlebar_height * 2) - page.bottom_panel_height
 		return viewport_width, viewport_height
 
 	page.get_viewport_size = get_viewport_size
 
-	def refresh_canvas_preview():
-		preview = page.canvas.get_image_stack_preview()
-		page.property_manager.set_preview_image(preview)
-
-	page.refresh_canvas_preview = refresh_canvas_preview
 
 	def align_canvas():
 		page.canvas.align_canvas()
@@ -156,6 +177,20 @@ def main(page: ft.Page):
 	# property manager
 	page.property_manager = property_manager
 
+	def refresh_canvas_preview():
+		preview = page.canvas.get_image_stack_preview()
+		page.property_manager.set_preview_image(preview)
+
+	page.refresh_canvas_preview = refresh_canvas_preview
+
+	def refresh_layers():
+		page.asset_manager.refresh_layers()
+		page.canvas.refresh_canvas()
+		page.refresh_canvas_preview()
+		page.property_manager.refresh_layer_properties()
+		page.update()
+
+	page.refresh_layers = refresh_layers
 
 	# settings
 	def load_settings():
@@ -358,6 +393,7 @@ def main(page: ft.Page):
 
 	page.title = "Stable Diffusion Playground"
 	page.add(workspace)
+
 	page.settings_window.setup(page.session.get('settings'))
 	page.gallery_window.setup()
 	page.titlebar.setup()

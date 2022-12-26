@@ -27,6 +27,7 @@ class PropertyManager(ft.Container):
 		self.property_panel.layer_properties_divider.content.height = self.page.divider_height
 		self.property_panel.layer_properties_divider.content.color = self.page.tertiary_color
 
+		self.page.refresh_canvas_preview()
 		self.refresh_canvas_properties()
 
 	def set_tab_text_size(self, size):

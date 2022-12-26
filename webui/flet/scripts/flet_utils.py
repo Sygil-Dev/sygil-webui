@@ -113,7 +113,7 @@ def get_canvas_frame(canvas_size):
 # takes list of Image(s) as arg
 # returns single composite of all images
 def get_preview_from_stack(size, stack):
-	preview = create_blank_image(size)
+	preview = Image.new('RGBA',size,(0,0,0,0))
 	canvas_width = size[0]
 	canvas_height = size[1]
 	for layer in stack:

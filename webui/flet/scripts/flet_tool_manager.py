@@ -13,8 +13,8 @@ def open_gallery(e):
 def blank_layer(e):
 	e.page.add_blank_layer()
 
-def load_image(e):
-	e.page.load_image()
+def load_images(e):
+	e.page.load_images()
 
 def tool_select(e):
 	e.page.set_current_tool(e)
@@ -31,7 +31,7 @@ class Action():
 action_list = [
 	Action('gallery', ft.icons.DASHBOARD_OUTLINED, 'Gallery', open_gallery),
 	Action('blank layer', ft.icons.ADD_OUTLINED, 'Add blank layer', blank_layer),
-	Action('load image', ft.icons.IMAGE_OUTLINED, 'Load image as layer', load_image),
+	Action('load image', ft.icons.IMAGE_OUTLINED, 'Load image as layer', load_images),
 ]
 
 

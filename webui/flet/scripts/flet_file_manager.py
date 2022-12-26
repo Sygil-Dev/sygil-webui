@@ -26,7 +26,7 @@ class UploadWindow(ft.AlertDialog):
 		self.progress_bars.clear()
 		self.selected_files.controls.clear()
 		e.page.close_uploads(e)
-		e.page.asset_manager.add_images_as_layers(file_picker.images)
+		e.page.add_images_as_layers(file_picker.images)
 		file_picker.images.clear()
 		e.page.message('File upload(s) complete.')
 

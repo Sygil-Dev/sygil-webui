@@ -22,14 +22,11 @@ class AssetManager(ft.Container):
 		self.dragbar.content.width = self.page.vertical_divider_width
 		self.dragbar.content.color = self.page.tertiary_color
 
-	def add_blank_layer(self):
-		self.layer_panel.add_blank_layer()
-
 	def add_image_as_layer(self, image):
-		self.layer_panel.add_image_as_layer(image)
+		return self.layer_panel.add_image_as_layer(image)
 
 	def add_images_as_layers(self, images):
-		self.layer_panel.add_images_as_layers(images)
+		return self.layer_panel.add_images_as_layers(images)
 
 	def set_tab_text_size(self, size):
 		for tab in self.tabs:
@@ -52,32 +49,34 @@ class AssetManager(ft.Container):
 		self.width = self.page.left_panel_width
 		self.page.update()
 
+	def refresh_layers(self):
+		self.layer_panel.refresh_layers()
 
 class AssetPanel(ft.Container):
 	pass
 
 
 class LayerPanel(ft.Container):
-	def update_layers(self):
+	def refresh_layers(self):
 		self.layers = self.content.content.controls
-		self.update_layer_indexes()
-		self.update_visible_layers()
+		self.refresh_layer_indexes()
+		self.refresh_visible_layers()
 		self.update()
 
-	def update_layer_indexes(self):
+	def refresh_layer_indexes(self):
 		count = 0
 		for layer in self.layers:
 			layer.index = count
 			count += 1
 
-	def update_visible_layers(self):
-		self.visible_layers = []
+	def refresh_visible_layers(self):
+		self.page.visible_layers = []
 		for layer in self.layers:
 			if layer.visible:
-				self.visible_layers.append(layer)
+				self.page.visible_layers.append(layer)
 
-	def update_layer_properties(self,e):
-		self.page.property_manager.refresh_layer_properties()
+	def refresh_layer_name(self, e):
+		self.page.refresh_layers()
 
 	def make_layer_active(self, index):
 		for i, layer in enumerate(self.layers):
@@ -86,8 +85,7 @@ class LayerPanel(ft.Container):
 			if i == index:
 				layer.active = True
 				layer.handle.color = self.page.tertiary_color
-				self.page.active_layer = layer
-				self.page.property_manager.refresh_layer_properties()
+				self.page.set_active_layer(layer)
 
 	def add_layer_slot(self, image):
 		label = ft.TextField(
@@ -96,7 +94,7 @@ class LayerPanel(ft.Container):
 				text_size = self.page.text_size,
 				content_padding = ft.padding.only(left = 12, top = 0, right = 0, bottom = 0),
 				expand = True,
-				on_submit = self.update_layer_properties,
+				on_submit = self.refresh_layer_name,
 		)
 		handle = ft.Icon(
 				name = ft.icons.DRAG_HANDLE,
@@ -121,27 +119,21 @@ class LayerPanel(ft.Container):
 		layer_slot.visible = True
 		layer_slot.active = False
 		layer_slot.image = image
+		layer_slot.layer_image = None
 		self.content.content.controls.insert(0,layer_slot)
 		self.layers = self.content.content.controls
-		self.update_layer_indexes()
+		self.refresh_layer_indexes()
 		self.make_layer_active(0)
-		self.page.property_manager.refresh_layer_properties()
-		self.update()
-
-	def add_blank_layer(self):
-		image = flet_utils.create_blank_image(self.page.canvas_size)
-		self.add_layer_slot(image)
-		self.page.canvas.add_layer_image(image)
-		self.page.message("added blank layer to canvas")
+		return layer_slot
 
 	def add_image_as_layer(self, image):
-		self.add_layer_slot(image)
-		self.page.canvas.add_layer_image(image)
-		self.page.message(f'added "{image.filename}" as layer')
+		return self.add_layer_slot(image)
 
 	def add_images_as_layers(self, images):
+		layer_slots = []
 		for image in images:
-			self.add_image_as_layer(image)
+			layer_slots.append(self.add_image_as_layer(image))
+		return layer_slots
 
 	def get_layer_index_from_position(self, pos):
 		index = int(pos / self.page.layer_height)
@@ -155,7 +147,7 @@ class LayerPanel(ft.Container):
 			index -= 1
 		layer = self.layers.pop(layer.index)
 		self.layers.insert(index, layer)
-		self.update_layers()
+		self.page.refresh_layers()
 
 
 class LayerSlot(ft.Container):
@@ -186,6 +178,7 @@ def on_layer_drag(e: ft.DragUpdateEvent):
 	layer_panel.move_layer(layer_panel.layer_being_moved, index)
 
 def drop_layer(e: ft.DragEndEvent):
+	e.page.refresh_layers()
 	layer_panel.layer_being_moved = None
 
 
@@ -208,7 +201,6 @@ layer_panel = LayerPanel(
 )
 
 layer_panel.layers = []
-layer_panel.visible_layers = []
 layer_panel.layer_being_moved = None
 layer_panel.layer_last_index = 0
 
