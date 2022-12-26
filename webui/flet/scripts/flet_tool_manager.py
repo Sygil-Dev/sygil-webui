@@ -6,21 +6,18 @@ import flet as ft
 # utils imports
 from scripts import flet_utils
 
+
 def open_gallery(e):
 	e.page.open_gallery(e)
 
 def blank_layer(e):
-	e.page.asset_manager.add_blank_layer(e)
+	e.page.add_blank_layer()
 
 def load_image(e):
-	e.page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
+	e.page.load_image()
 
 def tool_select(e):
-	toolbox.clear_tools()
-	e.page.current_tool = e.control.data['label']
-	e.page.canvas.set_current_tool(e.control.data['label'])
-	e.control.selected = True
-	e.page.update()
+	e.page.set_current_tool(e)
 
 
 class Action():
@@ -30,7 +27,6 @@ class Action():
 		self.tooltip = tooltip
 		self.on_click = on_click
 		self.disabled = False
-
 
 action_list = [
 	Action('gallery', ft.icons.DASHBOARD_OUTLINED, 'Gallery', open_gallery),
@@ -46,7 +42,6 @@ class Tool():
 		self.tooltip = tooltip
 		self.on_click = tool_select
 		self.disabled = True
-
 
 tool_list = [
 	Tool('move', ft.icons.OPEN_WITH_OUTLINED, 'Move layer(s)'),
@@ -93,6 +88,9 @@ class ToolManager(ft.Container):
 		for tool in self.toolbox.content.controls:
 			tool.disabled = False
 		self.update()
+
+	def clear_tools(self):
+		self.toolbox.clear_tools()
 
 class ToolBox(ft.Container):
 	def get_tools(self):
@@ -173,10 +171,14 @@ tool_properties = ToolPropertyPanel(
 def resize_tool_manager(e):
 	tool_manager.resize_tool_manager(e)
 
+def realign_canvas(e):
+	e.page.align_canvas()
+
 tool_manager_dragbar = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_COLUMN,
 		drag_interval = 50,
 		on_pan_update = resize_tool_manager,
+		on_pan_end = realign_canvas,
 		content = ft.VerticalDivider(),
 )
 

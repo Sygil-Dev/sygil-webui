@@ -20,15 +20,9 @@ class Canvas(ft.Container):
 		self.overlay.size_display.content.color = self.page.text_color
 		self.overlay.size_display.content.size = self.page.text_size
 		self.add_canvas_background()
-		self.center_canvas(self)
+		self.center_canvas()
 		self.refresh_canvas()
 		self.update()
-
-	def lock_canvas(self):
-		self.overlay.cover.lock_canvas()
-
-	def unlock_canvas(self):
-		self.overlay.cover.unlock_canvas()
 
 	def refresh_canvas(self):
 		self.overlay.refresh_canvas_overlay()
@@ -47,7 +41,7 @@ class Canvas(ft.Container):
 	def get_image_stack_preview(self):
 		return self.image_stack.get_preview()
 
-	def center_canvas(self, e):
+	def center_canvas(self):
 		width, height = self.page.get_viewport_size()
 		self.image_stack.offset_x = 0
 		self.image_stack.offset_y = 0
@@ -57,7 +51,7 @@ class Canvas(ft.Container):
 		self.overlay.frame.top = self.image_stack.top
 		self.update()
 
-	def align_canvas(self, e):
+	def align_canvas(self):
 		width, height = self.page.get_viewport_size()
 		self.image_stack.left = (width * 0.5) - (self.image_stack.width * 0.5) + self.image_stack.offset_x
 		self.image_stack.top = (height * 0.5) - (self.image_stack.height * 0.5) + self.image_stack.offset_y
@@ -74,7 +68,7 @@ class Canvas(ft.Container):
 		self.image_stack.offset_y = max(self.image_stack.offset_y, (height - self.image_stack.height) * 0.5)
 		self.image_stack.offset_x = min(self.image_stack.offset_x, (self.image_stack.width - width) * 0.5)
 		self.image_stack.offset_y = min(self.image_stack.offset_y, (self.image_stack.height - height) * 0.5)
-		self.align_canvas(e)
+		self.align_canvas()
 
 	def zoom_in(self, e):
 		if self.image_stack.scale >= 4.0:
@@ -83,7 +77,7 @@ class Canvas(ft.Container):
 			self.image_stack.scale += 0.05
 		self.image_stack.get_scaled_size()
 		self.overlay.frame.scale = self.image_stack.scale
-		self.align_canvas(e)
+		self.align_canvas()
 
 	def zoom_out(self, e):
 		if self.image_stack.scale <= 0.1:
@@ -92,7 +86,10 @@ class Canvas(ft.Container):
 			self.image_stack.scale -= 0.05
 		self.overlay.frame.scale = self.image_stack.scale
 		self.image_stack.get_scaled_size()
-		self.align_canvas(e)
+		self.align_canvas()
+
+	def clear_tools(self):
+		self.overlay.clear_tools()
 
 	def set_current_tool(self, tool):
 		if tool == 'pan':
@@ -113,6 +110,7 @@ class Canvas(ft.Container):
 		else:
 			pass
 		self.update()
+
 
 class ImageStack(ft.Container):
 	def add_canvas_background(self):
@@ -169,7 +167,7 @@ class ImageStack(ft.Container):
 		layer_image.offset_y = 0
 		self.center_layer(layer_image)
 		self.content.controls.append(layer_image)
-		self.page.tool_manager.enable_tools()
+		self.page.enable_tools()
 		canvas.refresh_canvas()
 
 	def get_preview(self):
@@ -224,15 +222,16 @@ class CanvasGestures(ft.GestureDetector):
 class CanvasOverlay(ft.Stack):
 	def refresh_canvas_overlay(self):
 		self.refresh_canvas_size_display()
-		self.refresh_canvas_preview()
+		self.page.refresh_canvas_preview()
 
 	def refresh_canvas_size_display(self):
 		self.size_display.content.value = str(self.page.canvas_size)
 		self.update()
 
-	def refresh_canvas_preview(self):
-		preview = canvas.get_image_stack_preview()
-		self.page.property_manager.set_preview_image(preview)
+
+	def clear_tools(self):
+		for tool in canvas_tools.content.controls:
+			tool.selected = False
 
 
 # ImageStack == ft.Container
@@ -339,7 +338,7 @@ canvas_size_display = ft.Container(
 )
 
 def center_canvas(e):
-	canvas.center_canvas(e)
+	canvas.center_canvas()
 
 center_canvas_button = ft.IconButton(
 		content = ft.Icon(ft.icons.FILTER_CENTER_FOCUS_OUTLINED),
@@ -348,12 +347,13 @@ center_canvas_button = ft.IconButton(
 )
 
 def set_pan_tool(e):
-	canvas.set_current_tool('pan')
+	e.page.set_current_tool(e)
 
 pan_canvas_button = ft.IconButton(
 		content = ft.Icon(ft.icons.PAN_TOOL_OUTLINED),
 		tooltip = 'pan canvas',
 		on_click = set_pan_tool,
+		data = {'label':'pan'},
 )
 
 def zoom_in_canvas(e):

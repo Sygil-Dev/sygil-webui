@@ -37,6 +37,7 @@ def main(page: ft.Page):
 	page.message = messages.message
 	page.max_message_history = 50
 
+
 	# ui
 	page.current_layout = 'Default'
 	page.titlebar_height = 50
@@ -55,15 +56,19 @@ def main(page: ft.Page):
 	page.text_color = None
 	page.text_size = 14
 	page.icon_size = 20
+
 	page.padding = 0
 	page.margin = 0
 	page.container_padding = 0
 	page.container_margin = 0
+
 	page.tab_color = 'white_10'
 	page.tab_padding = ft.padding.only(left = 2, top = 12, right = 2, bottom = 8)
 	page.tab_margin = 0
+
 	page.divider_height = 10
 	page.vertical_divider_width = 10
+
 
 	# titlebar
 	page.titlebar = titlebar
@@ -89,14 +94,40 @@ def main(page: ft.Page):
 
 	page.set_layout = set_layout
 
+
 	# tools
 	page.tool_manager = tool_manager
 	page.current_tool = 'pan'
+
+	def enable_tools():
+		page.tool_manager.enable_tools()
+
+	page.enable_tools = enable_tools
+
+	def set_current_tool(e):
+		page.tool_manager.clear_tools()
+		page.canvas.clear_tools()
+		e.control.selected = True
+		page.current_tool = e.control.data['label']
+		page.canvas.set_current_tool(e.control.data['label'])
+		page.update()
+
+	page.set_current_tool = set_current_tool
 
 	# asset manager
 	page.asset_manager = asset_manager
 	page.active_layer = None
 	page.layer_height = 50
+
+	def add_blank_layer():
+		page.asset_manager.add_blank_layer()
+
+	page.add_blank_layer = add_blank_layer
+
+	def load_image():
+		page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
+
+	page.load_image = load_image
 
 	# canvas
 	page.canvas = canvas
@@ -110,8 +141,21 @@ def main(page: ft.Page):
 
 	page.get_viewport_size = get_viewport_size
 
+	def refresh_canvas_preview():
+		preview = page.canvas.get_image_stack_preview()
+		page.property_manager.set_preview_image(preview)
+
+	page.refresh_canvas_preview = refresh_canvas_preview
+
+	def align_canvas():
+		page.canvas.align_canvas()
+
+	page.align_canvas = align_canvas
+
+
 	# property manager
 	page.property_manager = property_manager
+
 
 	# settings
 	def load_settings():

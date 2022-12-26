@@ -22,8 +22,8 @@ class AssetManager(ft.Container):
 		self.dragbar.content.width = self.page.vertical_divider_width
 		self.dragbar.content.color = self.page.tertiary_color
 
-	def add_blank_layer(self, e):
-		self.layer_panel.add_blank_layer(e)
+	def add_blank_layer(self):
+		self.layer_panel.add_blank_layer()
 
 	def add_image_as_layer(self, image):
 		self.layer_panel.add_image_as_layer(image)
@@ -46,6 +46,11 @@ class AssetManager(ft.Container):
 	def set_tab_margin(self, margin):
 		for tab in self.tabs:
 			tab.content.margin = margin
+
+	def resize_asset_manager(self, e: ft.DragUpdateEvent):
+		self.page.left_panel_width = max(250, self.page.left_panel_width + e.delta_x)
+		self.width = self.page.left_panel_width
+		self.page.update()
 
 
 class AssetPanel(ft.Container):
@@ -123,7 +128,7 @@ class LayerPanel(ft.Container):
 		self.page.property_manager.refresh_layer_properties()
 		self.update()
 
-	def add_blank_layer(self, e):
+	def add_blank_layer(self):
 		image = flet_utils.create_blank_image(self.page.canvas_size)
 		self.add_layer_slot(image)
 		self.page.canvas.add_layer_image(image)
@@ -217,15 +222,17 @@ asset_panel = AssetPanel(
 		),
 )
 
-def resize_asset_manager(e: ft.DragUpdateEvent):
-	e.page.left_panel_width = max(250, e.page.left_panel_width + e.delta_x)
-	asset_manager.width = e.page.left_panel_width
-	e.page.update()
+def resize_asset_manager(e):
+	asset_manager.resize_asset_manager(e)
+
+def realign_canvas(e):
+	e.page.align_canvas()
 
 asset_manager_dragbar = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_COLUMN,
 		drag_interval = 50,
 		on_pan_update = resize_asset_manager,
+		on_pan_end = realign_canvas,
 		content = ft.VerticalDivider(),
 )
 

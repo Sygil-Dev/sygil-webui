@@ -81,10 +81,14 @@ video_editor_panel = ft.Column(
 def resize_messages(e):
 	messages.resize_messages(e)
 
+def realign_canvas(e):
+	e.page.align_canvas()
+
 messages_dragbar = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_ROW,
 		drag_interval = 50,
 		on_pan_update = resize_messages,
+		on_pan_end = realign_canvas,
 		content = ft.Divider(),
 )
 

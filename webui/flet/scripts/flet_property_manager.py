@@ -58,6 +58,13 @@ class PropertyManager(ft.Container):
 	def refresh_layer_properties(self):
 		self.property_panel.refresh_layer_properties()
 
+	def resize_property_manager(self, e: ft.DragUpdateEvent):
+		self.page.right_panel_width = max(250, self.page.right_panel_width - e.delta_x)
+		self.width = self.page.right_panel_width
+		self.property_panel.preview.width = self.page.right_panel_width
+		self.page.update()
+
+
 class PropertyPanel(ft.Container):
 	def resize_preview(self, e):
 		self.preview.height = max(200, self.preview.height + e.delta_y)
@@ -271,16 +278,17 @@ output_panel = PropertyPanel(
 		),
 )
 
-def resize_property_manager(e: ft.DragUpdateEvent):
-	e.page.right_panel_width = max(250, e.page.right_panel_width - e.delta_x)
-	property_manager.width = e.page.right_panel_width
-	property_panel.preview.width = e.page.right_panel_width
-	e.page.update()
+def resize_property_manager(e):
+	property_manager.resize_property_manager(e)
+
+def realign_canvas(e):
+	e.page.align_canvas()
 
 property_manager_dragbar = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_COLUMN,
 		drag_interval = 50,
 		on_pan_update = resize_property_manager,
+		on_pan_end = realign_canvas,
 		content = ft.VerticalDivider()
 )
 
