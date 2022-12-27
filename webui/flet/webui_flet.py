@@ -16,7 +16,7 @@ from scripts.flet_gallery_window import gallery_window
 from scripts.flet_file_manager import file_picker, uploads, imports
 from scripts.flet_titlebar import titlebar
 from scripts.flet_tool_manager import tool_manager
-from scripts.flet_asset_manager import asset_manager
+from scripts.flet_asset_manager import asset_manager, layer_action_menu
 from scripts.flet_canvas import canvas
 from scripts.flet_messages import messages
 from scripts.flet_property_manager import property_manager
@@ -104,6 +104,11 @@ def main(page: ft.Page):
 
 	page.enable_tools = enable_tools
 
+	def disable_tools():
+		page.tool_manager.disable_tools()
+
+	page.disable_tools = disable_tools
+
 	def set_current_tool(e):
 		page.tool_manager.clear_tools()
 		page.canvas.clear_tools()
@@ -124,8 +129,8 @@ def main(page: ft.Page):
 		if page.active_layer == layer_slot:
 			return
 		page.active_layer = layer_slot
+		page.enable_tools()
 		page.property_manager.refresh_layer_properties()
-		page.message(f"set {layer_slot.label.value} as active layer")
 
 	page.set_active_layer = set_active_layer
 
@@ -134,7 +139,6 @@ def main(page: ft.Page):
 		layer_slot = page.asset_manager.add_image_as_layer(image)
 		layer_slot.layer_image = page.canvas.add_layer_image(image)
 		page.message("added blank layer to canvas")
-		page.enable_tools()
 		page.refresh_layers()
 
 	page.add_blank_layer = add_blank_layer
@@ -144,7 +148,6 @@ def main(page: ft.Page):
 		for slot in layer_slots:
 			slot.layer_image = page.canvas.add_layer_image(slot.image)
 			page.message(f'added "{slot.image.filename}" as layer')
-		page.enable_tools()
 		page.refresh_layers()
 
 	page.add_images_as_layers = add_images_as_layers
@@ -184,6 +187,10 @@ def main(page: ft.Page):
 	page.refresh_canvas_preview = refresh_canvas_preview
 
 	def refresh_layers():
+		if page.active_layer == None:
+			page.disable_tools()
+		else:
+			page.enable_tools()
 		page.asset_manager.refresh_layers()
 		page.canvas.refresh_canvas()
 		page.refresh_canvas_preview()
@@ -376,23 +383,30 @@ def main(page: ft.Page):
 
 #	workspace ##########################################################
 
-	workspace = ft.Container(
-			bgcolor = page.background_color,
-			padding = 0,
-			margin = 0,
+	workspace = ft.Column(
+			controls = [
+				titlebar,
+				current_layout,
+			],
 			expand = True,
-			content = ft.Column(
-					controls = [
-						titlebar,
-						current_layout,
-					],
-			),
+	)
+
+	page.workspace = workspace
+
+	full_page = ft.Stack(
+			expand = True,
+			controls = [
+				workspace,
+				layer_action_menu,
+			],
 			height = page.height,
 			width = page.width,
 	)
 
+	page.full_page = full_page
+
 	page.title = "Stable Diffusion Playground"
-	page.add(workspace)
+	page.add(full_page)
 
 	page.settings_window.setup(page.session.get('settings'))
 	page.gallery_window.setup()

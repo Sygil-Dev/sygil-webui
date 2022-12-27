@@ -129,7 +129,7 @@ gallery_window = GalleryWindow(
 		),
 		actions = [
 				ft.ElevatedButton(
-						text = "Add As New Layer",
+						text = "Add As New Layer(s)",
 						icon = ft.icons.ADD_OUTLINED,
 						on_click = add_as_new_layer,
 				),

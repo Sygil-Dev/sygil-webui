@@ -89,8 +89,14 @@ class ToolManager(ft.Container):
 			tool.disabled = False
 		self.update()
 
+	def disable_tools(self):
+		for tool in self.toolbox.content.controls:
+			tool.disabled = True
+		self.update()
+
 	def clear_tools(self):
 		self.toolbox.clear_tools()
+
 
 class ToolBox(ft.Container):
 	def get_tools(self):

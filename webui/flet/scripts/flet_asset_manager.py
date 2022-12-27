@@ -52,6 +52,7 @@ class AssetManager(ft.Container):
 	def refresh_layers(self):
 		self.layer_panel.refresh_layers()
 
+
 class AssetPanel(ft.Container):
 	pass
 
@@ -72,7 +73,7 @@ class LayerPanel(ft.Container):
 	def refresh_visible_layers(self):
 		self.page.visible_layers = []
 		for layer in self.layers:
-			if layer.visible:
+			if not layer.disabled:
 				self.page.visible_layers.append(layer)
 
 	def refresh_layer_name(self, e):
@@ -116,7 +117,7 @@ class LayerPanel(ft.Container):
 		layer_slot.label = label
 		layer_slot.handle = handle
 		layer_slot.index = 0
-		layer_slot.visible = True
+		layer_slot.disabled = False
 		layer_slot.active = False
 		layer_slot.image = image
 		layer_slot.layer_image = None
@@ -149,9 +150,93 @@ class LayerPanel(ft.Container):
 		self.layers.insert(index, layer)
 		self.page.refresh_layers()
 
+	def delete_layer(self, layer):
+		if not layer:
+			return
+		self.layers.pop(layer.index)
+
 
 class LayerSlot(ft.Container):
 	pass
+
+
+class LayerActionMenu(ft.Card):
+	def show_menu(self):
+		self.visible = True
+		self.update()
+
+	def hide_menu(self):
+		self.visible = False
+		self.update()
+
+
+def close_menu(e):
+	layer_action_menu.hide_menu()
+
+def show_hide_layer(e):
+	e.page.active_layer.disabled = False if e.page.active_layer.disabled else True
+	e.page.refresh_layers()
+	close_menu(e)
+
+def move_layer_to_top(e):
+	layer_panel.move_layer(e.page.active_layer, 0)
+	close_menu(e)
+
+def move_layer_up(e):
+	layer_panel.move_layer(e.page.active_layer, e.page.active_layer.index - 1)
+	close_menu(e)
+
+def move_layer_down(e):
+	layer_panel.move_layer(e.page.active_layer, e.page.active_layer.index + 2)
+	close_menu(e)
+
+def delete_layer(e):
+	layer_panel.delete_layer(e.page.active_layer)
+	e.page.active_layer = None
+	e.page.refresh_layers()
+	close_menu(e)
+
+
+class LayerAction():
+	def __init__(self, text, on_click):
+		self.text = text
+		self.on_click = on_click
+
+layer_action_list = [
+	LayerAction('Show/Hide Layer', show_hide_layer),
+	LayerAction('Move Layer To Top', move_layer_to_top),
+	LayerAction('Move Layer Up', move_layer_up),
+	LayerAction('Move Layer Down', move_layer_down),
+	LayerAction('Delete Layer', delete_layer),
+]
+
+def make_action_buttons(action_list):
+	button_list = []
+	for action in action_list:
+		button_list.append(
+			ft.TextButton(
+					text = action.text,
+					on_click = action.on_click,
+			)
+		)
+	return button_list
+
+# LayerActionMenu == ft.Card
+layer_action_menu = LayerActionMenu(
+		content = ft.GestureDetector(
+				content = ft.Column(
+						controls = make_action_buttons(layer_action_list),
+						expand = False,
+						spacing = 0,
+						alignment = 'start',
+						tight = True,
+				),
+				on_exit = close_menu,
+		),
+		margin = 0,
+		visible = False,
+)
+
 
 
 def layer_left_click(e: ft.TapEvent):
@@ -160,6 +245,16 @@ def layer_left_click(e: ft.TapEvent):
 		return
 	layer_panel.make_layer_active(index)
 	layer_panel.update()
+
+def layer_right_click(e: ft.TapEvent):
+	index = layer_panel.get_layer_index_from_position(e.local_y)
+	if index >= len(layer_panel.layers):
+		return
+	layer_panel.make_layer_active(index)
+	layer_panel.update()
+	layer_action_menu.left = e.global_x
+	layer_action_menu.top = e.global_y
+	layer_action_menu.show_menu()
 
 def pickup_layer(e: ft.DragStartEvent):
 	index = layer_panel.get_layer_index_from_position(e.local_y)
@@ -194,6 +289,7 @@ layer_panel = LayerPanel(
 				),
 				drag_interval = 10,
 				on_tap_down = layer_left_click,
+				on_secondary_tap_down = layer_right_click,
 				on_vertical_drag_start = pickup_layer,
 				on_vertical_drag_update = on_layer_drag,
 				on_vertical_drag_end = drop_layer,

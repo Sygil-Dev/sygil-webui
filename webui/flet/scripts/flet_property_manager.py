@@ -77,14 +77,22 @@ class PropertyPanel(ft.Container):
 		self.canvas_properties.update()
 
 	def refresh_layer_properties(self):
-		self.layer_property_header.disabled = False
-		self.layer_property_header.open = True
-		self.layer_property_header.icon = ft.icons.ARROW_DROP_DOWN
-		self.layer_property_header.icon_color = self.page.tertiary_color
-		self.layer_properties.visible = True
-		self.layer_properties.controls[0].controls[0].value = self.page.active_layer.label.value
-		self.layer_properties.controls[1].controls[0].value = self.page.active_layer.image.width
-		self.layer_properties.controls[1].controls[1].value = self.page.active_layer.image.height
+		active = True if self.page.active_layer else False
+		if active:
+			self.layer_property_header.disabled = False
+			self.layer_property_header.open = True
+			self.layer_property_header.icon = ft.icons.ARROW_DROP_DOWN
+			self.layer_property_header.icon_color = self.page.tertiary_color
+			self.layer_properties.visible = True
+			self.layer_properties.controls[0].controls[0].value = self.page.active_layer.label.value
+			self.layer_properties.controls[1].controls[0].value = self.page.active_layer.image.width
+			self.layer_properties.controls[1].controls[1].value = self.page.active_layer.image.height
+		else:
+			self.layer_property_header.disabled = True
+			self.layer_property_header.open = False
+			self.layer_property_header.icon = ft.icons.ARROW_RIGHT
+			self.layer_property_header.icon_color = None
+			self.layer_properties.visible = False
 		self.update()
 
 preview_pane = ft.Container(

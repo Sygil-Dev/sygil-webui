@@ -22,7 +22,6 @@ class Canvas(ft.Container):
 		self.add_canvas_background()
 		self.center_canvas()
 		self.refresh_canvas()
-		self.update()
 
 	def refresh_canvas(self):
 		self.image_stack.refresh_stack()
@@ -177,6 +176,7 @@ class ImageStack(ft.Container):
 		for slot in self.page.visible_layers:
 			self.content.controls.insert(0, slot.layer_image)
 		self.content.controls.insert(0, self.canvas_bg)
+		self.update()
 
 	def get_scaled_size(self):
 		self.scaled_width = self.width * self.scale
