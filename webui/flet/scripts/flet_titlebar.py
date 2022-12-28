@@ -29,6 +29,26 @@ class TitleBar(ft.Container):
 		self.settings_button.icon_size = self.page.titlebar_height * 0.5
 		self.settings_button.on_click = self.page.open_settings
 
+	def on_page_change(self):
+		self.width = self.page.width
+		self.height = self.page.titlebar_height
+
+		self.title.size = self.page.titlebar_height * 0.5
+		self.title.color = self.page.tertiary_color
+
+		self.prompt.text_size = max(12, self.page.titlebar_height * 0.25)
+		self.prompt.focused_border_color = self.page.tertiary_color
+
+		self.layout_menu.controls[0].text_size = self.page.text_size
+
+		self.theme_switcher.size = self.page.titlebar_height
+		self.theme_switcher.icon_size = self.page.titlebar_height * 0.5
+		self.theme_switcher.tooltip = f"Click to change between the light and dark themes. Current {'(Light theme)' if self.page.theme_mode == 'light' else '(Dark theme)'}"
+
+		self.settings_button.size = self.page.titlebar_height
+		self.settings_button.icon_size = self.page.titlebar_height * 0.5
+
+
 title = ft.Text(
 		value = "  Sygil  ",
 		text_align = 'center',
@@ -92,6 +112,8 @@ option_list = ft.Row(
 		alignment = 'end'
 )
 
+
+# TitleBar == ft.Container
 titlebar = TitleBar(
 		content = ft.Row(
 				controls = [

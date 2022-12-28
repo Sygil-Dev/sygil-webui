@@ -30,6 +30,25 @@ class PropertyManager(ft.Container):
 		self.page.refresh_canvas_preview()
 		self.refresh_canvas_properties()
 
+	def on_page_change(self):
+		self.width = self.page.right_panel_width
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+		self.set_tab_text_size(self.page.text_size)
+		self.set_tab_bgcolor(self.page.secondary_color)
+		self.set_tab_padding(self.page.container_padding)
+		self.set_tab_margin(self.page.container_margin)
+		self.dragbar.content.width = self.page.vertical_divider_width
+		self.dragbar.content.color = self.page.tertiary_color
+		self.property_panel.preview.width = self.page.right_panel_width
+		self.property_panel.preview_dragbar.content.content.height = self.page.divider_height
+		self.property_panel.preview_dragbar.content.content.color = self.page.tertiary_color
+		self.property_panel.canvas_properties_divider.content.height = self.page.divider_height
+		self.property_panel.canvas_properties_divider.content.color = self.page.tertiary_color
+		self.property_panel.layer_properties_divider.content.height = self.page.divider_height
+		self.property_panel.layer_properties_divider.content.color = self.page.tertiary_color
+
 	def set_tab_text_size(self, size):
 		for tab in self.tabs:
 			tab.tab_content.size = size

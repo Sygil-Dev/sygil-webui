@@ -87,13 +87,6 @@ def main(page: ft.Page):
 
 	page.change_theme_mode = change_theme_mode
 
-	# layouts
-	def set_layout(e):
-		page.current_layout = e.control.value
-		page.update()
-
-	page.set_layout = set_layout
-
 
 	# tools
 	page.tool_manager = tool_manager
@@ -118,6 +111,7 @@ def main(page: ft.Page):
 		page.update()
 
 	page.set_current_tool = set_current_tool
+
 
 	# asset manager
 	page.asset_manager = asset_manager
@@ -198,6 +192,36 @@ def main(page: ft.Page):
 		page.update()
 
 	page.refresh_layers = refresh_layers
+
+
+	# layouts
+	def set_layout(e):
+		page.current_layout = e.control.value
+		page.update()
+
+	page.set_layout = set_layout
+
+
+	def on_page_change(e):
+		page.titlebar.on_page_change()
+		page.tool_manager.on_page_change()
+		page.asset_manager.on_page_change()
+		page.canvas.on_page_change()
+		page.messages.on_page_change()
+		page.property_manager.on_page_change()
+		full_page.width = page.width
+		full_page.height = page.height
+		page.update()
+
+	page.on_resize = on_page_change
+
+	def on_window_change(e):
+		if e.data == 'minimize' or e.data == 'close':
+			return
+		else:
+			page.on_page_change(e)
+
+	page.on_window_event = on_window_change
 
 	# settings
 	def load_settings():
@@ -419,4 +443,4 @@ def main(page: ft.Page):
 	page.update()
 
 
-ft.app(target=main, route_url_strategy="path", port= 8505, assets_dir="assets", upload_dir="assets/uploads")
+ft.app(target=main, route_url_strategy="path", port=8505, assets_dir="assets", upload_dir="assets/uploads")

@@ -13,9 +13,9 @@ class Canvas(ft.Container):
 		self.padding = self.page.container_padding
 		self.margin = self.page.container_margin
 
-		self.overlay.tools.center = self.page.icon_size
-		self.overlay.tools.zoom_in = self.page.icon_size
-		self.overlay.tools.zoom_out = self.page.icon_size
+		self.overlay.tools.center.icon_size = self.page.icon_size
+		self.overlay.tools.zoom_in.icon_size = self.page.icon_size
+		self.overlay.tools.zoom_out.icon_size = self.page.icon_size
 
 		self.overlay.size_display.content.color = self.page.text_color
 		self.overlay.size_display.content.size = self.page.text_size
@@ -23,8 +23,22 @@ class Canvas(ft.Container):
 		self.center_canvas()
 		self.refresh_canvas()
 
+	def on_page_change(self):
+		self.bgcolor = self.page.secondary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.overlay.tools.center.icon_size = self.page.icon_size
+		self.overlay.tools.zoom_in.icon_size = self.page.icon_size
+		self.overlay.tools.zoom_out.icon_size = self.page.icon_size
+
+		self.overlay.size_display.content.color = self.page.text_color
+		self.overlay.size_display.content.size = self.page.text_size
+		self.refresh_canvas()
+
 	def refresh_canvas(self):
 		self.image_stack.refresh_stack()
+		self.align_canvas()
 		self.overlay.refresh_canvas_overlay()
 
 	def set_current_tool(self, tool):

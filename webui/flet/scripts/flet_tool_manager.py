@@ -73,6 +73,27 @@ class ToolManager(ft.Container):
 		self.dragbar.width = self.page.vertical_divider_width
 		self.dragbar.color = self.page.tertiary_color
 
+	def on_page_change(self):
+		self.width = self.page.tool_manager_width
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.toolbox.bgcolor = self.page.secondary_color
+		self.toolbox.padding = self.page.container_padding
+		self.toolbox.margin = self.page.container_margin
+
+		self.tool_divider.height = self.page.divider_height
+		self.tool_divider.color = self.page.tertiary_color
+
+		self.tool_properties.bgcolor = self.page.secondary_color
+		self.tool_properties.padding = self.page.container_padding
+		self.tool_properties.margin = self.page.container_margin
+
+		self.dragbar.width = self.page.vertical_divider_width
+		self.dragbar.color = self.page.tertiary_color
+
+
 	def resize_tool_manager(self, e: ft.DragUpdateEvent):
 		self.page.tool_manager_width = max(50, self.page.tool_manager_width + e.delta_x)
 		tool_manager.width = self.page.tool_manager_width
@@ -86,12 +107,20 @@ class ToolManager(ft.Container):
 
 	def enable_tools(self):
 		for tool in self.toolbox.content.controls:
-			tool.disabled = False
+			try:
+				if tool.on_click == tool_select:
+					tool.disabled = False
+			except AttributeError:
+				continue  # is divider
 		self.update()
 
 	def disable_tools(self):
 		for tool in self.toolbox.content.controls:
-			tool.disabled = True
+			try:
+				if tool.on_click == tool_select:
+					tool.disabled = True
+			except AttributeError:
+				continue  # is divider
 		self.update()
 
 	def clear_tools(self):

@@ -22,6 +22,23 @@ class AssetManager(ft.Container):
 		self.dragbar.content.width = self.page.vertical_divider_width
 		self.dragbar.content.color = self.page.tertiary_color
 
+	def on_page_change(self):
+		self.width = self.page.left_panel_width
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.set_tab_text_size(self.page.text_size)
+		self.set_tab_bgcolor(self.page.secondary_color)
+		self.set_tab_padding(self.page.container_padding)
+		self.set_tab_margin(self.page.container_margin)
+
+		self.dragbar.content.width = self.page.vertical_divider_width
+		self.dragbar.content.color = self.page.tertiary_color
+
+		if self.page.active_layer is not None:
+			self.page.active_layer.handle.color = self.page.tertiary_color
+
 	def add_image_as_layer(self, image):
 		return self.layer_panel.add_image_as_layer(image)
 
