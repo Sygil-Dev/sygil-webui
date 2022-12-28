@@ -68,6 +68,9 @@ webui_page:
         min: !!int '1'
         max: !!int '100'
         step: !!int '1'
+    theme_color:
+        display: textinput
+        value: !!str 'blue'
 
 general_page:
     huggingface_token:

@@ -242,11 +242,12 @@ def main(page: ft.Page):
 	if not page.session.contains_key('settings'):
 		load_settings()
 		settings = page.session.get('settings')
-		if 'webui_page' in settings:
-			if 'default_theme' in settings['webui_page']:
-				page.theme_mode = settings['webui_page']['default_theme']['value']
-			if 'max_message_history' in settings['webui_page']:
-				MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
+		try:
+			ui_settings = settings['webui_page']
+			page.theme_mode = ui_settings['default_theme']['value']
+			MAX_MESSAGE_HISTORY = ui_settings['max_message_history']['value']
+		except AttributeError:
+			page.message("Config load error: missing setting.",1)
 
 		page.session.set('layout','default')
 
