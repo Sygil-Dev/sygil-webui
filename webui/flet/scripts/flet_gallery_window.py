@@ -69,7 +69,7 @@ class GalleryDisplay(ft.Container):
 							height = image.height,
 							gapless_playback = True,
 					),
-					image_fit = ft.ImageFit.CONTAIN,
+					image_fit = 'contain',
 					height = image.height,
 					width = image.width,
 					padding = 0,
@@ -85,7 +85,7 @@ class GalleryImage(ft.Container):
 
 def add_as_new_layer(e):
 	if gallery_window.selected_images:
-		e.page.asset_manager.add_images_as_layers(gallery_window.selected_images)
+		e.page.add_images_as_layers(gallery_window.selected_images)
 		gallery_window.selected_images.clear()
 		for tab in gallery_window.content.content.tabs:
 			for image in tab.content.content.controls:
@@ -129,7 +129,7 @@ gallery_window = GalleryWindow(
 		),
 		actions = [
 				ft.ElevatedButton(
-						text = "Add As New Layer",
+						text = "Add As New Layer(s)",
 						icon = ft.icons.ADD_OUTLINED,
 						on_click = add_as_new_layer,
 				),

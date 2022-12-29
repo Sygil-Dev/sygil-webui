@@ -16,7 +16,7 @@ from scripts.flet_gallery_window import gallery_window
 from scripts.flet_file_manager import file_picker, uploads, imports
 from scripts.flet_titlebar import titlebar
 from scripts.flet_tool_manager import tool_manager
-from scripts.flet_asset_manager import asset_manager
+from scripts.flet_asset_manager import asset_manager, layer_action_menu
 from scripts.flet_canvas import canvas
 from scripts.flet_messages import messages
 from scripts.flet_property_manager import property_manager
@@ -37,6 +37,7 @@ def main(page: ft.Page):
 	page.message = messages.message
 	page.max_message_history = 50
 
+
 	# ui
 	page.current_layout = 'Default'
 	page.titlebar_height = 50
@@ -55,15 +56,19 @@ def main(page: ft.Page):
 	page.text_color = None
 	page.text_size = 14
 	page.icon_size = 20
+
 	page.padding = 0
 	page.margin = 0
 	page.container_padding = 0
 	page.container_margin = 0
+
 	page.tab_color = 'white_10'
 	page.tab_padding = ft.padding.only(left = 2, top = 12, right = 2, bottom = 8)
 	page.tab_margin = 0
+
 	page.divider_height = 10
 	page.vertical_divider_width = 10
+
 
 	# titlebar
 	page.titlebar = titlebar
@@ -82,20 +87,70 @@ def main(page: ft.Page):
 
 	page.change_theme_mode = change_theme_mode
 
-	# layouts
-	def set_layout(e):
-		page.current_layout = e.control.value
-		page.update()
-
-	page.set_layout = set_layout
 
 	# tools
 	page.tool_manager = tool_manager
 	page.current_tool = 'pan'
 
+	def enable_tools():
+		page.tool_manager.enable_tools()
+
+	page.enable_tools = enable_tools
+
+	def disable_tools():
+		page.tool_manager.disable_tools()
+
+	page.disable_tools = disable_tools
+
+	def set_current_tool(e):
+		page.tool_manager.clear_tools()
+		page.canvas.clear_tools()
+		e.control.selected = True
+		page.current_tool = e.control.data['label']
+		page.canvas.set_current_tool(e.control.data['label'])
+		page.update()
+
+	page.set_current_tool = set_current_tool
+
+
 	# asset manager
 	page.asset_manager = asset_manager
 	page.active_layer = None
+	page.visible_layers = []
+	page.layer_height = 50
+
+	def set_active_layer(layer_slot):
+		if page.active_layer == layer_slot:
+			return
+		page.active_layer = layer_slot
+		page.enable_tools()
+		page.property_manager.refresh_layer_properties()
+
+	page.set_active_layer = set_active_layer
+
+	def add_blank_layer():
+		image = flet_utils.create_blank_image(page.canvas_size)
+		layer_slot = page.asset_manager.add_image_as_layer(image)
+		layer_slot.layer_image = page.canvas.add_layer_image(image)
+		page.message("added blank layer to canvas")
+		page.refresh_layers()
+
+	page.add_blank_layer = add_blank_layer
+
+	def add_images_as_layers(images):
+		layer_slots = page.asset_manager.add_images_as_layers(images)
+		for slot in layer_slots:
+			slot.layer_image = page.canvas.add_layer_image(slot.image)
+			page.message(f'added "{slot.image.filename}" as layer')
+		page.refresh_layers()
+
+	page.add_images_as_layers = add_images_as_layers
+
+	def load_images():
+		page.file_picker.pick_files(file_type = 'image', allow_multiple = True)
+
+	page.load_images = load_images
+
 
 	# canvas
 	page.canvas = canvas
@@ -104,13 +159,69 @@ def main(page: ft.Page):
 
 	def get_viewport_size():
 		viewport_width = page.width - (page.tool_manager_width + (page.vertical_divider_width * 3) + page.left_panel_width + page.right_panel_width)
-		viewport_height = page.height - (page.titlebar_height * 3) - page.bottom_panel_height
+		viewport_height = page.height - (page.titlebar_height * 2) - page.bottom_panel_height
 		return viewport_width, viewport_height
 
 	page.get_viewport_size = get_viewport_size
 
+
+	def align_canvas():
+		page.canvas.align_canvas()
+
+	page.align_canvas = align_canvas
+
+
 	# property manager
 	page.property_manager = property_manager
+
+	def refresh_canvas_preview():
+		preview = page.canvas.get_image_stack_preview()
+		page.property_manager.set_preview_image(preview)
+
+	page.refresh_canvas_preview = refresh_canvas_preview
+
+	def refresh_layers():
+		if page.active_layer == None:
+			page.disable_tools()
+		else:
+			page.enable_tools()
+		page.asset_manager.refresh_layers()
+		page.canvas.refresh_canvas()
+		page.refresh_canvas_preview()
+		page.property_manager.refresh_layer_properties()
+		page.update()
+
+	page.refresh_layers = refresh_layers
+
+
+	# layouts
+	def set_layout(e):
+		page.current_layout = e.control.value
+		page.update()
+
+	page.set_layout = set_layout
+
+
+	def on_page_change(e):
+		page.titlebar.on_page_change()
+		page.tool_manager.on_page_change()
+		page.asset_manager.on_page_change()
+		page.canvas.on_page_change()
+		page.messages.on_page_change()
+		page.property_manager.on_page_change()
+		full_page.width = page.width
+		full_page.height = page.height
+		page.update()
+
+	page.on_resize = on_page_change
+
+	def on_window_change(e):
+		if e.data == 'minimize' or e.data == 'close':
+			return
+		else:
+			page.on_page_change(e)
+
+	page.on_window_event = on_window_change
 
 	# settings
 	def load_settings():
@@ -131,11 +242,12 @@ def main(page: ft.Page):
 	if not page.session.contains_key('settings'):
 		load_settings()
 		settings = page.session.get('settings')
-		if 'webui_page' in settings:
-			if 'default_theme' in settings['webui_page']:
-				page.theme_mode = settings['webui_page']['default_theme']['value']
-			if 'max_message_history' in settings['webui_page']:
-				MAX_MESSAGE_HISTORY = settings['webui_page']['max_message_history']['value']
+		try:
+			ui_settings = settings['webui_page']
+			page.theme_mode = ui_settings['default_theme']['value']
+			MAX_MESSAGE_HISTORY = ui_settings['max_message_history']['value']
+		except AttributeError:
+			page.message("Config load error: missing setting.",1)
 
 		page.session.set('layout','default')
 
@@ -296,23 +408,30 @@ def main(page: ft.Page):
 
 #	workspace ##########################################################
 
-	workspace = ft.Container(
-			bgcolor = page.background_color,
-			padding = 0,
-			margin = 0,
+	workspace = ft.Column(
+			controls = [
+				titlebar,
+				current_layout,
+			],
 			expand = True,
-			content = ft.Column(
-					controls = [
-						titlebar,
-						current_layout,
-					],
-			),
+	)
+
+	page.workspace = workspace
+
+	full_page = ft.Stack(
+			expand = True,
+			controls = [
+				workspace,
+				layer_action_menu,
+			],
 			height = page.height,
 			width = page.width,
 	)
 
+	page.full_page = full_page
+
 	page.title = "Stable Diffusion Playground"
-	page.add(workspace)
+	page.add(full_page)
 
 	page.settings_window.setup(page.session.get('settings'))
 	page.gallery_window.setup()
@@ -325,4 +444,4 @@ def main(page: ft.Page):
 	page.update()
 
 
-ft.app(target=main, port= 8505, assets_dir="assets", upload_dir="assets/uploads")
+ft.app(target=main, route_url_strategy="path", port=8505, assets_dir="assets", upload_dir="assets/uploads")

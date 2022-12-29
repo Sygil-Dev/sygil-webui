@@ -7,7 +7,6 @@ import flet as ft
 from scripts import flet_utils
 
 
-
 class Messages(ft.Container):
 	def setup(self):
 		self.height = self.page.bottom_panel_height
@@ -22,6 +21,21 @@ class Messages(ft.Container):
 
 		self.dragbar.content.height = self.page.divider_height
 		self.dragbar.content.color = self.page.tertiary_color
+
+	def on_page_change(self):
+		self.height = self.page.bottom_panel_height
+		self.bgcolor = self.page.primary_color
+		self.padding = self.page.container_padding
+		self.margin = self.page.container_margin
+
+		self.set_tab_text_size(self.page.text_size)
+		self.set_tab_bgcolor(self.page.secondary_color)
+		self.set_tab_padding(self.page.container_padding)
+		self.set_tab_margin(self.page.container_margin)
+
+		self.dragbar.content.height = self.page.divider_height
+		self.dragbar.content.color = self.page.tertiary_color
+
 
 	def set_tab_text_size(self, size):
 		for tab in self.tabs:
@@ -63,6 +77,7 @@ class Messages(ft.Container):
 		message_list.controls.append(msg)
 		self.prune_messages()
 
+
 message_list = ft.ListView(
 		spacing = 4,
 		auto_scroll = True,
@@ -81,10 +96,14 @@ video_editor_panel = ft.Column(
 def resize_messages(e):
 	messages.resize_messages(e)
 
+def realign_canvas(e):
+	e.page.align_canvas()
+
 messages_dragbar = ft.GestureDetector(
 		mouse_cursor = ft.MouseCursor.RESIZE_ROW,
 		drag_interval = 50,
 		on_pan_update = resize_messages,
+		on_pan_end = realign_canvas,
 		content = ft.Divider(),
 )
 
