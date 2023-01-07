@@ -429,3 +429,11 @@ model_manager:
                 ldsr_model:
                     file_name:     "model.ckpt"
                     download_link:  "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
+
+        sygil:
+            model_name:     "Sygil Diffusion 0.1"
+            save_location:  "./models/custom"
+            files:
+                sd_wd_ld_trinart_merged:
+                    file_name: "sygil-diffusion-v0.1_365608_lora.ckpt"
+                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion-v0.1/resolve/main/sygil-diffusion-v0.1_365608_lora.ckpt"
