@@ -24,7 +24,7 @@ https://gist.github.com/karpathy/00103b0037c5aaea32fe1da1af553355
 from sd_utils import st, MemUsageMonitor, server_state, no_rerun, torch_gc, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, hc, seed_to_int, logger, slerp, optimize_update_preview_frequency, \
-     load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel
+     load_learned_embed_in_clip, load_GFPGAN, RealESRGANModel, set_page_title
 
 
 # streamlit imports
@@ -942,12 +942,12 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
 def diffuse(
     pipe,
     cond_embeddings, # text conditioning, should be (1, 77, 768)
-        cond_latents,    # image conditioning, should be (1, 4, 64, 64)
-        num_inference_steps,
-        cfg_scale,
-        eta,
-        fps=30
-        ):
+    cond_latents,    # image conditioning, should be (1, 4, 64, 64)
+    num_inference_steps,
+    cfg_scale,
+    eta,
+    fps=30
+    ):
 
     torch_device = cond_latents.get_device()
 
@@ -1082,6 +1082,9 @@ def diffuse(
 
             if "progress_bar" in st.session_state:
                 st.session_state["progress_bar"].progress(total_percent if total_percent < 100 else 100)
+                
+                if st.session_state["defaults"].general.show_percent_in_tab_title:
+                    set_page_title(f"({percent if percent < 100 else 100}%) Stable Diffusion Playground")
 
     except KeyError:
         raise StopException
@@ -1130,7 +1133,7 @@ def load_diffusers_model(weights_path,torch_device):
                 if not os.path.exists(model_path + "/model_index.json"):
                     server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
                         weights_path,
-                        use_local_file=True,
+                        #use_local_file=True,
                         use_auth_token=st.session_state["defaults"].general.huggingface_token,
                         torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
                         revision="fp16" if not st.session_state['defaults'].general.no_half else None,
@@ -1143,7 +1146,7 @@ def load_diffusers_model(weights_path,torch_device):
                 else:
                     server_state["pipe"] = StableDiffusionPipeline.from_pretrained(
                         model_path,
-                        use_local_file=True,
+                        #use_local_file=True,
                         torch_dtype=torch.float16 if st.session_state['defaults'].general.use_float16 else None,
                         revision="fp16" if not st.session_state['defaults'].general.no_half else None,
                         safety_checker=None,  # Very important for videos...lots of false positives while interpolating
@@ -1178,7 +1181,8 @@ def load_diffusers_model(weights_path,torch_device):
                     server_state['float16'] = st.session_state['defaults'].general.use_float16
                     server_state['no_half'] = st.session_state['defaults'].general.no_half
                     server_state['optimized'] = st.session_state['defaults'].general.optimized
-
+                    
+                    #with no_rerun:
                     load_diffusers_model(weights_path, torch_device)
                 else:
                     logger.info("Tx2Vid Model already Loaded")
@@ -1318,28 +1322,28 @@ def txt2vid(
         with open(os.path.join(full_path , f'{slugify(str(seeds))}_config.json' if len(prompts) > 1 else "prompts_config.json"), "w") as outfile:
             outfile.write(json.dumps(
                 dict(
-                                prompts = prompts,
-                                    gpu = gpu,
-                                        num_steps = num_steps,
-                                max_duration_in_seconds = max_duration_in_seconds,
-                                num_inference_steps = num_inference_steps,
-                                cfg_scale = cfg_scale,
-                                do_loop = do_loop,
-                                use_lerp_for_text = use_lerp_for_text,
-                                seeds = seeds,
-                                quality = quality,
-                                eta = eta,
-                                width = width,
-                                height = height,
-                                weights_path = weights_path,
-                                scheduler=scheduler,
-                                disable_tqdm = disable_tqdm,
-                                beta_start = beta_start,
-                                beta_end = beta_end,
-                                beta_schedule = beta_schedule
-                                ),
-                            indent=2,
-                                sort_keys=False,
+                    prompts = prompts,
+                    gpu = gpu,
+                    num_steps = num_steps,
+                    max_duration_in_seconds = max_duration_in_seconds,
+                    num_inference_steps = num_inference_steps,
+                    cfg_scale = cfg_scale,
+                    do_loop = do_loop,
+                    use_lerp_for_text = use_lerp_for_text,
+                    seeds = seeds,
+                    quality = quality,
+                    eta = eta,
+                    width = width,
+                    height = height,
+                    weights_path = weights_path,
+                    scheduler=scheduler,
+                    disable_tqdm = disable_tqdm,
+                    beta_start = beta_start,
+                    beta_end = beta_end,
+                    beta_schedule = beta_schedule
+                    ),
+                indent=2,
+                sort_keys=False,
             ))
 
     #print(scheduler)
@@ -1383,10 +1387,11 @@ def txt2vid(
                       #flaxddpms=flaxddpms_scheduler,
                       #flaxpndms=flaxpndms_scheduler,
                       )
-
-    with st.session_state["progress_bar_text"].container():
-        with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-            load_diffusers_model(weights_path, torch_device)
+    
+    with no_rerun:
+        with st.session_state["progress_bar_text"].container():
+            with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                load_diffusers_model(weights_path, torch_device)
 
     if "pipe" not in server_state:
         logger.error('wtf')
@@ -1593,6 +1598,9 @@ def txt2vid(
         video_path = save_video_to_disk(frames, seeds, sanitized_prompt, save_video=save_video, outdir=outdir)
 
     except StopException:
+        # reset the page title so the percent doesnt stay on it confusing the user.
+        set_page_title(f"Stable Diffusion Playground")
+        
         if save_video_on_stop:
             logger.info("Streamlit Stop Exception Received. Saving video")
             video_path = save_video_to_disk(frames, seeds, sanitized_prompt, save_video=save_video, outdir=outdir)
@@ -1626,7 +1634,10 @@ def layout():
             #prompt = st.text_area("Input Text","")
             placeholder = "A corgi wearing a top hat as an oil painting."
             prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
-            sygil_suggestions.suggestion_area(placeholder)
+            
+            if "defaults" in st.session_state:  
+                if st.session_state["defaults"].general.enable_suggestions:
+                    sygil_suggestions.suggestion_area(placeholder)
 
             if "defaults" in st.session_state:
                 if st.session_state['defaults'].admin.global_negative_prompt:
@@ -1909,25 +1920,25 @@ def layout():
         #print("Loading models")
         # load the models when we hit the generate button for the first time, it wont be loaded after that so dont worry.
         #load_models(False, st.session_state["use_GFPGAN"], True, st.session_state["RealESRGAN_model"])
-        with no_rerun:
-            if st.session_state["use_GFPGAN"]:
-                if "GFPGAN" in server_state:
-                    logger.info("GFPGAN already loaded")
-                else:
-                    with col2:
-                        with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
-                            # Load GFPGAN
-                            if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
-                                try:
-                                    load_GFPGAN()
-                                    logger.info("Loaded GFPGAN")
-                                except Exception:
-                                    import traceback
-                                    logger.error("Error loading GFPGAN:", file=sys.stderr)
-                                    logger.error(traceback.format_exc(), file=sys.stderr)
+        #with no_rerun:
+        if st.session_state["use_GFPGAN"]:
+            if "GFPGAN" in server_state:
+                logger.info("GFPGAN already loaded")
             else:
-                if "GFPGAN" in server_state:
-                    del server_state["GFPGAN"]
+                with col2:
+                    with hc.HyLoader('Loading Models...', hc.Loaders.standard_loaders,index=[0]):
+                        # Load GFPGAN
+                        if os.path.exists(st.session_state["defaults"].general.GFPGAN_dir):
+                            try:
+                                load_GFPGAN()
+                                logger.info("Loaded GFPGAN")
+                            except Exception:
+                                import traceback
+                                logger.error("Error loading GFPGAN:", file=sys.stderr)
+                                logger.error(traceback.format_exc(), file=sys.stderr)
+        else:
+            if "GFPGAN" in server_state:
+                del server_state["GFPGAN"]
 
         #try:
         # run video generation

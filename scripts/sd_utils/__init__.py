@@ -109,6 +109,9 @@ try:
 except:
     pass
 
+# disable diffusers telemetry
+os.environ["DISABLE_TELEMETRY"] = "YES"
+
 # remove some annoying deprecation warnings that show every now and then.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -941,7 +944,7 @@ class LDSR():
         global_step = pl_sd["global_step"]
         sd = pl_sd["state_dict"]
         config = OmegaConf.load(self.yamlPath)
-        model = instantiate_from_config(config.model)
+        model = instantiate_from_config(config.model, personalization_config="")
         m, u = model.load_state_dict(sd, strict=False)
         model.cuda()
         model.eval()
@@ -1692,6 +1695,8 @@ def generation_callback(img, i=0):
     if "progress_bar" in st.session_state:
         try:
             st.session_state["progress_bar"].progress(percent if percent < 100 else 100)
+            if st.session_state["defaults"].general.show_percent_in_tab_title:
+                set_page_title(f"({percent if percent < 100 else 100}%) Stable Diffusion Playground")
         except UnboundLocalError as e:
             #logger.error(e)
             pass

@@ -33,6 +33,7 @@
 #       -option_list
 #   slider
 #       -value
+#       -value_type  'int', 'float'
 #       -min
 #       -max
 #       -step
@@ -56,15 +57,20 @@ webui_page:
     default_text_size:
         display: slider
         value: !!int '20'
+        value_type: 'int'
         min: !!int '10'
         max: !!int '32'
         step: !!float '2.0'
     max_message_history:
         display: slider
         value: !!int '20'
+        value_type: 'int'
         min: !!int '1'
         max: !!int '100'
         step: !!int '1'
+    theme_color:
+        display: textinput
+        value: !!str 'blue'
 
 general_page:
     huggingface_token:
@@ -176,7 +182,9 @@ performance_page:
     keep_all_models_loaded:
         display: bool
         value: !!bool 'false'
-    #no_verify_input: False
+    no_verify_input:
+        display: bool
+        value: !!bool 'false'
     #no_half: False
     #use_float16: False
     #precision: "autocast"

@@ -18,7 +18,7 @@ from sd_utils import st, server_state, no_rerun, \
      generation_callback, process_images, KDiffusionSampler, \
      custom_models_available, RealESRGAN_available, GFPGAN_available, \
      LDSR_available, load_models, hc, seed_to_int, logger, \
-	 resize_image, get_matched_noise, CFGMaskedDenoiser, ImageFilter
+	 resize_image, get_matched_noise, CFGMaskedDenoiser, ImageFilter, set_page_title
 
 # streamlit imports
 from streamlit.runtime.scriptrunner import StopException
@@ -82,6 +82,8 @@ def img2img(prompt: str = '', init_info: any = None, init_info_mask: any = None,
 		sampler = KDiffusionSampler(server_state["model"],'dpm_2_ancestral')
 	elif sampler_name == 'k_dpm_2':
 		sampler = KDiffusionSampler(server_state["model"],'dpm_2')
+	elif sampler_name == 'k_dpmpp_2m':
+		sampler = KDiffusionSampler(server_state["model"],'dpmpp_2m')
 	elif sampler_name == 'k_euler_a':
 		sampler = KDiffusionSampler(server_state["model"],'euler_ancestral')
 	elif sampler_name == 'k_euler':
@@ -377,7 +379,10 @@ def layout():
 			#prompt = st.text_area("Input Text","")
 			placeholder = "A corgi wearing a top hat as an oil painting."
 			prompt = st.text_area("Input Text","", placeholder=placeholder, height=54)
-			sygil_suggestions.suggestion_area(placeholder)
+				
+			if "defaults" in st.session_state:
+				if st.session_state["defaults"].general.enable_suggestions:
+					sygil_suggestions.suggestion_area(placeholder)
 			
 			if "defaults" in st.session_state:
 				if st.session_state['defaults'].admin.global_negative_prompt:
@@ -411,7 +416,7 @@ def layout():
 																 min_value=st.session_state['defaults'].img2img.sampling_steps.min_value,
 																 step=st.session_state['defaults'].img2img.sampling_steps.step)
 
-			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a",  "k_heun", "PLMS", "DDIM"]
+			sampler_name_list = ["k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a", "k_dpmpp_2m",  "k_heun", "PLMS", "DDIM"]
 			st.session_state["sampler_name"] = st.selectbox("Sampling method",sampler_name_list,
 									index=sampler_name_list.index(st.session_state['defaults'].img2img.sampler_name), help="Sampling method to use.")
 
@@ -733,8 +738,12 @@ def layout():
 					#show a message when the generation is complete.
 					message.success('Render Complete: ' + info + '; Stats: ' + stats, icon="✅")
 
-				except (StopException, KeyError):
+				except (StopException,
+						#KeyError
+						):
 					logger.info(f"Received Streamlit StopException")
+					# reset the page title so the percent doesnt stay on it confusing the user.
+					set_page_title(f"Stable Diffusion Playground")
 
 				# this will render all the images at the end of the generation but its better if its moved to a second tab inside col2 and shown as a gallery.
 				# use the current col2 first tab to show the preview_img and update it as its generated.
