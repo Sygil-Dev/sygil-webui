@@ -25,7 +25,7 @@ Check the [Contribution Guide](CONTRIBUTING.md)
 
 * ![hlky's avatar](https://avatars.githubusercontent.com/u/106811348?s=40&v=4) [hlky](https://github.com/hlky)
 * ![ZeroCool940711's avatar](https://avatars.githubusercontent.com/u/5977640?s=40&v=4)[ZeroCool940711](https://github.com/ZeroCool940711)
-* ![codedealer's avatar](https://avatars.githubusercontent.com/u/4258136?s=40&v=4)[codedealer](https://github.com/codedealer)
+* ![Kasiya13's avatar](https://avatars.githubusercontent.com/u/26075839?s=40&v=4)[Kasiya13](https://github.com/Kasiya13)
 
 ### Project Features:
 
