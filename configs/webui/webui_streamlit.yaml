@@ -435,5 +435,5 @@ model_manager:
             save_location:  "./models/custom"
             files:
                 sd_wd_ld_trinart_merged:
-                    file_name: "sygil-diffusion-v0.1_410280_lora.ckpt"
-                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion-v0.1/resolve/main/sygil-diffusion-v0.1_410280_lora.ckpt"
+                    file_name: "sygil-diffusion-v0.1_478362_lora.ckpt"
+                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion-v0.1/resolve/main/sygil-diffusion-v0.1_478362_lora.ckpt"
