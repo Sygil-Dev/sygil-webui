@@ -2,7 +2,7 @@
 
 ## Created by [Sygil.Dev](https://github.com/sygil-dev)
 
-## [Join us at Sygil.Dev's Discord Server](https://discord.gg/gyXNe4NySY) [![Discord Server](https://user-images.githubusercontent.com/5977640/190528254-9b5b4423-47ee-4f24-b4f9-fd13fba37518.png)](https://discord.gg/gyXNe4NySY)
+## Join us at Sygil.Dev's Discord Server [![Generic badge](https://flat.badgen.net/discord/members/ttM8Tm6wge?icon=discord)](https://discord.gg/ttM8Tm6wge)
 
 ## Installation instructions for:
 
@@ -25,7 +25,7 @@ Check the [Contribution Guide](CONTRIBUTING.md)
 
 * ![hlky's avatar](https://avatars.githubusercontent.com/u/106811348?s=40&v=4) [hlky](https://github.com/hlky)
 * ![ZeroCool940711's avatar](https://avatars.githubusercontent.com/u/5977640?s=40&v=4)[ZeroCool940711](https://github.com/ZeroCool940711)
-* ![codedealer's avatar](https://avatars.githubusercontent.com/u/4258136?s=40&v=4)[codedealer](https://github.com/codedealer)
+* ![Kasiya13's avatar](https://avatars.githubusercontent.com/u/26075839?s=40&v=4)[Kasiya13](https://github.com/Kasiya13)
 
 ### Project Features:
 
