@@ -435,5 +435,5 @@ model_manager:
             save_location:  "./models/custom"
             files:
                 sygil_diffusion:
-                    file_name: "sygil-diffusion-v0.1_634701_lora.ckpt"
-                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion-v0.1/resolve/main/sygil-diffusion-v0.1_634701_lora.ckpt"
+                    file_name: "sygil-diffusion-v0.1.ckpt"
+                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion-v0.1/resolve/main/sygil-diffusion-v0.1.ckpt"
