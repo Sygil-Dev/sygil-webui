@@ -142,7 +142,7 @@ txt2img:
 
 txt2vid:
     default_model: "runwayml/stable-diffusion-v1-5"
-    custom_models_list: ["runwayml/stable-diffusion-v1-5", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
+    custom_models_list: ["runwayml/stable-diffusion-v1-5", "Sygil/Sygil-Diffusion", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
     prompt:
     width:
         value:      512
@@ -346,7 +346,7 @@ model_manager:
             files:
                 model_ckpt:
                     file_name:  "Stable Diffusion v1.5.ckpt"
-                    download_link:  "https://huggingface.co/ZeroCool94/stable-diffusion-v1-5/resolve/main/Stable%20Diffusion%20v1-5-Pruned-ema%20only.ckpt"
+                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
 
         gfpgan:
             model_name:     "GFPGAN"
