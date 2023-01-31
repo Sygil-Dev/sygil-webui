@@ -1,0 +1,134 @@
+<html>
+	<head>
+		<style>
+			/* our style while dragging */
+			.value-dragging
+			{
+				background-color: lightblue;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- our fields -->
+		<input type="number" value="0" min=0 max=200 step=10>
+		<input type="number" value="0" min=-50 max=200 step=10>
+		
+		<script>
+			// iframe parent
+			// var parentDoc = window.parent.document
+		
+			// check for mouse pointer locking support, not a requirement but improves the overall experience
+			var havePointerLock = 'pointerLockElement' in document ||
+			  'mozPointerLockElement' in document ||
+			  'webkitPointerLockElement' in document;
+			  
+			// the pointer locking exit function
+			document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
+
+			// how far should the mouse travel for a step 50 pixel
+			var pixelPerStep = 50;
+			
+			// how many steps did the mouse move in as float
+			var movementDelta = 0.0;
+			// value when drag started
+			var lockedValue = 0;
+			// minimum value from field
+			var lockedMin = 0;
+			// maximum value from field
+			var lockedMax = 0;
+			// how big should the field steps be
+			var lockedStep = 0;
+			// the currently locked in field
+			var lockedField = null;
+			
+			// register events and pointer locking on field
+			RegisterField = (field) => {
+				if(havePointerLock)
+					field.requestPointerLock = field.requestPointerLock || field.mozRequestPointerLock || field.webkitRequestPointerLock;
+				
+				field.title = "Click and hold middle mouse button\nmove mouse left to decrease\nmove right to increase";
+				
+				field.addEventListener('mousedown', (e) => {
+				  onDragStart(e)
+				});
+			}
+
+			onDragStart = (e) => {
+				// if middle mouse is down
+				if(e.button === 1)
+				{
+					// save current field
+					lockedField = e.target;
+					// add class for styling
+					lockedField.classList.add("value-dragging");
+					// reset movement delta
+					movementDelta = 0.0;
+					// set to 0 if field is empty
+					if(lockedField.value === '')
+						lockedField.value = '0';
+						
+					// save current field value
+					lockedValue = parseInt(lockedField.value);
+					
+					if(lockedField.min === '')
+						lockedField.min = '-99999999';
+						
+					if(lockedField.max === '')
+						lockedField.max = '99999999';
+						
+					if(lockedField.step === '')
+						lockedField.step = '10';
+					
+					lockedMin = parseInt(lockedField.min);
+					lockedMax = parseInt(lockedField.max);
+					
+					lockedStep = parseInt(lockedField.step);
+					
+					// lock pointer if available
+					if(havePointerLock)
+						lockedField.requestPointerLock();
+					
+					// add drag event
+					document.addEventListener("mousemove", onDrag, false);
+					// prevent event propagation
+					e.preventDefault();
+				}
+			};
+			
+			onDrag = (e) => {
+				if(lockedField !== null)
+				{
+					// add movement to delta
+					movementDelta += e.movementX / pixelPerStep;
+					// set new value
+					let value = lockedValue + Math.floor(Math.abs(movementDelta)) * lockedStep * Math.sign(movementDelta);
+					lockedField.value = Math.min(Math.max(value, lockedMin), lockedMax);
+				}
+			};
+			
+			document.addEventListener('mouseup', (e) => {
+				// if middle mouse is up
+				if(e.button === 1)
+				{
+					// release pointer lock if available
+					if(havePointerLock)
+						document.exitPointerLock();
+					
+					if(lockedField !== null)
+					{
+						// stop drag event
+						document.removeEventListener("mousemove", onDrag, false);
+						// remove class for styling
+						lockedField.classList.remove("value-dragging");
+						// remove reference
+						lockedField = null;
+					}
+				}
+			});
+			
+			// find and register all input fields of type=number
+			var list = document.querySelectorAll('input[type="number"]');
+			list.forEach(RegisterField);
+		</script>
+	</body>
+</html>
