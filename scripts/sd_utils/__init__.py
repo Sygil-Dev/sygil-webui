@@ -2083,10 +2083,6 @@ def LDSR_available():
         st.session_state["use_LDSR"] = False
         st.session_state["LDSR_model"] = "model"
 
-
-
-
-
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,
                 save_grid, sort_samples, sampler_name, ddim_eta, n_iter, batch_size, i, denoising_strength, resize_mode, save_individual_images, model_name):
