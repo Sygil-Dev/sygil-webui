@@ -498,8 +498,11 @@ def load_model_from_config(config, ckpt, verbose=False):
         pl_sd = torch.load(ckpt, map_location="cpu")
         if "global_step" in pl_sd:
             logger.info(f"Global Step: {pl_sd['global_step']}")
-        sd = pl_sd["state_dict"]
-        model = instantiate_from_config(config.model, personalization_config='')
+        sd = pl_sd["state_dict"] if "state_dict" in pl_sd else pl_sd
+        try:
+            model = instantiate_from_config(config.model, personalization_config='')
+        except TypeError:
+            model = instantiate_from_config(config.model)
         m, u = model.load_state_dict(sd, strict=False)
         if len(m) > 0 and verbose:
             logger.info("missing keys:")
@@ -1569,7 +1572,11 @@ def load_sd_model(model_name: str):
 
         return config, device, model, modelCS, modelFS
     else:
-        config = OmegaConf.load(st.session_state.defaults.general.default_model_config)
+        if os.path.exists(ckpt_path.replace('ckpt','yaml')):
+            logger.info(f"Using config file from: {ckpt_path.replace('ckpt','yaml')}")
+            config = OmegaConf.load(ckpt_path.replace('ckpt','yaml'))
+        else:
+            config = OmegaConf.load(st.session_state.defaults.general.default_model_config)
         model = load_model_from_config(config, ckpt_path)
 
         device = torch.device(f"cuda:{st.session_state.defaults.general.gpu}") \
@@ -2075,10 +2082,6 @@ def LDSR_available():
         st.session_state["LDSR_available"] = False
         st.session_state["use_LDSR"] = False
         st.session_state["LDSR_model"] = "model"
-
-
-
-
 
 def save_sample(image, sample_path_i, filename, jpg_sample, prompts, seeds, width, height, steps, cfg_scale,
                 normalize_prompt_weights, use_GFPGAN, write_info_files, prompt_matrix, init_img, uses_loopback, uses_random_seed_loopback,

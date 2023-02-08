@@ -142,7 +142,7 @@ txt2img:
 
 txt2vid:
     default_model: "runwayml/stable-diffusion-v1-5"
-    custom_models_list: ["runwayml/stable-diffusion-v1-5", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
+    custom_models_list: ["runwayml/stable-diffusion-v1-5", "Sygil/Sygil-Diffusion", "CompVis/stable-diffusion-v1-4", "hakurei/waifu-diffusion"]
     prompt:
     width:
         value:      512
@@ -346,7 +346,7 @@ model_manager:
             files:
                 model_ckpt:
                     file_name:  "Stable Diffusion v1.5.ckpt"
-                    download_link:  "https://huggingface.co/ZeroCool94/stable-diffusion-v1-5/resolve/main/Stable%20Diffusion%20v1-5-Pruned-ema%20only.ckpt"
+                    download_link:  "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt"
 
         gfpgan:
             model_name:     "GFPGAN"
@@ -431,9 +431,9 @@ model_manager:
                     download_link:  "https://heibox.uni-heidelberg.de/f/578df07c8fc04ffbadf3/?dl=1"
 
         sygil:
-            model_name:     "Sygil Diffusion 0.1"
+            model_name:     "Sygil Diffusion 0.4"
             save_location:  "./models/custom"
             files:
                 sygil_diffusion:
-                    file_name: "sygil-diffusion-v0.1.ckpt"
-                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion-v0.1/resolve/main/sygil-diffusion-v0.1.ckpt"
+                    file_name: "sygil-diffusion-v0.4.ckpt"
+                    download_link:  "https://huggingface.co/Sygil/Sygil-Diffusion/resolve/main/sygil-diffusion-v0.4.ckpt"
