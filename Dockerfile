@@ -1,4 +1,4 @@
-ARG IMAGE=USER/sd-webui:base
+ARG IMAGE=tukirito/sd-webui:base
 
 # Use the base image
 FROM ${IMAGE}
