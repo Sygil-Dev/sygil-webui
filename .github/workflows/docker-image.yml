@@ -2,15 +2,19 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    branches:
+      - master
+  schedule:
+    - cron: '0 0 * * 1' # Run at 00:00 every Monday
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ (github.event_name == 'schedule') && 'dev' || '' }}
     - name: Set up Docker Buildx
       uses: docker/build-push-action@v4
     - name: Login to DockerHub
@@ -18,10 +22,19 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push
+    - name: Build and push latest
+      if: github.ref == 'refs/heads/master'
       uses: docker/build-push-action@v4
       with:
         context: .
         file: ./Dockerfile
         push: true
         tags: tukirito/sygil-webui:latest
+    - name: Build and push nightly
+      if: github.event_name == 'schedule'
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: tukirito/sygil-webui:nightly
