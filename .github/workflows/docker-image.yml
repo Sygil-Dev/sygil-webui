@@ -24,4 +24,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: salmar24/sygil-webui:latest
+        tags: tukirito/sygil-webui:latest
