@@ -17,6 +17,7 @@ EXPOSE 8501
 
 # Copy necessary files and directories
 COPY ./entrypoint.sh /sd/
+RUN chmod +x /sd/entrypoint.sh
 COPY ./data/DejaVuSans.ttf /usr/share/fonts/truetype/
 COPY ./data /sd/data
 COPY ./images /sd/images
