@@ -29,7 +29,7 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: tukirito/sygil-webui:latest
+        tags: salmar24/sygil-webui:latest
     - name: Build and push nightly
       if: github.event_name == 'schedule'
       uses: docker/build-push-action@v4
@@ -37,4 +37,4 @@ jobs:
         context: .
         file: ./Dockerfile
         push: true
-        tags: tukirito/sygil-webui:nightly
+        tags: salmar24/sygil-webui:nightly
