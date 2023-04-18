@@ -35,7 +35,7 @@ Check the [Contribution Guide](CONTRIBUTING.md)
 
 * Run additional upscaling models on CPU to save VRAM
 
-* Textual inversion: [Reaserch Paper](https://textual-inversion.github.io/) 
+* Textual inversion: [Research Paper](https://textual-inversion.github.io/) 
 
 * K-Diffusion Samplers: A great collection of samplers to use, including:
   
