@@ -19,6 +19,3 @@
 [submodule "backend/stable-diffusion"]
 	path = backend/stable-diffusion
 	url = ../../AmericanPresidentJimmyCarter/stable-diffusion.git
-[submodule "backend/SwinIR"]
-	path = backend/SwinIR
-	url = ../../jina-ai/SwinIR.git
