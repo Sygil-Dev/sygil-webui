@@ -14,20 +14,21 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # base webui import and utils.
-#from sd_utils import *
+# from sd_utils import *
 from sd_utils import st
+
 # streamlit imports
 
-#streamlit components section
+# streamlit components section
 
-#other imports
-#from fastapi import FastAPI
-#import uvicorn
+# other imports
+# from fastapi import FastAPI
+# import uvicorn
 
 # Temp imports
 
 # end of imports
-#---------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------
 
 
 def layout():

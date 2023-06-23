@@ -5,7 +5,7 @@
       <h1 class="err__title">Component Error</h1>
       <div class="err__msg">Message: {{ componentError }}</div>
     </div>
-    <!-- 
+    <!--
       Else render the component slot and pass Streamlit event data in `args` props to it.
       Don't render until we've gotten our first RENDER_EVENT from Streamlit.
       All components get disabled while the app is being re-run, and become re-enabled when the re-run has finished.

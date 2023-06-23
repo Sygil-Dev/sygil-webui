@@ -1,14 +1,11 @@
-from cmath import log
 import torch
 from torch import nn
 
-import sys
 
 from ldm.data.personalized import per_img_token_list
-from transformers import CLIPTokenizer
 from functools import partial
 
-DEFAULT_PLACEHOLDER_TOKEN = ['*']
+DEFAULT_PLACEHOLDER_TOKEN = ["*"]
 
 PROGRESSIVE_SCALE = 2000
 
@@ -20,10 +17,10 @@ def get_clip_token_for_string(tokenizer, string):
         max_length=77,
         return_length=True,
         return_overflowing_tokens=False,
-        padding='max_length',
-        return_tensors='pt',
+        padding="max_length",
+        return_tensors="pt",
     )
-    tokens = batch_encoding['input_ids']
+    tokens = batch_encoding["input_ids"]
     """ assert (
         torch.count_nonzero(tokens - 49407) == 2
     ), f"String '{string}' maps to more than a single token. Please use another string" """
@@ -63,18 +60,14 @@ class EmbeddingManager(nn.Module):
         self.string_to_token_dict = {}
         self.string_to_param_dict = nn.ParameterDict()
 
-        self.initial_embeddings = (
-            nn.ParameterDict()
-        )   # These should not be optimized
+        self.initial_embeddings = nn.ParameterDict()  # These should not be optimized
 
         self.progressive_words = progressive_words
         self.progressive_counter = 0
 
         self.max_vectors_per_token = num_vectors_per_token
 
-        if hasattr(
-            embedder, 'tokenizer'
-        ):   # using Stable Diffusion's CLIP encoder
+        if hasattr(embedder, "tokenizer"):  # using Stable Diffusion's CLIP encoder
             self.is_clip = True
             get_token_for_string = partial(
                 get_clip_token_for_string, embedder.tokenizer
@@ -84,13 +77,11 @@ class EmbeddingManager(nn.Module):
                 embedder.transformer.text_model.embeddings,
             )
             # per bug report #572
-            #token_dim = 1280
+            # token_dim = 1280
             token_dim = 768
-        else:   # using LDM's BERT encoder
+        else:  # using LDM's BERT encoder
             self.is_clip = False
-            get_token_for_string = partial(
-                get_bert_token_for_string, embedder.tknz_fn
-            )
+            get_token_for_string = partial(get_bert_token_for_string, embedder.tknz_fn)
             get_embedding_for_tkn = embedder.transformer.token_emb
             token_dim = 1280
 
@@ -98,7 +89,6 @@ class EmbeddingManager(nn.Module):
             placeholder_strings.extend(per_img_token_list)
 
         for idx, placeholder_string in enumerate(placeholder_strings):
-
             token = get_token_for_string(placeholder_string)
 
             if initializer_words and idx < len(initializer_words):
@@ -110,17 +100,11 @@ class EmbeddingManager(nn.Module):
                     )
 
                 token_params = torch.nn.Parameter(
-                    init_word_embedding.unsqueeze(0).repeat(
-                        num_vectors_per_token, 1
-                    ),
+                    init_word_embedding.unsqueeze(0).repeat(num_vectors_per_token, 1),
                     requires_grad=True,
                 )
-                self.initial_embeddings[
-                    placeholder_string
-                ] = torch.nn.Parameter(
-                    init_word_embedding.unsqueeze(0).repeat(
-                        num_vectors_per_token, 1
-                    ),
+                self.initial_embeddings[placeholder_string] = torch.nn.Parameter(
+                    init_word_embedding.unsqueeze(0).repeat(num_vectors_per_token, 1),
                     requires_grad=False,
                 )
             else:
@@ -145,24 +129,21 @@ class EmbeddingManager(nn.Module):
             placeholder_string,
             placeholder_token,
         ) in self.string_to_token_dict.items():
-
-            placeholder_embedding = self.string_to_param_dict[
-                placeholder_string
-            ].to(device)
+            placeholder_embedding = self.string_to_param_dict[placeholder_string].to(
+                device
+            )
 
             if (
                 self.max_vectors_per_token == 1
-            ):   # If there's only one vector per token, we can do a simple replacement
+            ):  # If there's only one vector per token, we can do a simple replacement
                 placeholder_idx = torch.where(
                     tokenized_text == placeholder_token.to(device)
                 )
                 embedded_text[placeholder_idx] = placeholder_embedding
-            else:   # otherwise, need to insert and keep track of changing indices
+            else:  # otherwise, need to insert and keep track of changing indices
                 if self.progressive_words:
                     self.progressive_counter += 1
-                    max_step_tokens = (
-                        1 + self.progressive_counter // PROGRESSIVE_SCALE
-                    )
+                    max_step_tokens = 1 + self.progressive_counter // PROGRESSIVE_SCALE
                 else:
                     max_step_tokens = self.max_vectors_per_token
 
@@ -177,9 +158,7 @@ class EmbeddingManager(nn.Module):
                 if placeholder_rows.nelement() == 0:
                     continue
 
-                sorted_cols, sort_idx = torch.sort(
-                    placeholder_cols, descending=True
-                )
+                sorted_cols, sort_idx = torch.sort(placeholder_cols, descending=True)
                 sorted_rows = placeholder_rows[sort_idx]
 
                 for idx in range(len(sorted_rows)):
@@ -189,9 +168,7 @@ class EmbeddingManager(nn.Module):
                     new_token_row = torch.cat(
                         [
                             tokenized_text[row][:col],
-                            placeholder_token.repeat(num_vectors_for_token).to(
-                                device
-                            ),
+                            placeholder_token.repeat(num_vectors_for_token).to(device),
                             tokenized_text[row][col + 1 :],
                         ],
                         axis=0,
@@ -213,17 +190,17 @@ class EmbeddingManager(nn.Module):
     def save(self, ckpt_path):
         torch.save(
             {
-                'string_to_token': self.string_to_token_dict,
-                'string_to_param': self.string_to_param_dict,
+                "string_to_token": self.string_to_token_dict,
+                "string_to_param": self.string_to_param_dict,
             },
             ckpt_path,
         )
 
     def load(self, ckpt_path, full=True):
-        ckpt = torch.load(ckpt_path, map_location='cpu')
+        ckpt = torch.load(ckpt_path, map_location="cpu")
 
         # Handle .pt textual inversion files
-        if 'string_to_token' in ckpt and 'string_to_param' in ckpt:
+        if "string_to_token" in ckpt and "string_to_param" in ckpt:
             self.string_to_token_dict = ckpt["string_to_token"]
             self.string_to_param_dict = ckpt["string_to_param"]
 
@@ -234,7 +211,7 @@ class EmbeddingManager(nn.Module):
                 token = get_clip_token_for_string(self.embedder.tokenizer, token_str)
                 self.string_to_token_dict[token_str] = token
                 ckpt[token_str] = torch.nn.Parameter(ckpt[token_str])
-                
+
             self.string_to_param_dict.update(ckpt)
 
         if not full:
@@ -244,10 +221,8 @@ class EmbeddingManager(nn.Module):
     def get_embedding_norms_squared(self):
         all_params = torch.cat(
             list(self.string_to_param_dict.values()), axis=0
-        )   # num_placeholders x embedding_dim
-        param_norm_squared = (all_params * all_params).sum(
-            axis=-1
-        )              # num_placeholders
+        )  # num_placeholders x embedding_dim
+        param_norm_squared = (all_params * all_params).sum(axis=-1)  # num_placeholders
 
         return param_norm_squared
 
@@ -255,7 +230,6 @@ class EmbeddingManager(nn.Module):
         return self.string_to_param_dict.parameters()
 
     def embedding_to_coarse_loss(self):
-
         loss = 0.0
         num_embeddings = len(self.initial_embeddings)
 
@@ -263,11 +237,6 @@ class EmbeddingManager(nn.Module):
             optimized = self.string_to_param_dict[key]
             coarse = self.initial_embeddings[key].clone().to(optimized.device)
 
-            loss = (
-                loss
-                + (optimized - coarse)
-                @ (optimized - coarse).T
-                / num_embeddings
-            )
+            loss = loss + (optimized - coarse) @ (optimized - coarse).T / num_embeddings
 
         return loss

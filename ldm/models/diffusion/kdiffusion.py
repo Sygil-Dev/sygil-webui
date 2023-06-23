@@ -2,25 +2,45 @@ import k_diffusion as K
 import torch
 import torch.nn as nn
 
+
 class KDiffusionSampler:
     def __init__(self, m, sampler, callback=None):
         self.model = m
         self.model_wrap = K.external.CompVisDenoiser(m)
         self.schedule = sampler
         self.generation_callback = callback
+
     def get_sampler_name(self):
         return self.schedule
-    def sample(self, S, conditioning, unconditional_guidance_scale, unconditional_conditioning, x_T):
+
+    def sample(
+        self,
+        S,
+        conditioning,
+        unconditional_guidance_scale,
+        unconditional_conditioning,
+        x_T,
+    ):
         sigmas = self.model_wrap.get_sigmas(S)
         x = x_T * sigmas[0]
         model_wrap_cfg = CFGDenoiser(self.model_wrap)
         samples_ddim = None
-        samples_ddim = K.sampling.__dict__[f'sample_{self.schedule}'](
-            model_wrap_cfg, x, sigmas,
-            extra_args={'cond': conditioning, 'uncond': unconditional_conditioning,'cond_scale': unconditional_guidance_scale},
-            disable=False, callback=self.generation_callback)
+        samples_ddim = K.sampling.__dict__[f"sample_{self.schedule}"](
+            model_wrap_cfg,
+            x,
+            sigmas,
+            extra_args={
+                "cond": conditioning,
+                "uncond": unconditional_conditioning,
+                "cond_scale": unconditional_guidance_scale,
+            },
+            disable=False,
+            callback=self.generation_callback,
+        )
         #
         return samples_ddim, None
+
+
 class CFGMaskedDenoiser(nn.Module):
     def __init__(self, model):
         super().__init__()
@@ -37,10 +57,11 @@ class CFGMaskedDenoiser(nn.Module):
         if mask is not None:
             assert x0 is not None
             img_orig = x0
-            mask_inv = 1. - mask
+            mask_inv = 1.0 - mask
             denoised = (img_orig * mask_inv) + (mask * denoised)
 
         return denoised
+
 
 class CFGDenoiser(nn.Module):
     def __init__(self, model):

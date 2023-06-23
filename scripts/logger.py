@@ -9,6 +9,7 @@ MESSAGE_LEVELS = ["MESSAGE"]
 verbosity = 20
 quiet = 0
 
+
 def set_logger_verbosity(count):
     global verbosity
     # The count comes reversed. So count = 0 means minimum verbosity
@@ -16,41 +17,51 @@ def set_logger_verbosity(count):
     # So the more count we have, the lowe we drop the versbosity maximum
     verbosity = 20 - (count * 10)
 
+
 def quiesce_logger(count):
     global quiet
     # The bigger the count, the more silent we want our logger
     quiet = count * 10
 
+
 def is_stdout_log(record):
     if record["level"].name not in STDOUT_LEVELS:
-        return(False)
+        return False
     if record["level"].no < verbosity + quiet:
-        return(False)
-    return(True)
+        return False
+    return True
+
 
 def is_init_log(record):
     if record["level"].name not in INIT_LEVELS:
-        return(False)
+        return False
     if record["level"].no < verbosity + quiet:
-        return(False)
-    return(True)
+        return False
+    return True
+
 
 def is_msg_log(record):
     if record["level"].name not in MESSAGE_LEVELS:
-        return(False)
+        return False
     if record["level"].no < verbosity + quiet:
-        return(False)
-    return(True)
+        return False
+    return True
+
 
 def is_stderr_log(record):
     if record["level"].name in STDOUT_LEVELS + INIT_LEVELS + MESSAGE_LEVELS:
-        return(False)
+        return False
     if record["level"].no < verbosity + quiet:
-        return(False)
-    return(True)
+        return False
+    return True
+
 
 def test_logger():
-    logger.generation("This is a generation message\nIt is typically multiline\nThee Lines".encode("unicode_escape").decode("utf-8"))
+    logger.generation(
+        "This is a generation message\nIt is typically multiline\nThee Lines".encode(
+            "unicode_escape"
+        ).decode("utf-8")
+    )
     logger.prompt("This is a prompt message")
     logger.debug("Debug Message")
     logger.info("Info Message")
@@ -94,12 +105,40 @@ logger.__class__.message = partialmethod(logger.__class__.log, "MESSAGE")
 
 config = {
     "handlers": [
-        {"sink": sys.stderr, "format": logfmt, "colorize":True, "filter": is_stderr_log},
-        {"sink": sys.stdout, "format": genfmt, "level": "PROMPT", "colorize":True, "filter": is_stdout_log},
-        {"sink": sys.stdout, "format": initfmt, "level": "INIT", "colorize":True, "filter": is_init_log},
-        {"sink": sys.stdout, "format": msgfmt, "level": "MESSAGE", "colorize":True, "filter": is_msg_log}
+        {
+            "sink": sys.stderr,
+            "format": logfmt,
+            "colorize": True,
+            "filter": is_stderr_log,
+        },
+        {
+            "sink": sys.stdout,
+            "format": genfmt,
+            "level": "PROMPT",
+            "colorize": True,
+            "filter": is_stdout_log,
+        },
+        {
+            "sink": sys.stdout,
+            "format": initfmt,
+            "level": "INIT",
+            "colorize": True,
+            "filter": is_init_log,
+        },
+        {
+            "sink": sys.stdout,
+            "format": msgfmt,
+            "level": "MESSAGE",
+            "colorize": True,
+            "filter": is_msg_log,
+        },
     ],
 }
 logger.configure(**config)
 
-logger.add("logs/log_{time:MM-DD-YYYY!UTC}.log", rotation="8 MB", compression="zip", level='INFO')    # Once the file is too old, it's rotated
+logger.add(
+    "logs/log_{time:MM-DD-YYYY!UTC}.log",
+    rotation="8 MB",
+    compression="zip",
+    level="INFO",
+)  # Once the file is too old, it's rotated

@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from os import path
 import json
 
@@ -28,7 +28,7 @@ def readTextFile(*args):
 def css(opt):
     styling = readTextFile("css", "styles.css")
     if not opt.no_progressbar_hiding:
-         styling += readTextFile("css", "no_progress_bar.css")
+        styling += readTextFile("css", "no_progress_bar.css")
     return styling
 
 

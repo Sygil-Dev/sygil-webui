@@ -12,7 +12,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os, time, argparse
 
 # USER CHANGABLE ARGUMENTS
@@ -40,40 +40,56 @@ tiling = False
 additional_arguments = ""
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-v', '--verbosity', action='count', default=0, help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen")
-parser.add_argument('-n', '--horde_name', action="store", required=False, type=str, help="The server name for the Horde. It will be shown to the world and there can be only one.")
-parser.add_argument('--bridge', action="store_true", required=False, default=False, help="When specified, start the stable horde bridge instead of the webui.")
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    action="count",
+    default=0,
+    help="The default logging level is ERROR or higher. This value increases the amount of logging seen in your screen",
+)
+parser.add_argument(
+    "-n",
+    "--horde_name",
+    action="store",
+    required=False,
+    type=str,
+    help="The server name for the Horde. It will be shown to the world and there can be only one.",
+)
+parser.add_argument(
+    "--bridge",
+    action="store_true",
+    required=False,
+    default=False,
+    help="When specified, start the stable horde bridge instead of the webui.",
+)
 args = parser.parse_args()
 
 if args.bridge:
-    additional_arguments += f' --bridge'
+    additional_arguments += " --bridge"
     if args.horde_name:
         additional_arguments += f' --horde_name "{args.horde_name}"'
     if args.verbosity:
         for iter in range(args.verbosity):
-            additional_arguments += ' -v'
+            additional_arguments += " -v"
     print(f"Additional args: {additional_arguments}")
-
-
-
 
 
 # BEGIN RELAUNCHER PYTHON CODE
 
 common_arguments = ""
 
-if extra_models_cpu == True:
+if extra_models_cpu is True:
     common_arguments += "--extra-models-cpu "
-if optimized_turbo == True:
+if optimized_turbo is True:
     common_arguments += "--optimized-turbo "
-if optimized == True:
+if optimized is True:
     common_arguments += "--optimized "
-if tiling == True:
+if tiling is True:
     common_arguments += "--tiling "
-if share == True:
+if share is True:
     common_arguments += "--share "
 
-if open_in_browser == True:
+if open_in_browser is True:
     inbrowser_argument = "--inbrowser "
 else:
     inbrowser_argument = ""
@@ -81,17 +97,19 @@ else:
 n = 0
 while True:
     if n == 0:
-        print('Relauncher: Launching...')
-        os.system(f"python scripts/webui.py {common_arguments} {inbrowser_argument} {additional_arguments}")
-        
+        print("Relauncher: Launching...")
+        os.system(
+            f"python scripts/webui.py {common_arguments} {inbrowser_argument} {additional_arguments}"
+        )
+
     else:
-        print(f'\tRelaunch count: {n}')
-        print('Relauncher: Launching...')
+        print(f"\tRelaunch count: {n}")
+        print("Relauncher: Launching...")
         os.system(f"python scripts/webui.py {common_arguments} {additional_arguments}")
-    
+
     n += 1
     if n > 100:
-        print ('Too many relaunch attempts. Aborting...')
+        print("Too many relaunch attempts. Aborting...")
         break
-    print('Relauncher: Process is ending. Relaunching in 1s...')
+    print("Relauncher: Process is ending. Relaunching in 1s...")
     time.sleep(1)

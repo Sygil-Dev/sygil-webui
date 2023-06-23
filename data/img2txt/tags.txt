@@ -1799,7 +1799,7 @@ vacbed
 vaginal-birth
 vaginal-sticker
 vampire
-variant-set	
+variant-set
 vegetablenabe
 vel
 very-long-hair
