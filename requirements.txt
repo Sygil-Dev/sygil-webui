@@ -44,6 +44,7 @@ matplotlib==3.6.
 resize-right==0.0.2
 torchdiffeq==0.2.3
 barfi==0.7.0
+altair<5
 
 # Environment Dependencies for WebUI (flet)
 
