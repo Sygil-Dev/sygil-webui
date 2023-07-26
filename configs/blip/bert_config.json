@@ -17,5 +17,5 @@
   "type_vocab_size": 2,
   "vocab_size": 30522,
   "encoder_width": 768,
-  "add_cross_attention": true   
+  "add_cross_attention": true
 }

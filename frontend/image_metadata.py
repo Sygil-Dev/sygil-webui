@@ -12,14 +12,15 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
-''' Class to store image generation parameters to be stored as metadata in the image'''
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+""" Class to store image generation parameters to be stored as metadata in the image"""
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Dict, Optional
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import copy
+
 
 @dataclass
 class ImageMetadata:
@@ -40,11 +41,15 @@ class ImageMetadata:
         return info
 
     def as_dict(self) -> Dict[str, str]:
-        return {f"SD:{key}": str(value) for key, value in asdict(self).items() if value is not None}
+        return {
+            f"SD:{key}": str(value)
+            for key, value in asdict(self).items()
+            if value is not None
+        }
 
     @classmethod
     def set_on_image(cls, image: Image, metadata: ImageMetadata) -> None:
-        ''' Sets metadata on image, in both text form and as an ImageMetadata object '''
+        """Sets metadata on image, in both text form and as an ImageMetadata object"""
         if metadata:
             image.info = metadata.as_dict()
         else:
@@ -53,8 +58,8 @@ class ImageMetadata:
 
     @classmethod
     def get_from_image(cls, image: Image) -> Optional[ImageMetadata]:
-        ''' Gets metadata from an image, first looking for an ImageMetadata,
-            then if not found tries to construct one from the info '''
+        """Gets metadata from an image, first looking for an ImageMetadata,
+        then if not found tries to construct one from the info"""
         metadata = image.info.get("ImageMetadata", None)
         if not metadata:
             found_metadata = False

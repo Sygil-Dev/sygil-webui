@@ -14,7 +14,7 @@
 # GNU Affero General Public License for more details.
 
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Start the Stable Diffusion WebUI for Linux Users
 
 DIRECTORY="."
@@ -37,9 +37,9 @@ REALESRGAN_ANIME_MODEL="https://github.com/xinntao/Real-ESRGAN/releases/download
 SD_CONCEPT_REPO="https://github.com/Sygil-Dev/sd-concepts-library/archive/refs/heads/main.zip"
 
 
-if [[ -f $ENV_MODIFED_FILE ]]; then 
+if [[ -f $ENV_MODIFED_FILE ]]; then
     ENV_MODIFIED_CACHED=$(<${ENV_MODIFED_FILE})
-else 
+else
     ENV_MODIFIED_CACHED=0
 fi
 

@@ -6,7 +6,7 @@ denoising_strength: 0.55
 variation: 3
 initial_seed: 1
 
-# put foreground onto background 
+# put foreground onto background
 size: 512, 512
 color: 0,0,0
 
@@ -16,7 +16,7 @@ color:0,0,0,0
 resize: 300, 300
 pos: 256, 350
 
-// select mask by probing some pixels from the image 
+// select mask by probing some pixels from the image
 mask_by_color_at: 15, 15,   15, 256,   85, 465,  100, 480
 mask_by_color_threshold:80
 mask_by_color_space: HLS

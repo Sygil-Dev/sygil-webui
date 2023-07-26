@@ -5,7 +5,7 @@ var parentDoc = window.parent.document
 var havePointerLock = 'pointerLockElement' in parentDoc ||
   'mozPointerLockElement' in parentDoc ||
   'webkitPointerLockElement' in parentDoc;
-  
+
 // the pointer locking exit function
 parentDoc.exitPointerLock = parentDoc.exitPointerLock || parentDoc.mozExitPointerLock || parentDoc.webkitExitPointerLock;
 
@@ -35,10 +35,10 @@ function Lock(field)
 	var rect = field.getBoundingClientRect();
 	lockBox.style.left = (rect.left-2.5)+"px";
 	lockBox.style.top = (rect.top-2.5)+"px";
-	
+
 	lockBox.style.width = (rect.width+2.5)+"px";
 	lockBox.style.height = (rect.height+5)+"px";
-	
+
 	lockBox.requestPointerLock();
 }
 
@@ -47,7 +47,7 @@ function Unlock()
 	parentDoc.exitPointerLock();
 	lockBox.style.left = "0px";
 	lockBox.style.top = "0px";
-	
+
 	lockBox.style.width = "0px";
 	lockBox.style.height = "0px";
 	lockedField.focus();
@@ -73,29 +73,29 @@ parentDoc.addEventListener('mousedown', (e) => {
 			// set to 0 if field is empty
 			if(lockedField.value === '')
 				lockedField.value = 0.0;
-				
+
 			// save current field value
 			lockedValue = parseFloat(lockedField.value);
-			
+
 			if(lockedField.min === '' || lockedField.min === '-Infinity')
 				lockedMin = -99999999.0;
 			else
 				lockedMin = parseFloat(lockedField.min);
-			
+
 			if(lockedField.max === '' || lockedField.max === 'Infinity')
 				lockedMax = 99999999.0;
 			else
 				lockedMax = parseFloat(lockedField.max);
-			
+
 			if(lockedField.step === '' || lockedField.step === 'Infinity')
 				lockedStep = 1.0;
 			else
 				lockedStep = parseFloat(lockedField.step);
-			
+
 			// lock pointer if available
 			if(havePointerLock)
 				Lock(lockedField);
-			
+
 			// add drag event
 			parentDoc.addEventListener("mousemove", onDrag, false);
 		}
@@ -125,7 +125,7 @@ parentDoc.addEventListener('mouseup', (e) => {
 		// release pointer lock if available
 		if(havePointerLock)
 			Unlock();
-		
+
 		if(lockedField !== null && lockedField !== NaN)
 		{
 			// stop drag event
@@ -171,7 +171,7 @@ if(!parentDoc.hasOwnProperty("dragableInitialized"))
 	z-index: 1000;
 }
 `;
-	
+
 	// get parent document head
 	var head = parentDoc.getElementsByTagName('head')[0];
 	// add style tag
@@ -189,4 +189,3 @@ if(!parentDoc.hasOwnProperty("dragableInitialized"))
 	// set flag so this only runs once
 	parentDoc["dragableInitialized"] = true;
 }
-

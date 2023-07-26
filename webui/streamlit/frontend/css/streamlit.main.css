@@ -146,7 +146,7 @@ div.gallery:hover {
 .css-jn99sy {
 	display: none
 	}
-	
+
 /* Make the text area widget have a similar height as the text input field */
 .st-dy{
 	height: 54px;
@@ -154,14 +154,14 @@ div.gallery:hover {
 }
 .css-17useex{
 	gap: 3px;
-	
+
 }
 
 /* Remove some empty spaces to make the UI more compact. */
 .css-18e3th9{
 	padding-left: 10px;
 	padding-right: 30px;
-	position: unset !important; /* Fixes the layout/page going up when an expander or another item is expanded and then collapsed */ 
+	position: unset !important; /* Fixes the layout/page going up when an expander or another item is expanded and then collapsed */
 }
 .css-k1vhr4{
 	padding-top: initial;

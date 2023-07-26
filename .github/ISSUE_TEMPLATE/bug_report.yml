@@ -40,7 +40,7 @@ body:
   - type: dropdown
     id: os
     attributes:
-      label: Where are you running the webui? 
+      label: Where are you running the webui?
       multiple: true
       options:
         - Windows
@@ -52,7 +52,7 @@ body:
     attributes:
       label: Custom settings
       description: If you are running the webui with specifi settings, please paste them here for reference (like --nitro)
-      render: shell        
+      render: shell
   - type: textarea
     id: logs
     attributes:
