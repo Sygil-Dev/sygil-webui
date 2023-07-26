@@ -29,10 +29,16 @@ class TextFileLike(T.Protocol):
 
 
 def verify_permissions(
-    client: Client, permissions: abc.Iterable[T.Union[int, Permission]], exact: bool = False
+    client: Client,
+    permissions: abc.Iterable[T.Union[int, Permission]],
+    exact: bool = False,
 ) -> bool:
     granted_permissions = set(client.verify_access_key()["basic_permissions"])
-    return granted_permissions == set(permissions) if exact else granted_permissions.issuperset(permissions)
+    return (
+        granted_permissions == set(permissions)
+        if exact
+        else granted_permissions.issuperset(permissions)
+    )
 
 
 def cli_request_api_key(
@@ -48,7 +54,9 @@ def cli_request_api_key(
             'request". Then press enter to continue...'
         )
         access_key = Client(api_url=api_url).request_new_permissions(name, permissions)
-        input("Press OK and then apply in the Hydrus client dialog. Then press enter to continue...")
+        input(
+            "Press OK and then apply in the Hydrus client dialog. Then press enter to continue..."
+        )
 
         client = Client(access_key, api_url)
         if verify and not verify_permissions(client, permissions, exact):
@@ -62,7 +70,9 @@ def cli_request_api_key(
         return access_key
 
 
-def parse_hydrus_metadata(text: str) -> collections.defaultdict[T.Optional[str], set[str]]:
+def parse_hydrus_metadata(
+    text: str,
+) -> collections.defaultdict[T.Optional[str], set[str]]:
     namespaces = collections.defaultdict(set)
     for line in (line.strip() for line in text.splitlines()):
         if not line:
@@ -87,7 +97,9 @@ def parse_hydrus_metadata_file(
 
 
 # Useful for splitting up requests to get_file_metadata()
-def yield_chunks(sequence: T.Sequence[X], chunk_size: int, offset: int = 0) -> T.Generator[T.Sequence[X], None, None]:
+def yield_chunks(
+    sequence: T.Sequence[X], chunk_size: int, offset: int = 0
+) -> T.Generator[T.Sequence[X], None, None]:
     while offset < len(sequence):
         yield sequence[offset : offset + chunk_size]
         offset += chunk_size

@@ -4,7 +4,7 @@ ddim_steps: 50
 denoising_strength: 0.5
 initial_seed: 2
 
-# put foreground onto background 
+# put foreground onto background
 size: 512, 512
 
 ## create foreground

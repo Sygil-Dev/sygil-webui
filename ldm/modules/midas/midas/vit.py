@@ -56,7 +56,7 @@ class Transpose(nn.Module):
 def forward_vit(pretrained, x):
     b, c, h, w = x.shape
 
-    glob = pretrained.model.forward_flex(x)
+    pretrained.model.forward_flex(x)
 
     layer_1 = pretrained.activations["1"]
     layer_2 = pretrained.activations["2"]
@@ -297,7 +297,7 @@ def _make_vit_b16_backbone(
 def _make_pretrained_vitl16_384(pretrained, use_readout="ignore", hooks=None):
     model = timm.create_model("vit_large_patch16_384", pretrained=pretrained)
 
-    hooks = [5, 11, 17, 23] if hooks == None else hooks
+    hooks = [5, 11, 17, 23] if hooks is None else hooks
     return _make_vit_b16_backbone(
         model,
         features=[256, 512, 1024, 1024],
@@ -310,7 +310,7 @@ def _make_pretrained_vitl16_384(pretrained, use_readout="ignore", hooks=None):
 def _make_pretrained_vitb16_384(pretrained, use_readout="ignore", hooks=None):
     model = timm.create_model("vit_base_patch16_384", pretrained=pretrained)
 
-    hooks = [2, 5, 8, 11] if hooks == None else hooks
+    hooks = [2, 5, 8, 11] if hooks is None else hooks
     return _make_vit_b16_backbone(
         model, features=[96, 192, 384, 768], hooks=hooks, use_readout=use_readout
     )
@@ -319,7 +319,7 @@ def _make_pretrained_vitb16_384(pretrained, use_readout="ignore", hooks=None):
 def _make_pretrained_deitb16_384(pretrained, use_readout="ignore", hooks=None):
     model = timm.create_model("vit_deit_base_patch16_384", pretrained=pretrained)
 
-    hooks = [2, 5, 8, 11] if hooks == None else hooks
+    hooks = [2, 5, 8, 11] if hooks is None else hooks
     return _make_vit_b16_backbone(
         model, features=[96, 192, 384, 768], hooks=hooks, use_readout=use_readout
     )
@@ -330,7 +330,7 @@ def _make_pretrained_deitb16_distil_384(pretrained, use_readout="ignore", hooks=
         "vit_deit_base_distilled_patch16_384", pretrained=pretrained
     )
 
-    hooks = [2, 5, 8, 11] if hooks == None else hooks
+    hooks = [2, 5, 8, 11] if hooks is None else hooks
     return _make_vit_b16_backbone(
         model,
         features=[96, 192, 384, 768],
@@ -354,7 +354,7 @@ def _make_vit_b_rn50_backbone(
 
     pretrained.model = model
 
-    if use_vit_only == True:
+    if use_vit_only is True:
         pretrained.model.blocks[hooks[0]].register_forward_hook(get_activation("1"))
         pretrained.model.blocks[hooks[1]].register_forward_hook(get_activation("2"))
     else:
@@ -372,7 +372,7 @@ def _make_vit_b_rn50_backbone(
 
     readout_oper = get_readout_oper(vit_features, features, use_readout, start_index)
 
-    if use_vit_only == True:
+    if use_vit_only is True:
         pretrained.act_postprocess1 = nn.Sequential(
             readout_oper[0],
             Transpose(1, 2),
@@ -480,7 +480,7 @@ def _make_pretrained_vitb_rn50_384(
 ):
     model = timm.create_model("vit_base_resnet50_384", pretrained=pretrained)
 
-    hooks = [0, 1, 8, 11] if hooks == None else hooks
+    hooks = [0, 1, 8, 11] if hooks is None else hooks
     return _make_vit_b_rn50_backbone(
         model,
         features=[256, 512, 768, 768],

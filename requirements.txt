@@ -99,12 +99,10 @@ gfpgan==1.3.8  # GFPGAN
 realesrgan==0.3.0  # RealESRGAN brings in GFPGAN as a requirement
 -e git+https://github.com/devilismyfriend/latent-diffusion#egg=latent-diffusion
 
-## for monocular depth estimation 
+## for monocular depth estimation
 tensorflow==2.10.0
 
 # Unused Packages: No current usage but will be used in the future.
 
 
 # Orphaned Packages:  No usage found
-
-

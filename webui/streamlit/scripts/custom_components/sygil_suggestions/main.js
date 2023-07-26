@@ -102,7 +102,7 @@ function UpdateSize()
 {
 	// calculate maximum height
 	var maxHeight = buttonHeight * maxHeightInButtons;
-	
+
 	var height = suggestionArea.lastChild.offsetTop + buttonHeight;
 	// apply height to iframe
 	frame.style.height = frameHeight.replace("{}", Math.min(height,maxHeight)+"px");
@@ -186,7 +186,7 @@ function OnKey(e)
 }
 
 function getCaretPosition(ctrl) {
-    // IE < 9 Support 
+    // IE < 9 Support
     if (document.selection) {
         ctrl.focus();
         var range = document.selection.createRange();
@@ -217,7 +217,7 @@ function setCaretPosition(ctrl, start, end) {
         ctrl.focus();
         ctrl.setSelectionRange(start, end);
     }
-    // IE < 9 
+    // IE < 9
     else if (ctrl.createTextRange) {
         var range = ctrl.createTextRange();
         range.collapse(true);
@@ -240,9 +240,9 @@ function ButtonUpdateContext(changeCategory)
 		var pos = getCaretPosition(promptField).end;
 		text = promptField.value.slice(0, pos);
 	}
-	
+
 	activeContext = [];
-	
+
 	var parts = text.split(/[\.?!,]/);
 	if(activeCategory == "Artists" && !isEmptyOrSpaces(parts[parts.length-1]))
 	{
@@ -262,7 +262,7 @@ function ButtonUpdateContext(changeCategory)
 	{
 		var parts = text.split(/[\.,!?;]/);
 		parts = parts.reverse();
-		
+
 		parts.forEach( part =>
 		{
 			var words = part.split(" ");
@@ -278,7 +278,7 @@ function ButtonUpdateContext(changeCategory)
 			});
 		});
 	}
-	
+
 	if(activeContext.length == 0)
 	{
 		if(activeCategory == contextCategory)
@@ -329,7 +329,7 @@ function PatternWalk(text, pattern)
 {
 	var parts = text.split(/[\,!?;]/);
 	var part = parts[parts.length - 1];
-	
+
 	var indent = 0;
 	var outPattern = "";
 	var requirement = ""
@@ -391,7 +391,7 @@ function PatternWalk(text, pattern)
 					else if(pattern[i] == "," || pattern[i] == "!" || pattern[i] == "?" || pattern[i] == ";" )
 					{
 						let textToCheck = (text+outPattern).trim();
-						
+
 						if(textToCheck.endsWith("and"))
 						{
 							outPattern += "{_}";
@@ -478,7 +478,7 @@ function PatternWalk(text, pattern)
 						}
 						var o = pattern.slice(i+1).search(/[^\w\s]/);
 						var subpattern = pattern.slice(i+1,i+1+o);
-						
+
 						var index = part.lastIndexOf(subpattern);
 						var subPatternIndex = subpattern.length;
 						while(index == -1)
@@ -488,7 +488,7 @@ function PatternWalk(text, pattern)
 								patternFailed = true;
 								break;
 							}
-							
+
 							subPatternIndex--;
 							var slice = subpattern.slice(0,subPatternIndex);
 							index = part.lastIndexOf(slice);
@@ -572,17 +572,17 @@ function InsertPhrase(phrase, pattern)
 	}
 	var insert = PatternWalk(text,pattern);
 	insert = insert.replace('{}',phrase);
-	
+
 	let firstLetter = phrase.trim()[0];
-	
+
 	if(firstLetter == "a" || firstLetter == "e" || firstLetter == "i" || firstLetter == "o" || firstLetter == "u")
 		insert = insert.replace('{_}',"an");
 	else
 		insert = insert.replace('{_}',"a");
-	
+
 	insert = insert.replace(/{[^|]/,"");
 	insert = insert.replace(/[^|]}/,"");
-	
+
 	var caret = (text+insert).indexOf("{|}");
 	insert = insert.replace('{|}',"");
 	// inserting via execCommand is required, this triggers all native browser functionality as if the user wrote into the prompt field.
@@ -595,7 +595,7 @@ function SelectPhrase(e)
 	KeepFocus(e);
 	var pattern = e.target.getAttribute("pattern");
 	var phrase = e.target.getAttribute("data");
-	
+
 	InsertPhrase(phrase,pattern);
 }
 
@@ -614,12 +614,12 @@ function ButtonConditions()
 	conditionalButtons.forEach(entry =>
 	{
 		let filtered = !CheckButtonCondition(entry.condition);
-		
+
 		if(entry.filterGroup != null)
 		{
 			entry.filterGroup.split(",").forEach( (group) =>
 			{
-				
+
 				if(activeFilters.includes(group.trim().toLowerCase()))
 				{
 					filtered = filtered || true;
@@ -658,7 +658,7 @@ function ShowTooltip(text, target, image = "")
 	element.innerText = text;
 	if(image != "" && image != null && thumbnails[cleanedName] !== undefined)
 	{
-		
+
 		var img = parentDoc.createElement('img');
 		img.src = GetThumbnailURL(cleanedName);
 		element.appendChild(img)
@@ -809,21 +809,21 @@ function BuildTriggerIndex()
 					}
 				});
 			}
-			
+
 			/*let words = entry["phrase"].split(" ");
 			let wordCount = words.length;
 			for(let e = 0; e < wordCount; e++)
 			{
 				let wordKey = WordToKey(words[e].replace(/[^a-zA-Z0-9 \._\-]/g, '').trim().toLowerCase());
-				
+
 				if(wordKey.length < 2)
 					continue;
-				
+
 				if(!wordMap.hasOwnProperty(wordKey))
 				{
 					wordMap[wordKey] = [];
 				}
-				
+
 				let entrySearchTags = entry["search_tags"].split(",");
 				entrySearchTags.push(category);
 				entrySearchTags.forEach( search_tag =>
@@ -862,7 +862,7 @@ function ShowMenu()
 	// clear all buttons from menu
 	ClearSuggestionArea();
 	HideTooltip();
-	
+
 	// if no chategory is selected
 	if(activeCategory == "")
 	{
@@ -890,14 +890,14 @@ function ShowMenu()
 				{
 					var entry = keyPhrases[word.category]["entries"][word.index];
 					var tempPattern = keyPhrases[word.category]["pattern"];
-					
+
 					if(entry["pattern_override"] != "")
 					{
 						tempPattern = entry["pattern_override"];
 					}
-					
+
 					var button = AddButton(entry["phrase"], SelectPhrase, entry["description"], entry["phrase"],tempPattern, entry["phrase"]);
-					
+
 					ConditionalButton(entry, button);
 				});
 			}
@@ -908,19 +908,19 @@ function ShowMenu()
 				{
 					var entry = keyPhrases[trigger.category]["entries"][trigger.index];
 					var tempPattern = keyPhrases[trigger.category]["pattern"];
-					
+
 					if(entry["pattern_override"] != "")
 					{
 						tempPattern = entry["pattern_override"];
 					}
-					
+
 					var button = AddButton(entry["phrase"], SelectPhrase, entry["description"], entry["phrase"],tempPattern, entry["phrase"]);
-					
+
 					ConditionalButton(entry, button);
 				});
 			}
 		});
-		
+
 		ButtonConditions();
 		// change iframe size after buttons have been added
 		UpdateSize();
@@ -938,9 +938,9 @@ function ShowMenu()
 			{
 				tempPattern = entry["pattern_override"];
 			}
-			
+
 			var button = AddButton(entry["phrase"], SelectPhrase, entry["description"], entry["phrase"],tempPattern, entry["phrase"]);
-			
+
 			ConditionalButton(entry, button);
 		});
 		ButtonConditions();
@@ -955,14 +955,14 @@ parentDoc.addEventListener("click", (e) =>
 	// skip if this frame is not visible
 	if(!isVisible(frame))
 		return;
-	
+
 	// if the iframes prompt field is not set, get it and set it
 	if(promptField === null)
 	{
 		GetPromptField();
 		ButtonUpdateContext(true);
 	}
-	
+
 	// get the field with focus
 	var target = parentDoc.activeElement;
 
@@ -1024,7 +1024,7 @@ BuildTriggerIndex();
 if(!parentDoc.hasOwnProperty('keyPhraseSuggestionsInitialized'))
 {
 	AppendStyle(parentDoc, "key-phrase-suggestions", parentCSS);
-	
+
 	var tooltip = parentDoc.createElement('div');
 	tooltip.id = "phrase-tooltip";
 	parentDoc.body.appendChild(tooltip);
@@ -1032,10 +1032,10 @@ if(!parentDoc.hasOwnProperty('keyPhraseSuggestionsInitialized'))
 	// set flag so this only runs once
 	parentDoc["keyPhraseSuggestionsLoadedBlobs"] = {};
 	parentDoc["keyPhraseSuggestionsInitialized"] = true;
-	
+
 	var cssVars = getAllCSSVariableNames();
 	computedStyle = getComputedStyle(parentDoc.documentElement);
-	
+
 	parentDoc["keyPhraseSuggestionsCSSvariables"] = ":root{";
 
 	cssVars.forEach( (rule) =>

@@ -27,7 +27,7 @@ const config = {
     defaultLocale: 'en',
     locales: ['en'],
   },
-  
+
   // ...
   plugins: [
     [
@@ -108,7 +108,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-			
+
 			sidebarCollapsed: false,
 			sidebarPath: require.resolve('./sidebars.js'),
 			// Please change this to your repo.

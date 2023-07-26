@@ -27,7 +27,7 @@ transform3d_max_mask: 255
 transform3d_inpaint_radius: 1
 transform3d_inpaint_method: 0
 
-## put foreground onto background 
+## put foreground onto background
 size: 512, 512
 
 

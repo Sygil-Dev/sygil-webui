@@ -1,4 +1,4 @@
-image_root: '/export/share/datasets/vision/NLVR2/' 
+image_root: '/export/share/datasets/vision/NLVR2/'
 ann_root: 'annotation'
 
 # set pretrained as a file path or an url
@@ -6,8 +6,8 @@ pretrained: 'https://storage.googleapis.com/sfr-vision-language-research/BLIP/mo
 
 #size of vit model; base or large
 vit: 'base'
-batch_size_train: 16 
-batch_size_test: 64 
+batch_size_train: 16
+batch_size_test: 64
 vit_grad_ckpt: False
 vit_ckpt_layer: 0
 max_epoch: 15
@@ -18,4 +18,3 @@ image_size: 384
 weight_decay: 0.05
 init_lr: 3e-5
 min_lr: 0
-

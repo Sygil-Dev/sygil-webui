@@ -220,9 +220,9 @@ class Client:
 
     def __init__(
         self,
-        access_key = None,
+        access_key=None,
         api_url: str = DEFAULT_API_URL,
-        session = None,
+        session=None,
     ):
         """
         See https://hydrusnetwork.github.io/hydrus/help/client_api.html for documentation.
@@ -234,7 +234,9 @@ class Client:
 
     def _api_request(self, method: str, path: str, **kwargs: T.Any):
         if self.access_key is not None:
-            kwargs.setdefault("headers", {}).update({"Hydrus-Client-API-Access-Key": self.access_key})
+            kwargs.setdefault("headers", {}).update(
+                {"Hydrus-Client-API-Access-Key": self.access_key}
+            )
 
         # Make sure we use our custom JSONEncoder that can serialize all objects that implement the iterable or mapping
         # protocol
@@ -278,7 +280,10 @@ class Client:
         response = self._api_request(
             "GET",
             self._REQUEST_NEW_PERMISSIONS_PATH,
-            params={"name": name, "basic_permissions": json.dumps(permissions, cls=JSONEncoder)},
+            params={
+                "name": name,
+                "basic_permissions": json.dumps(permissions, cls=JSONEncoder),
+            },
         )
         return response.json()["access_key"]
 
@@ -296,7 +301,9 @@ class Client:
 
     def add_file(self, path_or_file: T.Union[str, os.PathLike, BinaryFileLike]):
         if isinstance(path_or_file, (str, os.PathLike)):
-            response = self._api_request("POST", self._ADD_FILE_PATH, json={"path": os.fspath(path_or_file)})
+            response = self._api_request(
+                "POST", self._ADD_FILE_PATH, json={"path": os.fspath(path_or_file)}
+            )
         else:
             response = self._api_request(
                 "POST",
@@ -309,16 +316,18 @@ class Client:
 
     def delete_files(
         self,
-        hashes = None,
-        file_ids  = None,
-        file_service_name = None,
-        file_service_key = None,
-        reason = None
+        hashes=None,
+        file_ids=None,
+        file_service_name=None,
+        file_service_key=None,
+        reason=None,
     ):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
         if file_service_name is not None and file_service_key is not None:
-            raise ValueError("Exactly one of file_service_name, file_service_key is required")
+            raise ValueError(
+                "Exactly one of file_service_name, file_service_key is required"
+            )
 
         payload: dict[str, T.Any] = {}
         if hashes is not None:
@@ -336,15 +345,17 @@ class Client:
 
     def undelete_files(
         self,
-        hashes = None,
-        file_ids = None,
-        file_service_name = None,
-        file_service_key = None,
+        hashes=None,
+        file_ids=None,
+        file_service_name=None,
+        file_service_key=None,
     ):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
         if file_service_name is not None and file_service_key is not None:
-            raise ValueError("Exactly one of file_service_name, file_service_key is required")
+            raise ValueError(
+                "Exactly one of file_service_name, file_service_key is required"
+            )
 
         payload: dict[str, T.Any] = {}
         if hashes is not None:
@@ -358,11 +369,7 @@ class Client:
 
         self._api_request("POST", self._UNDELETE_FILES_PATH, json=payload)
 
-    def archive_files(
-        self,
-        hashes = None,
-        file_ids = None
-    ):
+    def archive_files(self, hashes=None, file_ids=None):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
 
@@ -374,11 +381,7 @@ class Client:
 
         self._api_request("POST", self._ARCHIVE_FILES_PATH, json=payload)
 
-    def unarchive_files(
-        self,
-        hashes = None,
-        file_ids = None
-    ):
+    def unarchive_files(self, hashes=None, file_ids=None):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
 
@@ -390,18 +393,19 @@ class Client:
 
         self._api_request("POST", self._UNARCHIVE_FILES_PATH, json=payload)
 
-    def clean_tags(self, tags ):
-        response = self._api_request("GET", self._CLEAN_TAGS_PATH, params={"tags": json.dumps(tags, cls=JSONEncoder)})
+    def clean_tags(self, tags):
+        response = self._api_request(
+            "GET",
+            self._CLEAN_TAGS_PATH,
+            params={"tags": json.dumps(tags, cls=JSONEncoder)},
+        )
         return response.json()["tags"]
 
-    def search_tags(
-        self,
-        search: str,
-        tag_service_key = None,
-        tag_service_name = None
-    ):
+    def search_tags(self, search: str, tag_service_key=None, tag_service_name=None):
         if tag_service_name is not None and tag_service_key is not None:
-            raise ValueError("Exactly one of tag_service_name, tag_service_key is required")
+            raise ValueError(
+                "Exactly one of tag_service_name, tag_service_key is required"
+            )
 
         payload: dict[str, T.Any] = {"search": search}
         if tag_service_key is not None:
@@ -414,12 +418,12 @@ class Client:
 
     def add_tags(
         self,
-        hashes = None,
-        file_ids = None,
-        service_names_to_tags = None,
-        service_keys_to_tags = None,
-        service_names_to_actions_to_tags = None,
-        service_keys_to_actions_to_tags = None,
+        hashes=None,
+        file_ids=None,
+        service_names_to_tags=None,
+        service_keys_to_tags=None,
+        service_names_to_actions_to_tags=None,
+        service_keys_to_actions_to_tags=None,
     ):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
@@ -444,32 +448,40 @@ class Client:
         if service_keys_to_tags is not None:
             payload["service_keys_to_tags"] = service_keys_to_tags
         if service_names_to_actions_to_tags is not None:
-            payload["service_names_to_actions_to_tags"] = service_names_to_actions_to_tags
+            payload[
+                "service_names_to_actions_to_tags"
+            ] = service_names_to_actions_to_tags
         if service_keys_to_actions_to_tags is not None:
             payload["service_keys_to_actions_to_tags"] = service_keys_to_actions_to_tags
 
         self._api_request("POST", self._ADD_TAGS_PATH, json=payload)
 
     def get_url_files(self, url: str):
-        response = self._api_request("GET", self._GET_URL_FILES_PATH, params={"url": url})
+        response = self._api_request(
+            "GET", self._GET_URL_FILES_PATH, params={"url": url}
+        )
         return response.json()
 
     def get_url_info(self, url: str):
-        response = self._api_request("GET", self._GET_URL_INFO_PATH, params={"url": url})
+        response = self._api_request(
+            "GET", self._GET_URL_INFO_PATH, params={"url": url}
+        )
         return response.json()
 
     def add_url(
         self,
         url: str,
-        destination_page_key = None,
-        destination_page_name = None,
-        show_destination_page = None,
-        service_names_to_additional_tags = None,
-        service_keys_to_additional_tags = None,
-        filterable_tags = None,
+        destination_page_key=None,
+        destination_page_name=None,
+        show_destination_page=None,
+        service_names_to_additional_tags=None,
+        service_keys_to_additional_tags=None,
+        filterable_tags=None,
     ):
         if destination_page_key is not None and destination_page_name is not None:
-            raise ValueError("Exactly one of destination_page_key, destination_page_name is required")
+            raise ValueError(
+                "Exactly one of destination_page_key, destination_page_name is required"
+            )
 
         payload: dict[str, T.Any] = {"url": url}
         if destination_page_key is not None:
@@ -479,7 +491,9 @@ class Client:
         if show_destination_page is not None:
             payload["show_destination_page"] = show_destination_page
         if service_names_to_additional_tags is not None:
-            payload["service_names_to_additional_tags"] = service_names_to_additional_tags
+            payload[
+                "service_names_to_additional_tags"
+            ] = service_names_to_additional_tags
         if service_keys_to_additional_tags is not None:
             payload["service_keys_to_additional_tags"] = service_keys_to_additional_tags
         if filterable_tags is not None:
@@ -490,10 +504,10 @@ class Client:
 
     def associate_url(
         self,
-        hashes = None,
-        file_ids = None,
-        urls_to_add = None,
-        urls_to_delete = None,
+        hashes=None,
+        file_ids=None,
+        urls_to_add=None,
+        urls_to_delete=None,
     ):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
@@ -514,8 +528,10 @@ class Client:
 
         self._api_request("POST", self._ASSOCIATE_URL_PATH, json=payload)
 
-    def set_notes(self, notes , hash_= None, file_id = None):
-        if (hash_ is None and file_id is None) or (hash_ is not None and file_id is not None):
+    def set_notes(self, notes, hash_=None, file_id=None):
+        if (hash_ is None and file_id is None) or (
+            hash_ is not None and file_id is not None
+        ):
             raise ValueError("Exactly one of hash_, file_id is required")
 
         payload: dict[str, T.Any] = {"notes": notes}
@@ -526,13 +542,10 @@ class Client:
 
         self._api_request("POST", self._SET_NOTES_PATH, json=payload)
 
-    def delete_notes(
-        self,
-        note_names ,
-        hash_ = None,
-        file_id = None
-    ):
-        if (hash_ is None and file_id is None) or (hash_ is not None and file_id is not None):
+    def delete_notes(self, note_names, hash_=None, file_id=None):
+        if (hash_ is None and file_id is None) or (
+            hash_ is not None and file_id is not None
+        ):
             raise ValueError("Exactly one of hash_, file_id is required")
 
         payload: dict[str, T.Any] = {"note_names": note_names}
@@ -544,20 +557,24 @@ class Client:
         self._api_request("POST", self._DELETE_NOTES_PATH, json=payload)
 
     def get_cookies(self, domain: str):
-        response = self._api_request("GET", self._GET_COOKIES_PATH, params={"domain": domain})
+        response = self._api_request(
+            "GET", self._GET_COOKIES_PATH, params={"domain": domain}
+        )
         return response.json()["cookies"]
 
-    def set_cookies(self, cookies ):
+    def set_cookies(self, cookies):
         self._api_request("POST", self._SET_COOKIES_PATH, json={"cookies": cookies})
 
     def set_user_agent(self, user_agent: str):
-        self._api_request("POST", self._SET_USER_AGENT_PATH, json={"user-agent": user_agent})
+        self._api_request(
+            "POST", self._SET_USER_AGENT_PATH, json={"user-agent": user_agent}
+        )
 
     def get_pages(self):
         response = self._api_request("GET", self._GET_PAGES_PATH)
         return response.json()["pages"]
 
-    def get_page_info(self, page_key: str, simple = None):
+    def get_page_info(self, page_key: str, simple=None):
         parameters = {"page_key": page_key}
         if simple is not None:
             parameters["simple"] = json.dumps(simple, cls=JSONEncoder)
@@ -565,12 +582,7 @@ class Client:
         response = self._api_request("GET", self._GET_PAGE_INFO_PATH, params=parameters)
         return response.json()["page_info"]
 
-    def add_files_to_page(
-        self,
-        page_key: str,
-        file_ids = None,
-        hashes = None
-    ):
+    def add_files_to_page(self, page_key: str, file_ids=None, hashes=None):
         if file_ids is None and hashes is None:
             raise ValueError("At least one of file_ids, hashes is required")
 
@@ -588,20 +600,26 @@ class Client:
     def search_files(
         self,
         tags,
-        file_service_name = None,
-        file_service_key = None,
-        tag_service_name = None,
-        tag_service_key = None,
-        file_sort_type = None,
-        file_sort_asc = None,
-        return_hashes = None,
+        file_service_name=None,
+        file_service_key=None,
+        tag_service_name=None,
+        tag_service_key=None,
+        file_sort_type=None,
+        file_sort_asc=None,
+        return_hashes=None,
     ):
         if file_service_name is not None and file_service_key is not None:
-            raise ValueError("Exactly one of file_service_name, file_service_key is required")
+            raise ValueError(
+                "Exactly one of file_service_name, file_service_key is required"
+            )
         if tag_service_name is not None and tag_service_key is not None:
-            raise ValueError("Exactly one of tag_service_name, tag_service_key is required")
+            raise ValueError(
+                "Exactly one of tag_service_name, tag_service_key is required"
+            )
 
-        parameters: dict[str, T.Union[str, int]] = {"tags": json.dumps(tags, cls=JSONEncoder)}
+        parameters: dict[str, T.Union[str, int]] = {
+            "tags": json.dumps(tags, cls=JSONEncoder)
+        }
         if file_service_name is not None:
             parameters["file_service_name"] = file_service_name
         if file_service_key is not None:
@@ -624,14 +642,14 @@ class Client:
 
     def get_file_metadata(
         self,
-        hashes = None,
-        file_ids = None,
-        create_new_file_ids = None,
-        only_return_identifiers = None,
-        only_return_basic_information = None,
-        detailed_url_information = None,
-        hide_service_name_tags = None,
-        include_notes = None
+        hashes=None,
+        file_ids=None,
+        create_new_file_ids=None,
+        only_return_identifiers=None,
+        only_return_basic_information=None,
+        detailed_url_information=None,
+        hide_service_name_tags=None,
+        include_notes=None,
     ):
         if hashes is None and file_ids is None:
             raise ValueError("At least one of hashes, file_ids is required")
@@ -643,23 +661,37 @@ class Client:
             parameters["file_ids"] = json.dumps(file_ids, cls=JSONEncoder)
 
         if create_new_file_ids is not None:
-            parameters["create_new_file_ids"] = json.dumps(create_new_file_ids, cls=JSONEncoder)
+            parameters["create_new_file_ids"] = json.dumps(
+                create_new_file_ids, cls=JSONEncoder
+            )
         if only_return_identifiers is not None:
-            parameters["only_return_identifiers"] = json.dumps(only_return_identifiers, cls=JSONEncoder)
+            parameters["only_return_identifiers"] = json.dumps(
+                only_return_identifiers, cls=JSONEncoder
+            )
         if only_return_basic_information is not None:
-            parameters["only_return_basic_information"] = json.dumps(only_return_basic_information, cls=JSONEncoder)
+            parameters["only_return_basic_information"] = json.dumps(
+                only_return_basic_information, cls=JSONEncoder
+            )
         if detailed_url_information is not None:
-            parameters["detailed_url_information"] = json.dumps(detailed_url_information, cls=JSONEncoder)
+            parameters["detailed_url_information"] = json.dumps(
+                detailed_url_information, cls=JSONEncoder
+            )
         if hide_service_name_tags is not None:
-            parameters["hide_service_name_tags"] = json.dumps(hide_service_name_tags, cls=JSONEncoder)
+            parameters["hide_service_name_tags"] = json.dumps(
+                hide_service_name_tags, cls=JSONEncoder
+            )
         if include_notes is not None:
             parameters["include_notes"] = json.dumps(include_notes, cls=JSONEncoder)
 
-        response = self._api_request("GET", self._GET_FILE_METADATA_PATH, params=parameters)
+        response = self._api_request(
+            "GET", self._GET_FILE_METADATA_PATH, params=parameters
+        )
         return response.json()["metadata"]
 
-    def get_file(self, hash_ = None, file_id = None):
-        if (hash_ is None and file_id is None) or (hash_ is not None and file_id is not None):
+    def get_file(self, hash_=None, file_id=None):
+        if (hash_ is None and file_id is None) or (
+            hash_ is not None and file_id is not None
+        ):
             raise ValueError("Exactly one of hash_, file_id is required")
 
         parameters: dict[str, T.Union[str, int]] = {}
@@ -668,10 +700,14 @@ class Client:
         if file_id is not None:
             parameters["file_id"] = file_id
 
-        return self._api_request("GET", self._GET_FILE_PATH, params=parameters, stream=True)
+        return self._api_request(
+            "GET", self._GET_FILE_PATH, params=parameters, stream=True
+        )
 
-    def get_thumbnail(self, hash_ = None, file_id = None):
-        if (hash_ is None and file_id is None) or (hash_ is not None and file_id is not None):
+    def get_thumbnail(self, hash_=None, file_id=None):
+        if (hash_ is None and file_id is None) or (
+            hash_ is not None and file_id is not None
+        ):
             raise ValueError("Exactly one of hash_, file_id is required")
 
         parameters: dict[str, T.Union[str, int]] = {}
@@ -680,7 +716,9 @@ class Client:
         if file_id is not None:
             parameters["file_id"] = file_id
 
-        return self._api_request("GET", self._GET_THUMBNAIL_PATH, params=parameters, stream=True)
+        return self._api_request(
+            "GET", self._GET_THUMBNAIL_PATH, params=parameters, stream=True
+        )
 
     def lock_database(self):
         self._api_request("POST", self._LOCK_DATABASE_PATH)
@@ -694,9 +732,9 @@ class Client:
     def add_and_tag_files(
         self,
         paths_or_files,
-        tags ,
-        service_names = None,
-        service_keys = None,
+        tags,
+        service_names=None,
+        service_keys=None,
     ):
         """Convenience method to add and tag multiple files at the same time.
 
@@ -718,8 +756,14 @@ class Client:
             if result["status"] != ImportStatus.FAILED:
                 hashes.add(result["hash"])
 
-        service_names_to_tags = {name: tags for name in service_names} if service_names is not None else None
-        service_keys_to_tags = {key: tags for key in service_keys} if service_keys is not None else None
+        service_names_to_tags = (
+            {name: tags for name in service_names}
+            if service_names is not None
+            else None
+        )
+        service_keys_to_tags = (
+            {key: tags for key in service_keys} if service_keys is not None else None
+        )
         # Ignore type, we know that hashes only contains strings
         self.add_tags(hashes, service_names_to_tags=service_names_to_tags, service_keys_to_tags=service_keys_to_tags)  # type: ignore
         return results

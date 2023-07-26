@@ -25,18 +25,18 @@ body
 
 /* Track */
 ::-webkit-scrollbar-track {
-  background: rgb(10, 13, 19); 
+  background: rgb(10, 13, 19);
 }
- 
+
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #6c6e72; 
+  background: #6c6e72;
   border-radius: 3px;
 }
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #6c6e72; 
+  background: #6c6e72;
 }
 
 #scroll_area
@@ -60,7 +60,7 @@ span
 	border-radius: 0.25rem;
 	font-size: 1rem;
 	font-family: "Source Sans Pro", sans-serif;
-	
+
 	background-color: rgb(38, 39, 48);
 	color: white;
 	display: inline-block;

@@ -21,7 +21,7 @@ init_lr: 1e-5
 image_size: 384
 
 # generation configs
-max_length: 20  
+max_length: 20
 min_length: 5
 num_beams: 3
 prompt: 'a picture of '
@@ -30,4 +30,3 @@ prompt: 'a picture of '
 weight_decay: 0.05
 min_lr: 0
 max_epoch: 5
-
