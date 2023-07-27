@@ -24,9 +24,9 @@ from sd_utils import (
     hc,
     load_configs,
     load_css,
-    #set_logger_verbosity,
+    # set_logger_verbosity,
     logger,
-    #quiesce_logger,
+    # quiesce_logger,
     set_page_title,
     threading,
     random,
@@ -340,8 +340,8 @@ def layout():
 
 
 if __name__ == "__main__":
-    #set_logger_verbosity(opt.verbosity)
-    #quiesce_logger(opt.quiet)
+    # set_logger_verbosity(opt.verbosity)
+    # quiesce_logger(opt.quiet)
 
     if not opt.headless:
         layout()
