@@ -32,7 +32,7 @@ models = []
 print("Downloading the sd concept library from the huggingface site.")
 for model in models_list:
     model_content = {}
-    model_id = model.modelId
+    model_id = model.id
     url = f"https://huggingface.co/{model_id}"
     try:
         if not os.path.exists(os.path.join("../models/custom", model_id)):
