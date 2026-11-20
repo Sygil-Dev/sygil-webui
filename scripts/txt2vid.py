@@ -968,11 +968,11 @@ class StableDiffusionWalkPipeline(DiffusionPipeline):
                     fps=fps,
                     margin=margin,
                     smooth=smooth,
-                    callback=callback,
-                    callback_steps=callback_steps,
                 )
                 if audio_filepath
                 else None,
+                callback=callback,
+                callback_steps=callback_steps,
             )
             make_video_pyav(
                 save_path,
